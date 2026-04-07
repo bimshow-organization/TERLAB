@@ -116,41 +116,17 @@
     <!-- Actions droite -->
     <div class="tb-right" role="toolbar" aria-label="Actions">
 
-      <!-- Démos -->
-      <div class="demo-group" id="demo-group">
-        <span class="demo-label" aria-hidden="true">Démo</span>
-        <button class="demo-chip" data-demo="ville" title="Terrain urbain Saint-Denis" aria-label="Charger démo terrain urbain">
-          🏙 Ville
-        </button>
-        <button class="demo-chip" data-demo="village" title="Terrain bourg Saint-Joseph" aria-label="Charger démo terrain bourg rural">
-          🏘 Village
-        </button>
-        <button class="demo-chip" data-demo="isole" title="Terrain isolé Plaine des Cafres" aria-label="Charger démo terrain isolé montagnard">
-          🏔 Isolé
-        </button>
-      </div>
-
-      <div class="tb-divider" aria-hidden="true"></div>
-
-      <!-- Session badge -->
-      <div class="session-badge" id="session-badge" role="status" aria-live="polite">
-        <span class="session-dot" aria-hidden="true"></span>
-        <span id="session-id-display">—</span>
-      </div>
-
-      <!-- Export PDF -->
-      <button class="tb-btn btn-export" id="btn-export-pdf" onclick="TerlabExport.generatePDF()" title="Exporter PDF A3 complet" aria-label="Exporter synthèse PDF A3">
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-          <path d="M3 1h6l3 3v9H3V1z" stroke="currentColor" stroke-width="1.2"/>
-          <path d="M8 1v4h4" stroke="currentColor" stroke-width="1.2"/>
-          <path d="M5 8h4M5 10.5h2.5" stroke="currentColor" stroke-width="1"/>
-        </svg>
-        PDF A3
-      </button>
-
       <!-- BIMSHOW / 3D Viewer -->
       <button class="tb-btn btn-bimshow" id="btn-bimshow" onclick="Terlab3DToggle()" title="Ouvrir le viewer 3D" aria-label="Ouvrir le viewer 3D intégré">
         3D ☀
+      </button>
+
+      <!-- Login (placeholder) -->
+      <button class="tb-btn btn-login" id="btn-login" title="Connexion" aria-label="Connexion">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="8" cy="5" r="3" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
       </button>
     </div>
   </header>
