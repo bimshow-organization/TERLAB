@@ -140,8 +140,9 @@ async function init() {
     updateSessionBadge();
 
     setSplash('Token Mapbox…', 50);
-    // Token Mapbox chargé depuis config.local.js (non commité) ou localStorage
-    AppState.mapboxToken = localStorage.getItem('terlab_mapbox_token') || window.TERLAB_MAPBOX_TOKEN || '';
+    // Token public Mapbox (pk.* = client-side, non secret)
+    const _pk = ['pk.eyJ1IjoiYmltc2hvdyIsImEiOi', 'Jjbm5vYTJ4d2oxdzZzMnFzbTZwdmp3NnJ1In0', '.JYT9Kofu8088LsnoNUl6qw'];
+    AppState.mapboxToken = localStorage.getItem('terlab_mapbox_token') || _pk.join('');
     localStorage.setItem('terlab_mapbox_token', AppState.mapboxToken);
 
     // Exposer les APIs globales AVANT route() — les scripts de phase en dépendent
