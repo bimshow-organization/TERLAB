@@ -1,0 +1,161 @@
+{
+  "meta": {
+    "version": "2026-04",
+    "region": "La Réunion",
+    "generated": "2026-04-07",
+    "commune": "Entre-Deux",
+    "insee": "97404",
+    "intercommunalite": "CASUD",
+    "plu_type": "PLU",
+    "plu_date_approbation": "2024-09-24",
+    "source": "GPU DU_97403"
+  },
+  "zones": {
+    "Ua": {
+      "label": "Centre-bourg",
+      "type": "U",
+      "sous_type": "centre_urbain",
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 3,
+        "sep_fond_m": 3,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 7,
+        "hf_max_m": 11,
+        "annexe_hf_max_m": 3.5
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 60
+      },
+      "permeabilite": {
+        "permeable_min_pct": 40
+      },
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    },
+    "Ub": {
+      "label": "Résidentiel",
+      "type": "U",
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 3,
+        "sep_fond_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 9,
+        "hf_max_m": 13,
+        "annexe_hf_max_m": 3.5
+      },
+      "_meta": {
+        "confidence": 0.8,
+        "ambiguites": [
+          "Emprise et perm Ub non chiffrées"
+        ]
+      }
+    },
+    "Ub1": {
+      "label": "Secteur dense",
+      "type": "U",
+      "ref": "Ub",
+      "hauteurs": {
+        "he_max_m": 7,
+        "hf_max_m": 11
+      },
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    },
+    "Ub2": {
+      "label": "Secteur diffus",
+      "type": "U",
+      "ref": "Ub",
+      "hauteurs": {
+        "he_max_m": 4.5,
+        "hf_max_m": 7
+      },
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    },
+    "Ue": {
+      "label": "Activités",
+      "type": "U",
+      "sous_type": "activites",
+      "ref": "Ub",
+      "hauteurs": {
+        "he_max_m": 9,
+        "hf_max_m": 13
+      },
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    },
+    "AU": {
+      "label": "Zones AU",
+      "type": "AU",
+      "ref": "zone U",
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 4.5,
+        "hf_max_m": 7
+      },
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    },
+    "A": {
+      "label": "Agricole",
+      "type": "A",
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 4,
+        "hf_max_m": 8
+      },
+      "permeabilite": {
+        "permeable_min_pct": 70
+      },
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    },
+    "N": {
+      "label": "Naturelle",
+      "type": "N",
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 4,
+        "hf_max_m": 7
+      },
+      "permeabilite": {
+        "permeable_min_pct": 70
+      },
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    }
+  },
+  "regles_communes": {
+    "ravine_recul_m": 10,
+    "cloture_voie_hauteur_max_m": 2,
+    "rtaa_dom": "2016"
+  }
+}

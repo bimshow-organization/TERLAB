@@ -1,0 +1,100 @@
+{
+  "meta": {
+    "version": "2026-04",
+    "region": "La Réunion",
+    "generated": "2026-04-07",
+    "commune": "Saint-André",
+    "insee": "97410",
+    "intercommunalite": "CIREST",
+    "plu_type": "PLU",
+    "plu_date_approbation": "2019-02-28",
+    "source": "Règlement PLU Saint-André — 97410_saint-andre_reglement.pdf (fourni directement)"
+  },
+  "zones": {
+    "UA": {
+      "label": "Centre aggloméré", "type": "U", "sous_type": "centre_urbain",
+      "reculs": { "voie_principale_m": null, "voie_note": "Alignement ou variable. RN : 7m axe.", "voie_rn_axe_m": 7, "sep_lat_m": 3, "sep_fond_m": 3 },
+      "hauteurs": { "he_max_m": 14, "hf_max_m": 17, "bonus_40pct_he_m": 17, "bonus_40pct_hf_m": 20, "bonus_note": "Projets > 2000m² SDP : 40% max peut atteindre 17m hé / 20m hf (sauf UA1)" },
+      "emprise": { "emprise_sol_max_pct": null, "note": "Sans objet" },
+      "permeabilite": { "permeable_min_pct": 20 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+    "UA1": {
+      "label": "Centre historique", "type": "U", "ref": "UA",
+      "hauteurs": { "he_max_m": 11, "hf_max_m": 14 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+    "UB": {
+      "label": "Zone résidentielle dense", "type": "U", "sous_type": "résidentielle_dense",
+      "reculs": { "voie_rn_axe_m": 7, "sep_lat_m": 3, "sep_fond_m": 3 },
+      "hauteurs": { "he_max_m": 12, "hf_max_m": 14, "bonus_40pct_he_m": 14, "bonus_40pct_hf_m": 17 },
+      "emprise": { "emprise_sol_max_pct": null },
+      "permeabilite": { "permeable_min_pct": 30 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+    "UC": {
+      "label": "Zone résidentielle intermédiaire", "type": "U", "sous_type": "résidentielle_intermédiaire",
+      "reculs": { "voie_principale_m": 4, "voie_rn_axe_m": 7, "sep_lat_m": 3, "sep_fond_m": 3 },
+      "hauteurs": { "he_max_m": 9, "hf_max_m": 12, "bonus_40pct_he_m": 12, "bonus_40pct_hf_m": 15 },
+      "emprise": { "emprise_sol_max_pct": null },
+      "permeabilite": { "permeable_min_pct": 40 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+    "UD": {
+      "label": "Zone résidentielle diffuse", "type": "U", "sous_type": "résidentielle_diffuse",
+      "reculs": { "voie_principale_m": 6, "sep_lat_m": 3, "sep_fond_m": 3 },
+      "hauteurs": { "he_max_m": 6, "hf_max_m": 10 },
+      "emprise": { "emprise_sol_max_pct": null },
+      "permeabilite": { "permeable_min_pct": 50 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+    "UE": {
+      "label": "Zone activités économiques", "type": "U", "sous_type": "activites",
+      "reculs": { "voie_principale_m": 6, "sep_lat_m": 4, "sep_fond_m": 4 },
+      "hauteurs": { "h_max_m": 16 },
+      "emprise": { "emprise_sol_max_pct": null },
+      "permeabilite": { "permeable_min_pct": 20 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+    "US": {
+      "label": "Zone équipements sportifs et loisirs", "type": "U", "sous_type": "sport_loisirs",
+      "reculs": { "voie_principale_m": 3, "sep_lat_m": 3, "sep_fond_m": 4 },
+      "hauteurs": { "h_max_m": 16 },
+      "permeabilite": { "permeable_min_pct": 30 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+    "UT": {
+      "label": "Zone touristique", "type": "U", "sous_type": "touristique",
+      "reculs": { "voie_principale_m": 6, "sep_lat_m": 4, "sep_fond_m": 4 },
+      "hauteurs": { "he_max_m": 9, "hf_max_m": 12 },
+      "permeabilite": { "permeable_min_pct": 50 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+    "AU": {
+      "label": "Zones à urbaniser", "type": "AU", "ref": "zone U correspondante",
+      "permeabilite": { "permeable_min_pct": 30 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+    "A": {
+      "label": "Zone agricole", "type": "A",
+      "sous_zones": ["Aba"],
+      "hauteurs": { "he_max_m": 6, "hf_max_m": null },
+      "permeabilite": { "permeable_min_pct": 50, "permeable_Aba_pct": 40 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+    "N": {
+      "label": "Zone naturelle", "type": "N",
+      "permeabilite": { "permeable_min_pct": 70 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    }
+  },
+  "regles_communes": {
+    "ravine_recul_m": 10,
+    "voie_rn_axe_m": 7,
+    "cloture_voie_hauteur_max_m": 2,
+    "mur_soutenement_max_m": 3,
+    "logement_aide_seuil_m2": 2000,
+    "logement_aide_pct": 25,
+    "rtaa_dom": "2016"
+  }
+}

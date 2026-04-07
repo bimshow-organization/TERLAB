@@ -1,0 +1,1273 @@
+<!-- TERLAB · Phase 7 · Esquisse Projet & Simulation · ENSA La Réunion v1.0 -->
+<!-- Thème : dark accent ambre · Three.js gabarit 3D · BIMSHOW bridge · Checks PLU -->
+
+<div class="left-panel" id="left-panel-p07">
+
+  <div class="lp-head anim-slide-up">
+    <div class="phase-label" style="color:#f59e0b">Phase 7 · Esquisse</div>
+    <h1 class="phase-title">🏗 <em>Esquisse</em> & Simulation</h1>
+    <p class="phase-desc">Poser le gabarit du projet et vérifier sa conformité avec les phases précédentes. Le modèle est exportable vers BIMSHOW pour rendu haute qualité et vers DXF/IFC pour production.</p>
+  </div>
+
+  <div class="terrain-strip">
+    <span class="ts-item">📐 Parcelle <strong id="ts-contenance">— m²</strong></span>
+    <span class="ts-sep">·</span>
+    <span class="ts-item">PLU <strong id="ts-zone-plu">—</strong></span>
+    <span class="ts-sep">·</span>
+    <span class="ts-item">Emp. max <strong id="ts-emprise-max">—%</strong></span>
+  </div>
+
+  <!-- Programme -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Programme du projet</div>
+    <div class="prog-grid">
+      <div class="field-row">
+        <label class="field-label" for="sp-m2">Surface de plancher (m²)</label>
+        <input type="number" id="sp-m2" class="field-input" data-session-key="surface_plancher_m2"
+               placeholder="150" min="10" oninput="P07.update()"/>
+      </div>
+      <div class="field-row">
+        <label class="field-label" for="sp-niveaux">Niveaux</label>
+        <select id="sp-niveaux" class="field-select" data-session-key="niveaux" onchange="P07.update()">
+          <option value="1">R+0 (plain-pied)</option>
+          <option value="2">R+1</option>
+          <option value="3">R+2</option>
+          <option value="4">R+3</option>
+        </select>
+      </div>
+    </div>
+    <div class="gabarit-inputs">
+      <div class="field-row">
+        <label class="field-label" for="sp-l">Longueur L (m)</label>
+        <input type="number" id="sp-l" class="field-input" data-session-key="gabarit_l_m"
+               placeholder="12" min="3" step="0.5" oninput="P07.update()"/>
+      </div>
+      <div class="field-row">
+        <label class="field-label" for="sp-w">Largeur l (m)</label>
+        <input type="number" id="sp-w" class="field-input" data-session-key="gabarit_w_m"
+               placeholder="8" min="3" step="0.5" oninput="P07.update()"/>
+      </div>
+      <div class="field-row">
+        <label class="field-label" for="sp-h">Hauteur H (m)</label>
+        <input type="number" id="sp-h" class="field-input" data-session-key="gabarit_h_m"
+               placeholder="7.2" min="2.5" step="0.1" oninput="P07.update()"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- Matériaux -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Structure & toiture</div>
+    <div class="field-row">
+      <label class="field-label">Type de structure</label>
+      <div class="radio-group" style="flex-direction:column;gap:4px">
+        <label class="radio-option" onclick="P07.selectMat(this,'maconnerie')"><input type="radio" name="struct" value="maconnerie"/>🧱 Maçonnerie parpaings (le plus courant Réunion)</label>
+        <label class="radio-option" onclick="P07.selectMat(this,'bois')"><input type="radio" name="struct" value="bois"/>🪵 Charpente bois</label>
+        <label class="radio-option" onclick="P07.selectMat(this,'metal')"><input type="radio" name="struct" value="metal"/>⚙ Acier / métal</label>
+        <label class="radio-option" onclick="P07.selectMat(this,'mixte')"><input type="radio" name="struct" value="mixte"/>🔄 Mixte bois-maçonnerie</label>
+      </div>
+    </div>
+    <div class="field-row" style="margin-top:8px">
+      <label class="field-label">Type de toiture</label>
+      <div class="radio-group">
+        <label class="radio-option" onclick="P07.selectToiture(this,'4pentes')"><input type="radio" name="toit" value="4pentes"/>4 pentes 🏠</label>
+        <label class="radio-option" onclick="P07.selectToiture(this,'2pentes')"><input type="radio" name="toit" value="2pentes"/>2 pentes 🏠</label>
+        <label class="radio-option" onclick="P07.selectToiture(this,'terrasse')"><input type="radio" name="toit" value="terrasse"/>Terrasse ▭</label>
+      </div>
+    </div>
+    <div class="struct-advice" id="struct-advice" style="display:none"></div>
+  </div>
+
+  <!-- Checks PLU -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Vérifications PLU automatiques</div>
+    <div class="plu-checks" id="plu-checks">
+      <div class="plu-check" id="chk-emprise">
+        <span class="plu-label">Emprise au sol</span>
+        <span class="plu-val" id="chk-emprise-val">—</span>
+      </div>
+      <div class="plu-check" id="chk-hauteur">
+        <span class="plu-label">Hauteur</span>
+        <span class="plu-val" id="chk-hauteur-val">—</span>
+      </div>
+      <div class="plu-check" id="chk-recul-voie">
+        <span class="plu-label">Recul voie</span>
+        <span class="plu-val" id="chk-recul-voie-val">—</span>
+      </div>
+      <div class="plu-check" id="chk-sep">
+        <span class="plu-label">Recul sep.</span>
+        <span class="plu-val" id="chk-sep-val">—</span>
+      </div>
+    </div>
+    <div class="emprise-calc" id="emprise-calc" style="display:none">
+      <span class="ec-label">Emprise calculée</span>
+      <span class="ec-val" id="ec-val">—</span>
+    </div>
+    <div class="rtaa-note" id="rtaa-note" style="display:none"></div>
+  </div>
+
+  <!-- Synthèse topographique 3D (auto depuis session) -->
+  <div class="form-section anim-slide-up" id="topo-3d-section">
+    <div class="fs-head">Topographie &mdash; Synth&egrave;se auto</div>
+    <div class="detected-grid">
+      <div class="det-cell">
+        <span class="det-label">Pente max</span>
+        <span class="det-val" id="p07-pente-val">&mdash;</span>
+      </div>
+      <div class="det-cell">
+        <span class="det-label">Exposition</span>
+        <span class="det-val" id="p07-expo-val">&mdash;</span>
+      </div>
+      <div class="det-cell">
+        <span class="det-label">Ensoleillement</span>
+        <span class="det-val" id="p07-sun-val">&mdash;</span>
+      </div>
+      <div class="det-cell">
+        <span class="det-label">Zone RTAA</span>
+        <span class="det-val" id="p07-rtaa-val">&mdash;</span>
+      </div>
+    </div>
+    <div id="p07-slope-alert" class="stub-warning" style="display:none">
+      Pente &gt; 15% &mdash; &Eacute;tude g&eacute;otechnique G1 obligatoire (RTAA DOM)
+    </div>
+  </div>
+
+  <!-- Export BIMSHOW -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Export & Rendu BIMSHOW</div>
+    <div class="bimshow-panel">
+      <div class="bimshow-preview" id="bimshow-preview">
+        <div class="bp-placeholder" id="bp-placeholder">
+          <span style="font-size:24px">🏗</span>
+          <span>Modèle non généré</span>
+          <span style="font-size:9px;color:var(--faint)">Remplissez le programme puis cliquez</span>
+        </div>
+        <img id="bp-snapshot" class="bp-snapshot" style="display:none" alt="Rendu BIMSHOW"/>
+        <div class="bp-loading" id="bp-loading" style="display:none">
+          <div class="bp-spinner"></div>
+          <span>Envoi vers BIMSHOW…</span>
+        </div>
+      </div>
+      <div class="bimshow-btns">
+        <button class="bim-btn primary" onclick="P07.generateGabarit()">
+          ⬆ Envoyer vers BIMSHOW
+        </button>
+        <button class="bim-btn" onclick="P07.exportGLB()">
+          📦 Export GLB
+        </button>
+        <button class="bim-btn stub-btn" onclick="P07.exportIFC()">
+          🏗 Export IFC <span class="stub-tag">STUB</span>
+        </button>
+        <button class="bim-btn" onclick="P07.exportDXFGabarit()">
+          📐 Export DXF
+        </button>
+      </div>
+    </div>
+    <div class="stub-warning">⚠️ STUB — Export IFC via ifc-worker.js non implémenté. GLB disponible pour BIMSHOW.</div>
+    <div class="risk-card" data-level="bigdata" style="margin-top:8px">
+      <div class="risk-label">🔒 Métadonnées BIM</div>
+      <div class="risk-text">Les fichiers GLB et DXF exportés contiennent des métadonnées (auteur, date, coords GPS). Établir un BIM Execution Plan. Purger avant dépôt de PC.</div>
+    </div>
+  </div>
+
+  <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
+    <button class="source-btn" onclick="TerlabSources.open(7)">→ Sources &amp; références esquisse</button>
+    <a href="https://www.envirobat-reunion.com" target="_blank" rel="noopener" class="source-btn" style="margin-left:12px">→ enviroBAT REX ↗</a>
+  </div>
+
+  <!-- ═══ GABARIT PLU — Contraintes & Pareto ═══ -->
+  <div class="form-section anim-slide-up" id="p07-gabarit-section">
+    <div class="fs-head">Gabarit PLU — Contraintes parcellaires</div>
+
+    <div class="field-row">
+      <label class="field-label" for="gabarit-zone-select">Zone PLU</label>
+      <select id="gabarit-zone-select" class="field-select" onchange="GabaritUI.changeZone(this.value)">
+        <option value="">Chargement…</option>
+      </select>
+    </div>
+
+    <div class="gabarit-context-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
+      <label class="radio-option" style="font-size:10px;padding:4px 6px">
+        <input type="checkbox" id="gab-voie-nord" onchange="GabaritUI.updateContext()"/> Voie Nord
+      </label>
+      <label class="radio-option" style="font-size:10px;padding:4px 6px">
+        <input type="checkbox" id="gab-voie-sud" checked onchange="GabaritUI.updateContext()"/> Voie Sud
+      </label>
+      <label class="radio-option" style="font-size:10px;padding:4px 6px">
+        <input type="checkbox" id="gab-voie-est" onchange="GabaritUI.updateContext()"/> Voie Est
+      </label>
+      <label class="radio-option" style="font-size:10px;padding:4px 6px">
+        <input type="checkbox" id="gab-voie-ouest" onchange="GabaritUI.updateContext()"/> Voie Ouest
+      </label>
+      <label class="radio-option" style="font-size:10px;padding:4px 6px">
+        <input type="checkbox" id="gab-mitoyen-n" onchange="GabaritUI.updateContext()"/> Mitoyen Zone N
+      </label>
+      <label class="radio-option" style="font-size:10px;padding:4px 6px">
+        <input type="checkbox" id="gab-mitoyen-a" onchange="GabaritUI.updateContext()"/> Mitoyen Zone A
+      </label>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px">
+      <div class="field-row">
+        <label class="field-label" style="font-size:8px">Recul voie (m)</label>
+        <input type="number" id="gab-recul-voie" class="field-input" placeholder="auto" min="0" step="0.5" oninput="GabaritUI.updateContext()"/>
+      </div>
+      <div class="field-row">
+        <label class="field-label" style="font-size:8px">Recul lat. (m)</label>
+        <input type="number" id="gab-recul-lat" class="field-input" placeholder="auto" min="0" step="0.5" oninput="GabaritUI.updateContext()"/>
+      </div>
+      <div class="field-row">
+        <label class="field-label" style="font-size:8px">Recul fond (m)</label>
+        <input type="number" id="gab-recul-fond" class="field-input" placeholder="auto" min="0" step="0.5" oninput="GabaritUI.updateContext()"/>
+      </div>
+    </div>
+
+    <div class="gabarit-snap-row" style="display:flex;align-items:center;gap:8px;margin-top:6px">
+      <span style="font-family:var(--font-mono);font-size:8px;color:var(--muted)">Snap grille</span>
+      <select id="gab-snap" class="field-select" style="width:auto;padding:2px 6px;font-size:9px" onchange="GabaritUI.setSnap(this.value)">
+        <option value="0.1">0.1 m</option>
+        <option value="0.25">0.25 m</option>
+        <option value="0.5" selected>0.5 m</option>
+        <option value="1">1 m</option>
+      </select>
+      <button class="bim-btn" style="padding:3px 8px;font-size:8px" onclick="GabaritUI.addParcel()">+ Parcelle</button>
+      <button class="bim-btn" style="padding:3px 8px;font-size:8px" onclick="GabaritUI.fitView()">Recentrer</button>
+    </div>
+
+    <!-- Metrics -->
+    <div id="gabarit-metrics" class="gabarit-metrics" style="margin-top:8px;display:none">
+      <div class="det-cell"><span class="det-label">Parcelle</span><span class="det-val" id="gab-m-parcelle">—</span></div>
+      <div class="det-cell"><span class="det-label">Constructible</span><span class="det-val" id="gab-m-constructible">—</span></div>
+      <div class="det-cell"><span class="det-label">Ratio</span><span class="det-val" id="gab-m-ratio">—</span></div>
+      <div class="det-cell"><span class="det-label">hé / hf</span><span class="det-val" id="gab-m-hauteurs">—</span></div>
+    </div>
+
+    <!-- Pareto cards -->
+    <div style="margin-top:8px">
+      <div class="fs-head" style="font-size:9px;margin-bottom:4px">Solutions Pareto</div>
+      <div id="gabarit-pareto-cards" style="display:flex;flex-direction:column;gap:4px"></div>
+    </div>
+  </div>
+
+  <!-- Wind Navigator — Sprint 3 -->
+  <div class="form-section anim-slide-up" id="p07-aeraulique-section">
+    <div class="fs-head">Wind Navigator — 5 Échelles</div>
+    <div id="p07-wind-navigator" style="height:280px"></div>
+  </div>
+
+  <!-- Comparateur plan-masse — Sprint 3 -->
+  <div class="form-section anim-slide-up" id="p07-planner-section">
+    <div class="fs-head">Comparateur Variantes Plan-Masse</div>
+    <div id="p07-aeraulic-planner" style="height:350px"></div>
+    <div style="padding:4px 12px 8px">
+      <button class="source-btn" onclick="P07.exportPlannerSession()" style="padding:4px 10px;border:1px solid var(--accent);border-radius:var(--r-sm)">
+        Sauvegarder variantes
+      </button>
+    </div>
+  </div>
+
+  <div class="ped-note" style="margin:0 13px 8px;font-size:.7rem">
+    <strong>Démarche</strong> : identifier l'échelle critique du terrain
+    (territoire → commune → îlot), puis tester 2-3 variantes d'implantation.
+    Le score aéraulique est sauvegardé dans la session et intégré à la synthèse (Phase 12).
+  </div>
+
+  <div class="val-block">
+    <div class="val-title">Validation de la phase 7</div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Tous les checks PLU verts (reculs / emprise / hauteur)</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Matériaux cyclone et parasismiques cohérents</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Modèle BIMSHOW généré et validé visuellement</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0" id="p07-check-aeraulique"><div class="check-box"></div><span>Analyse aéraulique réalisée (Wind Navigator + score variante)</span></div>
+    <div class="val-progress"><div class="val-bar"></div></div>
+    <div class="val-footer"><span>Phase indicative</span><span class="val-pct">0/4</span></div>
+    <button class="next-btn">Phase 8 — Chantier & Construction →</button>
+  </div>
+
+</div>
+
+<!-- ═══════════════════ CARTE / VIEWER 3D ═══════════════════════ -->
+<div class="map-area" id="map-area-p07">
+  <!-- Toggle Carte / 3D -->
+  <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:0;border-radius:4px;overflow:hidden;border:1px solid rgba(154,120,32,.2)">
+    <button id="p07-toggle-map" onclick="P07.setView('map')"
+      style="padding:5px 16px;font-family:var(--font-mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;background:rgba(154,120,32,.12);color:var(--accent, #9a7820);border:none;cursor:pointer">
+      Carte
+    </button>
+    <button id="p07-toggle-3d" onclick="P07.setView('3d')"
+      style="padding:5px 16px;font-family:var(--font-mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;background:none;color:var(--muted, #6b5c3e);border:none;cursor:pointer">
+      Vue 3D
+    </button>
+    <button id="p07-toggle-esquisse" onclick="P07.setView('esquisse')"
+      style="padding:5px 16px;font-family:var(--font-mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;background:none;color:var(--muted, #6b5c3e);border:none;cursor:pointer">
+      Esquisse
+    </button>
+    <button id="p07-toggle-gabarit" onclick="P07.setView('gabarit')"
+      style="padding:5px 16px;font-family:var(--font-mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;background:none;color:var(--muted, #6b5c3e);border:none;cursor:pointer">
+      Gabarit
+    </button>
+  </div>
+
+  <!-- Carte Mapbox (visible par défaut) -->
+  <div id="map" style="width:100%;height:100%;position:absolute;inset:0"></div>
+  <div id="map-stub-banner" style="display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(245,158,11,.85);color:#000;padding:5px 14px;border-radius:4px;font-family:monospace;font-size:10px"></div>
+
+  <!-- Vue 3D (cachée par défaut) -->
+  <div id="p07-3d-wrap" class="t3d-wrap" style="display:none;position:absolute;inset:0">
+    <canvas id="t3d-canvas"></canvas>
+
+    <!-- Toolbar -->
+    <div class="t3d-toolbar">
+      <button class="t3d-btn active" onclick="P07.set3DView('orbit')">Orbite</button>
+      <button class="t3d-btn" onclick="P07.set3DView('top')">Dessus</button>
+      <button class="t3d-btn" onclick="P07.set3DView('front')">Facade</button>
+      <div style="height:4px"></div>
+      <button class="t3d-btn" id="t3d-btn-slopes" onclick="P07.toggleSlopes()">Pentes</button>
+      <button class="t3d-btn" id="t3d-btn-dims" onclick="P07.toggleDims()">Cotes</button>
+      <button class="t3d-btn" id="t3d-btn-sun" onclick="P07.toggleSun()">Soleil</button>
+      <div style="height:4px"></div>
+      <button class="t3d-btn" onclick="P07.exportGLB3D()">GLB</button>
+    </div>
+
+    <!-- Info terrain -->
+    <div class="t3d-info" id="t3d-info">
+      <div class="t3d-info-row">
+        <span>Surface</span>
+        <span class="t3d-info-val" id="t3d-surf">&mdash;</span>
+      </div>
+      <div class="t3d-info-row">
+        <span>Pente max</span>
+        <span class="t3d-info-val" id="t3d-pente">&mdash;</span>
+      </div>
+      <div class="t3d-info-row">
+        <span>Exposition</span>
+        <span class="t3d-info-val" id="t3d-expo">&mdash;</span>
+      </div>
+      <div class="t3d-info-row">
+        <span>Zone RTAA</span>
+        <span class="t3d-info-val" id="t3d-rtaa">&mdash;</span>
+      </div>
+      <div class="t3d-info-row">
+        <span>Ensoleillement</span>
+        <span class="t3d-info-val" id="t3d-sun-hrs">&mdash;</span>
+      </div>
+    </div>
+
+    <!-- Légende pentes -->
+    <div class="t3d-legend">
+      <div class="t3d-legend-title">Pentes RTAA</div>
+      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:#2dc89a"></div>&lt; 2 % &mdash; Plat</div>
+      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:#00d4ff"></div>2&ndash;5 % &mdash; Mod&eacute;r&eacute;</div>
+      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:#f59e0b"></div>5&ndash;15 % &mdash; Fort</div>
+      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:#ef4444"></div>&gt; 15 % &mdash; G1 requis</div>
+    </div>
+
+    <!-- Contrôles soleil -->
+    <div class="t3d-sun-panel" id="t3d-sun-panel">
+      <div class="t3d-sun-title">Ensoleillement &mdash; La R&eacute;union</div>
+      <div class="t3d-sun-row">
+        <span class="t3d-sun-label">Heure</span>
+        <input type="range" min="5" max="20" step="0.5" value="12"
+          oninput="P07.setSunHour(this.value)">
+        <span class="t3d-sun-val" id="sun-hour-val">12h</span>
+      </div>
+      <div class="t3d-sun-row">
+        <span class="t3d-sun-label">Jour</span>
+        <input type="range" min="1" max="365" step="1" value="172"
+          oninput="P07.setSunDay(this.value)">
+        <span class="t3d-sun-val" id="sun-day-val">21 juin</span>
+      </div>
+      <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:5px">
+        <button class="t3d-btn" onclick="P07.setSunPreset(172)">21 juin</button>
+        <button class="t3d-btn" onclick="P07.setSunPreset(355)">21 d&eacute;c.</button>
+        <button class="t3d-btn" onclick="P07.setSunPreset(80)">&Eacute;qx. mars</button>
+      </div>
+    </div>
+
+    <!-- Loader -->
+    <div class="t3d-loader" id="t3d-loader">
+      <div class="t3d-spinner"></div>
+      <div class="t3d-loader-text">Construction du terrain&hellip;</div>
+    </div>
+  </div>
+
+  <!-- ═══ GABARIT PLU VIEW — Split 2D SVG + 3D ═══ -->
+  <div id="p07-gabarit-wrap" style="display:none;position:absolute;inset:0;background:#1a1a2e">
+    <div style="display:flex;width:100%;height:100%">
+      <div id="gabarit-svg-container" style="flex:1;position:relative;overflow:hidden;border-right:1px solid rgba(255,255,255,0.08)"></div>
+      <div id="gabarit-3d-container" style="flex:1;position:relative;overflow:hidden">
+        <canvas id="gabarit-3d-canvas" style="width:100%;height:100%;display:block"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════ COLONNE DROITE ══════════════════════════ -->
+<div class="right-panel">
+  <div class="rp-section">
+    <div class="rp-head">Références projets locaux</div>
+    <div class="ref-projects">
+      <a class="ref-proj-item" href="https://www.envirobat-reunion.com" target="_blank" rel="noopener">
+        <span class="rpi-icon">🏘</span>
+        <div class="rpi-body">
+          <div class="rpi-name">La Cocoteraie — Saint-Paul</div>
+          <div class="rpi-note">Logements zone inondable · enviroBAT</div>
+        </div>
+      </a>
+      <a class="ref-proj-item" href="https://www.envirobat-reunion.com" target="_blank" rel="noopener">
+        <span class="rpi-icon">🏠</span>
+        <div class="rpi-body">
+          <div class="rpi-name">NOUT — Logement participatif</div>
+          <div class="rpi-note">Premier habitat participatif Réunion</div>
+        </div>
+      </a>
+      <a class="ref-proj-item" href="https://maisondelarchitecture.re" target="_blank" rel="noopener">
+        <span class="rpi-icon">🏆</span>
+        <div class="rpi-body">
+          <div class="rpi-name">Prix Architecture Réunion (PAR)</div>
+          <div class="rpi-note">10 ans de références 2014–2024</div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">RTAA DOM — Ventilation</div>
+    <div class="ped-note" style="font-size:11px">
+      <strong>Zone 1 (&lt;400m)</strong> — 22% porosité façade séjour, 18% chambres. Brasseur de plafond obligatoire dans chaque pièce.<br/>
+      <strong>Fenêtres en toiture horizontales : INTERDITES.</strong><br/>
+      <strong>ECS solaire : ≥ 50% besoins</strong> (zones 1 et 2).<br/>
+      <strong>70% des apports chaleur</strong> viennent du toit — traiter l'isolation de la toiture en priorité.
+    </div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">Acteurs & ressources</div>
+    <div id="actors-zone" class="stagger anim-fade-in"></div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">Risques de phase</div>
+    <div id="risks-zone"></div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">Exemples enviroBAT-Réunion</div>
+    <div id="eb-cards-p07"></div>
+  </div>
+</div>
+
+<style>
+.prog-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.gabarit-inputs { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+
+.struct-advice { background:var(--raised); border:1px solid var(--border2); border-left:3px solid var(--warning); border-radius:var(--r-sm); padding:8px 10px; font-size:11px; color:var(--muted); margin-top:8px; line-height:1.6; }
+.rtaa-note { background:var(--accent3); border:1px solid var(--border2); border-radius:var(--r-sm); padding:8px 10px; font-size:11px; color:var(--accent); margin-top:8px; line-height:1.6; }
+.emprise-calc { display:flex; justify-content:space-between; padding:6px 9px; background:var(--raised); border:1px solid var(--border); border-radius:var(--r-sm); margin-top:6px; }
+.ec-label { font-family:var(--font-mono); font-size:9px; color:var(--muted); }
+.ec-val { font-family:var(--font-mono); font-size:11px; font-weight:700; color:var(--text); }
+
+.bimshow-panel { background:var(--card); border:1px solid var(--border); border-radius:var(--r-lg); overflow:hidden; }
+.bimshow-preview { height:140px; position:relative; background:var(--bg); display:flex; align-items:center; justify-content:center; }
+.bp-placeholder { display:flex; flex-direction:column; align-items:center; gap:4px; font-family:var(--font-mono); font-size:10px; color:var(--faint); }
+.bp-snapshot { width:100%; height:100%; object-fit:cover; }
+.bp-loading { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; background:rgba(8,10,13,.8); font-family:var(--font-mono); font-size:10px; color:var(--muted); }
+.bp-spinner { width:24px; height:24px; border:2px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.bimshow-btns { display:grid; grid-template-columns:1fr 1fr; gap:5px; padding:8px; }
+.bim-btn { padding:7px 8px; background:var(--raised); border:1px solid var(--border2); border-radius:var(--r-sm); color:var(--muted); cursor:pointer; font-family:var(--font-mono); font-size:9px; transition:all var(--tx-fast); text-align:center; }
+.bim-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent2); }
+.bim-btn.primary { grid-column:1/-1; background:var(--accent2); border-color:rgba(154,120,32,.3); color:var(--accent); font-weight:700; }
+.bim-btn.stub-btn { opacity:.6; }
+.stub-tag { font-size:7.5px; background:rgba(245,158,11,.2); color:var(--warning); border-radius:2px; padding:1px 4px; margin-left:3px; }
+
+.ref-projects { display:flex; flex-direction:column; gap:5px; }
+.ref-proj-item { display:flex; gap:8px; align-items:center; padding:7px 9px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); text-decoration:none; transition:all var(--tx-fast); }
+.ref-proj-item:hover { border-color:var(--accent); background:var(--accent3); }
+.rpi-icon { font-size:18px; }
+.rpi-name { font-size:11px; color:var(--text2); font-weight:500; }
+.rpi-note { font-family:var(--font-mono); font-size:8.5px; color:var(--faint); margin-top:1px; }
+
+/* Gabarit PLU */
+.gabarit-metrics { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+.gabarit-metrics .det-cell { background:var(--raised); border:1px solid var(--border); border-radius:var(--r-sm); padding:4px 6px; }
+.gabarit-metrics .det-label { font-size:8px; }
+.gabarit-metrics .det-val { font-size:11px; }
+
+.pareto-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); padding:6px 8px; cursor:pointer; transition:all var(--tx-fast); }
+.pareto-card:hover { border-color:var(--accent); background:var(--accent3); }
+.pareto-card.selected { border-color:var(--accent); background:var(--accent2); }
+.pareto-card.pareto-front { box-shadow:inset 0 0 0 1px rgba(241,196,15,.15); }
+.pareto-card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:3px; }
+.pareto-card-head strong { font-family:var(--font-mono); font-size:10px; }
+.pareto-card-head .pareto-warn { color:var(--warning); font-size:9px; }
+.pareto-card-body { font-family:var(--font-mono); font-size:8.5px; color:var(--muted); line-height:1.5; }
+.pareto-card-body .pc-ok { color:#2ecc71; }
+.pareto-card-body .pc-warn { color:var(--warning); }
+.pareto-card-violation { font-size:8px; color:#e74c3c; margin-top:2px; }
+</style>
+
+<script type="module">
+// Tous les modules sont exposés sur window par index.js
+const SessionManager = window.SessionManager;
+const MapViewer      = window.TerlabMap;
+const BIMSHOWBridge  = window.TerlabBIMSHOW;
+const Terrain3D      = window.Terrain3D;
+const SlopesService  = window.SlopesService;
+const SunCalcService = window.SunCalcService;
+
+const STRUCT_ADVICE = {
+  maconnerie: 'Maçonnerie blocs parpaing — chaînage horizontal et vertical obligatoire (séisme zone 2 + cyclone). Traitement anti-termites de toute charpente en contact avec la structure.',
+  bois: 'Charpente bois — traitement anti-termites classe 4 minimum obligatoire. Assemblages mécaniques (visserie inox) préférables aux liaisonnements chimiques (réversibilité). Résistance cyclone renforcée avec éclisses et goussets.',
+  metal: 'Structure acier — galvanisation ou laquage époxy impératif si zone marine (< 2km mer). Joints thermiques pour éviter les ponts thermiques.',
+  mixte: 'Structure mixte — attention aux interfaces bois/béton (remontées capillaires, termites). Traitement barrière aux interfaces.'
+};
+
+const P07 = {
+  _structure: null,
+  _toiture:   null,
+
+  // ─── Mise à jour des checks PLU en temps réel ─────────────────
+  update() {
+    const L = parseFloat(document.getElementById('sp-l')?.value ?? 0);
+    const W = parseFloat(document.getElementById('sp-w')?.value ?? 0);
+    const H = parseFloat(document.getElementById('sp-h')?.value ?? 0);
+    if (!L || !W) return;
+
+    const emprise      = L * W;
+    const terrain      = SessionManager.getTerrain();
+    const contenance   = parseFloat(terrain?.contenance_m2 ?? 0);
+    const p4           = SessionManager.getPhase(4)?.data ?? {};
+    const empriseMax   = parseFloat(p4.emprise_sol_max_pct ?? 100);
+    const hauteurMax   = parseFloat(p4.hauteur_max_m ?? 999);
+    const recul_voie   = parseFloat(p4.recul_voie_principale_m ?? 0);
+    const recul_sep    = parseFloat(p4.recul_limite_sep_m ?? 0);
+
+    const emprisePct   = contenance > 0 ? (emprise / contenance * 100) : null;
+
+    // Check emprise
+    if (emprisePct != null) {
+      const ok = emprisePct <= empriseMax;
+      this._setCheck('emprise', ok ? 'vert' : 'rouge',
+        `${emprisePct.toFixed(1)}% / ${empriseMax}% max`);
+      document.getElementById('emprise-calc').style.display = 'flex';
+      document.getElementById('ec-val').textContent = `${emprise.toFixed(0)}m² (${emprisePct.toFixed(1)}%)`;
+    }
+
+    // Check hauteur
+    if (H > 0) {
+      const ok = H <= hauteurMax;
+      this._setCheck('hauteur', ok ? 'vert' : 'rouge', `${H}m / ${hauteurMax}m max`);
+    }
+
+    // Check reculs (approximatif — indique si gabarit > contenance - reculs)
+    if (recul_voie > 0 && contenance > 0) {
+      const dimMin = Math.sqrt(contenance) * 0.5;
+      const ok = L > recul_voie * 2 && W > recul_sep * 2;
+      this._setCheck('recul-voie', ok ? 'vert' : 'orange', ok ? `≥ ${recul_voie}m` : `Vérifier recul voie ${recul_voie}m`);
+      this._setCheck('sep', ok ? 'vert' : 'orange', ok ? `≥ ${recul_sep}m` : `Vérifier recul sep ${recul_sep}m`);
+    }
+
+    // RTAA DOM note
+    const alt = parseFloat(terrain?.altitude_ngr ?? 0);
+    const rtaaZone = alt < 400 ? '1' : alt < 900 ? '2' : '3';
+    const rtaaNote = document.getElementById('rtaa-note');
+    if (rtaaNote) {
+      rtaaNote.style.display = 'block';
+      rtaaNote.innerHTML = rtaaZone === '1' ?
+        'Zone RTAA 1 — Porosité façade : 22% séjour, 18% chambres. ECS solaire ≥ 50%. Brasseurs de plafond obligatoires.' :
+        rtaaZone === '3' ?
+        'Zone RTAA 3 (hauts) — Isolation thermique renforcée. Amplitude thermique importante. Gel possible.' :
+        'Zone RTAA 2 — ECS solaire ≥ 50%. Ventilation naturelle recommandée.';
+    }
+
+    // Mise à jour gabarit carte
+    this._updateMapGabarit(L, W, H);
+  },
+
+  _setCheck(id, status, label) {
+    const el  = document.getElementById(`chk-${id}`);
+    const val = document.getElementById(`chk-${id}-val`);
+    if (!el || !val) return;
+    el.className  = `plu-check ${status}`;
+    val.textContent = label;
+  },
+
+  _updateMapGabarit(L, W, H) {
+    const terrain = SessionManager.getTerrain();
+    if (!terrain?.lat || !terrain?.lng) return;
+    const lat = parseFloat(terrain.lat), lng = parseFloat(terrain.lng);
+    // Convertir L et W en degrés (approx)
+    const dLng = L / (111320 * Math.cos(lat * Math.PI / 180));
+    const dLat = W / 111320;
+    const geom = {
+      type: 'Polygon',
+      coordinates: [[
+        [lng - dLng/2, lat - dLat/2],
+        [lng + dLng/2, lat - dLat/2],
+        [lng + dLng/2, lat + dLat/2],
+        [lng - dLng/2, lat + dLat/2],
+        [lng - dLng/2, lat - dLat/2]
+      ]]
+    };
+    MapViewer.updateGabarit({ geometry: geom, height: H });
+  },
+
+  selectMat(label, val) {
+    document.querySelectorAll('[name="struct"]').forEach(r => r.closest('.radio-option')?.classList.remove('selected'));
+    label.classList.add('selected');
+    this._structure = val;
+    const advice = document.getElementById('struct-advice');
+    if (advice) { advice.style.display = 'block'; advice.textContent = STRUCT_ADVICE[val] ?? ''; }
+    SessionManager.savePhase(7, { type_structure: val });
+  },
+
+  selectToiture(label, val) {
+    document.querySelectorAll('[name="toit"]').forEach(r => r.closest('.radio-option')?.classList.remove('selected'));
+    label.classList.add('selected');
+    this._toiture = val;
+    SessionManager.savePhase(7, { type_toiture: val });
+  },
+
+  // ─── Envoi BIMSHOW ─────────────────────────────────────────────
+  async generateGabarit() {
+    const L = parseFloat(document.getElementById('sp-l')?.value ?? 10);
+    const W = parseFloat(document.getElementById('sp-w')?.value ?? 8);
+    const H = parseFloat(document.getElementById('sp-h')?.value ?? 6);
+
+    if (!L || !W || !H) {
+      window.TerlabToast?.show('Remplissez L, l et H avant de générer', 'warning');
+      return;
+    }
+
+    // Si pas connecté → ouvrir BIMSHOW d'abord
+    if (!BIMSHOWBridge.connected) {
+      window.TerlabToast?.show('Connexion à BIMSHOW…', 'info', 3000);
+      const ok = await BIMSHOWBridge.connect();
+      if (!ok) return;
+    }
+
+    document.getElementById('bp-placeholder').style.display = 'none';
+    document.getElementById('bp-loading').style.display    = 'flex';
+
+    // Créer GLB minimal en Three.js (si disponible)
+    let glb = null;
+    if (window.THREE) {
+      try {
+        const scene = new THREE.Scene();
+        const geo   = new THREE.BoxGeometry(L, H, W);
+        const mat   = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.6 });
+        const mesh  = new THREE.Mesh(geo, mat);
+        mesh.position.set(0, H/2, 0);
+        scene.add(mesh);
+
+        const { GLTFExporter } = await import('https://cdn.jsdelivr.net/npm/three@0.182.0/examples/jsm/exporters/GLTFExporter.js');
+        const exporter  = new GLTFExporter();
+        const glbBuffer = await new Promise(r => exporter.parse(scene, r, e => console.warn(e), { binary: true }));
+        const bytes     = new Uint8Array(glbBuffer);
+        glb = btoa(String.fromCharCode(...bytes));
+      } catch(e) {
+        console.warn('[P07] Three.js GLB export:', e.message);
+      }
+    }
+
+    const sent = BIMSHOWBridge.send('TERLAB_BIMSHOW_LOAD', {
+      glb, sessionId: SessionManager._sessionId, phase: 7, cameraPreset: 'aerial_southwest'
+    });
+
+    if (!sent) {
+      document.getElementById('bp-loading').style.display = 'none';
+      document.getElementById('bp-placeholder').style.display = 'flex';
+      return;
+    }
+
+    // Attendre snapshot
+    try {
+      const snap = await BIMSHOWBridge.waitForSnapshot(8000);
+      if (snap?.imageDataUrl) {
+        const img = document.getElementById('bp-snapshot');
+        img.src = snap.imageDataUrl;
+        img.style.display = 'block';
+        document.getElementById('bp-loading').style.display = 'none';
+        SessionManager.savePhase(7, { bimshowSnapshot: snap.imageDataUrl, glb_base64: glb });
+        window.TerlabToast?.show('Snapshot BIMSHOW reçu', 'success');
+      }
+    } catch {
+      document.getElementById('bp-loading').style.display = 'none';
+      document.getElementById('bp-placeholder').style.display = 'flex';
+      window.TerlabToast?.show('BIMSHOW connecté mais snapshot non reçu — réessayez', 'warning', 4000);
+    }
+  },
+
+  exportGLB()  { window.TerlabExport?.generateGLB?.(); },
+  exportIFC()  { window.TerlabToast?.show('Export IFC — STUB. Voir __stubs__/ifc-worker.js', 'warning', 5000); },
+  exportDXFGabarit() { window.TerlabExport?.generateDXF?.(); },
+
+  // ─── Aéraulique (Sprint 3) ──────────────────────────────────
+  _aerauliqueInited: false,
+
+  initAerauliqueTab() {
+    if (this._aerauliqueInited) return;
+    const WindNavigator    = window.WindNavigator;
+    const AeraulicPlanner  = window.AeraulicPlanner;
+    const terrain  = SessionManager.getTerrain();
+    const demo     = SessionManager._data?.demo ?? null;
+    const windDir  = +(SessionManager.getPhase(1)?.data?.aeraulique_rugosite === 'ouvert' ? 80 : 105);
+
+    const navEl = document.getElementById('p07-wind-navigator');
+    if (navEl && WindNavigator) WindNavigator.init(navEl, terrain, demo);
+
+    const planEl = document.getElementById('p07-aeraulic-planner');
+    if (planEl && AeraulicPlanner) AeraulicPlanner.init(planEl, { windDir });
+
+    this._aerauliqueInited = true;
+  },
+
+  exportPlannerSession() {
+    const data = window.AeraulicPlanner?.exportSession?.();
+    if (data) {
+      SessionManager.savePhase(7, { aeraulique_planner: data });
+      window.TerlabToast?.show('Variantes aérauliques sauvegardées', 'success', 2500);
+    }
+  },
+};
+
+// Init terrain strip
+const terrain = SessionManager.getTerrain();
+if (terrain?.contenance_m2) document.getElementById('ts-contenance').textContent = `${terrain.contenance_m2} m²`;
+const p4 = SessionManager.getPhase(4)?.data ?? {};
+if (p4.zone_plu) document.getElementById('ts-zone-plu').textContent = p4.zone_plu.split(' ')[0];
+if (p4.emprise_sol_max_pct) document.getElementById('ts-emprise-max').textContent = `${p4.emprise_sol_max_pct}%`;
+
+// Pré-remplir si session existante
+const p7 = SessionManager.getPhase(7)?.data ?? {};
+if (p7.bimshowSnapshot) {
+  document.getElementById('bp-snapshot').src = p7.bimshowSnapshot;
+  document.getElementById('bp-snapshot').style.display = 'block';
+  document.getElementById('bp-placeholder').style.display = 'none';
+}
+
+window.P07 = P07;
+
+// ─── Lazy-init aéraulique (IntersectionObserver) ──────────────────
+const _aeroSection = document.getElementById('p07-aeraulique-section');
+if (_aeroSection) {
+  const _aeroObs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting && !P07._aerauliqueInited) {
+        P07.initAerauliqueTab();
+      }
+    });
+  }, { threshold: 0.1 });
+  _aeroObs.observe(_aeroSection);
+}
+
+// Validation aéraulique automatique
+window.addEventListener('terlab:planner-score', ({ detail }) => {
+  if (detail?.score > 40) {
+    const c = document.getElementById('p07-check-aeraulique');
+    if (c) { c.setAttribute('aria-checked','true'); c.classList.add('checked'); }
+  }
+});
+
+// ═══════════════════ TERRAIN 3D — Extension P07 ═══════════════════
+let _viewIs3D     = false;
+let _viewMode     = 'map'; // 'map' | '3d' | 'esquisse'
+let _sunVisible   = false;
+let _slopesOn     = true;
+let _dimsOn       = true;
+let _3dReady      = false;
+let _esquisseReady = false;
+
+Object.assign(P07, {
+
+  // Toggle carte / vue 3D / esquisse
+  async setView(mode) {
+    const mapEl   = document.getElementById('map');
+    const wrap3d  = document.getElementById('p07-3d-wrap');
+    const btnMap  = document.getElementById('p07-toggle-map');
+    const btn3d   = document.getElementById('p07-toggle-3d');
+    const btnEsq  = document.getElementById('p07-toggle-esquisse');
+    _viewMode = mode;
+    _viewIs3D = mode === '3d';
+
+    mapEl.style.display  = mode === '3d' ? 'none'  : 'block';
+    wrap3d.style.display = mode === '3d' ? 'block' : 'none';
+
+    // Highlight active button
+    [btnMap, btn3d, btnEsq].forEach(btn => {
+      if (!btn) return;
+      const active = (btn === btnMap && mode === 'map')
+                  || (btn === btnMap && mode === 'esquisse')
+                  || (btn === btn3d && mode === '3d')
+                  || (btn === btnEsq && mode === 'esquisse');
+      btn.style.background = active ? 'rgba(154,120,32,.12)' : 'none';
+      btn.style.color      = active ? 'var(--accent, #9a7820)' : 'var(--muted, #6b5c3e)';
+    });
+    // Map stays visible in esquisse mode (SVG overlays on top)
+    if (btnMap && mode === 'esquisse') {
+      btnMap.style.background = 'none';
+    }
+
+    // ── Esquisse SVG overlay on Mapbox ───────────────────────────
+    if (mode === 'esquisse' && !_esquisseReady) {
+      const EC = window.EsquisseCanvas;
+      if (EC?.init) {
+        // Create or reuse SVG overlay
+        let svg = document.getElementById('p07-esquisse-svg');
+        if (!svg) {
+          svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.id = 'p07-esquisse-svg';
+          const mapContainer = MapViewer?.getMap()?.getContainer();
+          if (mapContainer) mapContainer.appendChild(svg);
+        }
+        await EC.init('p07-esquisse-svg', SessionManager._data);
+        _esquisseReady = true;
+      }
+    }
+    // Show/hide esquisse SVG
+    const esqSvg = document.getElementById('p07-esquisse-svg');
+    if (esqSvg) esqSvg.style.display = mode === 'esquisse' ? 'block' : 'none';
+
+    if (_viewIs3D && !_3dReady) {
+      document.getElementById('t3d-loader').classList.remove('done');
+      await Terrain3D.init('t3d-canvas', SessionManager._data);
+      _3dReady = true;
+      document.getElementById('t3d-loader').classList.add('done');
+      P07._updateTopoPanel();
+
+      // Ajouter mesh BackgroundTerrain IGN si disponible
+      const BG = window.BackgroundTerrain;
+      const t = SessionManager.getTerrain();
+      const parcelGeo = t?.parcelle_geojson?.coordinates?.[0] ?? [];
+      if (BG?.build && parcelGeo.length > 2 && Terrain3D._scene) {
+        BG.build(parcelGeo, { gridRes: 64, expansionFactor: 2.5 }).then(mesh => {
+          if (mesh) { Terrain3D._scene.add(mesh); Terrain3D._renderer?.render?.(Terrain3D._scene, Terrain3D._camera); }
+        }).catch(e => console.warn('[P07] BackgroundTerrain failed:', e.message));
+      }
+
+      // Altitude BIL précise
+      const BIL = window.BILTerrain;
+      if (BIL?.getElevation && t?.lng && t?.lat) {
+        BIL.getElevation(parseFloat(t.lng), parseFloat(t.lat)).then(alt => {
+          if (alt != null) {
+            SessionManager.saveTerrain({ altitude_ngr: Math.round(alt * 100) / 100 });
+            const el = document.getElementById('ts-alt');
+            if (el) el.textContent = `${alt.toFixed(1)} m NGR`;
+          }
+        }).catch(() => {});
+      }
+    }
+
+    if (!_viewIs3D && MapViewer?.getMap()) {
+      MapViewer.getMap().resize?.();
+    }
+  },
+
+  // Mettre à jour le panel topographique (left panel)
+  _updateTopoPanel() {
+    const t = SessionManager.getTerrain();
+    const pente  = parseFloat(t?.pente_moy_pct ?? 0);
+    const expo   = t?.orientation_terrain ?? '\u2014';
+    const rtaa   = t?.zone_rtaa ?? '1';
+    const sun    = SunCalcService.getDaylight(172, -21.1);
+
+    const penteEl = document.getElementById('p07-pente-val');
+    const expoEl  = document.getElementById('p07-expo-val');
+    const rtaaEl  = document.getElementById('p07-rtaa-val');
+    const sunEl   = document.getElementById('p07-sun-val');
+    if (penteEl) penteEl.textContent = pente.toFixed(1) + ' %';
+    if (expoEl)  expoEl.textContent  = expo;
+    if (rtaaEl)  rtaaEl.textContent  = 'Zone ' + rtaa;
+    if (sunEl)   sunEl.textContent   = sun.hours.toFixed(1) + ' h/j';
+
+    // Info panel 3D
+    const surf = t?.contenance_m2 ?? '\u2014';
+    const t3dSurf  = document.getElementById('t3d-surf');
+    const t3dPente = document.getElementById('t3d-pente');
+    const t3dExpo  = document.getElementById('t3d-expo');
+    const t3dRtaa  = document.getElementById('t3d-rtaa');
+    const t3dSun   = document.getElementById('t3d-sun-hrs');
+    if (t3dSurf)  t3dSurf.textContent  = surf ? surf + ' m\u00b2' : '\u2014';
+    if (t3dPente) t3dPente.textContent = pente.toFixed(1) + ' %';
+    if (t3dExpo)  t3dExpo.textContent  = expo;
+    if (t3dRtaa)  t3dRtaa.textContent  = 'RTAA ' + rtaa;
+    if (t3dSun)   t3dSun.textContent   = sun.hours.toFixed(1) + ' h';
+
+    // Alerte pente
+    const alert = document.getElementById('p07-slope-alert');
+    if (alert) alert.style.display = pente > 15 ? 'block' : 'none';
+  },
+
+  // Vues 3D
+  set3DView(mode) {
+    Terrain3D.setView(mode);
+  },
+
+  // Pentes
+  toggleSlopes() {
+    _slopesOn = !_slopesOn;
+    Terrain3D.toggleSlopes(_slopesOn);
+    const btn = document.getElementById('t3d-btn-slopes');
+    if (btn) btn.textContent = _slopesOn ? 'Pentes' : 'Pentes \u25cb';
+  },
+
+  // Cotes
+  toggleDims() {
+    _dimsOn = !_dimsOn;
+    Terrain3D.toggleDims(_dimsOn);
+    const btn = document.getElementById('t3d-btn-dims');
+    if (btn) btn.textContent = _dimsOn ? 'Cotes' : 'Cotes \u25cb';
+  },
+
+  // Panneau soleil
+  toggleSun() {
+    _sunVisible = !_sunVisible;
+    const panel = document.getElementById('t3d-sun-panel');
+    if (panel) panel.classList.toggle('visible', _sunVisible);
+  },
+
+  setSunHour(h) {
+    const v = parseFloat(h);
+    Terrain3D.setSunHour(v);
+    const hh = Math.floor(v);
+    const mm = String(Math.round((v % 1) * 60)).padStart(2, '0');
+    const el = document.getElementById('sun-hour-val');
+    if (el) el.textContent = `${hh}h${mm}`;
+    P07._updateSunInfo();
+  },
+
+  setSunDay(d) {
+    const v = parseInt(d);
+    Terrain3D.setSunDay(v);
+    const el = document.getElementById('sun-day-val');
+    if (el) el.textContent = SunCalcService.getDateLabel(v);
+    P07._updateSunInfo();
+  },
+
+  setSunPreset(day) {
+    const slider = document.querySelector('#t3d-sun-panel input[type=range]:last-of-type');
+    if (slider) { slider.value = day; P07.setSunDay(day); }
+  },
+
+  _updateSunInfo() {
+    const h   = Terrain3D._sunHour ?? 12;
+    const d   = Terrain3D._sunDay  ?? 172;
+    const day = SunCalcService.getDaylight(d, -21.1);
+    const el  = document.getElementById('t3d-sun-hrs');
+    if (el) el.textContent = day.hours.toFixed(1) + ' h';
+  },
+
+  // Export GLB terrain 3D
+  exportGLB3D() {
+    Terrain3D.exportGLB();
+  },
+
+  // Capturer screenshot 3D pour rapport (Phase 12)
+  capture3D() {
+    const img = Terrain3D.capture();
+    if (img) SessionManager.savePhase(7, { snapshot_3d: img });
+    return img;
+  },
+});
+
+// Auto-update topographic panel on session change
+window.addEventListener('terlab:session-changed', () => P07._updateTopoPanel());
+P07._updateTopoPanel();
+
+// Gabarit : re-render quand les dimensions changent
+['gabarit_l_m','gabarit_w_m','gabarit_h_m'].forEach(key => {
+  const el = document.querySelector(`[data-session-key="${key}"]`);
+  if (el) el.addEventListener('change', () => {
+    if (_3dReady) Terrain3D.updateGabarit();
+  });
+});
+
+// ── Mode démo : auto-générer le gabarit sur la carte ──────────
+const isDemo = SessionManager._data?.demo;
+if (isDemo && p7.gabarit_l_m && p7.gabarit_w_m) {
+  requestAnimationFrame(() => {
+    P07.update();
+    // Afficher confirmation dans le placeholder si pas de snapshot BIMSHOW
+    if (!p7.bimshowSnapshot) {
+      const ph = document.getElementById('bp-placeholder');
+      if (ph) {
+        ph.innerHTML = `
+          <span style="font-size:24px">🗺</span>
+          <span style="color:var(--accent)">Gabarit affiché sur la carte</span>
+          <span style="font-size:9px;color:var(--faint)">Mode standalone — connectez BIMSHOW pour le rendu 3D</span>
+        `;
+      }
+    }
+  });
+}
+
+// enviroBAT cards
+if (window.EnvirobatCards) EnvirobatCards.render('eb-cards-p07', 'p07');
+
+// ═══════════════════ GABARIT PLU ENGINE ═══════════════════════════
+// Lazy-loaded when user switches to "Gabarit" view
+let _gabaritReady = false;
+let _gabaritEngine = null;
+let _gabaritSVG = null;
+let _gabaritThree = null;
+let _gabaritPareto = null;
+let _gabaritRules = null;
+let _gabaritZone = 'U1b';
+let _gabaritContext = { hasVoie: ['sud'], hasZoneN: false, hasZoneA: false, userReculs: {} };
+let _gabaritSelectedSolution = null;
+
+const GabaritUI = {
+
+  async init() {
+    if (_gabaritReady) return;
+
+    // Dynamic imports
+    const [
+      { GabaritEngine, ParcelSet },
+      { default: GabaritSVG },
+      { default: GabaritThree },
+      { default: ParetoSolver },
+    ] = await Promise.all([
+      import('../components/gabarit-engine.js'),
+      import('../components/gabarit-svg.js'),
+      import('../components/gabarit-3d.js'),
+      import('../components/gabarit-pareto.js'),
+    ]);
+
+    _gabaritEngine = new GabaritEngine();
+    _gabaritRules = await _gabaritEngine.loadRules('../data/plu-rules.json');
+    _gabaritPareto = new ParetoSolver();
+
+    // Populate zone selector
+    const select = document.getElementById('gabarit-zone-select');
+    if (select) {
+      select.innerHTML = '';
+      _gabaritEngine.getZoneList().forEach(z => {
+        const opt = document.createElement('option');
+        opt.value = z.key;
+        opt.textContent = z.label;
+        if (z.key === _gabaritZone) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
+
+    // Use zone from session P4 if available
+    const p4Zone = p4.zone_plu?.split(' ')[0]?.trim();
+    if (p4Zone && _gabaritRules.zones[p4Zone]) {
+      _gabaritZone = p4Zone;
+      if (select) select.value = p4Zone;
+    }
+    _gabaritEngine.setZone(_gabaritZone);
+
+    // Init SVG renderer
+    const svgContainer = document.getElementById('gabarit-svg-container');
+    _gabaritSVG = new GabaritSVG(svgContainer, (updatedParcelSet) => {
+      GabaritUI._onParcelChange(updatedParcelSet);
+    });
+
+    // Init Three.js renderer
+    const canvas3d = document.getElementById('gabarit-3d-canvas');
+    if (canvas3d && window.THREE) {
+      _gabaritThree = new GabaritThree(canvas3d);
+    }
+
+    // Default demo parcel (20×30m rectangle)
+    const t = SessionManager.getTerrain();
+    const contenance = parseFloat(t?.contenance_m2 ?? 0);
+    if (contenance > 0) {
+      const side = Math.sqrt(contenance);
+      const hw = side / 2;
+      _gabaritEngine.parcelSet.addParcel([
+        { x: -hw, y: -hw }, { x: hw, y: -hw },
+        { x: hw, y: hw }, { x: -hw, y: hw },
+      ]);
+    } else {
+      _gabaritEngine.parcelSet.addParcel([
+        { x: -10, y: -15 }, { x: 10, y: -15 },
+        { x: 10, y: 15 }, { x: -10, y: 15 },
+      ]);
+    }
+
+    _gabaritReady = true;
+    GabaritUI._solve();
+    requestAnimationFrame(() => _gabaritSVG.fitToView());
+  },
+
+  _solve() {
+    if (!_gabaritReady) return;
+    const zoneRules = _gabaritEngine.getZoneRules(_gabaritZone);
+    if (!zoneRules) return;
+
+    const constraints = _gabaritEngine.solve(
+      _gabaritEngine.parcelSet, zoneRules, _gabaritContext
+    );
+    if (!constraints) return;
+
+    const solutions = _gabaritPareto.solve(constraints, zoneRules, { programme: 'habitation' });
+
+    // Render 2D
+    _gabaritSVG.render(_gabaritEngine.parcelSet, constraints, _gabaritSelectedSolution);
+
+    // Render 3D
+    if (_gabaritThree) {
+      _gabaritThree.update(_gabaritEngine.parcelSet, constraints, _gabaritSelectedSolution);
+    }
+
+    // Update metrics
+    GabaritUI._renderMetrics(constraints);
+    GabaritUI._renderPareto(solutions, zoneRules);
+  },
+
+  _onParcelChange(parcelSet) {
+    // Called from SVG drag/edit
+    _gabaritEngine.parcelSet = parcelSet;
+    GabaritUI._solve();
+  },
+
+  _renderMetrics(constraints) {
+    const m = constraints.metrics;
+    const metricsEl = document.getElementById('gabarit-metrics');
+    if (metricsEl) metricsEl.style.display = 'grid';
+
+    const set = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val;
+    };
+    set('gab-m-parcelle', `${Math.round(m.surface_parcelle_m2)} m\u00b2`);
+    set('gab-m-constructible', `${Math.round(m.surface_constructible_m2)} m\u00b2`);
+    set('gab-m-ratio', `${m.ratio_constructible_pct.toFixed(0)}%`);
+    set('gab-m-hauteurs', `${m.hauteur_egout_max}m / ${m.hauteur_faitage_max}m`);
+  },
+
+  _renderPareto(solutions, zoneRules) {
+    const container = document.getElementById('gabarit-pareto-cards');
+    if (!container) return;
+    container.innerHTML = '';
+
+    solutions.forEach(sol => {
+      const isPareto = sol.pareto_rank === 1;
+      const isSelected = _gabaritSelectedSolution?.id === sol.id;
+      const card = document.createElement('div');
+      card.className = `pareto-card${isPareto ? ' pareto-front' : ''}${isSelected ? ' selected' : ''}`;
+      card.style.borderLeft = `3px solid ${sol.color}`;
+
+      const permOk = sol.permeable_pct >= zoneRules.permeable_min_pct;
+      card.innerHTML = `
+        <div class="pareto-card-head">
+          <strong style="color:${sol.color}">${isPareto ? '\u2605 ' : ''}${sol.label}</strong>
+          ${sol.violations.length ? '<span class="pareto-warn">\u26a0</span>' : ''}
+        </div>
+        <div class="pareto-card-body">
+          SDP nette : ${sol.sdp_nette_m2} m\u00b2 \u00b7 ${sol.nb_niveaux}N (h=${sol.hauteur_m}m)<br>
+          Emprise : ${sol.emprise_pct}% \u00b7 Perm\u00e9able : ${sol.permeable_pct}%
+          <span class="${permOk ? 'pc-ok' : 'pc-warn'}">${permOk ? '\u2713' : '\u26a0'}</span><br>
+          ~${sol.nb_logements_estimes} logements
+        </div>
+        ${sol.violations.map(v => `<div class="pareto-card-violation">${v}</div>`).join('')}
+      `;
+      card.addEventListener('click', () => {
+        _gabaritSelectedSolution = _gabaritSelectedSolution?.id === sol.id ? null : sol;
+        GabaritUI._solve();
+      });
+      container.appendChild(card);
+    });
+  },
+
+  changeZone(zoneKey) {
+    _gabaritZone = zoneKey;
+    _gabaritEngine.setZone(zoneKey);
+    _gabaritSelectedSolution = null;
+    GabaritUI._solve();
+  },
+
+  updateContext() {
+    const voies = [];
+    if (document.getElementById('gab-voie-nord')?.checked) voies.push('nord');
+    if (document.getElementById('gab-voie-sud')?.checked) voies.push('sud');
+    if (document.getElementById('gab-voie-est')?.checked) voies.push('est');
+    if (document.getElementById('gab-voie-ouest')?.checked) voies.push('ouest');
+
+    const userReculs = {};
+    const rv = document.getElementById('gab-recul-voie')?.value;
+    const rl = document.getElementById('gab-recul-lat')?.value;
+    const rf = document.getElementById('gab-recul-fond')?.value;
+    if (rv) userReculs.voie = parseFloat(rv);
+    if (rl) userReculs.lat = parseFloat(rl);
+    if (rf) userReculs.fond = parseFloat(rf);
+
+    _gabaritContext = {
+      hasVoie: voies.length ? voies : ['sud'],
+      hasZoneN: document.getElementById('gab-mitoyen-n')?.checked ?? false,
+      hasZoneA: document.getElementById('gab-mitoyen-a')?.checked ?? false,
+      userReculs,
+    };
+    _gabaritSelectedSolution = null;
+    GabaritUI._solve();
+  },
+
+  setSnap(val) {
+    if (_gabaritSVG) _gabaritSVG.setSnapGrid(parseFloat(val));
+  },
+
+  addParcel() {
+    if (!_gabaritReady) return;
+    const bb = _gabaritEngine.parcelSet.boundingBox;
+    const offsetX = (bb.maxX - bb.minX) + 5;
+    try {
+      _gabaritEngine.parcelSet.addParcel([
+        { x: bb.maxX + 5, y: bb.minY },
+        { x: bb.maxX + 5 + 15, y: bb.minY },
+        { x: bb.maxX + 5 + 15, y: bb.maxY },
+        { x: bb.maxX + 5, y: bb.maxY },
+      ]);
+      GabaritUI._solve();
+      _gabaritSVG.fitToView();
+    } catch (e) {
+      window.TerlabToast?.show(e.message, 'warning');
+    }
+  },
+
+  fitView() {
+    if (_gabaritSVG) _gabaritSVG.fitToView();
+  },
+};
+
+window.GabaritUI = GabaritUI;
+
+// ─── Update setView to handle gabarit mode ──────────────────────
+const _origSetView = P07.setView.bind(P07);
+P07.setView = async function(mode) {
+  const gabaritWrap = document.getElementById('p07-gabarit-wrap');
+  const btnGabarit = document.getElementById('p07-toggle-gabarit');
+
+  if (mode === 'gabarit') {
+    // Hide map and 3D, show gabarit
+    document.getElementById('map').style.display = 'none';
+    document.getElementById('p07-3d-wrap').style.display = 'none';
+    if (gabaritWrap) gabaritWrap.style.display = 'block';
+    const esqSvg = document.getElementById('p07-esquisse-svg');
+    if (esqSvg) esqSvg.style.display = 'none';
+
+    // Highlight buttons
+    ['p07-toggle-map', 'p07-toggle-3d', 'p07-toggle-esquisse', 'p07-toggle-gabarit'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      const active = id === 'p07-toggle-gabarit';
+      btn.style.background = active ? 'rgba(154,120,32,.12)' : 'none';
+      btn.style.color = active ? 'var(--accent, #9a7820)' : 'var(--muted, #6b5c3e)';
+    });
+
+    // Init gabarit engine on first use
+    await GabaritUI.init();
+  } else {
+    // Hide gabarit view when switching to other modes
+    if (gabaritWrap) gabaritWrap.style.display = 'none';
+    if (btnGabarit) {
+      btnGabarit.style.background = 'none';
+      btnGabarit.style.color = 'var(--muted, #6b5c3e)';
+    }
+    await _origSetView(mode);
+  }
+};
+</script>

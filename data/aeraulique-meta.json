@@ -1,0 +1,39 @@
+{
+  "version": "1.0",
+  "note": "Métadonnées aérauliques TERLAB — Izard/CSTB/RTAA DOM 2016 — MGA Architecture",
+  "windDominant": {
+    "reunion_est":   { "azimut": 105, "label": "Alizé ESE", "frequence": 0.65 },
+    "reunion_nord":  { "azimut":  80, "label": "Alizé E",   "frequence": 0.20 },
+    "thermique_oa":  { "azimut": 270, "label": "Brise marine O→E (14h-20h)", "frequence": 0.10 },
+    "brise_nuit":    { "azimut":  90, "label": "Brise montagne nocturne",     "frequence": 0.05 }
+  },
+  "zonesClimatiquesRTAA": {
+    "Z1": { "label": "Côte Ouest (chaud/sec)", "communes": ["Saint-Leu","Trois-Bassins","Saint-Paul","Le Port"], "vRef": 36 },
+    "Z2": { "label": "Côte Est (chaud/humide)","communes": ["Saint-Benoît","Sainte-Rose","Saint-Philippe","Sainte-Anne"], "vRef": 36 },
+    "Z3": { "label": "Hauts (>600m/tempéré)", "communes": ["Cilaos","La Plaine-des-Palmistes","Hell-Bourg"], "vRef": 36 }
+  },
+  "siteCoefficients": {
+    "entre_collines":   { "ctp": 1.1,  "badge": "favorable",   "color": "#2a7040" },
+    "toit_ecope":       { "ctp": 1.3,  "badge": "favorable",   "color": "#2a7040" },
+    "plaine":           { "ctp": 1.0,  "badge": "neutre",      "color": "#6a6a6a" },
+    "colline_sommet":   { "ctp": 1.05, "badge": "favorable",   "color": "#4a8040" },
+    "sous_le_vent":     { "ctp": 0.5,  "badge": "défavorable", "color": "#b05800" },
+    "pied_colline":     { "ctp": 0.6,  "badge": "défavorable", "color": "#b05800" },
+    "vallee":           { "ctp": 0.3,  "badge": "critique",    "color": "#8a2020" },
+    "falaise":          { "ctp": 0.7,  "badge": "défavorable", "color": "#b05800" },
+    "habitation_dense": { "ctp": 0.3,  "badge": "critique",    "color": "#8a2020" }
+  },
+  "rugosites": {
+    "mer":       { "z0": 0.0001, "Zg": 200, "alpha": 0.10 },
+    "ouvert":    { "z0": 0.01,   "Zg": 250, "alpha": 0.14 },
+    "suburbain": { "z0": 0.30,   "Zg": 400, "alpha": 0.22 },
+    "urbain":    { "z0": 1.00,   "Zg": 500, "alpha": 0.28 },
+    "dense":     { "z0": 3.00,   "Zg": 600, "alpha": 0.33 }
+  },
+  "indicateurC": {
+    "excellent":   { "min": 1.0, "label": "Excellent",    "color": "#2a7040" },
+    "bon":         { "min": 0.8, "label": "Bon",          "color": "#4a8040" },
+    "passable":    { "min": 0.5, "label": "Passable",     "color": "#b05800" },
+    "insuffisant": { "min": 0.0, "label": "Insuffisant",  "color": "#8a2020" }
+  }
+}

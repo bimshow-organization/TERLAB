@@ -1,0 +1,349 @@
+<!-- TERLAB · Phase 5 · Voisinage, Bâti & Réseaux · ENSA La Réunion v1.0 -->
+<div class="left-panel">
+  <div class="lp-head anim-slide-up">
+    <div class="phase-label">Phase 5 · Voisinage & Réseaux</div>
+    <h1 class="phase-title">🏢 <em>Voisinage</em>, Bâti & Réseaux</h1>
+    <p class="phase-desc">Analyser le contexte bâti environnant, les nuisances, les activités industrielles à proximité et les réseaux existants. Un contexte défavorable peut rendre le projet non viable même si le terrain est constructible.</p>
+  </div>
+  <div class="terrain-strip">
+    <span class="ts-item">📍 <strong id="ts-c-p5">—</strong></span>
+    <span class="ts-sep">·</span>
+    <span class="ts-item">Zone <strong id="ts-z-p5">—</strong></span>
+  </div>
+
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">ICPE — Sites industriels</div>
+    <div class="field-row">
+      <label class="field-label">ICPE dans un rayon de 500m</label>
+      <div class="radio-group">
+        <label class="radio-option" onclick="P05.sel(this,'icpe','non')"><input type="radio" name="icpe" value="non"/>Non</label>
+        <label class="radio-option" onclick="P05.sel(this,'icpe','oui')"><input type="radio" name="icpe" value="oui"/>⚠ Oui</label>
+        <label class="radio-option" onclick="P05.sel(this,'icpe','verif')"><input type="radio" name="icpe" value="verif"/>À vérifier</label>
+      </div>
+    </div>
+    <div class="field-row">
+      <label class="field-label">Site BASIAS/BASOL (pollution historique)</label>
+      <div class="radio-group">
+        <label class="radio-option" onclick="P05.sel(this,'basol','non')"><input type="radio" name="basol" value="non"/>Non</label>
+        <label class="radio-option danger-rad" onclick="P05.sel(this,'basol','oui')"><input type="radio" name="basol" value="oui"/>🔴 Oui</label>
+        <label class="radio-option" onclick="P05.sel(this,'basol','verif')"><input type="radio" name="basol" value="verif"/>À vérifier</label>
+      </div>
+    </div>
+    <a href="https://www.georisques.gouv.fr/risques/sites-et-sols-pollues/donnees" target="_blank" rel="noopener" class="source-btn" style="margin-top:6px;display:inline-flex">→ BASIAS/BASOL sur Géorisques ↗</a>
+  </div>
+
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Réseaux existants</div>
+    <div class="reseaux-grid">
+      <div class="res-item">
+        <span class="res-icon">💧</span>
+        <div class="res-body">
+          <div class="res-label">Eau potable</div>
+          <select class="field-select res-sel" data-session-key="eau_potable" onchange="SessionManager?.saveTerrain({eau_potable:this.value})">
+            <option value="">--</option>
+            <option value="reseau_public">Réseau public</option>
+            <option value="captage_prive">Captage privé</option>
+            <option value="inconnu">Inconnu</option>
+          </select>
+        </div>
+      </div>
+      <div class="res-item">
+        <span class="res-icon">🚿</span>
+        <div class="res-body">
+          <div class="res-label">Assainissement</div>
+          <select class="field-select res-sel" data-session-key="assainissement" onchange="P05.checkANC(this)">
+            <option value="">--</option>
+            <option value="collectif">Collectif (tout-à-l'égout)</option>
+            <option value="ANC">ANC obligatoire</option>
+            <option value="inconnu">Inconnu — mairie</option>
+          </select>
+        </div>
+      </div>
+      <div class="res-item">
+        <span class="res-icon">⚡</span>
+        <div class="res-body">
+          <div class="res-label">Électricité EDF</div>
+          <select class="field-select res-sel" data-session-key="electricite" onchange="SessionManager?.saveTerrain({electricite:this.value})">
+            <option value="">--</option>
+            <option value="disponible">Disponible</option>
+            <option value="extension">Extension requise</option>
+            <option value="groupe">Groupe électrogène</option>
+          </select>
+        </div>
+      </div>
+      <div class="res-item">
+        <span class="res-icon">🌐</span>
+        <div class="res-body">
+          <div class="res-label">Fibre optique</div>
+          <select class="field-select res-sel" data-session-key="fibre" onchange="SessionManager?.saveTerrain({fibre:this.value})">
+            <option value="">--</option>
+            <option value="oui">Oui — FTTH</option>
+            <option value="adsl">ADSL seulement</option>
+            <option value="zone_blanche">Zone blanche</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="anc-alert" id="anc-alert" style="display:none">
+      ANC sur pente — Filière compacte agréée SPANC requise. Coût indicatif : 8 000–15 000€. Contacter le SPANC de la commune avant toute conception.
+    </div>
+  </div>
+
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Accès & nuisances</div>
+    <div class="field-row">
+      <label class="field-label">Nuisances sonores</label>
+      <div class="radio-group">
+        <label class="radio-option" onclick="P05.sel(this,'bruit','aucune')"><input type="radio" name="bruit" value="aucune"/>Aucune</label>
+        <label class="radio-option" onclick="P05.sel(this,'bruit','faibles')"><input type="radio" name="bruit" value="faibles"/>Faibles</label>
+        <label class="radio-option" onclick="P05.sel(this,'bruit','moderees')"><input type="radio" name="bruit" value="moderees"/>⚠ Modérées</label>
+        <label class="radio-option" onclick="P05.sel(this,'bruit','importantes')"><input type="radio" name="bruit" value="importantes"/>🔴 Importantes</label>
+      </div>
+    </div>
+    <div class="field-row">
+      <label class="field-label" for="h-voisins">Hauteurs bâtiments voisins (m) — note libre</label>
+      <input type="text" id="h-voisins" class="field-input" data-session-key="hauteurs_voisins" placeholder="Ex : N=7m, E=9m, S=3m"/>
+    </div>
+  </div>
+
+  <!-- Section Rb — Sprint 2 -->
+  <div class="form-section anim-slide-up" id="p05-rb-section">
+    <div class="fs-head">Calcul Rb — Rue Canyon</div>
+    <div style="padding:8px 12px">
+      <div class="stub-warning" style="display:none" id="p05-rb-stub">
+        L (profondeur bâti) estimée à 1.5×W. Mesure manuelle recommandée.
+      </div>
+      <p style="font-size:.72rem;color:var(--ink3);font-style:italic;margin-bottom:8px">
+        Cliquez sur une rue entre deux bâtiments pour calculer son facteur d'obstruction Rb
+        et l'indicateur de ventilation C (CSTB).
+      </p>
+      <button id="p05-rb-btn" class="source-btn" onclick="P05.toggleRbTool()"
+              style="width:100%;text-align:center;padding:6px 10px;border:1px solid var(--accent);border-radius:var(--r-sm)">
+        Activer l'outil Rb
+      </button>
+    </div>
+    <div id="p05-rb-results" style="display:none;padding:4px 12px 8px">
+      <table style="width:100%;font-size:.72rem;border-collapse:collapse">
+        <tr><td style="color:var(--ink3);font-style:italic;padding:2px 4px">W (largeur rue)</td><td id="p05-rb-W">—</td></tr>
+        <tr><td style="color:var(--ink3);font-style:italic;padding:2px 4px">H (hauteur bâtiments)</td><td id="p05-rb-H">—</td></tr>
+        <tr><td style="color:var(--ink3);font-style:italic;padding:2px 4px">Rb</td><td id="p05-rb-Rb">—</td></tr>
+        <tr><td style="color:var(--ink3);font-style:italic;padding:2px 4px">V rue / V libre</td><td id="p05-rb-Vrel">—</td></tr>
+        <tr><td style="color:var(--ink3);font-style:italic;padding:2px 4px;font-weight:bold">Indicateur C</td>
+            <td id="p05-rb-C" style="font-weight:bold">—</td></tr>
+      </table>
+      <div style="margin-top:6px">
+        <button class="source-btn" onclick="P05.saveRbSession()">
+          Sauvegarder dans la session
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
+    <button class="source-btn" onclick="TerlabSources.open(5)">→ Sources &amp; références voisinage</button>
+  </div>
+
+  <div class="val-block">
+    <div class="val-title">Validation de la phase 5</div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>ICPE dans 500m vérifiées</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Réseau assainissement identifié</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Accès SDIS + hydrant vérifiés</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0" id="p05-check-rb"><div class="check-box"></div><span>Facteur Rb calculé sur au moins une rue du voisinage</span></div>
+    <div class="val-progress"><div class="val-bar"></div></div>
+    <div class="val-footer"><span>Phase indicative</span><span class="val-pct">0/4</span></div>
+    <button class="next-btn">Phase 6 — Biodiversité →</button>
+  </div>
+</div>
+<div class="map-area">
+  <div id="map" style="width:100%;height:100%"></div>
+  <div id="map-stub-banner" style="display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(106,170,78,.85);color:#000;padding:5px 14px;border-radius:4px;font-family:monospace;font-size:10px"></div>
+
+  <!-- Toggle Carte / 3D -->
+  <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:0;border-radius:4px;overflow:hidden;border:1px solid rgba(154,120,32,.2)">
+    <button id="p05-toggle-map" onclick="P05.setView('map')"
+      style="padding:5px 16px;font-family:var(--font-mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;background:rgba(154,120,32,.12);color:var(--accent,#9a7820);border:none;cursor:pointer">
+      Carte
+    </button>
+    <button id="p05-toggle-3d" onclick="P05.setView('3d')"
+      style="padding:5px 16px;font-family:var(--font-mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;background:none;color:var(--muted,#6b5c3e);border:none;cursor:pointer">
+      Vue 3D
+    </button>
+  </div>
+
+  <!-- Vue 3D bâtiments (cachée par défaut) -->
+  <div id="p05-3d-wrap" class="t3d-wrap" style="display:none;position:absolute;inset:0">
+    <canvas id="p05-3d-canvas"></canvas>
+    <!-- Toolbar 3D -->
+    <div class="t3d-toolbar">
+      <button class="t3d-btn active" onclick="P05.set3DView('orbit')">Orbite</button>
+      <button class="t3d-btn" onclick="P05.set3DView('top')">Dessus</button>
+      <button class="t3d-btn" onclick="P05.set3DView('north')">Nord</button>
+      <button class="t3d-btn" onclick="P05.set3DView('east')">Est</button>
+      <button class="t3d-btn" onclick="P05.exportGLB()">Export GLB</button>
+    </div>
+    <!-- Loader -->
+    <div class="t3d-loader" id="p05-3d-loader">
+      <div class="t3d-spinner"></div>
+      <div class="t3d-loader-text">Chargement des b&acirc;timents&hellip;</div>
+    </div>
+  </div>
+</div>
+<div class="right-panel">
+  <div class="rp-section"><div class="rp-head">Acteurs & ressources</div><div id="actors-zone" class="stagger anim-fade-in"></div></div>
+  <div class="rp-section"><div class="rp-head">Risques de phase</div><div id="risks-zone"></div></div>
+  <div class="rp-section">
+    <div class="rp-head">SDIS 974 — Rappel</div>
+    <div class="ped-note" style="font-size:11px">
+      <strong>Accès pompiers conforme :</strong><br/>
+      · Voie ≥ 3m de large<br/>
+      · Hauteur libre ≥ 3.5m<br/>
+      · Force portante ≥ 13 tonnes<br/>
+      · Hydrant ≤ 150m (débit ≥ 60 m³/h)<br/>
+      · Distance façade ≤ 8m pour R+3 et +
+    </div>
+  </div>
+  <div class="rp-section">
+    <div class="rp-head">Exemples enviroBAT-Réunion</div>
+    <div id="eb-cards-p05"></div>
+  </div>
+</div>
+<style>
+.reseaux-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px; }
+.res-item { background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); padding:8px; display:flex; gap:7px; align-items:flex-start; }
+.res-icon { font-size:18px; flex-shrink:0; }
+.res-label { font-family:var(--font-mono); font-size:8.5px; color:var(--faint); margin-bottom:4px; text-transform:uppercase; letter-spacing:.08em; }
+.res-sel { width:100%; padding:5px 8px; font-size:11px; }
+.anc-alert { background:var(--warning2); border:1px solid rgba(245,158,11,.3); border-left:3px solid var(--warning); border-radius:var(--r-sm); padding:8px 10px; font-size:11px; color:var(--warning); margin-top:8px; }
+.danger-rad.selected { background:var(--danger2)!important; border-color:var(--danger)!important; color:var(--danger)!important; }
+</style>
+<script type="module">
+const SessionManager = window.SessionManager;
+const P05 = {
+  sel(label, field, val) {
+    document.querySelectorAll(`[name="${field}"]`).forEach(r => r.closest('.radio-option')?.classList.remove('selected'));
+    label.classList.add('selected');
+    SessionManager.saveTerrain({ [field]: val });
+  },
+  checkANC(sel) {
+    const pente = parseFloat(SessionManager.getTerrain()?.pente_moy_pct ?? 0);
+    const alert = document.getElementById('anc-alert');
+    if (alert) alert.style.display = (sel.value === 'ANC' && pente > 8) ? 'block' : 'none';
+    SessionManager.saveTerrain({ assainissement: sel.value });
+  },
+
+  // ─── Aéraulique Rb (Sprint 2) ───────────────────────────────
+  _rbToolActive: false,
+  _lastRbResult: null,
+
+  toggleRbTool() {
+    const AeraulicMapTools = window.AeraulicMapTools;
+    const map = window.TerlabMap?.getMap?.();
+    if (!map || !AeraulicMapTools) { window.TerlabToast?.show('Carte ou module non disponible', 'warning'); return; }
+
+    const btn = document.getElementById('p05-rb-btn');
+    if (this._rbToolActive) {
+      AeraulicMapTools.destroyRbTool(map);
+      this._rbToolActive = false;
+      if (btn) btn.textContent = 'Activer l\'outil Rb';
+    } else {
+      AeraulicMapTools.initRbTool(map, (result) => this._onRbResult(result));
+      this._rbToolActive = true;
+      if (btn) btn.textContent = 'Désactiver l\'outil Rb';
+      document.getElementById('p05-rb-stub')?.style.setProperty('display','block');
+      window.TerlabToast?.show('Cliquez sur une rue entre deux bâtiments', 'info', 4000);
+    }
+  },
+
+  _onRbResult({ W, H, Rb, Vrel, C, cLabel, ok }) {
+    this._lastRbResult = { W, H, Rb, Vrel, C, cLabel };
+    const color = ok ? 'var(--accent)' : Rb < 0.4 ? '#b05800' : '#8a2020';
+    const res   = document.getElementById('p05-rb-results');
+    if (res) {
+      res.style.display = 'block';
+      document.getElementById('p05-rb-W').textContent    = W.toFixed(1) + ' m';
+      document.getElementById('p05-rb-H').textContent    = H.toFixed(1) + ' m';
+      document.getElementById('p05-rb-Rb').textContent   = Rb.toFixed(3);
+      document.getElementById('p05-rb-Vrel').textContent = (Vrel*100).toFixed(0) + '%';
+      const cEl = document.getElementById('p05-rb-C');
+      if (cEl) { cEl.textContent = `${C.toFixed(2)} — ${cLabel}`; cEl.style.color = color; }
+    }
+    window.dispatchEvent(new CustomEvent('terlab:rb-calculated', { detail: { Rb, C, ok } }));
+  },
+
+  saveRbSession() {
+    if (!this._lastRbResult) return;
+    SessionManager.savePhase(5, { aeraulique_rb: this._lastRbResult });
+    window.TerlabToast?.show('Rb sauvegardé dans la session', 'success', 2500);
+  },
+
+  // ─── Toggle Carte / Vue 3D ──────────────────────────────────
+  _viewIs3D: false,
+  _3dReady: false,
+
+  async setView(mode) {
+    const mapEl  = document.getElementById('map');
+    const wrap3d = document.getElementById('p05-3d-wrap');
+    const btnMap = document.getElementById('p05-toggle-map');
+    const btn3d  = document.getElementById('p05-toggle-3d');
+    this._viewIs3D = mode === '3d';
+
+    mapEl.style.display  = mode === '3d' ? 'none'  : 'block';
+    wrap3d.style.display = mode === '3d' ? 'block' : 'none';
+
+    // Highlight active
+    if (btnMap) {
+      btnMap.style.background = mode === 'map' ? 'rgba(154,120,32,.12)' : 'none';
+      btnMap.style.color      = mode === 'map' ? 'var(--accent,#9a7820)' : 'var(--muted,#6b5c3e)';
+    }
+    if (btn3d) {
+      btn3d.style.background = mode === '3d' ? 'rgba(154,120,32,.12)' : 'none';
+      btn3d.style.color      = mode === '3d' ? 'var(--accent,#9a7820)' : 'var(--muted,#6b5c3e)';
+    }
+
+    // Init 3D on first toggle
+    if (this._viewIs3D && !this._3dReady) {
+      const B3D = window.Buildings3DViewer;
+      if (!B3D) { window.TerlabToast?.show('Buildings3DViewer non chargé', 'error'); return; }
+      const loader = document.getElementById('p05-3d-loader');
+      if (loader) loader.classList.remove('done');
+      await B3D.init('p05-3d-canvas', SessionManager._data);
+      this._3dReady = true;
+      if (loader) loader.classList.add('done');
+    }
+
+    // Resize map when switching back
+    if (!this._viewIs3D && window.TerlabMap?.getMap?.()) {
+      window.TerlabMap.getMap().resize?.();
+    }
+  },
+
+  set3DView(mode) {
+    const B3D = window.Buildings3DViewer;
+    if (!B3D?._inited) return;
+    B3D.setView(mode);
+    // Update active button
+    document.querySelectorAll('#p05-3d-wrap .t3d-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.textContent.trim().toLowerCase().startsWith(mode.slice(0, 3)));
+    });
+  },
+
+  exportGLB() {
+    const B3D = window.Buildings3DViewer;
+    if (B3D?._inited) B3D.exportGLB();
+  },
+};
+const terrain = SessionManager.getTerrain();
+if (terrain?.commune) document.getElementById('ts-c-p5').textContent = terrain.commune;
+const p4 = SessionManager.getPhase(4)?.data ?? {};
+if (p4.zone_plu) document.getElementById('ts-z-p5').textContent = p4.zone_plu.split(' ')[0];
+window.P05 = P05;
+
+// Validation Rb automatique
+window.addEventListener('terlab:rb-calculated', () => {
+  const c = document.getElementById('p05-check-rb');
+  if (c) { c.setAttribute('aria-checked','true'); c.classList.add('checked'); }
+});
+
+// enviroBAT cards
+if (window.EnvirobatCards) EnvirobatCards.render('eb-cards-p05', 'p05');
+</script>

@@ -1,0 +1,181 @@
+{
+  "version": "1.0",
+  "institution": "ENSA La Réunion",
+  "description": "Partenariats académiques et professionnels pour la représentation française en zone tropicale et montagnarde. Contexte Phase World TERLAB.",
+  "mission_internationale": {
+    "titre": "La Réunion — Laboratoire de l'architecture tropicale française",
+    "corps": "La Réunion est l'unique territoire français situé dans la zone tropicale de l'Océan Indien. L'ENSA La Réunion y développe depuis des décennies une expertise unique : RTAA DOM, architecture bioclimatique créole, risques naturels tropicaux et architecture montagnarde d'altitude équatoriale. Cette expertise positionne l'ENSA La Réunion comme acteur naturel de représentation de la France dans les discussions mondiales sur l'architecture des zones tropicales et montagnardes.",
+    "zones_koppen_cibles": ["Aw", "Am", "Cwb"],
+    "enjeux": [
+      "Adaptation climatique architecturale — zones GIEC les plus vulnérables au changement climatique",
+      "Architecture sociale tropicale — logement abordable en contexte insulaire et contraint",
+      "Construction en zone cyclonique et volcanique — expertise rare et exportable",
+      "Matériaux biosourcés tropicaux — bambou, fibre végétale, terre crue basaltique",
+      "Architecture d'altitude tropicale — hauts de Réunion (Cwb) et zones similaires Afrique/Amérique"
+    ],
+    "specificites_ensa": [
+      "Seule école d'architecture sur un territoire insulaire tropical français",
+      "Expertise RTAA DOM — réglementation thermique spécifique aux tropiques français",
+      "Atelier Numérique TERLAB — formation numérique BIM en contexte tropical",
+      "Studio risques naturels — approche 'faire avec' cyclones, inondations, volcanisme",
+      "Connexions Océan Indien — Maurice, Mayotte, Madagascar, Comores"
+    ]
+  },
+  "partenariats_actifs": [
+    {
+      "id": "univ-mauritius",
+      "nom": "University of Mauritius — Faculty of Engineering",
+      "departement": "Department of Civil Engineering and Architecture",
+      "pays": "Maurice",
+      "type": "académique",
+      "zone_koppen": ["Aw"],
+      "url": "https://www.uom.ac.mu",
+      "statut": "actif",
+      "axes": [
+        "Architecture créole Réunion–Maurice",
+        "Construction en zone cyclonique Océan Indien",
+        "Habitat social insulaire"
+      ],
+      "note": "Partenariat Océan Indien historique. Échanges étudiants et workshops communs. Proximité géographique."
+    },
+    {
+      "id": "ensa-mayotte",
+      "nom": "Formations architecture et BTP Mayotte",
+      "pays": "France (DOM)",
+      "type": "académique",
+      "zone_koppen": ["Aw"],
+      "statut": "actif",
+      "axes": [
+        "Coopération DOM-DOM Océan Indien",
+        "Architecture tropicale insulaire commune",
+        "RTAA DOM — même cadre réglementaire"
+      ],
+      "note": "Coopération DOM-DOM. Architecture tropicale insulaire commune. RTAA DOM applicable aux deux territoires."
+    }
+  ],
+  "partenariats_potentiels": [
+    {
+      "id": "ensa-martinique-future",
+      "nom": "Future ENSA Martinique",
+      "pays": "France (DOM)",
+      "type": "académique",
+      "zone_koppen": ["Aw", "Am"],
+      "statut": "en_discussion",
+      "priorite": "haute",
+      "axes": [
+        "Échanges ENSA DOM — réseau écoles architecture tropicales françaises",
+        "RTAA DOM : comparatif Antilles vs Réunion",
+        "Architecture créole : Antilles vs Océan Indien",
+        "Risques naturels cycloniques : approches comparées"
+      ],
+      "note": "Projet ENSA DOM atlantique en discussion. Réseau écoles architecture DOM représentation France zones tropicales."
+    },
+    {
+      "id": "uac-kigali",
+      "nom": "University of Architecture and Construction — Kigali",
+      "pays": "Rwanda",
+      "type": "académique",
+      "zone_koppen": ["Cwb"],
+      "statut": "prospection",
+      "priorite": "haute",
+      "axes": [
+        "Architecture montagnarde tropicale altitude (Cwb)",
+        "Matériaux locaux : basalte Rwanda / basalte Réunion",
+        "Échanges étudiants Africa–France zone Océan Indien"
+      ],
+      "note": "Kigali : 1550m altitude, zone Cwb similaire Plaine des Cafres. Rwanda Green Building Council dynamique."
+    },
+    {
+      "id": "universidad-medellin",
+      "nom": "Universidad de Antioquia — Facultad de Arquitectura",
+      "pays": "Colombie",
+      "type": "académique",
+      "zone_koppen": ["Cwb"],
+      "statut": "prospection",
+      "priorite": "moyenne",
+      "axes": [
+        "Urbanisme social innovant en contexte tropical montagneux",
+        "Architecture bioclimatique altitude tropicale",
+        "Comparatif Cwb Amérique du Sud / Océan Indien"
+      ],
+      "note": "Medellín référence mondiale urbanisme social tropical. Altitude comparables hauts Réunion."
+    },
+    {
+      "id": "unilag-lagos",
+      "nom": "University of Lagos — Department of Architecture",
+      "pays": "Nigéria",
+      "type": "académique",
+      "zone_koppen": ["Aw", "Am"],
+      "statut": "prospection",
+      "priorite": "moyenne",
+      "axes": [
+        "Architecture tropicale ouest-africaine",
+        "Densification urbaine tropicale — Lagos vs Saint-Denis",
+        "Matériaux locaux Afrique de l'Ouest"
+      ]
+    },
+    {
+      "id": "university-hawaii-manoa",
+      "nom": "University of Hawaiʻi at Mānoa — School of Architecture",
+      "pays": "États-Unis",
+      "type": "académique",
+      "zone_koppen": ["Aw"],
+      "statut": "prospection",
+      "priorite": "moyenne",
+      "axes": [
+        "Architecture insulaire tropicale Pacifique vs Océan Indien",
+        "Risques naturels insulaires : cyclones, tsunamis, volcans",
+        "Tropical modernism comparé : Hawaï / Réunion"
+      ],
+      "note": "Profil similaire : île volcanique, zone Aw, exposée aux cyclones, patrimoine polynésien/créole."
+    },
+    {
+      "id": "usp-sao-paulo-fau",
+      "nom": "FAU USP — Faculdade de Arquitetura e Urbanismo, São Paulo",
+      "pays": "Brésil",
+      "type": "académique",
+      "zone_koppen": ["Aw", "Cwb"],
+      "statut": "prospection",
+      "priorite": "basse",
+      "axes": [
+        "Architecture tropicale brésilienne — Niemeyer, Lúcio Costa",
+        "Construction en zone tropicale dense — parallèle avec Saint-Denis",
+        "Échanges Lusophone-Francophone zone tropicale"
+      ]
+    }
+  ],
+  "evenements_internationaux": [
+    {
+      "nom": "UIA — Union Internationale des Architectes",
+      "frequence": "Triennal",
+      "note": "L'ENSA La Réunion peut y représenter la France pour l'expertise architecture tropicale DOM.",
+      "url": "https://www.uia-architectes.org"
+    },
+    {
+      "nom": "Congrès World Architecture Festival (WAF)",
+      "frequence": "Annuel",
+      "note": "Catégorie Climate Award — projets adaptation climatique. Réunion = candidature potentielle.",
+      "url": "https://www.worldarchitecturefestival.com"
+    },
+    {
+      "nom": "Rencontres d'Architecture Réunion Océan Indien",
+      "frequence": "Bisannuel",
+      "note": "Événement local à développer en événement régional Océan Indien avec partenaires.",
+      "url": "https://maisondelarchitecture.re"
+    }
+  ],
+  "publications_prevues": [
+    {
+      "titre": "TERLAB — Guide pédagogique d'analyse de terrain en zone tropicale",
+      "type": "guide_academique",
+      "editeur": "ENSA La Réunion / Presses Universitaires de La Réunion",
+      "note": "Basé sur les 14 phases TERLAB. Référence pour les écoles d'architecture en zone tropicale."
+    },
+    {
+      "titre": "Architecture des risques à La Réunion — 30 ans de pratique post-RTAA DOM",
+      "type": "ouvrage_collectif",
+      "editeur": "enviroBAT-Réunion / CAUE / ENSA La Réunion",
+      "note": "Synthèse des REX enviroBAT depuis 2009. Co-édition institutionnelle."
+    }
+  ]
+}

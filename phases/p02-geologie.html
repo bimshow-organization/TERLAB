@@ -1,0 +1,230 @@
+<!-- TERLAB · Phase 2 · Géologie & Géotechnique · ENSA La Réunion v1.0 -->
+<!-- Thème : earth · Bloquante · BRGM stub + zones sismiques + remblai -->
+
+<div class="left-panel">
+  <div class="lp-head anim-slide-up">
+    <div class="phase-label" style="color:#c8922a">Phase 2 · Géologie · Obligatoire</div>
+    <h1 class="phase-title">🪨 <em>Géologie</em> & Géotechnique</h1>
+    <p class="phase-desc">Identifier la nature du sol et du sous-sol. À La Réunion, la géologie volcanique crée des situations très variées : basalte résistant, scories instables, remblais de ravines. Une erreur géotechnique coûte des ordres de grandeur plus cher en réparation qu'en prévention.</p>
+  </div>
+
+  <div class="terrain-strip">
+    <span class="ts-item">📍 <strong id="ts-commune-p2">—</strong></span>
+    <span class="ts-sep">·</span>
+    <span class="ts-item">Alt <strong id="ts-alt-p2">—</strong> m</span>
+    <span class="ts-sep">·</span>
+    <span class="ts-item">Séisme <strong style="color:var(--warning)">Zone 2</strong></span>
+  </div>
+
+  <!-- BRGM stub -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Carte géologique BRGM InfoTerre</div>
+    <div class="stub-warning">⚠️ STUB — InfoTerre BRGM n'a pas d'API REST directe. Données interprétées depuis altitude + zone. Consulter infoterre.brgm.fr pour la carte 1:50 000.</div>
+    <div class="brgm-inferred" id="brgm-inferred">
+      <div class="bi-icon">🔬</div>
+      <div class="bi-body">
+        <div class="bi-title" id="bi-title">Géologie non déterminée</div>
+        <div class="bi-note" id="bi-note">Altitude inconnue — complétez la Phase 0</div>
+      </div>
+    </div>
+    <a href="https://infoterre.brgm.fr" target="_blank" rel="noopener" class="source-btn" style="margin-top:6px;display:inline-flex">→ InfoTerre BRGM (1:50 000 Réunion) ↗</a>
+    <a href="https://ovpf.ipgp.fr" target="_blank" rel="noopener" class="source-btn" style="margin-left:10px">→ OVPF Piton de la Fournaise ↗</a>
+  </div>
+
+  <!-- Nature géologique -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Nature géologique (à confirmer sur site ou BRGM)</div>
+    <div class="field-row">
+      <label class="field-label" for="geo-type">Type géologique principal</label>
+      <select id="geo-type" class="field-select" data-session-key="geologie_type" data-val-index="0" onchange="P02.updateGeoType()">
+        <option value="">-- Sélectionner --</option>
+        <option value="basalte_recent">Basalte récent (coulées &lt; 500 ans)</option>
+        <option value="basalte_ancien">Basalte ancien altéré</option>
+        <option value="pahoehoe">Lave pahoehoe (surface lisse)</option>
+        <option value="aa_scories">Lave aa / scories (instable)</option>
+        <option value="alluvions">Alluvions / colluvions</option>
+        <option value="remblai">Remblai anthropique ⚠</option>
+        <option value="indetermine">Indéterminé — étude requise</option>
+      </select>
+    </div>
+    <div class="geo-advice" id="geo-advice" style="display:none"></div>
+  </div>
+
+  <!-- Remblai -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Remblai & sous-sol</div>
+    <div class="field-row">
+      <label class="field-label">Présence de remblai</label>
+      <div class="radio-group" data-val-index="1">
+        <label class="radio-option" onclick="P02.selectRemblai(this,'non')"><input type="radio" name="remblai" value="non"/>Non</label>
+        <label class="radio-option" onclick="P02.selectRemblai(this,'possible')"><input type="radio" name="remblai" value="possible"/>Possible</label>
+        <label class="radio-option danger-rad" onclick="P02.selectRemblai(this,'oui')"><input type="radio" name="remblai" value="oui"/>🔴 Oui — confirmé</label>
+      </div>
+    </div>
+    <div class="remblai-alert" id="remblai-alert" style="display:none">
+      Zone remblayée détectée — étude géotechnique G1 obligatoire avant tout permis de construire. Risque de tassements différentiels et fissures structurelles.
+    </div>
+    <div class="field-row" style="margin-top:8px">
+      <label class="field-label">Captage AEP à moins de 100m</label>
+      <div class="radio-group" data-val-index="3">
+        <label class="radio-option" onclick="P02.sel(this,'captage','non')"><input type="radio" name="captage" value="non"/>Non</label>
+        <label class="radio-option" onclick="P02.sel(this,'captage','oui')"><input type="radio" name="captage" value="oui"/>⚠ Oui</label>
+        <label class="radio-option" onclick="P02.sel(this,'captage','inconnu')"><input type="radio" name="captage" value="inconnu"/>Inconnu</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Géotechnicien -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Étude géotechnique</div>
+    <div class="field-row">
+      <label class="field-label">Étude géotechnique requise</label>
+      <div class="radio-group" data-val-index="2">
+        <label class="radio-option" onclick="P02.sel(this,'geotech','non')"><input type="radio" name="geotech" value="non"/>Non</label>
+        <label class="radio-option" onclick="P02.sel(this,'geotech','g1')"><input type="radio" name="geotech" value="g1"/>G1 obligatoire (PPRN)</label>
+        <label class="radio-option" onclick="P02.sel(this,'geotech','recommande')"><input type="radio" name="geotech" value="recommande"/>G1 recommandée</label>
+      </div>
+    </div>
+    <p class="field-note">Mission G1 ≈ 2 000–5 000 € selon surface. Obligatoire en zone PPRN mouvement de terrain. Délai : 2–4 semaines.</p>
+  </div>
+
+  <!-- Sismicité -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Sismicité & parasismique</div>
+    <div class="seisme-card">
+      <div class="sc-zone">Zone sismique 2</div>
+      <div class="sc-note">La Réunion — aléa modéré. L'Eurocode 8 s'applique à toute construction neuve. Chaînage horizontal et vertical obligatoire en maçonnerie. Pas de dérogation possible.</div>
+    </div>
+    <div class="field-row" style="margin-top:8px">
+      <label class="field-label" for="chainages">Chaînages prévus</label>
+      <div class="checkbox-group">
+        <label class="checkbox-option"><input type="checkbox" data-key="chainages_hz"/>Chainages horizontaux</label>
+        <label class="checkbox-option"><input type="checkbox" data-key="chainages_vt"/>Chainages verticaux</label>
+        <label class="checkbox-option"><input type="checkbox" data-key="fondations_special"/>Fondations spéciales</label>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
+    <button class="source-btn" onclick="TerlabSources.open(2)">→ Sources &amp; références géologie</button>
+  </div>
+
+  <div class="val-block">
+    <div class="val-title">Validation de la phase 2</div>
+    <div class="check-item blocking" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Nature géologique confirmée</span></div>
+    <div class="check-item blocking" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Présence de remblai déclarée (oui / non)</span></div>
+    <div class="check-item blocking" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Géotechnicien requis évalué</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Captage AEP à moins de 100m vérifié</span></div>
+    <div class="val-progress"><div class="val-bar"></div></div>
+    <div class="val-footer"><span>3 validations bloquantes</span><span class="val-pct">0/4</span></div>
+    <button class="next-btn">Phase 3 — Risques Naturels →</button>
+  </div>
+</div>
+
+<div class="map-area"><div id="map" style="width:100%;height:100%"></div><div id="map-stub-banner" style="display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(200,146,42,.85);color:#000;padding:5px 14px;border-radius:4px;font-family:monospace;font-size:10px"></div></div>
+
+<div class="right-panel">
+  <div class="rp-section">
+    <div class="rp-head">Géologie volcanique Réunion</div>
+    <div class="geo-types-ref">
+      <div class="gtr-item"><span class="gtr-icon">🌋</span><div><div class="gtr-name">Basalte récent</div><div class="gtr-note">Résistant · fondations excellentes · < 500 ans</div></div></div>
+      <div class="gtr-item"><span class="gtr-icon">🪨</span><div><div class="gtr-name">Basalte altéré</div><div class="gtr-note">Argilisation possible · étude recommandée</div></div></div>
+      <div class="gtr-item warn"><span class="gtr-icon">⚠</span><div><div class="gtr-name">Scories / aa</div><div class="gtr-note">Instable · tassements · fondations profondes</div></div></div>
+      <div class="gtr-item warn"><span class="gtr-icon">⚠</span><div><div class="gtr-name">Remblai</div><div class="gtr-note">Tassements différentiels · G1 obligatoire</div></div></div>
+    </div>
+  </div>
+  <div class="rp-section"><div class="rp-head">Acteurs & ressources</div><div id="actors-zone" class="stagger anim-fade-in"></div></div>
+  <div class="rp-section"><div class="rp-head">Risques de phase</div><div id="risks-zone"></div></div>
+  <div class="rp-section">
+    <div class="rp-head">Note pédagogique</div>
+    <div class="ped-note">
+      <strong>Remblai = danger silencieux.</strong> Dans les zones portuaires (Le Port, La Possession) et les anciennes ravines comblées, le remblai peut avoir 5 à 15m de profondeur. Un tassement différentiel de 2cm peut fissurer une maçonnerie. Toujours vérifier l'historique du terrain (archives IGN, plan de masse ancien).<br/><br/>
+      <strong>Zone sismique 2 — Eurocode 8</strong> impose le chaînage. Ce n'est pas optionnel même pour une maison individuelle.
+    </div>
+  </div>
+</div>
+
+<style>
+.brgm-inferred { display:flex; gap:10px; align-items:center; padding:10px; background:var(--card); border:1px solid var(--border); border-radius:var(--r); margin-bottom:8px; }
+.bi-icon { font-size:24px; }
+.bi-title { font-size:12px; color:var(--text); font-weight:600; margin-bottom:2px; }
+.bi-note { font-family:var(--font-mono); font-size:9px; color:var(--muted); }
+.geo-advice { background:var(--raised); border:1px solid var(--border2); border-left:3px solid var(--accent); border-radius:var(--r-sm); padding:8px 10px; font-size:11px; color:var(--muted); margin-top:8px; line-height:1.6; }
+.remblai-alert { background:var(--danger2); border:1px solid rgba(242,87,87,.3); border-left:3px solid var(--danger); border-radius:var(--r-sm); padding:8px 10px; font-size:11px; color:var(--danger); margin-top:8px; }
+.danger-rad.selected { background:var(--danger2)!important; border-color:var(--danger)!important; color:var(--danger)!important; }
+.seisme-card { background:rgba(180,140,80,.1); border:1px solid rgba(180,140,80,.25); border-radius:var(--r); padding:10px 12px; }
+.sc-zone { font-family:var(--font-mono); font-size:11px; font-weight:700; color:var(--warning); margin-bottom:4px; }
+.sc-note { font-size:11px; color:var(--muted); line-height:1.6; }
+.geo-types-ref { display:flex; flex-direction:column; gap:5px; }
+.gtr-item { display:flex; gap:8px; padding:6px 9px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); align-items:flex-start; }
+.gtr-item.warn { border-color:rgba(245,158,11,.25); background:var(--warning2); }
+.gtr-icon { font-size:16px; flex-shrink:0; }
+.gtr-name { font-size:11px; color:var(--text2); font-weight:500; }
+.gtr-note { font-family:var(--font-mono); font-size:8.5px; color:var(--faint); margin-top:1px; }
+</style>
+<script type="module">
+const SessionManager = window.SessionManager;
+const GEO_ADVICE = {
+  basalte_recent: 'Basalte récent — excellentes caractéristiques mécaniques. Fondations superficielles généralement possibles. Vérifier la continuité de la dalle (absence de fissures ou de poches de scories).',
+  basalte_ancien: 'Basalte altéré — argilisation possible en profondeur. Retrait-gonflement limité à La Réunion mais possible en zones humides. Étude G1 recommandée si zone PPRN.',
+  pahoehoe: 'Lave pahoehoe — surface lisse et résistante. Excellente portance. Attention aux poches et tunnels de lave (absence de matière).',
+  aa_scories: '⚠️ Lave aa / scories — matériau fragmenté, instable. Portance faible. Fondations profondes ou radier général obligatoires. Étude géotechnique G1 requise.',
+  alluvions: 'Alluvions / colluvions — compressibles et potentiellement saturés en eau. Tassements possibles. Étude géotechnique G1 fortement recommandée.',
+  remblai: '🔴 Remblai anthropique — tassements différentiels probables. Étude G1 OBLIGATOIRE. Nature et épaisseur du remblai à déterminer par sondages. Possibles pollutions.',
+  indetermine: 'Nature indéterminée — étude géotechnique G1 recommandée pour sécuriser le projet.'
+};
+const P02 = {
+  updateGeoType() {
+    const val = document.getElementById('geo-type')?.value;
+    const adv = document.getElementById('geo-advice');
+    if (!val || !adv) return;
+    adv.style.display = 'block';
+    adv.innerHTML = GEO_ADVICE[val] ?? '';
+    if (val === 'remblai') this.selectRemblai(null, 'oui', true);
+    SessionManager.saveTerrain({ geologie_type: val });
+    this._triggerAutoVal(document.getElementById('geo-type'));
+  },
+  selectRemblai(label, val, auto = false) {
+    if (!auto) {
+      document.querySelectorAll('[name="remblai"]').forEach(r => r.closest('.radio-option')?.classList.remove('selected'));
+      label?.classList.add('selected');
+    }
+    document.getElementById('remblai-alert').style.display = val === 'oui' ? 'block' : 'none';
+    SessionManager.saveTerrain({ remblai: val });
+    this._triggerAutoVal(document.querySelector('.radio-group[data-val-index="1"]'));
+  },
+  sel(label, field, val) {
+    document.querySelectorAll(`[name="${field}"]`).forEach(r => r.closest('.radio-option')?.classList.remove('selected'));
+    label.classList.add('selected');
+    SessionManager.saveTerrain({ [field]: val });
+    this._triggerAutoVal(label.closest('.radio-group[data-val-index]'));
+  },
+  _triggerAutoVal(el) {
+    if (!el) return;
+    const idx = parseInt(el.dataset.valIndex, 10);
+    if (isNaN(idx)) return;
+    const items = document.querySelectorAll('.check-item');
+    const item = items[idx];
+    if (!item || item.classList.contains('checked')) return;
+    item.classList.add('checked', 'auto-checked');
+    item.setAttribute('aria-checked', 'true');
+    // Marquer le champ comme répondu
+    if (el.tagName === 'SELECT') el.classList.add('answered');
+    if (el.classList.contains('radio-group')) el.classList.add('answered');
+    // Mettre à jour la progression (via événement custom)
+    document.dispatchEvent(new CustomEvent('terlab:val-changed'));
+  }
+};
+const terrain = SessionManager.getTerrain();
+if (terrain?.commune) document.getElementById('ts-commune-p2').textContent = terrain.commune;
+if (terrain?.altitude_ngr) {
+  document.getElementById('ts-alt-p2').textContent = terrain.altitude_ngr;
+  const alt = parseFloat(terrain.altitude_ngr);
+  const geo = alt < 300 ? ['Basalte récent probable (coulées récentes)', 'Zone côtière ou intermédiaire — vérifier remblai portuaire'] :
+               alt < 900 ? ['Basalte ancien altéré probable (mi-pentes)', 'Argilisation possible — étude recommandée si PPRN'] :
+               ['Coulées récentes Piton de la Fournaise possible', 'Vérifier carte géologique BRGM 1:50 000'];
+  document.getElementById('bi-title').textContent = geo[0];
+  document.getElementById('bi-note').textContent  = geo[1];
+}
+window.P02 = P02;
+</script>

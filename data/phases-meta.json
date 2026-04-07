@@ -1,0 +1,557 @@
+{
+  "version": "1.0",
+  "app": "TERLAB",
+  "institution": "ENSA La Réunion",
+  "semester": "Master 1 · Semestre 8",
+  "annee_academique": "2025-2026",
+  "total_phases": 14,
+  "phases_bloquantes": [0, 1, 2, 3],
+  "note_pedagogique": "Les phases 0 à 3 sont bloquantes : elles conditionnent la sécurité et la légalité du projet. Les phases 4 à 12 sont indicatives. La Phase World est optionnelle mais recommandée.",
+  "phases": [
+    {
+      "id": 0,
+      "slug": "identification",
+      "title": "Identification du terrain",
+      "subtitle": "Localiser · Cadastrer · Ancrer",
+      "description": "Première étape obligatoire. Localiser précisément le terrain dans son contexte administratif et cadastral. Sans référence cadastrale exacte, toutes les phases suivantes peuvent être erronées.",
+      "theme": "dark",
+      "accent": "#0088aa",
+      "icon": "📍",
+      "blocking": true,
+      "duration_min": 20,
+      "map_mode": "satellite+cadastre",
+      "map_pitch": 0,
+      "map_bearing": 0,
+      "map_zoom_default": 17,
+      "exports": ["pdf-fiche-identite", "dxf-parcelle", "json"],
+      "apis_requises": ["ign-wfs", "ign-wmts-cadastre", "georisques"],
+      "apis_optionnelles": ["agorah-peigeo"],
+      "validations": [
+        { "id": "v00a", "texte": "Commune et intercommunalité confirmées", "bloquant": true },
+        { "id": "v00b", "texte": "Références cadastrales exactes vérifiées", "bloquant": true },
+        { "id": "v00c", "texte": "Contact mairie urbanisme noté", "bloquant": false }
+      ],
+      "input_fields": [
+        { "id": "adresse", "label": "Adresse complète", "type": "text", "required": true },
+        { "id": "section", "label": "Section cadastrale", "type": "text", "required": false },
+        { "id": "parcelle", "label": "Numéro de parcelle", "type": "text", "required": false },
+        { "id": "contact_mairie", "label": "Contact service urbanisme mairie", "type": "text", "required": false }
+      ],
+      "auto_detected": ["commune", "code_insee", "intercommunalite", "contenance_m2", "altitude_ngr_approx", "date_pci"],
+      "liens_auto": [
+        { "label": "PPRN commune", "template": "https://www.reunion.gouv.fr/.../PPRN/{commune}" },
+        { "label": "PLU intercommunal", "template": "https://www.geoportail-urbanisme.gouv.fr" },
+        { "label": "DEAL Réunion", "url": "https://www.reunion.developpement-durable.gouv.fr" },
+        { "label": "Géorisques", "url": "https://www.georisques.gouv.fr" },
+        { "label": "AGORAH PEIGEO", "url": "https://www.agorah.com/index.php/peigeo/" }
+      ],
+      "risques_phase": ["cadastre-perime", "indivision", "division-recente"],
+      "bigdata_warning": true,
+      "bigdata_note": "Les exports PDF et DXF contiennent des métadonnées (auteur, machine, date, coordonnées GPS). Purger les métadonnées avant diffusion externe."
+    },
+    {
+      "id": 1,
+      "slug": "topographie",
+      "title": "Topographie & Microclimat",
+      "subtitle": "DEM 3D · Ravines · Vents · Météo",
+      "description": "Comprendre la morphologie, les flux naturels et le microclimat local. La topographie conditionne les risques d'inondation, les vents, l'ensoleillement et les fondations.",
+      "theme": "dark",
+      "accent": "#00899c",
+      "icon": "⛰",
+      "blocking": true,
+      "duration_min": 30,
+      "map_mode": "terrain3d+ravines",
+      "map_pitch": 60,
+      "map_bearing": 15,
+      "map_zoom_default": 15,
+      "exports": ["pdf-topo", "coupe-svg", "json"],
+      "apis_requises": ["mapbox-dem", "mapbox-waterway"],
+      "apis_optionnelles": ["meteofrance-stub"],
+      "validations": [
+        { "id": "v01a", "texte": "Cours d'eau et ravines nommés", "bloquant": true },
+        { "id": "v01b", "texte": "Orientation principale et pente validées", "bloquant": true },
+        { "id": "v01c", "texte": "Station météo de référence identifiée", "bloquant": false },
+        { "id": "v01d", "texte": "Zone pluviométrique (vent / sous-vent) notée", "bloquant": false }
+      ],
+      "input_fields": [
+        { "id": "nom_ravine", "label": "Nom de la ravine / cours d'eau le plus proche", "type": "text", "required": true },
+        { "id": "nom_lieu_dit", "label": "Lieu-dit ou quartier", "type": "text", "required": false },
+        { "id": "orientation_terrain", "label": "Orientation principale du terrain", "type": "select", "options": ["Nord", "Nord-Est", "Est", "Sud-Est", "Sud", "Sud-Ouest", "Ouest", "Nord-Ouest"], "required": true },
+        { "id": "station_meteo", "label": "Station Météo-France de référence", "type": "text", "required": false }
+      ],
+      "auto_detected": ["altitude_min", "altitude_max", "pente_moy_pct", "ravines_500m", "masques_solaires"],
+      "fly_over_ravine": true,
+      "fly_over_note": "Si une ravine est détectée à moins de 500m, TERLAB déclenche automatiquement un fly-over 3D immersif de la ravine (pitch 65°, rotation 360° en 4s).",
+      "risques_phase": ["pluies-cycloniques", "canalisation-vents", "confusion-ngr-ngf"],
+      "alerte_altitude": {
+        "seuil_m": 1000,
+        "message": "Terrain en altitude > 1000m NGR — Amplitude thermique élevée, gel nocturne possible, isolation renforcée requise (zone RTAA 3)."
+      }
+    },
+    {
+      "id": 2,
+      "slug": "geologie",
+      "title": "Géologie & Géotechnique",
+      "subtitle": "Sol · Basalte · Remblai · Fondations",
+      "description": "Identifier la nature du sol et du sous-sol. À La Réunion, la géologie volcanique crée des situations variées : basalte très résistant, scories instables, remblais portuaires ou de ravines.",
+      "theme": "earth",
+      "accent": "#c8922a",
+      "icon": "🪨",
+      "blocking": true,
+      "duration_min": 25,
+      "map_mode": "brgm+pprn-mouvements",
+      "map_pitch": 30,
+      "map_bearing": 0,
+      "map_zoom_default": 14,
+      "exports": ["pdf-geo", "json"],
+      "apis_requises": [],
+      "apis_optionnelles": ["brgm-infoterre-stub", "georisques"],
+      "validations": [
+        { "id": "v02a", "texte": "Nature géologique confirmée (basalte / alluvions / remblai / autre)", "bloquant": true },
+        { "id": "v02b", "texte": "Présence de remblai déclarée (oui / non)", "bloquant": true },
+        { "id": "v02c", "texte": "Géotechnicien requis évalué (oui / non)", "bloquant": true },
+        { "id": "v02d", "texte": "Captage AEP à moins de 100m vérifié", "bloquant": false }
+      ],
+      "input_fields": [
+        { "id": "geologie_type", "label": "Nature géologique principale", "type": "select", "options": ["Basalte récent (coulées < 500 ans)", "Basalte ancien altéré", "Lave pahoehoe", "Lave aa / scories", "Alluvions / colluvions", "Remblai anthropique", "Indéterminé"], "required": true },
+        { "id": "remblai", "label": "Remblai présent", "type": "radio", "options": ["Oui", "Non", "Possible"], "required": true },
+        { "id": "geotechnicien", "label": "Étude géotechnique requise", "type": "radio", "options": ["Oui (G1 obligatoire)", "Non", "À vérifier"], "required": true },
+        { "id": "nappe_phrea", "label": "Nappe phréatique ou captage AEP proche", "type": "radio", "options": ["Oui (< 100m)", "Non", "Inconnu"], "required": false },
+        { "id": "commentaire_geo", "label": "Observations complémentaires", "type": "textarea", "required": false }
+      ],
+      "auto_detected": ["geologie_brgm_approx", "zone_pprn_mouvement", "zone_sismique"],
+      "risques_phase": ["remblai-cache", "geotechnique-obligatoire", "captage-aep"],
+      "note_sismicite": "La Réunion est en zone sismique 2 (aléa modéré). L'Eurocode 8 s'applique. Chaînage horizontal et vertical obligatoire en maçonnerie."
+    },
+    {
+      "id": 3,
+      "slug": "risques",
+      "title": "Risques Naturels — PPRN",
+      "subtitle": "Inondation · Cyclone · Côtier · Feu · SDIS",
+      "description": "Phase critique. Identifier et qualifier tous les aléas réglementairement reconnus. La Réunion cumule inondation, cyclone, submersion marine, volcanisme, mouvement de terrain et feux. Le PPRN est une servitude d'utilité publique opposable au permis de construire.",
+      "theme": "risk",
+      "accent": "#ff6b4a",
+      "icon": "🌊",
+      "blocking": true,
+      "duration_min": 40,
+      "map_mode": "pprn+simulation-eau",
+      "map_pitch": 45,
+      "map_bearing": 0,
+      "map_zoom_default": 14,
+      "exports": ["pdf-risques", "json"],
+      "apis_requises": ["georisques"],
+      "apis_optionnelles": ["georisques-proxy-stub"],
+      "validations": [
+        { "id": "v03a", "texte": "Zonage PPRN confirmé (R1 / R2 / B1 / B2 / J / hors zone)", "bloquant": true },
+        { "id": "v03b", "texte": "Cote NGR de référence saisie (ou 'non concerné')", "bloquant": true },
+        { "id": "v03c", "texte": "Présence SDIS / hydrant à moins de 150m vérifiée", "bloquant": true },
+        { "id": "v03d", "texte": "Accès pompiers conforme (largeur ≥ 3m, hauteur libre ≥ 3.5m)", "bloquant": false },
+        { "id": "v03e", "texte": "PPRL vérifié si zone littorale (distance mer < 500m)", "bloquant": false }
+      ],
+      "input_fields": [
+        { "id": "zone_pprn", "label": "Zonage PPRN", "type": "select", "options": ["R1 — Rouge fort (inconstructible)", "R2 — Rouge modéré (inconstructible)", "B1 — Bleu fort (sous conditions strictes)", "B2 — Bleu modéré (sous conditions)", "J — Jaune (vigilance)", "W — Blanc (hors zone)", "Hors PPRN approuvé (PAC applicable)", "À vérifier"], "required": true },
+        { "id": "cote_ngr", "label": "Cote de référence NGR (m)", "type": "number", "unit": "m NGR", "required": false },
+        { "id": "distance_mer_m", "label": "Distance au trait de côte (m)", "type": "number", "unit": "m", "required": false },
+        { "id": "sdis_hydrant", "label": "Hydrant SDIS à moins de 150m", "type": "radio", "options": ["Oui", "Non", "À vérifier"], "required": true },
+        { "id": "acces_sdis", "label": "Accès sapeurs-pompiers conforme", "type": "radio", "options": ["Oui", "Non conforme", "À vérifier"], "required": true },
+        { "id": "zone_feu_vegetation", "label": "Zone à risque feu de végétation", "type": "radio", "options": ["Oui", "Non", "À vérifier"], "required": false }
+      ],
+      "auto_detected": ["risques_georisques", "simulation_eau_dem"],
+      "simulation_eau": { "min_m": 0, "max_m": 10, "step": 0.1, "default": 0 },
+      "risques_phase": ["pac-prime-ppr", "multi-aleas", "pprl-en-cours"],
+      "encadres_pedagogiques": [
+        {
+          "id": "lecture-pprn",
+          "titre": "Comment lire un zonage PPRN ?",
+          "contenu": "R = Rouge = inconstructible (sauf exceptions). B = Bleu = constructible sous prescriptions architecturales. J = Jaune = faible aléa, vigilance. W = hors zone. Le règlement PPRN prime sur le PLU en cas de contradiction."
+        },
+        {
+          "id": "pac-ppr",
+          "titre": "PAC vs PPR non approuvé",
+          "contenu": "Si le PPR n'est pas encore approuvé, le Porter à Connaissance (PAC) s'applique. En cas de contradiction entre PAC et PPR, toujours retenir le plus contraignant."
+        },
+        {
+          "id": "ngr-ngf",
+          "titre": "NGR ≠ NGF",
+          "contenu": "Le Nivellement Général de La Réunion (NGR) diffère du NGF métropole d'environ 50cm. Toutes les cotes altimétriques à La Réunion sont en NGR. Erreur fréquente chez les prestataires métropolitains."
+        },
+        {
+          "id": "cyclone-inondation",
+          "titre": "Interaction cyclone + inondation",
+          "contenu": "Un cyclone provoque simultanément des vents destructeurs, des pluies intenses (jusqu'à 1000mm/24h), une houle cyclonique et une surcote marine. Les crues cycloniques sont bien plus rapides et violentes que les crues ordinaires."
+        }
+      ],
+      "pprn_url_template": "https://www.reunion.gouv.fr/Actions-de-l-Etat/Securite-protection-des-personnes-et-des-biens/Protection-civile/Prevention-des-risques-naturels-et-technologiques/Les-risques-naturels-a-La-Reunion/Plans-de-prevention-des-risques-naturels-PPRN-et-PAC/{commune}"
+    },
+    {
+      "id": 4,
+      "slug": "plu",
+      "title": "Réglementation Urbanistique — PLU & SCoT",
+      "subtitle": "Reculs · Gabarits · Densités · SUP",
+      "description": "Extraire les contraintes réglementaires de constructibilité. Le PLU définit les règles de zone (reculs, hauteurs, emprise). Le SCoT intercommunal fixe les densités minimales et la programmation logement.",
+      "theme": "dark",
+      "accent": "#a78bfa",
+      "icon": "📐",
+      "blocking": false,
+      "duration_min": 35,
+      "map_mode": "plu+reculs",
+      "map_pitch": 0,
+      "map_bearing": 0,
+      "map_zoom_default": 17,
+      "exports": ["pdf-plu", "dxf-reculs", "json"],
+      "apis_requises": [],
+      "apis_optionnelles": ["geoportail-urbanisme-wms-stub"],
+      "validations": [
+        { "id": "v04a", "texte": "Zone PLU confirmée (UA / UB / UC / AU / N / A)", "bloquant": false },
+        { "id": "v04b", "texte": "Tous les reculs saisis (voie / séparative / fond)", "bloquant": false },
+        { "id": "v04c", "texte": "Règlement PLU consulté", "bloquant": false },
+        { "id": "v04d", "texte": "Servitudes d'utilité publique (SUP) vérifiées", "bloquant": false },
+        { "id": "v04e", "texte": "Rang SCoT et densité minimale identifiés", "bloquant": false }
+      ],
+      "input_fields": [
+        { "id": "zone_plu", "label": "Zone PLU", "type": "select", "options": ["UA — Urbain central dense", "UB — Urbain résidentiel", "UC — Urbain périphérique", "AU — À urbaniser", "AUs — À urbaniser strictement", "N — Naturelle", "A — Agricole", "Autre / Non déterminé"], "required": true },
+        { "id": "recul_voie_principale_m", "label": "Recul voie principale (m)", "type": "number", "unit": "m", "required": true },
+        { "id": "recul_voie_secondaire_m", "label": "Recul voie secondaire (m)", "type": "number", "unit": "m", "required": false },
+        { "id": "recul_limite_sep_m", "label": "Recul limite séparative latérale (m)", "type": "number", "unit": "m", "required": true },
+        { "id": "recul_fond_m", "label": "Recul fond de parcelle (m)", "type": "number", "unit": "m", "required": true },
+        { "id": "hauteur_max_m", "label": "Hauteur maximale autorisée (m)", "type": "number", "unit": "m", "required": true },
+        { "id": "emprise_sol_max_pct", "label": "Emprise au sol maximale (%)", "type": "number", "unit": "%", "required": true },
+        { "id": "scot_rang", "label": "Rang armature urbaine SCoT", "type": "number", "required": false },
+        { "id": "scot_densite_min", "label": "Densité minimale SCoT (lgts/ha)", "type": "number", "unit": "lgts/ha", "required": false },
+        { "id": "secteur_abf", "label": "Secteur ABF (Architecte des Bâtiments de France)", "type": "radio", "options": ["Oui (avis conforme obligatoire)", "Non", "À vérifier"], "required": true },
+        { "id": "sup_lignes_ht", "label": "SUP lignes haute tension", "type": "radio", "options": ["Oui", "Non", "À vérifier"], "required": false },
+        { "id": "oap_sectorielle", "label": "OAP sectorielle applicable", "type": "radio", "options": ["Oui", "Non", "À vérifier"], "required": false }
+      ],
+      "auto_detected": ["zone_plu_approximate", "lien_geoportail_urbanisme"],
+      "risques_phase": ["plu-revision", "secteur-abf", "oap-non-lue"],
+      "note_zone_A": "Zone Agricole — constructibilité très limitée. Seul le logement de l'exploitant agricole peut être autorisé, sous conditions strictes. Un projet résidentiel en zone A nécessite une dérogation préfectorale."
+    },
+    {
+      "id": 5,
+      "slug": "voisinage",
+      "title": "Voisinage, Bâti & Réseaux",
+      "subtitle": "Bâtiments 3D · ICPE · SDIS · Réseaux",
+      "description": "Analyser le contexte bâti environnant, les nuisances potentielles, les activités industrielles à proximité et les réseaux existants. Un contexte défavorable peut rendre le projet non viable même si le terrain est constructible.",
+      "theme": "dark",
+      "accent": "#6aaa4e",
+      "icon": "🏢",
+      "blocking": false,
+      "duration_min": 30,
+      "map_mode": "buildings3d+icpe",
+      "map_pitch": 55,
+      "map_bearing": 20,
+      "map_zoom_default": 16,
+      "exports": ["pdf-contexte", "json"],
+      "apis_requises": ["mapbox-buildings"],
+      "apis_optionnelles": ["georisques-basias"],
+      "validations": [
+        { "id": "v05a", "texte": "ICPE dans un rayon de 500m vérifiées (oui/non + distance)", "bloquant": false },
+        { "id": "v05b", "texte": "Présence d'un hydrant SDIS confirmée", "bloquant": false },
+        { "id": "v05c", "texte": "Accès sapeurs-pompiers conforme vérifié", "bloquant": false },
+        { "id": "v05d", "texte": "Réseau assainissement (collectif / ANC) identifié", "bloquant": false }
+      ],
+      "input_fields": [
+        { "id": "icpe_present", "label": "ICPE dans rayon 500m", "type": "radio", "options": ["Oui", "Non", "À vérifier"], "required": true },
+        { "id": "icpe_distance_m", "label": "Distance ICPE la plus proche (m)", "type": "number", "unit": "m", "required": false },
+        { "id": "assainissement", "label": "Réseau assainissement", "type": "radio", "options": ["Collectif (tout-à-l'égout)", "ANC — Assainissement Non Collectif", "Inconnu — vérification mairie"], "required": true },
+        { "id": "eau_potable", "label": "Réseau eau potable", "type": "radio", "options": ["Oui (réseau public)", "Captage privé", "Inconnu"], "required": true },
+        { "id": "fibre_optique", "label": "Fibre optique / THD disponible", "type": "radio", "options": ["Oui", "Non (ADSL)", "Non (zone blanche)"], "required": false },
+        { "id": "nuisances_sonores", "label": "Nuisances sonores (route, industrie, aéroport)", "type": "radio", "options": ["Importantes", "Modérées", "Faibles", "Aucune"], "required": false },
+        { "id": "bati_voisin_hauteurs", "label": "Hauteurs bâtiments voisins (m) — vérification carte", "type": "text", "required": false }
+      ],
+      "auto_detected": ["batiments_mapbox_3d", "icpe_georisques", "basias_basol"],
+      "risques_phase": ["basol-cache", "anc-pente", "acces-sdis-non-conforme"]
+    },
+    {
+      "id": 6,
+      "slug": "biodiversite",
+      "title": "Milieu Naturel & Biodiversité",
+      "subtitle": "Flore · Faune protégée · TVB · Ravines",
+      "description": "Identifier les espèces, habitats et continuités écologiques présents. La Réunion est un hotspot mondial de biodiversité (36% d'espèces endémiques). La construction en zone naturelle doit tenir compte des espèces protégées et des corridors écologiques — dont les ravines sont les vecteurs principaux.",
+      "theme": "ivory",
+      "accent": "#3d6b2e",
+      "icon": "🌿",
+      "blocking": false,
+      "duration_min": 25,
+      "map_mode": "nature-ign+znieff",
+      "map_pitch": 20,
+      "map_bearing": 0,
+      "map_zoom_default": 15,
+      "exports": ["pdf-bio", "json"],
+      "apis_requises": [],
+      "apis_optionnelles": ["inpn-znieff"],
+      "validations": [
+        { "id": "v06a", "texte": "Espaces naturels protégés à moins de 500m identifiés", "bloquant": false },
+        { "id": "v06b", "texte": "Espèces protégées potentielles notées", "bloquant": false },
+        { "id": "v06c", "texte": "Défrichement nécessaire déclaré (oui / non / partiel)", "bloquant": false }
+      ],
+      "input_fields": [
+        { "id": "parc_national", "label": "Zone Parc National", "type": "select", "options": ["Hors Parc", "Zone d'adhésion (< 500m)", "Zone d'adhésion (terrain concerné)", "Zone cœur (très restrictif)"], "required": true },
+        { "id": "znieff", "label": "ZNIEFF présente", "type": "select", "options": ["Aucune", "ZNIEFF type 1 (< 500m)", "ZNIEFF type 2 (< 500m)", "Terrain en ZNIEFF"], "required": true },
+        { "id": "corridor_tvb", "label": "Corridor TVB (ravine ou continuité)", "type": "radio", "options": ["Oui (< 500m)", "Oui (terrain concerné)", "Non"], "required": true },
+        { "id": "especes_protegees", "label": "Espèces protégées potentiellement présentes", "type": "checkbox", "options": ["Pétrel de Barau (nidification nocturne)", "Phelsuma borbonica (gecko endémique)", "Papangue (oiseau de proie)", "Oiseau blanc", "Flore endémique", "Aucune détectée"], "required": true },
+        { "id": "especes_invasives", "label": "Espèces envahissantes présentes", "type": "checkbox", "options": ["Longose (Hedychium gardnerianum)", "Lantana camara", "Filaos", "Raisiniers des hauts", "Autres", "Aucune"], "required": false },
+        { "id": "defrichement", "label": "Défrichement nécessaire", "type": "radio", "options": ["Oui (autorisation préfectorale requise)", "Non", "Partiel (< seuil)"], "required": true },
+        { "id": "brise_vent", "label": "Brise-vent naturel existant à conserver", "type": "radio", "options": ["Oui", "Non", "Non pertinent"], "required": false }
+      ],
+      "auto_detected": ["znieff_inpn_approx", "parc_national_distance"],
+      "risques_phase": ["eclairage-petrel", "defrichement-illegal", "znieff-etude-impact"],
+      "especes_cyclone": {
+        "a_conserver": ["Tamarinier des hauts", "Bois de couleur", "Bois de fer", "Filaos (brise-vent côtier)"],
+        "a_eviter": ["Palmiers isolés exposés", "Eucalyptus (chute risques)", "Manguiers hauts non taillés"]
+      }
+    },
+    {
+      "id": 7,
+      "slug": "esquisse",
+      "title": "Esquisse Projet & Simulation",
+      "subtitle": "Gabarit 3D · PLU checks · BIMSHOW",
+      "description": "Poser le gabarit du projet et vérifier sa conformité avec toutes les phases précédentes. Le gabarit est exporté vers BIMSHOW pour rendu HQ. Les checks PLU sont automatiques. C'est la phase de synthèse architecturale.",
+      "theme": "dark",
+      "accent": "#f59e0b",
+      "icon": "🏗",
+      "blocking": false,
+      "duration_min": 45,
+      "map_mode": "bimshow-extrusion",
+      "map_pitch": 60,
+      "map_bearing": -20,
+      "map_zoom_default": 17,
+      "exports": ["glb", "ifc", "pdf-esquisse", "dxf-gabarit", "json"],
+      "apis_requises": ["mapbox-terrain", "bimshow-postmessage"],
+      "apis_optionnelles": [],
+      "validations": [
+        { "id": "v07a", "texte": "Tous les checks PLU verts (reculs / emprise / hauteur)", "bloquant": false },
+        { "id": "v07b", "texte": "Matériaux cyclone et parasismiques cohérents avec le contexte", "bloquant": false },
+        { "id": "v07c", "texte": "Modèle BIMSHOW généré et validé visuellement", "bloquant": false }
+      ],
+      "input_fields": [
+        { "id": "surface_plancher_m2", "label": "Surface de plancher (m²)", "type": "number", "unit": "m²", "required": true },
+        { "id": "niveaux", "label": "Nombre de niveaux", "type": "select", "options": ["R+0 (plain-pied)", "R+1", "R+2", "R+3", "R+4 et plus"], "required": true },
+        { "id": "gabarit_l_m", "label": "Longueur L (m)", "type": "number", "unit": "m", "required": true },
+        { "id": "gabarit_w_m", "label": "Largeur l (m)", "type": "number", "unit": "m", "required": true },
+        { "id": "gabarit_h_m", "label": "Hauteur H (m)", "type": "number", "unit": "m", "required": true },
+        { "id": "type_structure", "label": "Type de structure", "type": "select", "options": ["Maçonnerie parpaings (le plus courant Réunion)", "Charpente bois", "Acier / métal", "Béton coulé", "Mixte bois-maçonnerie", "Autre"], "required": true },
+        { "id": "type_toiture", "label": "Type de toiture", "type": "select", "options": ["Tôle 4 pentes (recommandé cyclone)", "Tôle 2 pentes", "Tuiles (limité altitude)", "Terrasse accessible (RTAA zone 1 seulement)", "Terrasse végétalisée", "Toit-jardin"], "required": true },
+        { "id": "couleur_facades", "label": "Couleur dominante façades (impact coefficient α)", "type": "text", "placeholder": "Ex: blanc cassé, gris clair, bois naturel", "required": false }
+      ],
+      "checks_plu_auto": ["emprise_au_sol", "hauteur_max", "recul_voie", "recul_sep", "recul_fond"],
+      "risques_phase": ["bigdata-bim", "bimshow-maillage", "bep-execution"],
+      "bigdata_warning": true,
+      "bigdata_note": "Les fichiers CAO/BIM exportés contiennent des métadonnées (auteur, logiciel, machine, localisation GPS, date). Établir un BIM Execution Plan dès l'esquisse. Purger les métadonnées avant dépôt de permis.",
+      "bimshow_integration": {
+        "type": "postMessage",
+        "event_send": "TERLAB_BIMSHOW_LOAD",
+        "event_receive": "BIMSHOW_SNAPSHOT",
+        "timeout_ms": 8000,
+        "camera_preset": "aerial_southwest"
+      }
+    },
+    {
+      "id": 8,
+      "slug": "chantier",
+      "title": "Chantier & Construction",
+      "subtitle": "Risques sanitaires · Saison cyclonique · SDIS",
+      "description": "Anticiper les risques liés à la phase de construction dans le contexte tropical réunionnais : saison cyclonique, leptospirose, dengue, terrassements basaltiques, gestion des eaux pluviales.",
+      "theme": "site",
+      "accent": "#b88d00",
+      "icon": "⚙",
+      "blocking": false,
+      "duration_min": 20,
+      "map_mode": "satellite",
+      "map_pitch": 0,
+      "map_bearing": 0,
+      "map_zoom_default": 16,
+      "exports": ["pdf-chantier", "json"],
+      "apis_requises": [],
+      "apis_optionnelles": [],
+      "validations": [
+        { "id": "v08a", "texte": "Saison cyclonique prise en compte (planification démarrage)", "bloquant": false },
+        { "id": "v08b", "texte": "Risques sanitaires chantier listés (leptospirose, dengue)", "bloquant": false },
+        { "id": "v08c", "texte": "Plan de gestion des eaux de chantier esquissé", "bloquant": false }
+      ],
+      "input_fields": [
+        { "id": "demarrage_prevu", "label": "Période de démarrage prévue", "type": "select", "options": ["Mai–Octobre (hors saison cyclonique — recommandé)", "Novembre–Avril (saison cyclonique — protocole renforcé)", "Indéterminé"], "required": true },
+        { "id": "amiante_present", "label": "Amiante (bâtiment existant < 1997)", "type": "radio", "options": ["Oui (diagnostic obligatoire)", "Non", "Non applicable (terrain nu)"], "required": true },
+        { "id": "risques_sanitaires", "label": "Risques sanitaires identifiés", "type": "checkbox", "options": ["Leptospirose (zone humide / ravine)", "Dengue (eaux stagnantes)", "Silicose (terrassement basaltique)", "Amiante (bâti existant)", "Contamination sol BASOL"], "required": false },
+        { "id": "gestion_eaux", "label": "Gestion eaux pluviales chantier", "type": "select", "options": ["Bassin décantation prévu", "Cunettes et bâchage", "Solution à définir avec BET fluides"], "required": false }
+      ],
+      "risques_phase": ["saison-cyclonique", "gites-larvaires", "silicose-basalte"],
+      "saison_cyclonique": { "debut": "Novembre", "fin": "Avril", "alerte": "Tout chantier en cours doit disposer d'un protocole de mise en sécurité en cas d'alerte cyclonique : bâchage, fixation des matériaux, mise à l'abri des engins." }
+    },
+    {
+      "id": 9,
+      "slug": "carbone",
+      "title": "Impact Carbone & Énergie",
+      "subtitle": "ACV · RTAA DOM · Photovoltaïque · Eau pluie",
+      "description": "Évaluer l'empreinte carbone de la construction et la performance énergétique en exploitation. À La Réunion, l'insularité pèse lourd : tout matériau importé du continent génère des émissions de transport significatives. Le solaire et la ventilation naturelle sont les deux leviers principaux.",
+      "theme": "green",
+      "accent": "#2e8f47",
+      "icon": "♻",
+      "blocking": false,
+      "duration_min": 25,
+      "map_mode": "satellite",
+      "map_pitch": 0,
+      "map_bearing": 0,
+      "map_zoom_default": 15,
+      "exports": ["pdf-carbone", "json"],
+      "apis_requises": [],
+      "apis_optionnelles": [],
+      "validations": [
+        { "id": "v09a", "texte": "Estimation CO₂ construction saisie (kgCO₂eq/m²)", "bloquant": false },
+        { "id": "v09b", "texte": "Stratégie ventilation naturelle définie", "bloquant": false },
+        { "id": "v09c", "texte": "Énergie renouvelable intégrée (oui / non / partiel)", "bloquant": false }
+      ],
+      "input_fields": [
+        { "id": "co2_estimation", "label": "Estimation émissions grises (kgCO₂eq/m²)", "type": "number", "unit": "kgCO₂eq/m²", "note": "Référence : maçonnerie béton ≈ 300, charpente bois locale ≈ 150, béton préfabriqué ≈ 250", "required": false },
+        { "id": "ventilation_strategie", "label": "Stratégie ventilation naturelle", "type": "select", "options": ["Traversante optimisée (recommandé)", "Mono-orientation avec brasseurs d'air", "VMC + brasseurs d'air", "Climatisation (à justifier RTAA zone 1 seulement)"], "required": true },
+        { "id": "pv_solaire", "label": "Photovoltaïque intégré", "type": "radio", "options": ["Oui (couverture > 50%)", "Oui (partiel)", "Non"], "required": true },
+        { "id": "ecs_solaire", "label": "Eau chaude solaire (ECS)", "type": "radio", "options": ["Oui (obligation RTAA zones 1 et 2)", "Non (zone 3 — justification requise)", "À confirmer"], "required": true },
+        { "id": "eau_pluie", "label": "Récupération eau de pluie", "type": "radio", "options": ["Oui (cuve ≥ 5 m³)", "Oui (petite installation)", "Non"], "required": false },
+        { "id": "materiaux_biosources", "label": "Matériaux biosourcés locaux intégrés", "type": "radio", "options": ["Oui (bois local, fibre végétale, bambou)", "Oui (importés)", "Non"], "required": false }
+      ],
+      "risques_phase": ["emissions-grises-sous-estimees", "pv-saturation-reseau", "climatisation-active"],
+      "note_rtaa_energie": "La RTAA DOM 2016 impose : ECS solaire couvrant ≥ 50% des besoins (zones 1 et 2), surfaces minimales d'ouvrant pour ventilation naturelle (22% séjour, 18% chambres en zone 1 et 2), facteur solaire limité selon zone et orientation."
+    },
+    {
+      "id": 10,
+      "slug": "entretien",
+      "title": "Entretien, Rénovation & Adaptation",
+      "subtitle": "Durabilité tropicale · Termites · DPE DOM",
+      "description": "Anticiper la durabilité du projet dans le contexte tropical réunionnais. L'humidité, les UV intenses, le sel marin et les termites dégradent les matériaux rapidement si les bonnes précautions ne sont pas prises dès la conception.",
+      "theme": "earth",
+      "accent": "#a0784a",
+      "icon": "🔧",
+      "blocking": false,
+      "duration_min": 15,
+      "map_mode": "satellite",
+      "map_pitch": 0,
+      "map_bearing": 0,
+      "map_zoom_default": 15,
+      "exports": ["pdf-entretien", "json"],
+      "apis_requises": [],
+      "apis_optionnelles": [],
+      "validations": [
+        { "id": "v10a", "texte": "Plan de maintenance esquissé (fréquences clés)", "bloquant": false },
+        { "id": "v10b", "texte": "Matériaux résistants termites et corrosion choisis", "bloquant": false },
+        { "id": "v10c", "texte": "Diagnostics fin de cycle listés (amiante, termites, ERP)", "bloquant": false }
+      ],
+      "input_fields": [
+        { "id": "traitement_termites", "label": "Traitement anti-termites préventif prévu", "type": "radio", "options": ["Oui (intégré dès conception)", "Non (à prévoir)", "Déjà traité (bâti existant)"], "required": true },
+        { "id": "protection_corrosion", "label": "Protection corrosion si zone marine (< 2km mer)", "type": "radio", "options": ["Acier inoxydable ou aluminium", "Acier galvanisé + laqué", "Bois traité autoclave", "Non applicable (hors zone marine)", "À prévoir"], "required": false },
+        { "id": "periodicite_toiture", "label": "Fréquence inspection toiture après cyclone", "type": "select", "options": ["Systématique après tout passage de cyclone (recommandé)", "Annuelle", "À la demande"], "required": false }
+      ],
+      "risques_phase": ["termites-structures", "corrosion-mer", "erp-non-fourni"]
+    },
+    {
+      "id": 11,
+      "slug": "esquisse",
+      "title": "Esquisse Plan Masse",
+      "subtitle": "Enveloppes volumétriques · Score Pareto · Jardin BPF",
+      "description": "Synthèse spatiale du projet. Générer automatiquement des propositions d'enveloppes volumétriques, les scorer selon 4 objectifs Pareto (orientation solaire, vue, conformité PLU, jardin BPF) et éditer le plan masse en SVG.",
+      "theme": "dark",
+      "accent": "#0088aa",
+      "icon": "📐",
+      "blocking": false,
+      "duration_min": 30,
+      "map_mode": "satellite",
+      "map_pitch": 0,
+      "map_bearing": 0,
+      "map_zoom_default": 17,
+      "exports": ["svg-esquisse", "json"],
+      "apis_requises": [],
+      "apis_optionnelles": [],
+      "validations": [
+        { "id": "v11a", "texte": "Au moins une proposition d'enveloppe a été explorée", "bloquant": false },
+        { "id": "v11b", "texte": "L'enveloppe retenue respecte les reculs PLU", "bloquant": false },
+        { "id": "v11c", "texte": "Le jardin BPF recommandé a été noté", "bloquant": false }
+      ],
+      "input_fields": [
+        { "id": "esquisse_famille", "label": "Famille d'enveloppe retenue", "type": "select", "options": ["Rectangle simple", "Traversant", "En L", "En U", "Patio", "Créole"], "required": true },
+        { "id": "esquisse_surface", "label": "Surface enveloppe (m²)", "type": "number", "required": true },
+        { "id": "esquisse_score", "label": "Score Pareto global", "type": "number", "required": false }
+      ],
+      "risques_phase": ["depassement-ces", "non-respect-reculs", "orientation-defavorable"]
+    },
+    {
+      "id": 12,
+      "slug": "synthese",
+      "title": "Synthèse & Exports",
+      "subtitle": "PDF A3 6 pages · DXF · GLB · QR code",
+      "description": "Générer automatiquement tous les livrables de l'analyse. Le PDF A3 en 6 pages est le livrable académique principal. Le DXF et le GLB permettent d'intégrer le travail dans AutoCAD et BIMSHOW.",
+      "theme": "dark",
+      "accent": "#0088aa",
+      "icon": "📄",
+      "blocking": false,
+      "duration_min": 10,
+      "map_mode": "overview",
+      "map_pitch": 45,
+      "map_bearing": -10,
+      "map_zoom_default": 14,
+      "exports": ["pdf-a3-complet", "dxf-complet", "glb-complet", "ifc", "json-session", "qr"],
+      "apis_requises": [],
+      "apis_optionnelles": ["firebase-storage"],
+      "validations": [
+        { "id": "v12a", "texte": "Phases 0 à 3 toutes complètes (obligatoires)", "bloquant": true },
+        { "id": "v12b", "texte": "Export PDF A3 généré et vérifié", "bloquant": false },
+        { "id": "v12c", "texte": "Session Firebase sauvegardée (UUID + QR code)", "bloquant": false }
+      ],
+      "input_fields": [
+        { "id": "commentaire_global", "label": "Commentaire général de l'étudiant (optionnel)", "type": "textarea", "required": false },
+        { "id": "enseignant", "label": "Enseignant référent", "type": "text", "required": false }
+      ],
+      "pdf_structure": {
+        "pages": 6,
+        "format": "A3 paysage",
+        "pages_detail": [
+          "Page 1 — Fiche identité (plan 2D cadastre, références, commune, intercommunalité)",
+          "Page 2 — Carte des risques (PPRN, aléas, simulation eau, cyclone)",
+          "Page 3 — Réglementation (tableau PLU reculs/hauteurs, RTAA DOM)",
+          "Page 4 — Contexte (bâtiments 3D, ICPE, milieu naturel)",
+          "Page 5 — Esquisse projet (gabarit 3D BIMSHOW, checks PLU)",
+          "Page 6 — Tableau synthèse toutes phases + bibliographie + QR code"
+        ],
+        "avertissement": "Ce document est un support pédagogique produit avec TERLAB v1.0. Il ne se substitue pas aux documents réglementaires officiels (PPRN, PLU, CU, ERP). ENSA La Réunion."
+      },
+      "bigdata_warning": true,
+      "bigdata_note": "Les exports contiennent des métadonnées de session. Purger avant diffusion si confidentialité requise."
+    },
+    {
+      "id": 13,
+      "slug": "world",
+      "title": "Architectures Tropicales Mondiales",
+      "subtitle": "Köppen · ENSA La Réunion · Partenariats · Globe rotatif",
+      "description": "Phase d'ouverture internationale. La Réunion est unique : trois étages climatiques (tropical côtier Aw, subtropical humide Cf, montagnard Cwb) sur 70km. L'ENSA La Réunion développe une expertise de représentation française en zone tropicale et montagnarde.",
+      "theme": "world",
+      "accent": "#3c78dc",
+      "icon": "🌍",
+      "blocking": false,
+      "duration_min": 20,
+      "map_mode": "globe-koppen",
+      "map_pitch": 0,
+      "map_bearing": 0,
+      "map_zoom_default": 2,
+      "map_projection": "globe",
+      "globe_rotation": true,
+      "exports": ["pdf-world", "json"],
+      "apis_requises": ["mapbox-globe"],
+      "apis_optionnelles": [],
+      "validations": [
+        { "id": "v13a", "texte": "Zone climatique Köppen de référence identifiée", "bloquant": false },
+        { "id": "v13b", "texte": "3 projets comparables dans le monde notés", "bloquant": false },
+        { "id": "v13c", "texte": "Partenariat ENSA potentiel identifié", "bloquant": false }
+      ],
+      "input_fields": [
+        { "id": "zone_koppen_ref", "label": "Zone climatique de référence de votre terrain", "type": "select", "options": ["Aw — Côte tropicale (< 400m, alizés)", "Cf — Mi-pentes subtropicales (400-900m)", "Cwb — Hauts montagnards (> 1000m, amplitude thermique)"], "required": true },
+        { "id": "reference_monde_1", "label": "Référence architecturale mondiale 1 (ville + pays)", "type": "text", "required": false },
+        { "id": "reference_monde_2", "label": "Référence architecturale mondiale 2 (ville + pays)", "type": "text", "required": false },
+        { "id": "reference_monde_3", "label": "Référence architecturale mondiale 3 (ville + pays)", "type": "text", "required": false },
+        { "id": "partenariat_ensa", "label": "Institution partenaire ENSA La Réunion identifiée", "type": "text", "required": false }
+      ],
+      "etages_reunion": {
+        "Aw": { "label": "Côte tropicale — Saint-Paul, Le Port, Saint-Louis", "altitude": "< 400m" },
+        "Cf": { "label": "Mi-pentes — Saint-Denis hauts, mi-pentes littoral E", "altitude": "400–900m" },
+        "Cwb": { "label": "Hauts — Plaine des Cafres, Plaine des Palmistes, Cilaos", "altitude": "> 1000m" }
+      }
+    }
+  ]
+}

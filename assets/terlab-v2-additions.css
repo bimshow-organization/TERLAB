@@ -1,0 +1,729 @@
+/* ═══════════════════════════════════════════════════════════════
+   TERLAB · terlab-v2-additions.css
+   Corrections v2 : topbar phase-cards · thème ivoire phase 0 ·
+   profil altimétrique · player risques · parcelle terrain
+   À inclure APRÈS terlab-shell.css dans index.html
+═══════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────────
+   1 · PHASE CARDS (remplacement des ph-step emojis)
+───────────────────────────────────────────────────────────────── */
+
+/* Supprimer l'ancien style */
+.ph-step { display: none !important; }
+
+.tb-phases {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 0 2px;
+  gap: 2px;
+}
+.tb-phases::-webkit-scrollbar { display: none; }
+
+.phase-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 58px;
+  padding: 3px 10px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  border-top: 3px solid transparent;
+  cursor: pointer;
+  color: var(--faint);
+  transition: all var(--tx-fast);
+  position: relative;
+  flex-shrink: 0;
+  border-radius: 0;
+}
+.phase-card:hover {
+  color: var(--muted);
+  background: rgba(255,255,255,.03);
+}
+.phase-card.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: var(--accent2);
+  font-weight: 700;
+}
+.phase-card.done {
+  color: var(--success);
+  border-bottom-color: rgba(16,185,129,.3);
+}
+.phase-card.done:hover {
+  background: rgba(16,185,129,.06);
+}
+.phase-card.progress {
+  border-bottom-color: rgba(245,158,11,.4);
+}
+.phase-card.progress:hover {
+  background: rgba(245,158,11,.06);
+}
+
+.pc-num {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1;
+  color: var(--faint);
+  transition: color var(--tx-fast);
+  font-weight: 700;
+}
+.phase-card.active .pc-num { color: var(--accent); }
+.phase-card.done   .pc-num { color: var(--success); }
+
+.pc-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--faint);
+  transition: color var(--tx-fast);
+}
+.pc-icon svg { width: 20px; height: 20px; }
+.phase-card:hover .pc-icon { color: var(--muted); }
+.phase-card.active .pc-icon { color: var(--accent); }
+.phase-card.done .pc-icon { color: var(--success); }
+.phase-card.progress .pc-icon { color: var(--warning); }
+
+.pc-label {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  line-height: 1;
+  transition: color var(--tx-fast);
+  font-weight: 600;
+}
+
+/* Badge check / lock superposés */
+.pc-check, .pc-lock {
+  position: absolute;
+  top: 4px;
+  right: 3px;
+  font-size: 7px;
+  line-height: 1;
+}
+.pc-check { color: var(--success); }
+.pc-lock  { color: var(--warning); opacity: .7; }
+
+/* Séparateur visuel entre bloquantes et indicatives */
+.phase-card[data-phaseid="3"] {
+  border-right: 1px solid var(--border2);
+  margin-right: 3px;
+}
+
+/* Flèches navigation prev/next */
+.phase-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--tx-fast);
+  opacity: .7;
+}
+.phase-arrow:hover:not(:disabled) {
+  background: var(--accent2);
+  opacity: 1;
+}
+.phase-arrow:disabled {
+  opacity: .2;
+  cursor: default;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   2 · THÈME IVOIRE POUR PHASE 0 (identification)
+   L'identification se fait dans un contexte calme, documentaire
+   → herbier, archives, plans cadastraux → ivoire/papier
+───────────────────────────────────────────────────────────────── */
+/* Surcharge spécifique : si on veut que la Phase 0 soit ivoire
+   plutôt que dark, décommenter ceci ET modifier phases-meta.json
+   pour p00 theme: "ivory"
+[data-theme="ivory"] .lp-head {
+  border-bottom-color: rgba(90,70,30,.2);
+}
+*/
+
+/* En attendant : amélioration visuelle de la Phase 0 en dark */
+[data-phase="0"] .lp-head {
+  background: linear-gradient(135deg, var(--card) 0%, rgba(154,120,32,.04) 100%);
+}
+[data-phase="0"] .phase-label {
+  color: var(--accent);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   3 · FIX PROFIL ALTIMÉTRIQUE — Canvas visible
+───────────────────────────────────────────────────────────────── */
+.profile-canvas-wrap {
+  position: relative;
+  height: 120px !important;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.profile-canvas-wrap canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+/* Assurer que le canvas est réellement visible */
+#profile-chart {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 100px;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   4 · MARKER PARCELLE — Visible sur la carte
+───────────────────────────────────────────────────────────────── */
+/* Le contour parcelle est rendu via Mapbox GL source GeoJSON
+   mais on peut aussi afficher un overlay HTML */
+.terrain-marker-label {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(154,120,32,.9);
+  color: #050a0f;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  font-weight: 700;
+  letter-spacing: .05em;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   5 · RISK PLAYER — Nouveau composant narratif
+───────────────────────────────────────────────────────────────── */
+.risk-player-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, var(--danger2), rgba(154,120,32,.06));
+  border: 1px solid rgba(242,87,87,.25);
+  border-radius: var(--r);
+  color: var(--text2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .06em;
+  cursor: pointer;
+  transition: all var(--tx-med);
+  margin-bottom: 8px;
+}
+.risk-player-btn:hover {
+  background: linear-gradient(135deg, rgba(242,87,87,.2), var(--accent2));
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Modal player risques */
+.risk-player-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  background: rgba(0,0,0,.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn .2s ease;
+}
+.risk-player-modal[hidden] { display: none; }
+
+.rp-box {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--r-xl);
+  width: min(700px, 94vw);
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 48px rgba(0,0,0,.5);
+  overflow: hidden;
+}
+
+.rp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--card);
+}
+.rp-title {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  color: var(--text);
+  font-style: italic;
+}
+.rp-close {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border2);
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Carte risque principale */
+.rp-stage {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  min-height: 260px;
+}
+
+.risk-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 28px;
+  animation: riskSlideIn .35s cubic-bezier(.22,.68,0,1.2) both;
+  overflow-y: auto;
+}
+.risk-slide.exit {
+  animation: riskSlideOut .25s ease-in forwards;
+}
+
+@keyframes riskSlideIn {
+  from { opacity:0; transform: translateX(30px) scale(.97); }
+  to   { opacity:1; transform: translateX(0) scale(1); }
+}
+@keyframes riskSlideOut {
+  from { opacity:1; transform: translateX(0); }
+  to   { opacity:0; transform: translateX(-30px); }
+}
+
+.rs-category {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rs-category-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.rs-titre {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  color: var(--text);
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: 12px;
+}
+
+.rs-corps {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 12px;
+}
+
+.rs-consequence {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  background: var(--raised);
+  border-radius: var(--r-sm);
+  padding: 10px 13px;
+  margin-bottom: 10px;
+  border-left: 3px solid;
+}
+.rs-consequence-icon { font-size: 18px; flex-shrink: 0; }
+.rs-consequence-text { font-size: 12px; color: var(--text2); line-height: 1.6; }
+
+.rs-action {
+  background: var(--accent2);
+  border: 1px solid rgba(154,120,32,.2);
+  border-radius: var(--r-sm);
+  padding: 9px 13px;
+  font-size: 11.5px;
+  color: var(--accent);
+  line-height: 1.6;
+}
+.rs-action::before { content: '→ '; font-weight: 700; }
+
+/* Source link dans slide */
+.rs-source {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  color: var(--faint);
+  margin-top: 8px;
+}
+
+/* Map mini dans le player (Phase 3 uniquement) */
+.rs-map-mini {
+  height: 120px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  margin-top: 10px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rs-map-mini-placeholder {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--faint);
+  text-align: center;
+}
+
+/* Footer player */
+.rp-footer {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+  background: var(--card);
+  flex-shrink: 0;
+}
+
+.rp-progress-dots {
+  display: flex;
+  gap: 5px;
+  flex: 1;
+  justify-content: center;
+}
+.rpd {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--border2);
+  transition: all .2s ease;
+  cursor: pointer;
+}
+.rpd.active { width: 18px; border-radius: 3px; background: var(--accent); }
+.rpd.done   { background: var(--success); }
+
+.rp-nav-btn {
+  padding: 7px 16px;
+  background: var(--raised);
+  border: 1px solid var(--border2);
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all var(--tx-fast);
+  flex-shrink: 0;
+}
+.rp-nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+.rp-nav-btn.primary {
+  background: var(--accent2);
+  border-color: rgba(154,120,32,.3);
+  color: var(--accent);
+}
+
+/* Compteur risques */
+.risk-count-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--danger2);
+  border: 1px solid rgba(242,87,87,.3);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--danger);
+  margin-bottom: 8px;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   6 · IMPORT PDF GÉOMÈTRE (Phase 0)
+───────────────────────────────────────────────────────────────── */
+.pdf-import-zone {
+  border: 2px dashed var(--border2);
+  border-radius: var(--r);
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--tx-med);
+  background: var(--card);
+  position: relative;
+}
+.pdf-import-zone:hover, .pdf-import-zone.dragover {
+  border-color: var(--accent);
+  background: var(--accent3);
+}
+.pdf-import-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+.pdf-import-icon { font-size: 24px; margin-bottom: 6px; }
+.pdf-import-label { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+.pdf-import-note  { font-size: 9px; color: var(--faint); margin-top: 4px; }
+.pdf-import-result {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--success2);
+  border: 1px solid rgba(45,212,160,.3);
+  border-radius: var(--r-sm);
+  margin-top: 8px;
+}
+.pdf-import-result.visible { display: flex; }
+.pir-name { font-family: var(--font-mono); font-size: 10px; color: var(--success); flex: 1; }
+
+/* ─────────────────────────────────────────────────────────────────
+   7 · AMÉLIORATION CHANTIER — Tags risques sanitaires
+───────────────────────────────────────────────────────────────── */
+.risque-sante-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  border: 1px solid;
+}
+.risque-sante-tag.danger  { background: var(--danger2);  border-color: rgba(242,87,87,.3);  color: var(--danger); }
+.risque-sante-tag.warning { background: var(--warning2); border-color: rgba(245,158,11,.3); color: var(--warning); }
+.risque-sante-tag.info    { background: var(--accent2);  border-color: rgba(154,120,32,.2);  color: var(--accent); }
+
+/* Matrice risques santé */
+.sante-matrix {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.sm-cell {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r);
+  padding: 9px 10px;
+  cursor: pointer;
+  transition: all var(--tx-fast);
+}
+.sm-cell:hover { border-color: var(--warning); background: var(--warning2); }
+.sm-cell.selected { border-color: var(--warning); background: var(--warning2); }
+.sm-cell.danger.selected { border-color: var(--danger); background: var(--danger2); }
+.sm-icon { font-size: 20px; margin-bottom: 4px; display: block; }
+.sm-name { font-size: 11px; color: var(--text2); font-weight: 500; margin-bottom: 2px; }
+.sm-note { font-family: var(--font-mono); font-size: 8px; color: var(--faint); line-height: 1.4; }
+.sm-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 5px; }
+
+/* ─────────────────────────────────────────────────────────────────
+   8 · RIGHT PANEL — Amélioration visuelle acteurs
+───────────────────────────────────────────────────────────────── */
+/* Quand aucun acteur : message plus discret et utile */
+.rp-empty {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--faint);
+  font-style: italic;
+  padding: 10px 0;
+  line-height: 1.5;
+}
+
+/* Acteur card amélioré */
+.actor-card {
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.actor-card:hover {
+  transform: translateX(3px);
+  border-color: var(--border3);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   9 · PARCELLE SAVED INDICATOR (Phase 0)
+───────────────────────────────────────────────────────────────── */
+.parcelle-saved-banner {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  background: var(--success2);
+  border: 1px solid rgba(45,212,160,.3);
+  border-left: 3px solid var(--success);
+  border-radius: var(--r-sm);
+  font-size: 11px;
+  color: var(--success);
+  margin-top: 8px;
+  animation: slideUp .25s ease;
+}
+.parcelle-saved-banner.visible { display: flex; }
+.psb-section {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+}
+.psb-detail {
+  font-size: 10px;
+  color: var(--text2);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   10 · SESSION SAVED INDICATOR global
+───────────────────────────────────────────────────────────────── */
+.session-save-indicator {
+  position: fixed;
+  bottom: 12px;
+  right: 12px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--faint);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all .3s ease;
+  pointer-events: none;
+}
+.session-save-indicator.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.ssi-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   GIEP Score Widget
+───────────────────────────────────────────────────────────────── */
+.giep-score-widget {
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: var(--r-lg);
+  padding: 12px 14px;
+  font-family: var(--font-body);
+}
+.gsw-header { text-align: center; padding-bottom: 10px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+.gsw-title  { font-family: var(--font-mono); font-size: 8px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.gsw-score  { font-weight: 700; line-height: 1; }
+.gsw-score small { font-size: 14px; color: var(--muted); }
+.gsw-label  { font-family: var(--font-mono); font-size: 9px; margin-top: 2px; }
+.gsw-grid   { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; }
+.gsw-row    { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); padding: 2px 0; border-bottom: 1px solid var(--border); }
+.gsw-row:last-child { border-bottom: none; }
+.gsw-row strong { color: var(--text); }
+.gsw-reco   { background: var(--raised); border-radius: var(--r-sm); padding: 8px 10px; margin-bottom: 8px; }
+.gsw-reco-title { font-family: var(--font-mono); font-size: 8px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+.gsw-reco-item  { display: flex; justify-content: space-between; font-size: 11px; color: var(--text2); padding: 2px 0; }
+.gsw-dim    { font-family: var(--font-mono); font-size: 9px; color: var(--accent); }
+.gsw-note   { font-size: 9px; color: var(--faint); font-style: italic; margin-top: 6px; }
+.gsw-source-link { font-family: var(--font-mono); font-size: 9px; color: var(--accent); opacity: .6; }
+
+/* ─────────────────────────────────────────────────────────────────
+   OBIA Result
+───────────────────────────────────────────────────────────────── */
+.obia-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 6px 0; }
+.obia-cell  { background: var(--card); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 5px 8px; }
+.obia-label { font-size: 9px; color: var(--faint); font-family: var(--font-mono); }
+.obia-val   { font-size: 13px; color: var(--text); font-weight: 600; }
+.obia-bar   { height: 3px; background: var(--accent); border-radius: 2px; margin-top: 3px; }
+
+/* ───────────────────────────────────────────────────────��─────────
+   Terrain SVG wrapper (Phase 1)
+───────────────────────────────────────────────────────────────── */
+#terrainSVG { display: block; }
+.detected-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.det-cell   { background: var(--card); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 4px 8px; text-align: center; }
+.det-label  { font-family: var(--font-mono); font-size: 7.5px; color: var(--faint); text-transform: uppercase; letter-spacing: .08em; display: block; }
+.det-val    { font-size: 12px; font-weight: 600; color: var(--text); display: block; }
+
+/* ─────────────────────────────────────────────────────────────────
+   TERLAB Score Bar (topbar widget)
+───────────────────────────────────────────────────────────────── */
+.terlab-score-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 16px;
+  background: var(--raised);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+.tsb-loc {
+  color: var(--muted);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.tsb-progress {
+  width: 120px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.tsb-bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width .5s ease;
+}
+.tsb-pct {
+  min-width: 28px;
+  text-align: right;
+  font-weight: 700;
+}
+.tsb-alerts {
+  color: var(--warning);
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 2px 6px;
+  border: 1px solid rgba(245,158,11,.3);
+  border-radius: 3px;
+}
+.tsb-alerts:hover {
+  background: rgba(245,158,11,.1);
+}

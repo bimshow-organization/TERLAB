@@ -1,0 +1,192 @@
+/* TERLAB · terrain-3d.css — Overlay controls pour le viewer 3D */
+
+.t3d-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #080e18;
+  overflow: hidden;
+  border-radius: 0;
+}
+
+#t3d-canvas,
+#p05-3d-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Toolbar flottante ── */
+.t3d-toolbar {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 10;
+}
+
+.t3d-btn {
+  padding: 5px 10px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  border: 1px solid rgba(154,120,32,.2);
+  background: rgba(8,12,18,.88);
+  color: #6b5c3e;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all .15s;
+  white-space: nowrap;
+  min-width: 72px;
+  text-align: center;
+}
+.t3d-btn:hover,
+.t3d-btn.active {
+  border-color: rgba(154,120,32,.6);
+  color: var(--accent, #9a7820);
+  background: rgba(154,120,32,.1);
+}
+.t3d-btn.active-ok   { border-color: rgba(45,200,154,.6);  color: #2dc89a; }
+.t3d-btn.active-warn { border-color: rgba(245,158,11,.6); color: #f59e0b; }
+.t3d-btn.active-err  { border-color: rgba(239,68,68,.6);  color: #ef4444; }
+
+/* ── Panel info (bas gauche) ── */
+.t3d-info {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(8,12,18,.9);
+  border: 1px solid rgba(154,120,32,.12);
+  border-radius: 5px;
+  padding: 8px 12px;
+  z-index: 10;
+  min-width: 160px;
+}
+
+.t3d-info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: .05em;
+  color: #6b5c3e;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(154,120,32,.06);
+}
+.t3d-info-row:last-child { border-bottom: none; }
+.t3d-info-val { color: #dce8f0; font-weight: 600; }
+
+/* ── Contrôles soleil ── */
+.t3d-sun-panel {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(8,12,18,.9);
+  border: 1px solid rgba(245,158,11,.2);
+  border-radius: 5px;
+  padding: 10px 14px;
+  z-index: 10;
+  width: 200px;
+  display: none;
+}
+.t3d-sun-panel.visible { display: block; }
+
+.t3d-sun-title {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #f59e0b;
+  margin-bottom: 8px;
+}
+
+.t3d-sun-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.t3d-sun-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: #6b5c3e;
+  min-width: 40px;
+}
+.t3d-sun-row input[type="range"] { flex: 1; }
+.t3d-sun-val {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: #f59e0b;
+  min-width: 32px;
+  text-align: right;
+}
+
+/* ── Légende pentes ── */
+.t3d-legend {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(8,12,18,.88);
+  border: 1px solid rgba(154,120,32,.1);
+  border-radius: 5px;
+  padding: 8px 12px;
+  z-index: 10;
+}
+.t3d-legend-title {
+  font-family: var(--font-mono);
+  font-size: 7.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(154,120,32,.5);
+  margin-bottom: 6px;
+}
+.t3d-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: #6b5c3e;
+  padding: 1px 0;
+}
+.t3d-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Loader ── */
+.t3d-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8,12,18,.95);
+  z-index: 20;
+  transition: opacity .4s;
+}
+.t3d-loader.done { opacity: 0; pointer-events: none; }
+.t3d-spinner {
+  width: 36px;
+  height: 36px;
+  border: 2px solid rgba(154,120,32,.2);
+  border-top-color: var(--accent, #9a7820);
+  border-radius: 50%;
+  animation: t3d-spin 0.8s linear infinite;
+  margin-bottom: 12px;
+}
+@keyframes t3d-spin { to { transform: rotate(360deg); } }
+.t3d-loader-text {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: var(--accent, #9a7820);
+}

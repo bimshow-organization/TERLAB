@@ -1,0 +1,144 @@
+<!-- TERLAB · Phase 10 · Entretien, Rénovation & Adaptation · ENSA La Réunion v1.0 -->
+<div class="left-panel">
+  <div class="lp-head anim-slide-up">
+    <div class="phase-label" style="color:#a0784a">Phase 10 · Entretien & Durabilité</div>
+    <h1 class="phase-title">🔧 <em>Entretien</em>, Rénovation & Adaptation</h1>
+    <p class="phase-desc">Anticiper la durabilité dans le contexte tropical réunionnais. L'humidité, les UV intenses, le sel marin et les termites dégradent rapidement les matériaux non traités. Prévoir dès la conception.</p>
+  </div>
+
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Menaces durabilité tropicale</div>
+    <div class="durabilite-grid">
+      <div class="dur-item" onclick="P10.toggle(this,'termites')">
+        <span class="dur-icon">🐛</span>
+        <div class="dur-body">
+          <div class="dur-name">Termites</div>
+          <div class="dur-note">Toute l'île · Traitement préventif obligatoire</div>
+        </div>
+        <div class="dur-status" id="dur-termites">À évaluer</div>
+      </div>
+      <div class="dur-item" onclick="P10.toggle(this,'corrosion')">
+        <span class="dur-icon">🌊</span>
+        <div class="dur-body">
+          <div class="dur-name">Corrosion saline</div>
+          <div class="dur-note">&lt; 2km mer · Acier non traité ruine en 15 ans</div>
+        </div>
+        <div class="dur-status" id="dur-corrosion">À évaluer</div>
+      </div>
+      <div class="dur-item" onclick="P10.toggle(this,'humidite')">
+        <span class="dur-icon">💧</span>
+        <div class="dur-body">
+          <div class="dur-name">Humidité & moisissures</div>
+          <div class="dur-note">Hygrométrie &gt; 80% fréquente</div>
+        </div>
+        <div class="dur-status" id="dur-humidite">À évaluer</div>
+      </div>
+      <div class="dur-item" onclick="P10.toggle(this,'uv')">
+        <span class="dur-icon">☀</span>
+        <div class="dur-body">
+          <div class="dur-name">UV intenses</div>
+          <div class="dur-note">Dégradation enduits, peintures, plastiques</div>
+        </div>
+        <div class="dur-status" id="dur-uv">À évaluer</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Traitement anti-termites préventif</div>
+    <div class="field-row">
+      <div class="radio-group" style="flex-direction:column;gap:4px">
+        <label class="radio-option" onclick="P10.sel(this,'termites_trait','integre')"><input type="radio" name="termites_trait" value="integre"/>✅ Intégré dès la conception (recommandé)</label>
+        <label class="radio-option" onclick="P10.sel(this,'termites_trait','a_prevoir')"><input type="radio" name="termites_trait" value="a_prevoir"/>À prévoir (budget à anticiper)</label>
+        <label class="radio-option" onclick="P10.sel(this,'termites_trait','existant')"><input type="radio" name="termites_trait" value="existant"/>Déjà traité (bâti existant)</label>
+      </div>
+    </div>
+    <p class="field-note">Toute charpente bois doit être de classe 4 minimum ou traitée autoclave. Dégâts structurels en 5–10 ans sans traitement.</p>
+  </div>
+
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Protection corrosion (si zone marine)</div>
+    <div class="field-row">
+      <div class="radio-group" style="flex-direction:column;gap:4px">
+        <label class="radio-option" onclick="P10.sel(this,'corrosion_trait','inox')"><input type="radio" name="corrosion_trait" value="inox"/>Acier inox 316L ou aluminium 6060</label>
+        <label class="radio-option" onclick="P10.sel(this,'corrosion_trait','galva_epoxy')"><input type="radio" name="corrosion_trait" value="galva_epoxy"/>Acier galvanisé + laquage époxy</label>
+        <label class="radio-option" onclick="P10.sel(this,'corrosion_trait','non_applicable')"><input type="radio" name="corrosion_trait" value="non_applicable"/>Non applicable (terrain &gt; 2km mer)</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Diagnostics fin de cycle</div>
+    <div class="diag-items">
+      <label class="diag-item"><input type="checkbox" data-key="diag_amiante"/>Diagnostic amiante (construction &lt; 1997)</label>
+      <label class="diag-item"><input type="checkbox" data-key="diag_termites"/>Diagnostic termites (obligatoire vente)</label>
+      <label class="diag-item"><input type="checkbox" data-key="diag_erp"/>État des Risques et Pollutions (ERP)</label>
+      <label class="diag-item"><input type="checkbox" data-key="diag_dpe"/>DPE adapté DOM</label>
+    </div>
+  </div>
+
+  <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
+    <button class="source-btn" onclick="TerlabSources.open(10)">→ Sources &amp; références entretien</button>
+  </div>
+
+  <div class="val-block">
+    <div class="val-title">Validation de la phase 10</div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Plan de maintenance esquissé</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Matériaux résistants termites/corrosion choisis</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Diagnostics fin de cycle listés</span></div>
+    <div class="val-progress"><div class="val-bar"></div></div>
+    <div class="val-footer"><span>Phase indicative</span><span class="val-pct">0/3</span></div>
+    <button class="next-btn">Phase 11 — Fin de Vie →</button>
+  </div>
+</div>
+<div class="map-area"><div id="map" style="width:100%;height:100%"></div></div>
+<div class="right-panel">
+  <div class="rp-section"><div class="rp-head">Acteurs & ressources</div><div id="actors-zone" class="stagger anim-fade-in"></div></div>
+  <div class="rp-section"><div class="rp-head">Risques de phase</div><div id="risks-zone"></div></div>
+  <div class="rp-section">
+    <div class="rp-head">Plan de maintenance type</div>
+    <div class="ped-note" style="font-size:11px">
+      <strong>Après chaque cyclone :</strong> inspection toiture, vérification fixations, relevé des dégâts.<br/>
+      <strong>Annuel :</strong> nettoyage panneaux PV, inspection charpente (termites), entretien joints.<br/>
+      <strong>5 ans :</strong> repeinture façades (UV), vérification étanchéité terrasse.<br/>
+      <strong>Vente :</strong> ERP obligatoire dans les 6 mois précédant la signature.
+    </div>
+  </div>
+  <div class="rp-section">
+    <div class="rp-head">Exemples enviroBAT-Réunion</div>
+    <div id="eb-cards-p10"></div>
+  </div>
+</div>
+<style>
+.durabilite-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-bottom:8px; }
+.dur-item { display:flex; flex-direction:column; gap:4px; padding:8px; background:var(--card); border:1.5px solid var(--border); border-radius:var(--r); cursor:pointer; transition:all var(--tx-fast); }
+.dur-item:hover { border-color:var(--warning); }
+.dur-item.checked { border-color:var(--success); background:var(--success2); }
+.dur-icon { font-size:20px; }
+.dur-name { font-size:11px; color:var(--text2); font-weight:500; }
+.dur-note { font-family:var(--font-mono); font-size:8px; color:var(--faint); line-height:1.4; }
+.dur-status { font-family:var(--font-mono); font-size:8.5px; color:var(--faint); margin-top:2px; padding:2px 6px; background:var(--raised); border-radius:2px; align-self:flex-start; }
+.dur-item.checked .dur-status { background:var(--success2); color:var(--success); }
+.diag-items { display:flex; flex-direction:column; gap:4px; }
+.diag-item { display:flex; align-items:center; gap:8px; padding:6px 9px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); font-size:12px; color:var(--text2); cursor:pointer; }
+.diag-item input { accent-color:var(--success); }
+</style>
+<script type="module">
+const SessionManager = window.SessionManager;
+const P10 = {
+  toggle(el, id) {
+    el.classList.toggle('checked');
+    const stat = document.getElementById(`dur-${id}`);
+    if (stat) stat.textContent = el.classList.contains('checked') ? '✓ Traité' : 'À évaluer';
+  },
+  sel(label, field, val) {
+    document.querySelectorAll(`[name="${field}"]`).forEach(r => r.closest('.radio-option')?.classList.remove('selected'));
+    label.classList.add('selected');
+    SessionManager.savePhase(10, { [field]: val });
+  }
+};
+window.P10 = P10;
+
+// enviroBAT cards
+if (window.EnvirobatCards) EnvirobatCards.render('eb-cards-p10', 'p10');
+</script>

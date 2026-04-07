@@ -1,0 +1,130 @@
+/* ═══════════════════════════════════════════════════════════════
+   TERLAB · acces-pompiers.css
+   Styles pour le bouton déclencheur + modal AccesPompiers
+   À inclure dans terlab-v2-additions.css
+═══════════════════════════════════════════════════════════════ */
+
+/* ─── Bouton déclencheur ──────────────────────────────────────── */
+.acces-pompiers-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--card);
+  border: 1.5px solid rgba(239, 68, 68, .2);
+  border-radius: var(--r);
+  cursor: pointer;
+  transition: all var(--tx-med);
+  text-align: left;
+  margin-top: 6px;
+}
+.acces-pompiers-trigger:hover {
+  border-color: rgba(239, 68, 68, .45);
+  background: rgba(239, 68, 68, .05);
+}
+
+.apt-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-sm);
+  background: rgba(239, 68, 68, .1);
+  border: 1px solid rgba(239, 68, 68, .25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.apt-body { flex: 1; min-width: 0; }
+
+.apt-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--text);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.apt-sub {
+  font-size: 10.5px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.apt-score {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.apt-score-num {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.apt-score-lbl {
+  font-family: var(--font-mono);
+  font-size: 7px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+/* Indicateur de statut rapide (mini pills dans Phase 8) */
+.sdis-status-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.sdis-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: .04em;
+  border: 1px solid;
+  transition: all var(--tx-fast);
+  cursor: default;
+}
+
+.sdis-pill.ok   { background: var(--success2); border-color: rgba(45,200,154,.3);  color: var(--success); }
+.sdis-pill.warn { background: var(--warning2); border-color: rgba(245,158,11,.3); color: var(--warning); }
+.sdis-pill.err  { background: var(--danger2);  border-color: rgba(239,68,68,.3);   color: var(--danger); }
+
+/* ─── Mode buttons dans le SVG plan ──────────────────────────── */
+.ap-mode-btn {
+  padding: 4px 9px;
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  border: 1px solid rgba(154, 120, 32, .15);
+  background: rgba(8, 12, 18, .85);
+  color: #6b5c3e;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.ap-mode-btn:hover,
+.ap-mode-btn.active {
+  border-color: rgba(154, 120, 32, .5);
+  color: var(--accent, #9a7820);
+  background: rgba(154, 120, 32, .08);
+}
+
+/* ─── Fonts chargées pour la modal (si pas déjà dans index.html) ─ */
+/* Normalement ces fonts sont déjà dans index.html via Google Fonts  */
+/* La modal les hérite automatiquement                               */

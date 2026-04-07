@@ -1,0 +1,199 @@
+/* ═══════════════════════════════════════════════════════════════════
+   TERLAB · terlab-3d-viewer.css
+   Panel 3D intégré — toolbar, canvas, contrôles héliodon
+═══════════════════════════════════════════════════════════════════ */
+
+/* ── PANEL CONTAINER (fixed right split) ─────────────────────── */
+.terlab-3d-panel {
+  position: fixed;
+  top: var(--topbar-h, 48px);
+  right: 0;
+  width: 50vw;
+  height: calc(100vh - var(--topbar-h, 48px));
+  background: var(--card, #fcf9f3);
+  overflow: hidden;
+  border-left: 1px solid var(--border, rgba(154,120,32,.18));
+  box-shadow: -4px 0 20px rgba(90,70,30,.10);
+  z-index: 50;
+  transition: transform 280ms ease-out, opacity 200ms ease-out;
+}
+.terlab-3d-panel[hidden] {
+  display: block !important;
+  transform: translateX(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+.terlab-3d-panel:not([hidden]) {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+/* Shrink main when 3D panel open */
+.terlab-app.tv-open .terlab-main {
+  width: 50vw;
+}
+
+/* ── CANVAS ──────────────────────────────────────────────────── */
+.tv-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+.tv-canvas:active { cursor: grabbing; }
+
+/* ── TOOLBAR ─────────────────────────────────────────────────── */
+.tv-toolbar {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  background: rgba(252, 249, 243, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 8px;
+  border: 1px solid var(--border, rgba(154,120,32,.18));
+  box-shadow: 0 2px 12px rgba(90,70,30,.12);
+  font-family: var(--font-mono, 'Inconsolata', monospace);
+  font-size: 11px;
+  z-index: 10;
+  user-select: none;
+}
+
+/* ── BUTTONS ─────────────────────────────────────────────────── */
+.tv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 26px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text2, #3c3220);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 120ms ease-out;
+  white-space: nowrap;
+}
+
+.tv-btn:hover {
+  background: var(--accent2, rgba(154,120,32,.12));
+  color: var(--accent, #9a7820);
+}
+
+.tv-btn.tv-active {
+  background: var(--accent, #9a7820);
+  color: #fcf9f3;
+  border-color: var(--accent, #9a7820);
+}
+.tv-btn.tv-active:hover {
+  background: var(--gold, #9a7820);
+  filter: brightness(1.1);
+  color: #fcf9f3;
+}
+
+/* facade group inline */
+.tv-facade-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+}
+.tv-facade-prev,
+.tv-facade-next {
+  min-width: 22px;
+  padding: 0 3px;
+  font-size: 10px;
+  opacity: 0.6;
+}
+.tv-facade-prev:hover,
+.tv-facade-next:hover { opacity: 1; }
+.tv-facade-label {
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+/* ── SEPARATORS ──────────────────────────────────────────────── */
+.tv-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border, rgba(154,120,32,.18));
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+/* ── SLIDERS ─────────────────────────────────────────────────── */
+.tv-clip-slider,
+.tv-sun-slider {
+  width: 70px;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--raised, #e2dbcd);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+.tv-clip-slider::-webkit-slider-thumb,
+.tv-sun-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent, #9a7820);
+  border: 2px solid var(--card, #fcf9f3);
+  box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  cursor: grab;
+}
+.tv-clip-slider::-webkit-slider-thumb:active,
+.tv-sun-slider::-webkit-slider-thumb:active { cursor: grabbing; }
+
+/* ── SUN GROUP ───────────────────────────────────────────────── */
+.tv-sun-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.tv-sun-time {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent, #9a7820);
+  min-width: 36px;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+.tv-sun-btn.tv-active {
+  background: #f59e0b;
+  color: #1a1400;
+  border-color: #f59e0b;
+}
+.tv-play-btn {
+  font-size: 13px;
+  min-width: 24px;
+}
+
+/* ── SNAPSHOT ─────────────────────────────────────────────────── */
+.tv-snap-btn {
+  font-size: 14px;
+  min-width: 30px;
+}
+
+/* ── RESPONSIVE ──────────────────────────────────────────────── */
+@media (max-width: 800px) {
+  .tv-toolbar {
+    padding: 4px 6px;
+    gap: 2px;
+    font-size: 10px;
+  }
+  .tv-btn { height: 24px; min-width: 24px; padding: 0 5px; font-size: 10px; }
+  .tv-clip-slider, .tv-sun-slider { width: 50px; }
+}

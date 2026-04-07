@@ -1,0 +1,1279 @@
+// TERLAB · map-viewer.js · Wrapper Mapbox GL JS partagé · ENSA La Réunion v1.0
+// Gestion unique de la carte, réutilisée dans toutes les phases
+
+import PPRService from '../services/ppr-service.js';
+import BRGMService from '../services/brgm-service.js';
+import GeoStatusBar from './geo-status-bar.js';
+
+const MapViewer = {
+
+  _map:        null,
+  _token:      null,
+  _mode:       null,
+  _draw:       null,
+  _profileChart: null,
+  _activeTool:  null,
+  _profileClickHandler: null,
+
+  // Coordonnées par défaut — centre Réunion
+  DEFAULT_CENTER: [55.54, -21.11],
+  DEFAULT_ZOOM:   10,
+
+  // ── INIT ──────────────────────────────────────────────────────
+  async init({ containerId = 'map', token, mode, pitch = 0, bearing = 0, zoom }) {
+    this._token = token ?? this._token;
+    if (!this._token) { this._renderNoMap(containerId); return; }
+
+    mapboxgl.accessToken = this._token;
+
+    // Détruire la carte précédente si existante
+    if (this._map) {
+      this._map.remove();
+      this._map = null;
+    }
+
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    // Sélectionner le style selon le mode
+    const style = this._getStyle(mode);
+
+    this._map = new mapboxgl.Map({
+      container: containerId,
+      style,
+      center:    this.DEFAULT_CENTER,
+      zoom:      zoom ?? this.DEFAULT_ZOOM,
+      pitch,
+      bearing,
+      projection: mode === 'globe-koppen' ? 'globe' : 'mercator',
+      antialias:  true,
+      preserveDrawingBuffer: true
+    });
+
+    // Navigation controls
+    this._map.addControl(new mapboxgl.NavigationControl({ visualizePitch: true }), 'bottom-right');
+    this._map.addControl(new mapboxgl.ScaleControl({ unit: 'metric' }), 'bottom-left');
+    this._map.addControl(new mapboxgl.GeolocateControl({ positionOptions: { enableHighAccuracy: true } }), 'bottom-right');
+
+    this._mode = mode;
+
+    await new Promise(resolve => this._map.once('load', resolve));
+
+    // Injecter la map dans BRGMService pour le pixel sampling
+    BRGMService.setMap(this._map);
+
+    // Ajouter les couches selon le mode
+    await this._setupLayers(mode);
+
+    // Parcelle toujours visible (toutes phases)
+    this._ensureParcelleLayer();
+
+    // Barre de statut géographique
+    GeoStatusBar.detach(document.getElementById(containerId));
+    const mapContainer = document.getElementById(containerId);
+    if (mapContainer) {
+      GeoStatusBar.attach({ container: mapContainer, source: 'mapbox', map: this._map });
+    }
+
+    // Atmosphère pour le globe
+    if (mode === 'globe-koppen') {
+      this._map.setFog({ range: [0.8, 8], color: '#0a0f1e', 'horizon-blend': 0.03 });
+      this._startGlobeRotation();
+    }
+
+    console.info(`[Map] Init mode="${mode}" pitch=${pitch} bearing=${bearing}`);
+    return this._map;
+  },
+
+  setToken(token) { this._token = token; },
+
+  // ── STYLES MAPBOX ─────────────────────────────────────────────
+  _getStyle(mode) {
+    const styles = {
+      'satellite+cadastre':    'mapbox://styles/mapbox/satellite-streets-v12',
+      'terrain3d+ravines':     'mapbox://styles/mapbox/satellite-streets-v12',
+      'brgm+pprn-mouvements':  'mapbox://styles/mapbox/satellite-streets-v12',
+      'pprn+simulation-eau':   'mapbox://styles/mapbox/satellite-streets-v12',
+      'plu+reculs':            'mapbox://styles/mapbox/satellite-streets-v12',
+      'buildings3d+icpe':      'mapbox://styles/mapbox/satellite-streets-v12',
+      'nature-ign+znieff':     'mapbox://styles/mapbox/satellite-streets-v12',
+      'bimshow-extrusion':     'mapbox://styles/mapbox/satellite-streets-v12',
+      'satellite':             'mapbox://styles/mapbox/satellite-streets-v12',
+      'overview':              'mapbox://styles/mapbox/satellite-streets-v12',
+      'globe-koppen':          'mapbox://styles/mapbox/satellite-streets-v12'
+    };
+    return styles[mode] ?? 'mapbox://styles/mapbox/satellite-streets-v12';
+  },
+
+  // ── SETUP COUCHES PAR MODE ────────────────────────────────────
+  async _setupLayers(mode) {
+    switch (mode) {
+      case 'satellite+cadastre':     await this._addCadastreLayers();      break;
+      case 'terrain3d+ravines':      await this._addTerrain3D();            break;
+      case 'brgm+pprn-mouvements':   await this._addBRGMLayers();            break;
+      case 'pprn+simulation-eau':    await this._addPPRNLayers();           break;
+      case 'plu+reculs':             await this._addPLULayers();            break;
+      case 'buildings3d+icpe':       await this._addBuildings3D();          break;
+      case 'nature-ign+znieff':      await this._addNatureLayers();         break;
+      case 'bimshow-extrusion':      await this._addExtrusionLayer();       break;
+      case 'overview':               await this._addOverviewLayers();       break;
+      case 'globe-koppen':           await this._addKoppenMarkers();        break;
+    }
+  },
+
+  // ── PARCELLE — toujours visible (toutes phases) ──────────────
+  _ensureParcelleLayer() {
+    const m = this._map;
+    if (!m || m.getSource('parcelle-selected')) return;
+
+    m.addSource('parcelle-selected', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    m.addLayer({ id: 'parcelle-fill', type: 'fill', source: 'parcelle-selected', paint: { 'fill-color': '#9a7820', 'fill-opacity': 0.15 } });
+    m.addLayer({ id: 'parcelle-outline', type: 'line', source: 'parcelle-selected', paint: { 'line-color': '#9a7820', 'line-width': 2.5 } });
+
+    // Restaurer la géométrie depuis la session
+    const terrain = window.SessionManager?.getTerrain?.() ?? {};
+    const geom = terrain.parcelle_geojson
+      ?? (terrain.geometrie_approx ? { type: 'Polygon', coordinates: [terrain.geometrie_approx] } : null);
+    if (geom) {
+      const src = m.getSource('parcelle-selected');
+      if (src) src.setData({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: geom }] });
+    }
+  },
+
+  // ── COUCHE CADASTRE (Phase 0) ─────────────────────────────────
+  async _addCadastreLayers() {
+    const m = this._map;
+
+    // WMTS Cadastre IGN
+    m.addSource('cadastre-wmts', {
+      type: 'raster',
+      tiles: ['https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=CADASTRALPARCELS.PARCELLAIRE_EXPRESS&STYLE=PCI%20vecteur&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png'],
+      tileSize: 256,
+      minzoom: 14,
+      maxzoom: 20,
+      attribution: '© IGN Géoplateforme'
+    });
+    m.addLayer({ id: 'cadastre', type: 'raster', source: 'cadastre-wmts', minzoom: 14, paint: { 'raster-opacity': 0.7, 'raster-saturation': -1 } });
+
+    // Plan IGN WMTS (GIEP: carte.js addGeoportailLayers)
+    m.addSource('geoportail-plan', {
+      type: 'raster',
+      tiles: ['https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0'
+             + '&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal'
+             + '&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}'],
+      tileSize: 256,
+      maxzoom: 18,
+    });
+    m.addLayer({
+      id: 'plan-ign', type: 'raster', source: 'geoportail-plan',
+      paint: { 'raster-opacity': 0.5 },
+      layout: { visibility: 'none' }
+    });
+
+    // Parcelle sélectionnée — déjà créée par _ensureParcelleLayer
+
+    // Reculs ghost (Phase 4 si données disponibles)
+    m.addSource('reculs-preview', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    m.addLayer({ id: 'reculs-fill', type: 'fill', source: 'reculs-preview', paint: { 'fill-color': '#a78bfa', 'fill-opacity': 0.08 } });
+    m.addLayer({ id: 'reculs-outline', type: 'line', source: 'reculs-preview', paint: { 'line-color': '#a78bfa', 'line-width': 1, 'line-dasharray': [4, 3] } });
+
+    // Clic → recherche parcelle (ou multi-sélection si actif)
+    m.on('click', async e => {
+      const feature = await this.searchParcelleAt(e.lngLat.lng, e.lngLat.lat);
+      if (!feature) return;
+
+      // Si multi-sélection active → dispatch pour ParcelSelector
+      if (window.ParcelSelector?.isActive?.()) {
+        const props = feature.properties ?? {};
+        window.dispatchEvent(new CustomEvent('terlab:parcelle-click', {
+          detail: {
+            parcelle: {
+              commune:        props.commune ?? props.nom_com ?? '',
+              section:        props.section ?? '',
+              numero:         props.numero ?? '',
+              reference:      `${props.commune ?? ''}${props.section ?? ''}${props.numero ?? ''}`,
+              contenance_m2:  props.contenance ? parseFloat(props.contenance) : 0,
+              geometry:       feature.geometry,
+            },
+            coordinates: feature.geometry,
+          }
+        }));
+      }
+    });
+  },
+
+  // ── TERRAIN 3D (Phase 1) ──────────────────────────────────────
+  async _addTerrain3D() {
+    const m = this._map;
+
+    m.addSource('mapbox-dem', { type: 'raster-dem', url: 'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize: 512, maxzoom: 14 });
+    m.setTerrain({ source: 'mapbox-dem', exaggeration: 1.4 });
+
+    // Source DEM separee pour le hillshade (evite le warning Mapbox resolution)
+    m.addSource('mapbox-dem-hillshade', { type: 'raster-dem', url: 'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize: 512, maxzoom: 14 });
+    m.addLayer({ id: 'hillshade', type: 'hillshade', source: 'mapbox-dem-hillshade', paint: { 'hillshade-shadow-color': '#1a0e00', 'hillshade-exaggeration': 0.5 } });
+
+    // Ravines (waterway OSM via Mapbox)
+    m.addLayer({
+      id: 'ravines',
+      type: 'line',
+      source: 'composite',
+      'source-layer': 'waterway',
+      paint: {
+        'line-color': '#00bcd4',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 10, 1, 15, 3],
+        'line-opacity': 0.8
+      }
+    });
+
+    // Lumière sky
+    m.setFog({ range: [0.5, 10], color: '#0a0a14', 'high-color': '#1a1a2e', 'horizon-blend': 0.02 });
+  },
+
+  // ── CARTE GÉOLOGIQUE BRGM (Phase 2) ───────────────────────────
+  async _addBRGMLayers() {
+    const m = this._map;
+
+    // Terrain 3D pour le relief
+    await this._addTerrain3D();
+
+    // ── Couche raster WMS BRGM Réunion 1:50 000 ────────────────
+    // Endpoint vérifié via GetCapabilities geoservices.brgm.fr
+    // Layers dispo : GEOL_REU_50K (1:50k), GEOL_REU_100K (1:100k)
+    m.addSource('brgm-geol', {
+      type: 'raster',
+      tiles: [
+        'https://geoservices.brgm.fr/geologie?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap'
+        + '&LAYERS=GEOL_REU_50K&STYLES=&CRS=EPSG:3857'
+        + '&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/png&TRANSPARENT=true'
+      ],
+      tileSize: 256,
+      attribution: '© BRGM — Carte géologique Réunion 1:50 000'
+    });
+    m.addLayer({
+      id: 'brgm-geol-layer',
+      type: 'raster',
+      source: 'brgm-geol',
+      paint: { 'raster-opacity': 0.65 }
+    });
+
+    // ── Fallback : BRGM 1:100 000 si 50k indisponible ──────────
+    m.addSource('brgm-geol-100k', {
+      type: 'raster',
+      tiles: [
+        'https://geoservices.brgm.fr/geologie?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap'
+        + '&LAYERS=GEOL_REU_100K&STYLES=&CRS=EPSG:3857'
+        + '&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image/png&TRANSPARENT=true'
+      ],
+      tileSize: 256,
+      attribution: '© BRGM — Carte géologique Réunion 1:100 000'
+    });
+    m.addLayer({
+      id: 'brgm-geol-100k-layer',
+      type: 'raster',
+      source: 'brgm-geol-100k',
+      paint: { 'raster-opacity': 0 },
+      layout: { visibility: 'none' }
+    });
+
+    // Détection erreur tuiles BRGM 50k → bascule vers 100k
+    let brgmFailed = false;
+    m.on('error', (e) => {
+      if (brgmFailed) return;
+      const src = e.sourceId ?? e.source?.id;
+      if (src === 'brgm-geol') {
+        brgmFailed = true;
+        console.warn('[Map] Tuiles BRGM 50k indisponibles — fallback 100k');
+        m.setPaintProperty('brgm-geol-layer', 'raster-opacity', 0);
+        m.setLayoutProperty('brgm-geol-100k-layer', 'visibility', 'visible');
+        m.setPaintProperty('brgm-geol-100k-layer', 'raster-opacity', 0.65);
+      }
+    });
+  },
+
+  // ── PPRN + SIMULATION EAU (Phase 3) ──────────────────────────
+  async _addPPRNLayers() {
+    const m = this._map;
+
+    // Terrain 3D + DEM
+    m.addSource('mapbox-dem', { type: 'raster-dem', url: 'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize: 512, maxzoom: 14 });
+    m.setTerrain({ source: 'mapbox-dem', exaggeration: 1.2 });
+
+    // ── PPR approuvés — AGORAH PEIGEO (GeoServer public) ───────
+    m.addSource('ppr-peigeo', PPRService.getPPRSourceConfig());
+    m.addLayer({
+      id: 'ppr-layer',
+      type: 'raster',
+      source: 'ppr-peigeo',
+      paint: { 'raster-opacity': 0.65 }
+    });
+
+    // Fallback si PEIGEO indisponible
+    let pprFailed = false;
+    m.on('error', (e) => {
+      if (pprFailed) return;
+      const src = e.sourceId ?? e.source?.id;
+      if (src === 'ppr-peigeo') {
+        pprFailed = true;
+        console.warn('[Map] Tuiles PPR PEIGEO indisponibles');
+        m.setPaintProperty('ppr-layer', 'raster-opacity', 0);
+        this._showStubBanner('PPR PEIGEO indisponible — saisie manuelle requise');
+      }
+    });
+
+    // Couche simulation inondation — bathtub DEM
+    m.addSource('flood-sim', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    m.addLayer({
+      id: 'flood-fill',
+      type: 'fill',
+      source: 'flood-sim',
+      paint: {
+        'fill-color': [
+          'interpolate', ['linear'], ['get', 'depth'],
+          0,   'rgba(14, 165, 233, 0.20)',   // très peu profond
+          1,   'rgba(14, 165, 233, 0.45)',
+          3,   'rgba(2,  132, 199, 0.60)',
+          5,   'rgba(3,   105, 161, 0.75)'   // profond
+        ],
+        'fill-opacity': 1
+      }
+    });
+
+    // Trajectoires cyclones (GeoJSON statique — stub si fichier absent)
+    try {
+      const resp = await fetch('data/cyclones-reunion.json');
+      if (resp.ok) {
+        const gj = await resp.json();
+        m.addSource('cyclones', { type: 'geojson', data: gj });
+        m.addLayer({ id: 'cyclones-line', type: 'line', source: 'cyclones',
+          paint: { 'line-color': '#ff6b4a', 'line-width': 1.5, 'line-opacity': 0.6, 'line-dasharray': [3, 2] } });
+      }
+    } catch { /* cyclones.json non disponible — pas critique */ }
+  },
+
+  // ── PLU + RECULS (Phase 4) ────────────────────────────────────
+  async _addPLULayers() {
+    const m = this._map;
+
+    // ── Cadastre + Plan IGN (toggleables depuis P04) ───────────
+    if (!m.getSource('cadastre-wmts')) {
+      m.addSource('cadastre-wmts', {
+        type: 'raster',
+        tiles: ['https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=CADASTRALPARCELS.PARCELLAIRE_EXPRESS&STYLE=PCI%20vecteur&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png'],
+        tileSize: 256, minzoom: 14, maxzoom: 20,
+        attribution: '© IGN Géoplateforme'
+      });
+      m.addLayer({ id: 'cadastre', type: 'raster', source: 'cadastre-wmts', minzoom: 14, paint: { 'raster-opacity': 0.7, 'raster-saturation': -1 } });
+    }
+    if (!m.getSource('geoportail-plan')) {
+      m.addSource('geoportail-plan', {
+        type: 'raster',
+        tiles: ['https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0'
+               + '&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal'
+               + '&FORMAT=image/png&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}'],
+        tileSize: 256, maxzoom: 18,
+      });
+      m.addLayer({ id: 'plan-ign', type: 'raster', source: 'geoportail-plan', paint: { 'raster-opacity': 0.5 }, layout: { visibility: 'none' } });
+    }
+
+    // ── PLU simplifié — AGORAH PEIGEO (GeoServer public) ───────
+    m.addSource('plu-peigeo', PPRService.getPLUSourceConfig());
+    m.addLayer({
+      id: 'plu-layer',
+      type: 'raster',
+      source: 'plu-peigeo',
+      paint: { 'raster-opacity': 0.55 }
+    });
+
+    // Fallback si PEIGEO indisponible
+    let pluFailed = false;
+    m.on('error', (e) => {
+      if (pluFailed) return;
+      const src = e.sourceId ?? e.source?.id;
+      if (src === 'plu-peigeo') {
+        pluFailed = true;
+        console.warn('[Map] Tuiles PLU PEIGEO indisponibles');
+        m.setPaintProperty('plu-layer', 'raster-opacity', 0);
+        this._showStubBanner('PLU PEIGEO indisponible — API Carto IGN utilisée en fallback');
+      }
+    });
+
+    // Couche parcelle + reculs depuis session
+    m.addSource('parcelle-p4', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    m.addLayer({ id: 'parcelle-p4-fill', type: 'fill', source: 'parcelle-p4', paint: { 'fill-color': '#9a7820', 'fill-opacity': 0.1 } });
+    m.addLayer({ id: 'parcelle-p4-line', type: 'line', source: 'parcelle-p4', paint: { 'line-color': '#9a7820', 'line-width': 2 } });
+
+    m.addSource('reculs-p4', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    m.addLayer({ id: 'reculs-p4-fill', type: 'fill', source: 'reculs-p4', paint: { 'fill-color': '#a78bfa', 'fill-opacity': 0.15 } });
+    m.addLayer({ id: 'reculs-p4-line', type: 'line', source: 'reculs-p4', paint: { 'line-color': '#a78bfa', 'line-width': 1, 'line-dasharray': [4, 3] } });
+  },
+
+  // ── BÂTIMENTS 3D + ICPE (Phase 5) ────────────────────────────
+  async _addBuildings3D() {
+    const m = this._map;
+
+    m.addLayer({
+      id: 'buildings-3d',
+      type: 'fill-extrusion',
+      source: 'composite',
+      'source-layer': 'building',
+      filter: ['==', 'extrude', 'true'],
+      paint: {
+        'fill-extrusion-color': '#c4b396',
+        'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 14, 0, 16, ['get', 'height']],
+        'fill-extrusion-base':   ['get', 'min_height'],
+        'fill-extrusion-opacity': 0.75
+      }
+    });
+
+    // Cercle rayon 500m pour ICPE
+    m.addSource('icpe-radius', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    m.addLayer({ id: 'icpe-circle', type: 'fill', source: 'icpe-radius',
+      paint: { 'fill-color': '#f59e0b', 'fill-opacity': 0.08 } });
+    m.addLayer({ id: 'icpe-circle-line', type: 'line', source: 'icpe-radius',
+      paint: { 'line-color': '#f59e0b', 'line-width': 1, 'line-dasharray': [4, 3] } });
+  },
+
+  // ── NATURE + ZNIEFF (Phase 6) ─────────────────────────────────
+  async _addNatureLayers() {
+    const m = this._map;
+
+    // Style clair pour le fond
+    await m.setStyle('mapbox://styles/mapbox/outdoors-v12');
+    await new Promise(r => m.once('styledata', r));
+
+    m.addSource('parc-national', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    m.addLayer({ id: 'parc-fill', type: 'fill', source: 'parc-national',
+      paint: { 'fill-color': '#3d6b2e', 'fill-opacity': 0.12 } });
+    m.addLayer({ id: 'parc-line', type: 'line', source: 'parc-national',
+      paint: { 'line-color': '#3d6b2e', 'line-width': 2, 'line-dasharray': [3, 2] } });
+  },
+
+  // ── EXTRUSION GABARIT (Phase 7) ───────────────────────────────
+  async _addExtrusionLayer() {
+    const m = this._map;
+
+    m.addSource('mapbox-dem', { type: 'raster-dem', url: 'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize: 512, maxzoom: 14 });
+    m.setTerrain({ source: 'mapbox-dem', exaggeration: 1.0 });
+
+    m.addSource('gabarit-3d', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    m.addLayer({
+      id: 'gabarit-extrusion',
+      type: 'fill-extrusion',
+      source: 'gabarit-3d',
+      paint: {
+        'fill-extrusion-color':   '#f59e0b',
+        'fill-extrusion-height':  ['get', 'height'],
+        'fill-extrusion-base':    0,
+        'fill-extrusion-opacity': 0.7
+      }
+    });
+
+    // Ombres reculs
+    m.addSource('reculs-3d', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    m.addLayer({ id: 'reculs-shade', type: 'fill', source: 'reculs-3d',
+      paint: { 'fill-color': '#a78bfa', 'fill-opacity': 0.12 } });
+  },
+
+  // ── OVERVIEW (Phase 12) ───────────────────────────────────────
+  async _addOverviewLayers() {
+    const m = this._map;
+    m.addSource('mapbox-dem', { type: 'raster-dem', url: 'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize: 512, maxzoom: 14 });
+    m.setTerrain({ source: 'mapbox-dem', exaggeration: 1.2 });
+    await this._addCadastreLayers();
+  },
+
+  // ── GLOBE Köppen (Phase 13) ───────────────────────────────────
+  async _addKoppenMarkers() {
+    const m = this._map;
+
+    try {
+      const resp = await fetch('data/climat-koppen.json');
+      if (!resp.ok) throw new Error('Köppen JSON non trouvé');
+      const data = await resp.json();
+
+      for (const zone of data.zones_similaires) {
+        const el = document.createElement('div');
+        el.className = 'koppen-marker';
+        el.style.cssText = `
+          width:${zone.marker_size === 'large' ? 16 : 10}px;
+          height:${zone.marker_size === 'large' ? 16 : 10}px;
+          background:${zone.marker_color ?? '#3c78dc'};
+          border-radius:50%;
+          border:2px solid rgba(255,255,255,0.6);
+          cursor:pointer;
+          transition:transform .2s;
+        `;
+        el.title = zone.nom;
+
+        el.addEventListener('mouseenter', () => el.style.transform = 'scale(1.6)');
+        el.addEventListener('mouseleave', () => el.style.transform = 'scale(1)');
+        el.addEventListener('click', () => this._showKoppenPanel(zone));
+
+        new mapboxgl.Marker(el)
+          .setLngLat([zone.lng, zone.lat])
+          .addTo(m);
+      }
+    } catch (e) {
+      console.warn('[Map] Köppen markers:', e.message);
+    }
+  },
+
+  _startGlobeRotation() {
+    const m = this._map;
+    let rotating = true;
+    let bearing  = 10; // part sur Réunion
+
+    const spin = () => {
+      if (!rotating || !m) return;
+      bearing -= 0.06;
+      m.setBearing(bearing);
+      requestAnimationFrame(spin);
+    };
+    requestAnimationFrame(spin);
+
+    // Arrêter la rotation si l'utilisateur interagit
+    m.once('mousedown', () => { rotating = false; });
+    m.once('touchstart', () => { rotating = false; });
+
+    // Exposer contrôle
+    this._globeRotating = { get: () => rotating, set: v => { rotating = v; if (v) spin(); } };
+  },
+
+  _showKoppenPanel(zone) {
+    const panel = document.getElementById('koppen-detail-panel');
+    if (!panel) return;
+
+    panel.innerHTML = `
+      <div class="koppen-detail-head">
+        <span class="koppen-badge" style="background:${zone.marker_color ?? '#3c78dc'}20;color:${zone.marker_color ?? '#3c78dc'};border:1px solid ${zone.marker_color ?? '#3c78dc'}40">
+          ${zone.koppen ?? zone.etage_principal}
+        </span>
+        <h3 class="koppen-detail-title">${zone.nom}</h3>
+        <p class="koppen-detail-pays">${zone.pays} · ${zone.continent}</p>
+      </div>
+      ${zone.note ? `<p class="koppen-detail-note">${zone.note}</p>` : ''}
+      ${zone.architectures_ref?.length ? `
+        <div class="koppen-refs">
+          <div class="rp-head">Références architecturales</div>
+          ${zone.architectures_ref.map(r => `<div class="koppen-ref-item">→ ${r}</div>`).join('')}
+        </div>` : ''}
+      ${zone.partenariat_ensa ? `
+        <div class="koppen-partenariat">🤝 Partenariat ENSA potentiel ou actif</div>` : ''}
+    `;
+    panel.style.display = 'block';
+  },
+
+  // ── OUTILS ────────────────────────────────────────────────────
+  activateTool(tool) {
+    this._activeTool = tool;
+
+    if (tool === 'profile') {
+      this._enableProfileTool();
+    } else if (tool === 'measure') {
+      this._enableMeasureTool();
+    }
+  },
+
+  toggle3D() {
+    if (!this._map) return;
+    const current = this._map.getPitch();
+    this._map.easeTo({ pitch: current > 0 ? 0 : 60, duration: 800 });
+  },
+
+  // ── PROFIL ALTIMÉTRIQUE ───────────────────────────────────────
+  _profileData: null, // Stocke les dernières données du profil
+
+  _enableProfileTool() {
+    if (!this._map) return;
+    this._map.getCanvas().style.cursor = 'crosshair';
+
+    this._profilePoints = [];
+
+    // Préparer la source GeoJSON pour le tracé live sur la carte
+    this._ensureProfileLayer();
+
+    // Handler de mouvement — tracé live entre le 1er point et le curseur
+    this._profileMoveHandler = (e) => {
+      if (this._profilePoints.length !== 1) return;
+      const liveLineData = {
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          geometry: { type: 'LineString', coordinates: [this._profilePoints[0], [e.lngLat.lng, e.lngLat.lat]] }
+        }]
+      };
+      const src = this._map.getSource('profile-line');
+      if (src) src.setData(liveLineData);
+    };
+    this._map.on('mousemove', this._profileMoveHandler);
+
+    this._profileClickHandler = async (e) => {
+      this._profilePoints.push([e.lngLat.lng, e.lngLat.lat]);
+
+      // Afficher le marqueur du point cliqué
+      this._addProfileMarker(e.lngLat, this._profilePoints.length);
+
+      if (this._profilePoints.length === 1) {
+        window.TerlabToast?.show('1er point posé — cliquez le 2e point pour finaliser la coupe', 'info', 4000);
+      }
+
+      if (this._profilePoints.length === 2) {
+        this._map.getCanvas().style.cursor = '';
+        this._map.off('click', this._profileClickHandler);
+        this._map.off('mousemove', this._profileMoveHandler);
+
+        // Tracer la ligne finale sur la carte
+        const finalLineData = {
+          type: 'FeatureCollection',
+          features: [{
+            type: 'Feature',
+            geometry: { type: 'LineString', coordinates: [this._profilePoints[0], this._profilePoints[1]] }
+          }]
+        };
+        const src = this._map.getSource('profile-line');
+        if (src) src.setData(finalLineData);
+
+        await this._renderProfile(this._profilePoints[0], this._profilePoints[1]);
+      }
+    };
+
+    this._map.on('click', this._profileClickHandler);
+    window.TerlabToast?.show('Cliquez sur le 1er point de la coupe altimétrique', 'info', 5000);
+  },
+
+  // Assurer que la couche de tracé profil existe sur la carte
+  _ensureProfileLayer() {
+    if (!this._map) return;
+    if (!this._map.getSource('profile-line')) {
+      this._map.addSource('profile-line', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      });
+      this._map.addLayer({
+        id: 'profile-line-layer',
+        type: 'line',
+        source: 'profile-line',
+        paint: {
+          'line-color': '#ff6b4a',
+          'line-width': 3,
+          'line-dasharray': [4, 2],
+          'line-opacity': 0.9
+        }
+      });
+    }
+    // Supprimer les anciens marqueurs
+    document.querySelectorAll('.profile-point-marker').forEach(m => m.remove());
+  },
+
+  // Ajouter un marqueur visuel pour un point du profil
+  _addProfileMarker(lngLat, num) {
+    const el = document.createElement('div');
+    el.className = 'profile-point-marker';
+    el.style.cssText = 'width:14px;height:14px;border-radius:50%;background:#ff6b4a;border:2px solid #fff;box-shadow:0 0 6px rgba(255,107,74,.6);cursor:default;';
+    el.title = `Point ${num} de la coupe`;
+    new mapboxgl.Marker({ element: el }).setLngLat(lngLat).addTo(this._map);
+  },
+
+  async _renderProfile(from, to) {
+    if (!this._map || !this._map.queryTerrainElevation) return;
+
+    const steps = 50;
+    const line  = turf.lineString([from, to]);
+    const len   = turf.length(line, { units: 'kilometers' });
+    const pts   = Array.from({ length: steps }, (_, i) => {
+      const pt = turf.along(line, (i / (steps - 1)) * len, { units: 'kilometers' });
+      return pt.geometry.coordinates;
+    });
+
+    const alts = pts.map(([lng, lat]) => {
+      const elev = this._map.queryTerrainElevation([lng, lat]);
+      return elev ?? 0;
+    });
+
+    const distancesM = alts.map((_, i) => Math.round((i / (steps - 1)) * len * 1000));
+    const labels     = distancesM.map(d => `${d}m`);
+
+    // Stocker les données du profil pour sauvegarde et export
+    this._profileData = {
+      from, to,
+      length_m:   Math.round(len * 1000),
+      altitudes:  alts.map(a => Math.round(a * 10) / 10),
+      distances:  distancesM,
+      alt_min:    Math.round(Math.min(...alts)),
+      alt_max:    Math.round(Math.max(...alts)),
+      denivele:   Math.round(Math.max(...alts) - Math.min(...alts)),
+      pente_moy:  Math.round((Math.max(...alts) - Math.min(...alts)) / (len * 1000) * 100 * 10) / 10,
+      timestamp:  new Date().toISOString()
+    };
+
+    // Injecter dans le canvas Chart.js de la phase
+    const canvas = document.getElementById('profile-chart');
+    if (!canvas) return;
+
+    if (this._profileChart) this._profileChart.destroy();
+
+    this._profileChart = new Chart(canvas.getContext('2d'), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'Altitude NGR (approx.)',
+          data:  alts,
+          fill:  true,
+          backgroundColor: 'rgba(154,120,32,0.1)',
+          borderColor:     '#9a7820',
+          borderWidth:     1.5,
+          pointRadius:     0,
+          tension:         0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#6b5c3e', font: { size: 9 }, maxTicksLimit: 6 } },
+          y: {
+            ticks: { color: '#6b5c3e', font: { size: 9 }, callback: v => v + 'm' },
+            grid: { color: 'rgba(154,120,32,0.1)' }
+          }
+        }
+      }
+    });
+
+    // Emettre l'événement pour la phase + bouton validation
+    window.dispatchEvent(new CustomEvent('terlab:profile-drawn', { detail: this._profileData }));
+  },
+
+  // Récupérer les données du dernier profil (pour sauvegarde session)
+  getProfileData() {
+    return this._profileData;
+  },
+
+  // Afficher le contour de la parcelle Phase 0 sur la carte courante
+  showParcelleContour(geojson) {
+    if (!this._map || !geojson) return;
+    const srcId = 'parcelle-selected';
+    const data  = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: geojson }] };
+
+    if (this._map.getSource(srcId)) {
+      this._map.getSource(srcId).setData(data);
+    } else {
+      this._map.addSource(srcId, { type: 'geojson', data });
+      this._map.addLayer({
+        id: 'parcelle-fill',
+        type: 'fill',
+        source: srcId,
+        paint: { 'fill-color': '#9a7820', 'fill-opacity': 0.08 }
+      });
+      this._map.addLayer({
+        id: 'parcelle-outline',
+        type: 'line',
+        source: srcId,
+        paint: { 'line-color': '#9a7820', 'line-width': 2.5, 'line-opacity': 0.85 }
+      });
+    }
+  },
+
+  // ── MESURE DISTANCE ───────────────────────────────────────────
+  _enableMeasureTool() {
+    if (!this._map) return;
+
+    if (window.MapboxDraw) {
+      if (this._draw) { this._draw.deleteAll(); } else {
+        this._draw = new MapboxDraw({
+          displayControlsDefault: false,
+          controls: { line_string: true, trash: true },
+          styles: [
+            { id: 'gl-draw-line', type: 'line', filter: ['==', '$type', 'LineString'],
+              paint: { 'line-color': '#9a7820', 'line-width': 2 } }
+          ]
+        });
+        this._map.addControl(this._draw);
+      }
+      this._draw.changeMode('draw_line_string');
+
+      this._map.on('draw.update', e => this._showMeasureResult(e));
+      this._map.on('draw.create', e => this._showMeasureResult(e));
+    }
+  },
+
+  _showMeasureResult(e) {
+    const data = this._draw?.getAll();
+    if (!data?.features?.length) return;
+    const line = data.features[0];
+    const dist = turf.length(line, { units: 'kilometers' });
+    window.TerlabToast?.show(`Distance : ${(dist * 1000).toFixed(0)} m`, 'info', 4000);
+  },
+
+  // ── RECHERCHE PARCELLE (API IGN WFS) ─────────────────────────
+  async searchParcelleAt(lng, lat) {
+    const bbox = `${lng-0.0005},${lat-0.0005},${lng+0.0005},${lat+0.0005}`;
+    const url  = `https://data.geopf.fr/wfs/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle&OUTPUTFORMAT=application/json&SRSNAME=EPSG:4326&BBOX=${bbox},EPSG:4326`;
+
+    try {
+      const data = await fetch(url).then(r => r.json());
+      if (!data.features?.length) {
+        window.TerlabToast?.show('Aucune parcelle trouvée à cet emplacement', 'warning');
+        return null;
+      }
+
+      // Trouver la parcelle contenant le point
+      const point   = turf.point([lng, lat]);
+      const feature = data.features.find(f => {
+        try { return turf.booleanPointInPolygon(point, f); }
+        catch { return false; }
+      }) ?? data.features[0];
+
+      // En multi-sélection, ne PAS highlight ni émettre parcelle-found
+      // (le click handler dispatch terlab:parcelle-click, ParcelSelector gère le reste)
+      if (window.ParcelSelector?.isActive?.()) {
+        return feature;
+      }
+
+      this._highlightParcelle(feature);
+      window.dispatchEvent(new CustomEvent('terlab:parcelle-found', { detail: feature }));
+
+      return feature;
+    } catch (e) {
+      console.warn('[Map] Recherche parcelle WFS:', e.message);
+      window.TerlabToast?.show('Erreur IGN WFS — vérifiez la connexion', 'error');
+      return null;
+    }
+  },
+
+  _highlightParcelle(feature) {
+    if (!this._map) return;
+    const src = this._map.getSource('parcelle-selected');
+    if (src) {
+      src.setData({ type: 'FeatureCollection', features: [feature] });
+    }
+
+    // Centrer sur la parcelle
+    const bbox = turf.bbox(feature);
+    this._map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 60, duration: 800 });
+  },
+
+  // ── SIMULATION INONDATION (Phase 3) — Bathtub DEM ────────────
+  // Modèle « bathtub » : tout point du DEM < niveau d'eau absolu → inondé
+  // waterLevelNGR = cote de référence NGR + hauteur simulée
+  // Le DEM Mapbox ≈ WGS84 → NGR ≈ +0.48m (Réunion)
+  _floodRAF: null,
+  _floodCache: null,       // { grid, bounds, step } — réutilisé si vue stable
+
+  updateFloodSimulation(waterLevelNGR) {
+    if (this._floodRAF) cancelAnimationFrame(this._floodRAF);
+    this._floodRAF = requestAnimationFrame(() => this._computeFlood(waterLevelNGR));
+  },
+
+  _computeFlood(waterLevelNGR) {
+    const m = this._map;
+    if (!m) return;
+    const src = m.getSource('flood-sim');
+    if (!src) return;
+
+    if (!waterLevelNGR || waterLevelNGR <= 0) {
+      src.setData({ type: 'FeatureCollection', features: [] });
+      this._floodCache = null;
+      return;
+    }
+
+    const terrain = window.SessionManager?.getTerrain?.() ?? {};
+    if (!terrain.lat || !terrain.lng) return;
+
+    const centerLng = parseFloat(terrain.lng);
+    const centerLat = parseFloat(terrain.lat);
+    const NGR_OFFSET = 0.48; // WGS84 → NGR approx pour La Réunion
+
+    // Grille d'échantillonnage : 2km × 2km, cellules de 40m
+    const GRID   = 50;             // 50×50 = 2500 points
+    const EXTENT = 1.0;            // 1 km de chaque côté du centre
+    const CELL   = (EXTENT * 2) / GRID; // taille cellule en km
+
+    // Conversion km → degrés (latitude Réunion ≈ -21°)
+    const cosLat = Math.cos(centerLat * Math.PI / 180);
+    const KM_PER_DEG_LAT = 111.32;
+    const KM_PER_DEG_LNG = 111.32 * cosLat;
+
+    const halfCellLng = (CELL / 2) / KM_PER_DEG_LNG;
+    const halfCellLat = (CELL / 2) / KM_PER_DEG_LAT;
+
+    // Échantillonner le DEM
+    const features = [];
+    for (let i = 0; i < GRID; i++) {
+      for (let j = 0; j < GRID; j++) {
+        const dxKm = (i - GRID / 2 + 0.5) * CELL;
+        const dyKm = (j - GRID / 2 + 0.5) * CELL;
+        const lng  = centerLng + dxKm / KM_PER_DEG_LNG;
+        const lat  = centerLat + dyKm / KM_PER_DEG_LAT;
+
+        // queryTerrainElevation retourne l'altitude WGS84 du DEM chargé
+        const elevWGS = m.queryTerrainElevation({ lng, lat }, { exaggerated: false });
+        if (elevWGS == null) continue;
+
+        const elevNGR = elevWGS + NGR_OFFSET;
+
+        if (elevNGR < waterLevelNGR) {
+          // Cellule inondée → petit carré GeoJSON
+          features.push({
+            type: 'Feature',
+            properties: { depth: +(waterLevelNGR - elevNGR).toFixed(2) },
+            geometry: {
+              type: 'Polygon',
+              coordinates: [[
+                [lng - halfCellLng, lat - halfCellLat],
+                [lng + halfCellLng, lat - halfCellLat],
+                [lng + halfCellLng, lat + halfCellLat],
+                [lng - halfCellLng, lat + halfCellLat],
+                [lng - halfCellLng, lat - halfCellLat]
+              ]]
+            }
+          });
+        }
+      }
+    }
+
+    src.setData({ type: 'FeatureCollection', features });
+  },
+
+  // ── GABARIT 3D (Phase 7) ──────────────────────────────────────
+  updateGabarit({ geometry, height }) {
+    if (!this._map) return;
+    const src = this._map.getSource('gabarit-3d');
+    if (!src || !geometry) return;
+
+    const feature = { type: 'Feature', properties: { height }, geometry };
+    src.setData({ type: 'FeatureCollection', features: [feature] });
+  },
+
+  // ── FLY TO ────────────────────────────────────────────────────
+  flyTo(lng, lat, zoom = 16) {
+    if (!this._map) return;
+    this._map.flyTo({ center: [lng, lat], zoom, duration: 1200 });
+  },
+
+  flyOverRavine(ravineCoords) {
+    if (!this._map || !ravineCoords?.length) return;
+    const center = ravineCoords[Math.floor(ravineCoords.length / 2)];
+    this._map.flyTo({
+      center,
+      zoom:    15,
+      pitch:   65,
+      bearing: 0,
+      duration: 2000
+    });
+
+    // Rotation progressive
+    let bearing = 0;
+    const spin = setInterval(() => {
+      bearing += 2;
+      if (bearing >= 360) { clearInterval(spin); return; }
+      this._map?.setBearing(bearing);
+    }, 16);
+
+    setTimeout(() => clearInterval(spin), 4000);
+  },
+
+  // ── CAPTURE CARTE ─────────────────────────────────────────────
+  captureAsDataURL() {
+    if (!this._map) return null;
+    return this._map.getCanvas().toDataURL('image/png');
+  },
+
+  // ── STUB BANNER ───────────────────────────────────────────────
+  _showStubBanner(msg) {
+    const zone = document.getElementById('map-stub-banner');
+    if (zone) { zone.textContent = `⚠️ ${msg}`; zone.style.display = 'flex'; }
+  },
+
+  // ── NO MAP FALLBACK ───────────────────────────────────────────
+  _renderNoMap(containerId) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.style.cssText = 'display:flex;align-items:center;justify-content:center;background:var(--bg, #ede8dc);';
+    el.innerHTML = `
+      <div style="text-align:center;opacity:.4">
+        <div style="font-size:32px;margin-bottom:12px">🗺</div>
+        <div style="font-family:monospace;font-size:11px;color:var(--muted, #6b5c3e)">
+          Carte désactivée<br/>Token Mapbox requis
+        </div>
+      </div>`;
+  },
+
+  // ── LIDAR : Afficher le nuage de points sur la carte ─────────
+  // points = [[lng, lat, alt, r, g, b, classification], ...]
+  // mode = 'classification' (couleurs par type) ou 'rgb' (couleurs ortho)
+  showLidarPoints(points, mode = 'classification') {
+    if (!this._map || !points?.length) return;
+    const m = this._map;
+
+    // Couleurs par classe LiDAR (ASPRS)
+    const CLASS_COLORS = {
+      2: '#b8860b',  // Sol — brun doré
+      3: '#90ee90',  // Végétation basse — vert clair
+      4: '#32cd32',  // Végétation moyenne — vert
+      5: '#006400',  // Végétation haute — vert foncé
+      6: '#ff4444',  // Bâtiments — rouge
+      9: '#4488ff',  // Eau — bleu
+    };
+    const DEFAULT_COLOR = '#888888';
+
+    // Sous-échantillonner si trop de points (Mapbox GeoJSON performant jusqu'à ~50k features)
+    const MAX_RENDER = 50000;
+    let renderPts = points;
+    if (points.length > MAX_RENDER) {
+      const step = Math.ceil(points.length / MAX_RENDER);
+      renderPts = points.filter((_, i) => i % step === 0);
+    }
+
+    // Construire le GeoJSON
+    const features = renderPts.map(p => {
+      const cls = p.length >= 7 ? p[6] : 2;
+      const color = mode === 'rgb' && p.length >= 6
+        ? `rgb(${p[3]},${p[4]},${p[5]})`
+        : (CLASS_COLORS[cls] ?? DEFAULT_COLOR);
+
+      return {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [p[0], p[1]] },
+        properties: { alt: p[2], cls, color }
+      };
+    });
+
+    const data = { type: 'FeatureCollection', features };
+    const srcId = 'lidar-points';
+
+    if (m.getSource(srcId)) {
+      m.getSource(srcId).setData(data);
+    } else {
+      m.addSource(srcId, { type: 'geojson', data });
+      m.addLayer({
+        id: 'lidar-points-layer',
+        type: 'circle',
+        source: srcId,
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 14, 1.5, 17, 3, 19, 5],
+          'circle-color': ['get', 'color'],
+          'circle-opacity': 0.85,
+          'circle-stroke-width': 0,
+        }
+      });
+    }
+
+    // Popup au survol
+    if (!this._lidarPopupHandler) {
+      const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false, className: 'lidar-popup' });
+      this._lidarPopupHandler = (e) => {
+        const f = e.features?.[0];
+        if (!f) return;
+        const cls = f.properties.cls;
+        const labels = { 2: 'Sol', 3: 'Vég. basse', 4: 'Vég. moyenne', 5: 'Vég. haute', 6: 'Bâtiment', 9: 'Eau' };
+        popup.setLngLat(e.lngLat)
+          .setHTML(`<span style="font-family:monospace;font-size:10px">${labels[cls] ?? `Classe ${cls}`} · ${f.properties.alt?.toFixed(1) ?? '—'}m</span>`)
+          .addTo(m);
+      };
+      m.on('mouseenter', 'lidar-points-layer', this._lidarPopupHandler);
+      m.on('mouseleave', 'lidar-points-layer', () => popup.remove());
+      m.on('mouseenter', 'lidar-points-layer', () => { m.getCanvas().style.cursor = 'crosshair'; });
+      m.on('mouseleave', 'lidar-points-layer', () => { m.getCanvas().style.cursor = ''; });
+    }
+  },
+
+  // Changer le mode d'affichage des points LiDAR (classification / rgb)
+  setLidarMode(mode) {
+    if (!this._map) return;
+    const src = this._map.getSource('lidar-points');
+    if (!src) return;
+    // On doit recalculer les couleurs → stockées dans _lidarRawPoints
+    if (this._lidarRawPoints) {
+      this.showLidarPoints(this._lidarRawPoints, mode);
+    }
+  },
+
+  // Stocker les points bruts pour pouvoir changer de mode
+  setLidarRawPoints(points) {
+    this._lidarRawPoints = points;
+  },
+
+  // Basculer la visibilité du layer LiDAR
+  toggleLidarLayer(visible) {
+    if (!this._map) return;
+    try {
+      this._map.setLayoutProperty('lidar-points-layer', 'visibility', visible ? 'visible' : 'none');
+    } catch {}
+  },
+
+  // Supprimer le layer LiDAR
+  clearLidarPoints() {
+    if (!this._map) return;
+    const src = this._map.getSource('lidar-points');
+    if (src) src.setData({ type: 'FeatureCollection', features: [] });
+    this._lidarRawPoints = null;
+  },
+
+  // ── TOGGLE COUCHES GEOPORTAIL ─────────────────────────────────
+  toggleCadastre(visible, opacity = 0.7) {
+    if (!this._map?.getLayer('cadastre')) return;
+    this._map.setLayoutProperty('cadastre', 'visibility', visible ? 'visible' : 'none');
+    if (opacity != null) this._map.setPaintProperty('cadastre', 'raster-opacity', opacity);
+  },
+
+  togglePlanIGN(visible, opacity = 0.5) {
+    if (!this._map?.getLayer('plan-ign')) return;
+    this._map.setLayoutProperty('plan-ign', 'visibility', visible ? 'visible' : 'none');
+    if (opacity != null) this._map.setPaintProperty('plan-ign', 'raster-opacity', opacity);
+  },
+
+  // ══════════════════════════════════════════════════════════════
+  // COUCHES GEOJSON CUSTOM (GPU / import / dessin projet)
+  // ══════════════════════════════════════════════════════════════
+
+  addCustomLayer(layerDef) {
+    const m = this._map;
+    if (!m) return;
+    const sid = `custom-${layerDef.id}`;
+    if (m.getSource(sid)) return;
+
+    m.addSource(sid, { type: 'geojson', data: layerDef.geojson });
+
+    const types = this._detectGeomTypes(layerDef.geojson);
+
+    if (types.has('Polygon') || types.has('MultiPolygon')) {
+      m.addLayer({ id: `${sid}-fill`, type: 'fill', source: sid,
+        filter: ['any', ['==', '$type', 'Polygon']],
+        paint: { 'fill-color': layerDef.color, 'fill-opacity': layerDef.fillOpacity ?? 0.2 } });
+      m.addLayer({ id: `${sid}-outline`, type: 'line', source: sid,
+        filter: ['any', ['==', '$type', 'Polygon']],
+        paint: { 'line-color': layerDef.color, 'line-width': layerDef.lineWidth ?? 2, 'line-opacity': layerDef.opacity ?? 0.8 } });
+    }
+    if (types.has('LineString') || types.has('MultiLineString')) {
+      if (!m.getLayer(`${sid}-outline`)) {
+        m.addLayer({ id: `${sid}-stroke`, type: 'line', source: sid,
+          filter: ['==', '$type', 'LineString'],
+          paint: { 'line-color': layerDef.color, 'line-width': layerDef.lineWidth ?? 2, 'line-opacity': layerDef.opacity ?? 0.8 } });
+      }
+    }
+    if (types.has('Point') || types.has('MultiPoint')) {
+      m.addLayer({ id: `${sid}-circle`, type: 'circle', source: sid,
+        filter: ['==', '$type', 'Point'],
+        paint: { 'circle-color': layerDef.color, 'circle-radius': 5, 'circle-opacity': layerDef.opacity ?? 0.8, 'circle-stroke-color': '#fff', 'circle-stroke-width': 1 } });
+    }
+  },
+
+  removeCustomLayer(id) {
+    const m = this._map;
+    if (!m) return;
+    const sid = `custom-${id}`;
+    ['fill', 'outline', 'stroke', 'circle'].forEach(suffix => {
+      if (m.getLayer(`${sid}-${suffix}`)) m.removeLayer(`${sid}-${suffix}`);
+    });
+    if (m.getSource(sid)) m.removeSource(sid);
+  },
+
+  updateCustomLayerData(id, geojson) {
+    const m = this._map;
+    if (!m) return;
+    const src = m.getSource(`custom-${id}`);
+    if (src) src.setData(geojson);
+  },
+
+  updateCustomLayerStyle(id, style) {
+    const m = this._map;
+    if (!m) return;
+    const sid = `custom-${id}`;
+    if (style.color) {
+      if (m.getLayer(`${sid}-fill`))    m.setPaintProperty(`${sid}-fill`, 'fill-color', style.color);
+      if (m.getLayer(`${sid}-outline`)) m.setPaintProperty(`${sid}-outline`, 'line-color', style.color);
+      if (m.getLayer(`${sid}-stroke`))  m.setPaintProperty(`${sid}-stroke`, 'line-color', style.color);
+      if (m.getLayer(`${sid}-circle`))  m.setPaintProperty(`${sid}-circle`, 'circle-color', style.color);
+    }
+    if (style.fillOpacity != null && m.getLayer(`${sid}-fill`)) {
+      m.setPaintProperty(`${sid}-fill`, 'fill-opacity', style.fillOpacity);
+    }
+    if (style.opacity != null) {
+      if (m.getLayer(`${sid}-outline`)) m.setPaintProperty(`${sid}-outline`, 'line-opacity', style.opacity);
+      if (m.getLayer(`${sid}-stroke`))  m.setPaintProperty(`${sid}-stroke`, 'line-opacity', style.opacity);
+      if (m.getLayer(`${sid}-circle`))  m.setPaintProperty(`${sid}-circle`, 'circle-opacity', style.opacity);
+    }
+    if (style.lineWidth != null) {
+      if (m.getLayer(`${sid}-outline`)) m.setPaintProperty(`${sid}-outline`, 'line-width', style.lineWidth);
+      if (m.getLayer(`${sid}-stroke`))  m.setPaintProperty(`${sid}-stroke`, 'line-width', style.lineWidth);
+    }
+  },
+
+  toggleCustomLayerVisibility(id, visible) {
+    const m = this._map;
+    if (!m) return;
+    const sid = `custom-${id}`;
+    const v = visible ? 'visible' : 'none';
+    ['fill', 'outline', 'stroke', 'circle'].forEach(suffix => {
+      if (m.getLayer(`${sid}-${suffix}`)) m.setLayoutProperty(`${sid}-${suffix}`, 'visibility', v);
+    });
+  },
+
+  fitToCustomLayer(bbox) {
+    if (!this._map || !bbox) return;
+    this._map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 60, duration: 800 });
+  },
+
+  _detectGeomTypes(fc) {
+    const types = new Set();
+    for (const f of (fc?.features ?? [])) {
+      const t = f.geometry?.type;
+      if (t) types.add(t);
+    }
+    return types;
+  },
+
+  // ── DESSIN PROJET (étend MapboxDraw existant) ─────────────────
+  enableProjectDraw(mode = 'draw_polygon') {
+    if (!this._map || !window.MapboxDraw) return;
+
+    if (!this._draw) {
+      this._draw = new MapboxDraw({
+        displayControlsDefault: false,
+        controls: { point: true, line_string: true, polygon: true, trash: true },
+        styles: [
+          { id: 'gl-draw-polygon-fill', type: 'fill', filter: ['==', '$type', 'Polygon'],
+            paint: { 'fill-color': '#9a7820', 'fill-opacity': 0.15 } },
+          { id: 'gl-draw-polygon-stroke', type: 'line', filter: ['==', '$type', 'Polygon'],
+            paint: { 'line-color': '#9a7820', 'line-width': 2, 'line-dasharray': [2, 2] } },
+          { id: 'gl-draw-line', type: 'line', filter: ['==', '$type', 'LineString'],
+            paint: { 'line-color': '#9a7820', 'line-width': 2 } },
+          { id: 'gl-draw-point', type: 'circle', filter: ['==', '$type', 'Point'],
+            paint: { 'circle-color': '#9a7820', 'circle-radius': 6, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } },
+        ]
+      });
+      this._map.addControl(this._draw);
+    }
+
+    this._draw.changeMode(mode);
+
+    // Écouter les events de création
+    this._map.off('draw.create', this._onDrawCreate);
+    this._onDrawCreate = (e) => {
+      const feature = e.features?.[0];
+      if (feature) {
+        window.dispatchEvent(new CustomEvent('terlab:feature-drawn', { detail: feature }));
+        this._draw.deleteAll();
+      }
+    };
+    this._map.on('draw.create', this._onDrawCreate);
+  },
+
+  disableProjectDraw() {
+    if (this._draw) {
+      this._draw.deleteAll();
+      try { this._draw.changeMode('simple_select'); } catch {}
+    }
+    if (this._map && this._onDrawCreate) {
+      this._map.off('draw.create', this._onDrawCreate);
+    }
+  },
+
+  // ── ACCÈS MAP INSTANCE ────────────────────────────────────────
+  getMap() { return this._map; }
+};
+
+export default MapViewer;

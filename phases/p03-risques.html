@@ -1,0 +1,509 @@
+<!-- TERLAB · Phase 3 · Risques Naturels PPRN · ENSA La Réunion v1.0 -->
+<!-- Thème : risk · Bloquante · Géorisques + slider eau + cyclones -->
+
+<div class="left-panel" id="left-panel-p03">
+
+  <div class="lp-head anim-slide-up">
+    <div class="phase-label" style="color:var(--danger)">Phase 3 · Critique · Obligatoire</div>
+    <h1 class="phase-title">🌊 <em>Risques Naturels</em> — PPRN</h1>
+    <p class="phase-desc">Phase la plus critique du projet. Identifier tous les aléas réglementairement reconnus. Le PPRN est une servitude d'utilité publique — il prime sur le PLU en cas de contradiction.</p>
+  </div>
+
+  <div class="terrain-strip">
+    <span class="ts-item">📍 <strong id="ts-commune-p3">—</strong></span>
+    <span class="ts-sep">·</span>
+    <span class="ts-item">Cote ref <strong id="ts-cote">— m NGR</strong></span>
+    <span class="ts-sep">·</span>
+    <span class="ts-item">Zone <strong id="ts-zone-pprn" style="color:var(--danger)">—</strong></span>
+  </div>
+
+  <!-- Recherche Géorisques -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Aléas Géorisques (API nationale)</div>
+    <div class="stub-warning" id="georisques-stub">⚠️ STUB — Proxy CORS requis pour certains endpoints DOM. Voir __stubs__/georisques-proxy.js</div>
+    <button class="risk-fetch-btn" onclick="P03.fetchGeorisques()" id="btn-fetch-risk">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.4"/><path d="M6 4v2l1.5 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      Interroger Géorisques
+    </button>
+    <div class="georisques-results" id="georisques-results" style="display:none"></div>
+  </div>
+
+  <!-- Zonage PPRN -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Zonage PPRN — Inondation</div>
+    <div class="field-row">
+      <label class="field-label">Zone PPRN</label>
+      <div class="pprn-zones">
+        <button class="pprn-zone-btn" data-zone="R1" onclick="P03.selectZone(this,'R1')" title="Rouge fort — inconstructible">
+          <span class="pz-color" style="background:#ef4444"></span>R1
+        </button>
+        <button class="pprn-zone-btn" data-zone="R2" onclick="P03.selectZone(this,'R2')" title="Rouge modéré — inconstructible">
+          <span class="pz-color" style="background:#f87171"></span>R2
+        </button>
+        <button class="pprn-zone-btn" data-zone="B1" onclick="P03.selectZone(this,'B1')" title="Bleu fort — conditions strictes">
+          <span class="pz-color" style="background:#3b82f6"></span>B1
+        </button>
+        <button class="pprn-zone-btn" data-zone="B2" onclick="P03.selectZone(this,'B2')" title="Bleu modéré — conditions">
+          <span class="pz-color" style="background:#60a5fa"></span>B2
+        </button>
+        <button class="pprn-zone-btn" data-zone="J" onclick="P03.selectZone(this,'J')" title="Jaune — vigilance">
+          <span class="pz-color" style="background:#fbbf24"></span>J
+        </button>
+        <button class="pprn-zone-btn" data-zone="W" onclick="P03.selectZone(this,'W')" title="Blanc — hors zone">
+          <span class="pz-color" style="background:#e2e8f0"></span>W
+        </button>
+      </div>
+    </div>
+    <div class="pprn-prescriptions" id="pprn-prescriptions" style="display:none"></div>
+
+    <div class="field-row" style="margin-top:8px">
+      <label class="field-label" for="cote-ngr">Cote de référence NGR (m)</label>
+      <input type="number" id="cote-ngr" class="field-input" data-session-key="cote_reference_ngr"
+             placeholder="Ex : 36.5" step="0.1"
+             oninput="P03.updateCoteDisplay()"/>
+    </div>
+    <p class="field-note">La cote de référence NGR est indiquée dans le règlement PPRN de la commune. Elle définit la hauteur minimale du plancher habitable.</p>
+  </div>
+
+  <!-- Simulation montée des eaux — modèle bathtub DEM -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Simulation montée des eaux</div>
+    <p class="field-note" style="margin-bottom:6px">Modèle « bathtub » : toute zone dont l'altitude DEM est inférieure au niveau simulé est inondée. Le niveau = cote de référence NGR + hauteur de crue.</p>
+    <div class="flood-control">
+      <div class="flood-header">
+        <span class="flood-label">Hauteur de crue simulée</span>
+        <span class="flood-value" id="flood-value">+0.0 m</span>
+      </div>
+      <input type="range" id="flood-slider" min="0" max="10" step="0.1" value="0"
+             class="flood-slider" oninput="P03.updateFlood(this.value)"
+             aria-label="Hauteur de crue simulée en mètres au-dessus de la cote NGR"/>
+      <div class="flood-marks">
+        <span>0m</span><span>2m</span><span>5m</span><span>10m</span>
+      </div>
+      <div class="flood-level-abs" id="flood-level-abs" style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:4px;text-align:right"></div>
+    </div>
+    <div class="flood-alert" id="flood-alert" style="display:none">
+      <span id="flood-alert-text">Alerte inondation</span>
+    </div>
+  </div>
+
+  <!-- Cyclones -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Risque cyclonique</div>
+    <div class="field-row">
+      <label class="field-label">Zone RTAA DOM — Vent</label>
+      <div class="radio-group">
+        <label class="radio-option" onclick="P03.selectRtaaZone(this,'1')"><input type="radio" name="rtaa-vent" value="1"/>Zone 1 (côte, vent fort)</label>
+        <label class="radio-option" onclick="P03.selectRtaaZone(this,'2')"><input type="radio" name="rtaa-vent" value="2"/>Zone 2 (mi-pentes)</label>
+        <label class="radio-option" onclick="P03.selectRtaaZone(this,'3')"><input type="radio" name="rtaa-vent" value="3"/>Zone 3 (hauts)</label>
+      </div>
+    </div>
+    <div class="cyclone-info" id="cyclone-info" style="display:none">
+      <div class="ci-row"><span class="ci-label">Vent réf. NF EN 1991</span><span class="ci-val" id="ci-vent">—</span></div>
+      <div class="ci-row"><span class="ci-label">Classe AEV menuiseries</span><span class="ci-val" id="ci-aev">—</span></div>
+      <div class="ci-row"><span class="ci-label">Toiture : inclinaison min</span><span class="ci-val" id="ci-toit">—</span></div>
+    </div>
+    <p class="field-note">En saison cyclonique (nov-avril), prévoir un protocole de mise en sécurité du chantier. Cyclone Belal (janv. 2024) = rafales > 200km/h mesurées.</p>
+  </div>
+
+  <!-- SDIS -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Défense incendie — SDIS 974</div>
+    <div class="sdis-grid">
+      <div class="field-row">
+        <label class="field-label" for="sdis-hydrant">Hydrant à moins de 150m</label>
+        <div class="radio-group">
+          <label class="radio-option" onclick="P03.selectSdis(this,'hydrant','oui')"><input type="radio" name="sdis-hydrant" value="oui"/>Oui</label>
+          <label class="radio-option" onclick="P03.selectSdis(this,'hydrant','non')"><input type="radio" name="sdis-hydrant" value="non"/>Non</label>
+          <label class="radio-option" onclick="P03.selectSdis(this,'hydrant','verif')"><input type="radio" name="sdis-hydrant" value="verif"/>À vérifier</label>
+        </div>
+      </div>
+      <div class="field-row">
+        <label class="field-label">Accès pompiers conforme (voie ≥ 3m)</label>
+        <div class="radio-group">
+          <label class="radio-option" onclick="P03.selectSdis(this,'acces','oui')"><input type="radio" name="sdis-acces" value="oui"/>Oui</label>
+          <label class="radio-option danger-opt" onclick="P03.selectSdis(this,'acces','non')"><input type="radio" name="sdis-acces" value="non"/>Non ⚠</label>
+          <label class="radio-option" onclick="P03.selectSdis(this,'acces','verif')"><input type="radio" name="sdis-acces" value="verif"/>À vérifier</label>
+        </div>
+      </div>
+    </div>
+    <div class="sdis-alert" id="sdis-alert" style="display:none">
+      🚒 Accès SDIS non conforme — refus de permis de construire possible. Prévoir voie ≥ 3m, hauteur libre ≥ 3.5m, portance ≥ 13t.
+    </div>
+    <div class="stub-warning">⚠️ STUB — Données hydrants SDIS 974 non open data. Vérification manuelle requise.</div>
+  </div>
+
+  <!-- Encadrés pédagogiques -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Encadrés pédagogiques</div>
+    <div class="ped-accordion">
+      <div class="ped-item">
+        <button class="ped-toggle" onclick="P03.togglePed(this)">▶ Lire un zonage PPRN</button>
+        <div class="ped-content" style="display:none">
+          R1/R2 = Rouge = inconstructible (sauf exceptions). B1/B2 = Bleu = constructible sous prescriptions architecturales strictes (plancher surélevé, matériaux résistants). J = Jaune = aléa faible. W = hors zone. Le règlement PPRN prime toujours sur le PLU.
+        </div>
+      </div>
+      <div class="ped-item">
+        <button class="ped-toggle" onclick="P03.togglePed(this)">▶ NGR vs NGF — la confusion fréquente</button>
+        <div class="ped-content" style="display:none">
+          Le NGR (Nivellement Général de La Réunion) diffère du NGF (France métropole) d'environ +0.48m. Toutes les cotes altimétriques des PPRN réunionnais sont en NGR. Erreur fréquente chez les prestataires métropolitains — vérifier systématiquement.
+        </div>
+      </div>
+      <div class="ped-item">
+        <button class="ped-toggle" onclick="P03.togglePed(this)">▶ Cyclone + inondation simultanés</button>
+        <div class="ped-content" style="display:none">
+          Un cyclone génère simultanément : vents > 180km/h, pluies intenses (jusqu'à 1000mm/24h), houle cyclonique (hauteur significative > 8m côte), et surcote marine (+1 à +2m). Les ravines peuvent atteindre leur débit centennal en moins de 30min.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
+    <button class="source-btn" onclick="TerlabSources.open(3)">→ Sources &amp; références risques</button>
+    <a href="https://www.risquesnaturels.re" target="_blank" rel="noopener" class="source-btn" style="margin-left:12px">→ risquesnaturels.re ↗</a>
+  </div>
+
+  <div class="val-block">
+    <div class="val-title">Validation de la phase 3</div>
+    <div class="check-item blocking" role="checkbox" aria-checked="false" tabindex="0">
+      <div class="check-box"></div><span>Zonage PPRN confirmé (R/B/J/W)</span>
+    </div>
+    <div class="check-item blocking" role="checkbox" aria-checked="false" tabindex="0">
+      <div class="check-box"></div><span>Cote NGR de référence saisie (ou "non concerné")</span>
+    </div>
+    <div class="check-item blocking" role="checkbox" aria-checked="false" tabindex="0">
+      <div class="check-box"></div><span>Accès SDIS et hydrant vérifiés</span>
+    </div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0">
+      <div class="check-box"></div><span>PPRL vérifié si zone littorale (< 500m mer)</span>
+    </div>
+    <div class="val-progress"><div class="val-bar"></div></div>
+    <div class="val-footer"><span>3 validations bloquantes</span><span class="val-pct">0/4</span></div>
+    <button class="next-btn">Phase 4 — Réglementation PLU →</button>
+  </div>
+
+</div>
+
+<!-- ═══════════════════ CARTE ════════════════════════════════════ -->
+<div class="map-area">
+  <div id="map" style="width:100%;height:100%"></div>
+  <div id="map-stub-banner" style="display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(242,87,87,.85);color:#fff;padding:5px 14px;border-radius:4px;font-family:monospace;font-size:10px;white-space:nowrap"></div>
+
+  <!-- Légende -->
+  <div class="pprn-legend">
+    <div class="legend-title">PPRN inondation</div>
+    <div class="legend-item"><span style="background:#ef4444"></span>R — Rouge (inconstructible)</div>
+    <div class="legend-item"><span style="background:#3b82f6"></span>B — Bleu (sous conditions)</div>
+    <div class="legend-item"><span style="background:#fbbf24"></span>J — Jaune (vigilance)</div>
+    <div class="legend-item"><span style="background:rgba(14,165,233,.3)"></span>Eau &lt; 1m</div>
+    <div class="legend-item"><span style="background:rgba(2,132,199,.6)"></span>Eau 1–3m</div>
+    <div class="legend-item"><span style="background:rgba(3,105,161,.75)"></span>Eau &gt; 3m</div>
+  </div>
+</div>
+
+<!-- ═══════════════════ COLONNE DROITE ══════════════════════════ -->
+<div class="right-panel">
+  <div class="rp-section">
+    <div class="rp-head">Résumé des aléas</div>
+    <div id="aleas-summary" class="aleas-summary">
+      <div class="alea-item" data-alea="inondation">
+        <span class="alea-icon">🌊</span>
+        <div class="alea-body"><div class="alea-name">Inondation</div><div class="alea-status" id="aleas-inondation">Non vérifié</div></div>
+      </div>
+      <div class="alea-item" data-alea="cyclone">
+        <span class="alea-icon">🌀</span>
+        <div class="alea-body"><div class="alea-name">Cyclone</div><div class="alea-status" id="aleas-cyclone">Oui — île entière</div></div>
+      </div>
+      <div class="alea-item" data-alea="volcan">
+        <span class="alea-icon">🌋</span>
+        <div class="alea-body"><div class="alea-name">Volcanisme</div><div class="alea-status" id="aleas-volcan">Non vérifié</div></div>
+      </div>
+      <div class="alea-item" data-alea="mouvement">
+        <span class="alea-icon">⛰</span>
+        <div class="alea-body"><div class="alea-name">Mouvement terrain</div><div class="alea-status" id="aleas-mouv">Non vérifié</div></div>
+      </div>
+      <div class="alea-item" data-alea="feu">
+        <span class="alea-icon">🔥</span>
+        <div class="alea-body"><div class="alea-name">Feux végétation</div><div class="alea-status" id="aleas-feu">Non vérifié</div></div>
+      </div>
+      <div class="alea-item" data-alea="seisme">
+        <span class="alea-icon">📳</span>
+        <div class="alea-body"><div class="alea-name">Séisme</div><div class="alea-status" style="color:var(--warning)">Zone 2 — île entière</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">Acteurs & ressources</div>
+    <div id="actors-zone" class="stagger anim-fade-in"></div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">Risques de phase</div>
+    <div id="risks-zone"></div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">Exemples enviroBAT-Réunion</div>
+    <div id="eb-cards-p03"></div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">Note pédagogique</div>
+    <div class="ped-note">
+      <strong>Cette phase est bloquante</strong> car un terrain en zone R1 est inconstructible.
+      Construire sans vérifier le PPRN engage la responsabilité pénale du maître d'ouvrage
+      et invalide l'assurance. Le PPRN est annexé au PLU comme servitude d'utilité publique.
+      <br/><br/>
+      Consultez toujours le <strong>règlement</strong> PPRN (PDF téléchargeable sur le site de la Préfecture),
+      pas seulement la carte de zonage. Le règlement détaille les prescriptions architecturales par zone.
+    </div>
+  </div>
+</div>
+
+<style>
+.risk-fetch-btn { display:flex; align-items:center; justify-content:center; gap:6px; width:100%; padding:8px; background:var(--raised); border:1px solid var(--border2); border-radius:var(--r-sm); color:var(--muted); cursor:pointer; font-family:var(--font-mono); font-size:10px; transition:all var(--tx-fast); margin-top:8px; }
+.risk-fetch-btn:hover { border-color:var(--danger); color:var(--danger); background:var(--danger2); }
+.risk-fetch-btn:disabled { opacity:.4; pointer-events:none; }
+
+.georisques-results { margin-top:8px; display:flex; flex-direction:column; gap:4px; }
+.gr-item { padding:5px 9px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); font-size:11px; color:var(--text2); border-left:3px solid; }
+
+.pprn-zones { display:flex; flex-wrap:wrap; gap:5px; margin-top:4px; }
+.pprn-zone-btn { display:flex; align-items:center; gap:5px; padding:5px 10px; background:var(--card); border:1.5px solid var(--border2); border-radius:var(--r-sm); font-family:var(--font-mono); font-size:10px; color:var(--muted); cursor:pointer; transition:all var(--tx-fast); }
+.pprn-zone-btn:hover { border-color:var(--border3); color:var(--text); }
+.pprn-zone-btn.active { background:var(--raised); border-color:var(--accent); color:var(--text); }
+.pz-color { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+
+.pprn-prescriptions { background:var(--raised); border:1px solid var(--border2); border-radius:var(--r-sm); padding:9px 11px; font-size:11px; color:var(--muted); margin-top:8px; line-height:1.65; }
+.pprn-prescriptions strong { color:var(--text2); }
+
+.flood-control { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:12px; }
+.flood-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.flood-label { font-family:var(--font-mono); font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; }
+.flood-value { font-family:var(--font-mono); font-size:13px; font-weight:700; color:var(--accent); }
+.flood-slider { width:100%; height:4px; -webkit-appearance:none; appearance:none; background:var(--raised); border-radius:2px; outline:none; cursor:pointer; }
+.flood-slider::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--accent); cursor:pointer; border:2px solid var(--bg); }
+.flood-marks { display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:8px; color:var(--faint); margin-top:4px; }
+.flood-alert { background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.3); border-left:3px solid var(--danger); border-radius:var(--r-sm); padding:7px 10px; font-size:11px; color:var(--danger); margin-top:8px; }
+
+.cyclone-info { background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); padding:8px; margin-top:8px; }
+.ci-row { display:flex; justify-content:space-between; align-items:center; padding:3px 0; border-bottom:1px solid var(--border); }
+.ci-row:last-child { border-bottom:none; }
+.ci-label { font-family:var(--font-mono); font-size:8.5px; color:var(--faint); }
+.ci-val { font-family:var(--font-mono); font-size:10px; color:var(--warning); font-weight:700; }
+
+.sdis-alert { background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.3); border-left:3px solid var(--danger); border-radius:var(--r-sm); padding:8px 10px; font-size:11px; color:var(--danger); margin-top:8px; }
+.danger-opt.selected { background:var(--danger2)!important; border-color:var(--danger)!important; color:var(--danger)!important; }
+
+.ped-accordion { display:flex; flex-direction:column; gap:4px; }
+.ped-item { border:1px solid var(--border); border-radius:var(--r-sm); overflow:hidden; }
+.ped-toggle { width:100%; padding:8px 11px; background:var(--card); border:none; color:var(--muted); font-family:var(--font-mono); font-size:9.5px; cursor:pointer; text-align:left; transition:all var(--tx-fast); }
+.ped-toggle:hover { background:var(--raised); color:var(--text); }
+.ped-content { padding:9px 11px; font-size:11px; color:var(--muted); line-height:1.65; background:var(--surface); }
+
+.pprn-legend { position:absolute; bottom:40px; right:10px; z-index:10; background:rgba(8,10,13,.85); border:1px solid var(--border2); border-radius:var(--r-sm); padding:8px 10px; }
+.legend-title { font-family:var(--font-mono); font-size:8.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; margin-bottom:5px; }
+.legend-item { display:flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:9px; color:var(--muted); margin-bottom:3px; }
+.legend-item span { width:12px; height:8px; border-radius:2px; flex-shrink:0; }
+
+.aleas-summary { display:flex; flex-direction:column; gap:4px; }
+.alea-item { display:flex; align-items:center; gap:8px; padding:6px 9px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); }
+.alea-icon { font-size:16px; flex-shrink:0; }
+.alea-name { font-size:11.5px; color:var(--text2); font-weight:500; }
+.alea-status { font-family:var(--font-mono); font-size:9px; color:var(--faint); margin-top:1px; }
+.alea-item.detected { border-color:var(--danger); background:var(--danger2); }
+.alea-item.detected .alea-status { color:var(--danger); }
+</style>
+
+<script type="module">
+const SessionManager = window.SessionManager;
+const MapViewer      = window.TerlabMap;
+
+const PPRN_PRESCRIPTIONS = {
+  R1: '<strong style="color:var(--danger)">INCONSTRUCTIBLE</strong> — Aucune construction nouvelle autorisée. Seul l\'entretien des biens existants est possible sous conditions strictes.',
+  R2: '<strong style="color:var(--danger)">INCONSTRUCTIBLE</strong> — Similaire R1. Extensions très limitées. Aucune occupation humaine nouvelle.',
+  B1: 'Constructible sous <strong>conditions strictes</strong> : plancher habitable à +1.00m au-dessus de la cote de référence NGR. Structure résistante aux crues. Matériaux imperméables en zone inondable.',
+  B2: 'Constructible sous <strong>conditions</strong> : plancher habitable à +0.40m au-dessus de la cote NGR. Pas de sous-sol. Matériaux non dégradables à l\'eau.',
+  J:  'Zone de <strong>vigilance</strong> : aléa faible. Recommandations d\'adaptation (surélévation conseillée). Pas d\'interdiction spécifique.',
+  W:  '<strong style="color:var(--success)">Hors zone PPRN</strong> — Pas de prescriptions PPRN inondation. Vérifier les autres aléas (cyclone, mouvement terrain).'
+};
+
+const CYCLONE_DATA = {
+  '1': { vent:'200 km/h', aev:'A3/E750/V5', toit:'15° min — 4 pentes recommandé' },
+  '2': { vent:'185 km/h', aev:'A3/E750/V4', toit:'15° min — 4 pentes recommandé' },
+  '3': { vent:'170 km/h', aev:'A2/E450/V3', toit:'10° min — vents amplifiés altitude' }
+};
+
+const P03 = {
+  _selectedZone: null,
+  _floodLevel: 0,
+
+  async fetchGeorisques() {
+    const terrain = SessionManager.getTerrain();
+    if (!terrain?.lat || !terrain?.lng) {
+      window.TerlabToast?.show('Complétez la Phase 0 d\'abord', 'warning'); return;
+    }
+
+    const btn = document.getElementById('btn-fetch-risk');
+    btn.disabled = true;
+    btn.textContent = 'Interrogation…';
+
+    // Retry avec fallback CORS
+    const urls = [
+      `https://georisques.gouv.fr/api/v1/gaspar/risques?latlon=${terrain.lat},${terrain.lng}&rayon=500`,
+      // Proxy fallback (stub — à implémenter)
+      `https://us-central1-terlab-reunion.cloudfunctions.net/georisquesProxy?lat=${terrain.lat}&lon=${terrain.lng}`
+    ];
+
+    let data = null;
+    for (const url of urls) {
+      try {
+        const resp = await fetch(url, { signal: AbortSignal.timeout(6000) });
+        if (resp.ok) { data = await resp.json(); break; }
+      } catch { continue; }
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.4"/></svg> Ré-interroger';
+
+    if (!data) {
+      // Fallback : risques génériques Réunion
+      data = { risques: [
+        { typeRisque: 'Cyclone tropical', codePPR: null },
+        { typeRisque: 'Séisme zone 2', codePPR: null },
+        { typeRisque: 'Mouvement de terrain (aléa à vérifier)', codePPR: null }
+      ]};
+      document.getElementById('georisques-stub').textContent = '⚠️ API Géorisques inaccessible (CORS) — données génériques Réunion affichées. Stub proxy requis.';
+    } else {
+      document.getElementById('georisques-stub').style.display = 'none';
+    }
+
+    const results = document.getElementById('georisques-results');
+    results.style.display = 'flex';
+
+    const risques = data.risques ?? data;
+    if (!risques?.length) {
+      results.innerHTML = '<div class="gr-item" style="border-left-color:var(--success);color:var(--success)">Aucun risque recensé dans le rayon de 500m</div>';
+      return;
+    }
+
+    results.innerHTML = risques.map(r => {
+      const name = r.typeRisque ?? r.libelle ?? JSON.stringify(r);
+      const color = name.toLowerCase().includes('rouge') || name.toLowerCase().includes('inconstr') ? 'var(--danger)' :
+                    name.toLowerCase().includes('bleu') ? '#3b82f6' :
+                    name.toLowerCase().includes('jaune') ? 'var(--warning)' : 'var(--muted)';
+      return `<div class="gr-item" style="border-left-color:${color};color:var(--text2)">${name}</div>`;
+    }).join('');
+
+    // Mise à jour résumé aléas
+    const names = risques.map(r => (r.typeRisque ?? '').toLowerCase()).join(' ');
+    if (names.includes('inond')) { this._updateAlea('inondation', 'Recensé', true); }
+    if (names.includes('volcan') || names.includes('lave')) { this._updateAlea('volcan', 'Zone volcanique', true); }
+    if (names.includes('mouvement') || names.includes('terrain')) { this._updateAlea('mouvement', 'Recensé', true); }
+    if (names.includes('feu') || names.includes('incend')) { this._updateAlea('feu', 'Zone à risque', true); }
+
+    window.TerlabToast?.show('Aléas Géorisques chargés', 'success');
+  },
+
+  _updateAlea(type, txt, danger = false) {
+    const el   = document.querySelector(`.alea-item[data-alea="${type}"]`);
+    const stat = document.getElementById(`aleas-${type}`);
+    if (el && danger)  el.classList.add('detected');
+    if (stat) stat.textContent = txt;
+  },
+
+  selectZone(btn, zone) {
+    document.querySelectorAll('.pprn-zone-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    this._selectedZone = zone;
+
+    const presc = document.getElementById('pprn-prescriptions');
+    presc.style.display = 'block';
+    presc.innerHTML = PPRN_PRESCRIPTIONS[zone] ?? '';
+
+    document.getElementById('ts-zone-pprn').textContent = zone;
+    document.getElementById('ts-zone-pprn').style.color =
+      ['R1','R2'].includes(zone) ? 'var(--danger)' :
+      ['B1','B2'].includes(zone) ? '#60a5fa' :
+      zone === 'J' ? 'var(--warning)' : 'var(--success)';
+
+    SessionManager.saveTerrain({ zone_pprn: zone });
+    this._updateAlea('inondation', zone === 'W' ? 'Hors zone' : `Zone ${zone}`, ['R1','R2','B1'].includes(zone));
+  },
+
+  updateCoteDisplay() {
+    const val = document.getElementById('cote-ngr')?.value;
+    if (val) document.getElementById('ts-cote').textContent = `${val} m NGR`;
+    SessionManager.saveTerrain({ cote_reference_ngr: parseFloat(val) });
+  },
+
+  updateFlood(val) {
+    this._floodLevel = parseFloat(val);
+    const cote = parseFloat(document.getElementById('cote-ngr')?.value ?? 0);
+    const waterLevelNGR = cote + this._floodLevel;
+
+    // Affichage
+    document.getElementById('flood-value').textContent = `+${this._floodLevel.toFixed(1)} m`;
+    const absEl = document.getElementById('flood-level-abs');
+    if (absEl) absEl.textContent = this._floodLevel > 0
+      ? `Niveau absolu : ${waterLevelNGR.toFixed(1)} m NGR (cote ${cote} + ${this._floodLevel.toFixed(1)})`
+      : '';
+
+    // Envoyer le niveau absolu NGR au MapViewer pour le bathtub DEM
+    MapViewer.updateFloodSimulation(this._floodLevel > 0 ? waterLevelNGR : 0);
+
+    // Alerte si terrain submergé
+    const alt = parseFloat(SessionManager.getTerrain()?.altitude_ngr ?? 999);
+    const alertEl = document.getElementById('flood-alert');
+
+    if (this._floodLevel > 0 && alt <= waterLevelNGR + 0.5) {
+      alertEl.style.display = 'block';
+      alertEl.querySelector('#flood-alert-text').textContent =
+        `⚠ À ${waterLevelNGR.toFixed(1)}m NGR le terrain (alt. ${alt}m) est submergé — profondeur ≈ ${(waterLevelNGR - alt + 0.5).toFixed(1)}m`;
+    } else {
+      alertEl.style.display = 'none';
+    }
+  },
+
+  selectRtaaZone(label, zone) {
+    document.querySelectorAll('[name="rtaa-vent"]').forEach(r => r.closest('.radio-option')?.classList.remove('selected'));
+    label.classList.add('selected');
+    const data = CYCLONE_DATA[zone];
+    if (!data) return;
+    document.getElementById('cyclone-info').style.display = 'block';
+    document.getElementById('ci-vent').textContent = data.vent;
+    document.getElementById('ci-aev').textContent  = data.aev;
+    document.getElementById('ci-toit').textContent = data.toit;
+    SessionManager.saveTerrain({ zone_rtaa: zone, vent_ref_kmh: data.vent });
+  },
+
+  selectSdis(label, field, val) {
+    document.querySelectorAll(`[name="sdis-${field}"]`).forEach(r => r.closest('.radio-option')?.classList.remove('selected'));
+    label.classList.add('selected');
+    const alertEl = document.getElementById('sdis-alert');
+    if (field === 'acces' && val === 'non') {
+      alertEl.style.display = 'block';
+    } else if (field === 'acces') {
+      alertEl.style.display = 'none';
+    }
+    SessionManager.saveTerrain({ [`sdis_${field}`]: val });
+  },
+
+  togglePed(btn) {
+    const content = btn.nextElementSibling;
+    const open = content.style.display !== 'none';
+    content.style.display = open ? 'none' : 'block';
+    btn.textContent = btn.textContent.replace(open ? '▼' : '▶', open ? '▶' : '▼');
+  }
+};
+
+// Init
+const terrain = SessionManager.getTerrain();
+if (terrain?.commune) document.getElementById('ts-commune-p3').textContent = terrain.commune;
+
+window.P03 = P03;
+
+// enviroBAT cards
+if (window.EnvirobatCards) EnvirobatCards.render('eb-cards-p03', 'p03');
+</script>

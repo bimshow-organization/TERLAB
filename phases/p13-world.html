@@ -1,0 +1,375 @@
+<!-- TERLAB · Phase 13 · Architectures Tropicales Mondiales · ENSA La Réunion v1.0 -->
+<!-- Thème : world · Globe Mapbox rotatif · Köppen · Partenariats ENSA -->
+
+<div class="left-panel" id="left-panel-p13">
+
+  <div class="lp-head anim-slide-up">
+    <div class="phase-label" style="color:#3c78dc">Phase World · Ouverture internationale</div>
+    <h1 class="phase-title">🌍 <em>Architectures</em> Tropicales Mondiales</h1>
+    <p class="phase-desc">La Réunion concentre trois étages climatiques sur 70km. L'ENSA La Réunion développe une expertise unique de représentation française en zone tropicale et montagnarde dans l'Océan Indien et au-delà.</p>
+  </div>
+
+  <!-- Sélection étage climatique du terrain -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Étage climatique de votre terrain</div>
+    <div class="koppen-selector">
+      <div class="ksel-item" id="ksel-aw" onclick="P13.selectEtage('Aw')">
+        <div class="ksel-badge" style="background:#a5c88a20;color:#a5c88a;border-color:#a5c88a50">Aw</div>
+        <div class="ksel-body">
+          <div class="ksel-name">Côte tropicale</div>
+          <div class="ksel-range">0–400 m · 24–28°C · 700–900 mm/an</div>
+          <div class="ksel-note">Saint-Paul, Le Port, Saint-Louis, Saint-Denis bas</div>
+        </div>
+      </div>
+      <div class="ksel-item" id="ksel-am" onclick="P13.selectEtage('Am')">
+        <div class="ksel-badge" style="background:#6baa4e20;color:#6baa4e;border-color:#6baa4e50">Am</div>
+        <div class="ksel-body">
+          <div class="ksel-name">Tropical mousson (côte au vent)</div>
+          <div class="ksel-range">0–400 m · 23–27°C · 2500–5000 mm/an</div>
+          <div class="ksel-note">Saint-Benoît, Sainte-Rose, Saint-André est</div>
+        </div>
+      </div>
+      <div class="ksel-item" id="ksel-cf" onclick="P13.selectEtage('Cf')">
+        <div class="ksel-badge" style="background:#c5e68a20;color:#c5e68a;border-color:#c5e68a50">Cf</div>
+        <div class="ksel-body">
+          <div class="ksel-name">Subtropical humide (mi-pentes)</div>
+          <div class="ksel-range">400–900 m · 18–24°C · 1500–2500 mm/an</div>
+          <div class="ksel-note">Saint-Denis hauts, Saint-Pierre mi-pentes</div>
+        </div>
+      </div>
+      <div class="ksel-item" id="ksel-cwb" onclick="P13.selectEtage('Cwb')">
+        <div class="ksel-badge" style="background:#daeaea20;color:#daeaea;border-color:#daeaea50">Cwb</div>
+        <div class="ksel-body">
+          <div class="ksel-name">Océanique d'altitude (hauts)</div>
+          <div class="ksel-range">> 1000 m · 10–22°C · Gel possible</div>
+          <div class="ksel-note">Plaine des Cafres, Cilaos, Plaine des Palmistes</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Références mondiales choisies -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Zones similaires mondiales — cliquer sur le globe</div>
+    <div id="selected-zones" class="selected-zones">
+      <div class="sz-empty" id="sz-empty">Cliquez sur un marqueur du globe pour ajouter une référence</div>
+    </div>
+  </div>
+
+  <!-- Saisie références libres -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Références architecturales notées</div>
+    <div class="field-row">
+      <label class="field-label" for="ref-1">Référence 1 (ville, pays, projet)</label>
+      <input type="text" id="ref-1" class="field-input" data-session-key="reference_monde_1" placeholder="Ex : Medellín, Colombie — urbanisme social"/>
+    </div>
+    <div class="field-row">
+      <label class="field-label" for="ref-2">Référence 2</label>
+      <input type="text" id="ref-2" class="field-input" data-session-key="reference_monde_2" placeholder="Ex : Kandy, Sri Lanka — Geoffrey Bawa"/>
+    </div>
+    <div class="field-row">
+      <label class="field-label" for="ref-3">Référence 3</label>
+      <input type="text" id="ref-3" class="field-input" data-session-key="reference_monde_3"/>
+    </div>
+  </div>
+
+  <!-- Partenariats ENSA -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Partenariats ENSA — Océan Indien & Monde</div>
+    <div class="partenariat-list" id="partenariat-list"><!-- chargé dynamiquement --></div>
+    <div class="field-row" style="margin-top:8px">
+      <label class="field-label" for="partenariat-selec">Partenariat potentiel identifié</label>
+      <input type="text" id="partenariat-selec" class="field-input" data-session-key="partenariat_ensa" placeholder="Ex : Université de Maurice, Kigali…"/>
+    </div>
+  </div>
+
+  <!-- Mission France zone tropicale -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Mission ENSA La Réunion — Représenter la France</div>
+    <div class="mission-card">
+      <div class="mission-icon">🇫🇷</div>
+      <div class="mission-body">
+        <div class="mission-title">Représentation France en zone tropicale</div>
+        <div class="mission-text">La Réunion est l'unique territoire français dans la zone tropicale de l'Océan Indien. L'ENSA La Réunion développe une expertise exportable : RTAA DOM, architecture bioclimatique créole, risques naturels tropicaux, construction en zone volcanique et cyclonique.</div>
+        <div class="mission-zones">
+          <span class="mz-badge" style="background:#a5c88a20;color:#a5c88a;border-color:#a5c88a40">Aw</span>
+          <span class="mz-badge" style="background:#6baa4e20;color:#6baa4e;border-color:#6baa4e40">Am</span>
+          <span class="mz-badge" style="background:#daeaea20;color:#daeaea;border-color:#daeaea40">Cwb</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
+    <button class="source-btn" onclick="TerlabSources.open(13)">→ Sources &amp; références Köppen</button>
+  </div>
+
+  <div class="val-block">
+    <div class="val-title">Validation de la phase World</div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Zone climatique Köppen de référence identifiée</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>3 références architecturales mondiales notées</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Partenariat ENSA potentiel identifié</span></div>
+    <div class="val-progress"><div class="val-bar"></div></div>
+    <div class="val-footer"><span>Phase optionnelle — enrichissement</span><span class="val-pct">0/3</span></div>
+    <button class="next-btn" onclick="window.location.hash='#phase/12'">Synthèse & Exports →</button>
+  </div>
+
+</div>
+
+<!-- ═══════════════════ GLOBE MAPBOX ════════════════════════════ -->
+<div class="map-area" id="globe-area">
+  <div id="map" style="width:100%;height:100%"></div>
+
+  <!-- Contrôles globe -->
+  <div class="globe-controls">
+    <button class="gc-btn" id="gc-rotation" onclick="P13.toggleRotation()" title="Activer/arrêter rotation">⏸ Pause</button>
+    <button class="gc-btn" id="gc-reunion" onclick="P13.focusReunion()" title="Centrer sur La Réunion">📍 Réunion</button>
+    <button class="gc-btn" id="gc-filter-ensa" onclick="P13.toggleEnsaOnly()" title="Partenariats ENSA seulement">🤝 ENSA La Réunion</button>
+  </div>
+
+  <!-- Légende Köppen -->
+  <div class="world-legend">
+    <div class="wl-title">Zones similaires à La Réunion</div>
+    <div class="wl-item"><span class="wl-dot" style="background:#a5c88a"></span>Aw · Tropical côtier</div>
+    <div class="wl-item"><span class="wl-dot" style="background:#6baa4e"></span>Am · Tropical mousson</div>
+    <div class="wl-item"><span class="wl-dot" style="background:#c5e68a"></span>Cf · Subtropical humide</div>
+    <div class="wl-item"><span class="wl-dot" style="background:#daeaea"></span>Cwb · Montagnard tropical</div>
+    <div class="wl-item"><span class="wl-dot" style="background:#FF6B4A;width:12px;height:12px"></span>🏠 Réunion</div>
+    <div class="wl-item"><span class="wl-dot" style="background:rgba(60,120,220,.8)"></span>🤝 Partenariat ENSA</div>
+  </div>
+</div>
+
+<!-- ═══════════════════ COLONNE DROITE (Détail zone) ═════════════ -->
+<div class="right-panel" id="right-panel-p13">
+
+  <div class="rp-section" id="koppen-detail-section">
+    <div class="rp-head">Détail zone sélectionnée</div>
+    <div id="koppen-detail-panel">
+      <div class="kd-empty">Cliquez sur un marqueur du globe pour voir les détails de la zone climatique.</div>
+    </div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">3 étages Réunion</div>
+    <div class="etages-comparison">
+      <div class="etc-row header">
+        <span>Étage</span><span>T°C</span><span>Précip.</span><span>RTAA</span>
+      </div>
+      <div class="etc-row" style="border-left:3px solid #a5c88a">
+        <span>Côte Aw</span><span>26°C</span><span>700mm</span><span>Zone 1</span>
+      </div>
+      <div class="etc-row" style="border-left:3px solid #c5e68a">
+        <span>Mi-pentes Cf</span><span>22°C</span><span>1800mm</span><span>Zone 2</span>
+      </div>
+      <div class="etc-row" style="border-left:3px solid #daeaea">
+        <span>Hauts Cwb</span><span>14°C</span><span>2400mm</span><span>Zone 3</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">Références architecturales</div>
+    <div class="world-refs">
+      <div class="wr-item"><span class="wr-icon">🏛</span><div><div class="wr-name">Geoffrey Bawa — Sri Lanka</div><div class="wr-note">Tropical modernism · ventilation naturelle altitude</div></div></div>
+      <div class="wr-item"><span class="wr-icon">🌆</span><div><div class="wr-name">Ken Yeang — Singapour</div><div class="wr-note">Bioclimatic design · tours tropicales ventilées</div></div></div>
+      <div class="wr-item"><span class="wr-icon">🏙</span><div><div class="wr-name">Medellín — Colombie</div><div class="wr-note">Urbanisme social · altitude tropicale (1500m)</div></div></div>
+      <div class="wr-item"><span class="wr-icon">🏠</span><div><div class="wr-name">Glenn Murcutt — Australie</div><div class="wr-note">Vernaculaire tropical · post-cyclone Tracy</div></div></div>
+    </div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">Exemples enviroBAT-Réunion</div>
+    <div id="eb-cards-p13"></div>
+  </div>
+
+</div>
+
+<style>
+/* Phase World — thème globe nuit */
+.koppen-selector { display:flex; flex-direction:column; gap:5px; }
+.ksel-item { display:flex; gap:10px; padding:8px 10px; background:var(--card); border:1.5px solid var(--border); border-radius:var(--r); cursor:pointer; transition:all var(--tx-fast); align-items:flex-start; }
+.ksel-item:hover { background:var(--raised); border-color:var(--border2); }
+.ksel-item.active { border-color:var(--accent); background:var(--accent3); }
+.ksel-badge { font-family:var(--font-mono); font-size:9px; font-weight:700; padding:3px 7px; border-radius:3px; border:1px solid; flex-shrink:0; margin-top:2px; }
+.ksel-name { font-size:11.5px; color:var(--text); font-weight:500; margin-bottom:2px; }
+.ksel-range { font-family:var(--font-mono); font-size:8.5px; color:var(--muted); margin-bottom:1px; }
+.ksel-note { font-size:10px; color:var(--faint); font-style:italic; }
+
+.selected-zones { min-height:40px; }
+.sz-empty { font-family:var(--font-mono); font-size:9px; color:var(--faint); font-style:italic; text-align:center; padding:12px; }
+.sz-item { display:flex; align-items:center; justify-content:space-between; padding:6px 9px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); margin-bottom:4px; }
+.sz-name { font-size:11px; color:var(--text2); }
+.sz-rm { background:none; border:none; color:var(--faint); cursor:pointer; font-size:14px; line-height:1; }
+.sz-rm:hover { color:var(--danger); }
+
+.partenariat-list { display:flex; flex-direction:column; gap:4px; margin-bottom:4px; }
+.part-item { display:flex; align-items:center; gap:8px; padding:6px 9px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); }
+.part-item.actif { border-color:rgba(60,120,220,.3); background:rgba(60,120,220,.06); }
+.part-icon { font-size:14px; }
+.part-name { font-size:11px; color:var(--text2); }
+.part-status { font-family:var(--font-mono); font-size:7.5px; padding:2px 5px; border-radius:2px; }
+.part-status.actif { background:rgba(60,184,96,.12); color:var(--success); }
+.part-status.potentiel { background:rgba(60,120,220,.12); color:var(--accent); }
+
+.mission-card { background:var(--card); border:1px solid var(--border2); border-radius:var(--r-lg); padding:12px; display:flex; gap:10px; }
+.mission-icon { font-size:28px; flex-shrink:0; }
+.mission-title { font-family:var(--font-serif); font-size:13px; color:var(--text); margin-bottom:5px; }
+.mission-text { font-size:10.5px; color:var(--muted); line-height:1.6; margin-bottom:6px; }
+.mission-zones { display:flex; gap:4px; }
+.mz-badge { font-family:var(--font-mono); font-size:9px; padding:2px 6px; border-radius:3px; border:1px solid; font-weight:700; }
+
+.globe-controls { position:absolute; top:10px; left:10px; z-index:10; display:flex; gap:5px; }
+.gc-btn { padding:5px 10px; background:rgba(4,8,16,.8); border:1px solid rgba(60,120,220,.3); border-radius:var(--r-sm); font-family:var(--font-mono); font-size:9px; color:var(--text2); cursor:pointer; transition:all var(--tx-fast); }
+.gc-btn:hover { border-color:var(--accent); color:var(--accent); }
+.gc-btn.active { background:var(--accent2); border-color:var(--accent); color:var(--accent); }
+
+.world-legend { position:absolute; bottom:40px; right:10px; z-index:10; background:rgba(4,8,16,.85); border:1px solid rgba(60,120,220,.25); border-radius:var(--r-sm); padding:9px 11px; }
+.wl-title { font-family:var(--font-mono); font-size:8px; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; margin-bottom:6px; }
+.wl-item { display:flex; align-items:center; gap:7px; font-family:var(--font-mono); font-size:9px; color:var(--muted); margin-bottom:4px; }
+.wl-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+
+.koppen-detail-panel .kd-empty { font-family:var(--font-mono); font-size:9px; color:var(--faint); font-style:italic; padding:8px 0; }
+.koppen-detail-head { margin-bottom:10px; }
+.koppen-detail-title { font-family:var(--font-serif); font-size:15px; color:var(--text); margin:5px 0 2px; }
+.koppen-detail-pays { font-family:var(--font-mono); font-size:9px; color:var(--muted); }
+.koppen-detail-note { font-size:11px; color:var(--muted); line-height:1.6; font-style:italic; margin-bottom:8px; }
+.koppen-refs { margin-top:8px; }
+.koppen-ref-item { font-size:11px; color:var(--text2); padding:3px 0; border-bottom:1px solid var(--border); }
+.koppen-partenariat { background:rgba(60,184,96,.1); border:1px solid rgba(60,184,96,.25); border-radius:var(--r-sm); padding:6px 9px; font-family:var(--font-mono); font-size:9px; color:var(--success); margin-top:8px; }
+
+.etages-comparison { }
+.etc-row { display:grid; grid-template-columns:1fr .6fr .8fr .7fr; gap:5px; padding:6px 8px; border-bottom:1px solid var(--border); font-size:11px; color:var(--text2); align-items:center; }
+.etc-row.header { font-family:var(--font-mono); font-size:8px; color:var(--faint); text-transform:uppercase; letter-spacing:.08em; }
+
+.world-refs { display:flex; flex-direction:column; gap:6px; }
+.wr-item { display:flex; gap:8px; align-items:flex-start; }
+.wr-icon { font-size:16px; flex-shrink:0; }
+.wr-name { font-size:11px; color:var(--text2); font-weight:500; }
+.wr-note { font-family:var(--font-mono); font-size:8.5px; color:var(--faint); margin-top:1px; }
+</style>
+
+<script type="module">
+const SessionManager = window.SessionManager;
+
+const P13 = {
+  _selectedEtage: null,
+  _selectedZones: [],
+  _ensaOnly: false,
+  _rotating: true,
+
+  async init() {
+    // Charger partenariats
+    try {
+      const data = await fetch('data/partenariats-ensa.json').then(r => r.json());
+      this._renderPartenariats(data);
+    } catch(e) { console.warn('partenariats-ensa.json:', e.message); }
+
+    // Auto-sélectionner l'étage selon l'altitude du terrain
+    const terrain = SessionManager.getTerrain();
+    const alt = parseFloat(terrain?.altitude_ngr ?? 0);
+    if (alt > 1000) this.selectEtage('Cwb', false);
+    else if (alt > 400) this.selectEtage('Cf', false);
+    else this.selectEtage('Aw', false);
+  },
+
+  selectEtage(koppen, save = true) {
+    this._selectedEtage = koppen;
+    document.querySelectorAll('.ksel-item').forEach(el => el.classList.remove('active'));
+    document.getElementById(`ksel-${koppen.toLowerCase()}`)?.classList.add('active');
+    if (save) SessionManager.saveTerrain({ zone_koppen_ref: koppen });
+  },
+
+  _renderPartenariats(data) {
+    const list = [
+      ...(data.partenariats_actifs ?? []).map(p => ({...p, statut: 'actif'})),
+      ...(data.partenariats_potentiels ?? []).map(p => ({...p}))
+    ].slice(0, 5);
+
+    document.getElementById('partenariat-list').innerHTML = list.map(p => `
+      <div class="part-item ${p.statut === 'actif' ? 'actif' : ''}">
+        <span class="part-icon">${p.statut === 'actif' ? '🤝' : '🔭'}</span>
+        <div style="flex:1;min-width:0">
+          <div class="part-name">${p.nom}</div>
+          <div class="part-status ${p.statut ?? 'potentiel'}">${p.statut === 'actif' ? 'Actif' : 'Potentiel'} · ${p.pays}</div>
+        </div>
+      </div>`).join('');
+  },
+
+  addZoneFromGlobe(zone) {
+    if (this._selectedZones.find(z => z.id === zone.id)) return;
+    this._selectedZones.push(zone);
+    document.getElementById('sz-empty')?.remove();
+    const container = document.getElementById('selected-zones');
+    const el = document.createElement('div');
+    el.className = 'sz-item';
+    el.dataset.id = zone.id;
+    el.innerHTML = `
+      <span class="sz-name">${zone.nom} — ${zone.pays}</span>
+      <button class="sz-rm" onclick="P13.removeZone('${zone.id}')" aria-label="Supprimer">×</button>`;
+    container.appendChild(el);
+  },
+
+  removeZone(id) {
+    this._selectedZones = this._selectedZones.filter(z => z.id !== id);
+    document.querySelector(`.sz-item[data-id="${id}"]`)?.remove();
+    if (!this._selectedZones.length) {
+      const container = document.getElementById('selected-zones');
+      const empty = document.createElement('div');
+      empty.id = 'sz-empty';
+      empty.className = 'sz-empty';
+      empty.textContent = 'Cliquez sur un marqueur du globe pour ajouter une référence';
+      container.appendChild(empty);
+    }
+  },
+
+  toggleRotation() {
+    const map = window.TerlabMap?.getMap?.();
+    if (window.TerlabMap?._globeRotating) {
+      this._rotating = !this._rotating;
+      window.TerlabMap._globeRotating.set(this._rotating);
+      const btn = document.getElementById('gc-rotation');
+      if (btn) btn.textContent = this._rotating ? '⏸ Pause' : '▶ Tourner';
+    }
+  },
+
+  focusReunion() {
+    window.TerlabMap?.flyTo(55.54, -21.11, 5);
+    window.TerlabMap?._globeRotating?.set(false);
+    this._rotating = false;
+  },
+
+  toggleEnsaOnly() {
+    this._ensaOnly = !this._ensaOnly;
+    const btn = document.getElementById('gc-filter-ensa');
+    btn?.classList.toggle('active', this._ensaOnly);
+    // Filtrer les marqueurs Mapbox
+    const map = window.TerlabMap?.getMap?.();
+    // Si on a des couches : ajuster filtre
+    // (simplification — dans une vraie implem utiliser Mapbox expressions)
+    window.TerlabToast?.show(
+      this._ensaOnly ? 'Affichage partenariats ENSA uniquement' : 'Toutes les zones affichées',
+      'info', 2000
+    );
+  }
+};
+
+// Exposer et override du handler globe pour récupérer les clics
+window.addEventListener('terlab:koppen-click', e => {
+  P13.addZoneFromGlobe(e.detail);
+});
+
+// Override _showKoppenPanel de MapViewer pour aussi émettre l'event
+const origShow = window.TerlabMap?._showKoppenPanel?.bind(window.TerlabMap);
+if (origShow && window.TerlabMap) {
+  window.TerlabMap._showKoppenPanel = (zone) => {
+    origShow(zone);
+    P13.addZoneFromGlobe(zone);
+  };
+}
+
+P13.init();
+window.P13 = P13;
+
+// enviroBAT cards
+if (window.EnvirobatCards) EnvirobatCards.render('eb-cards-p13', 'p13');
+</script>

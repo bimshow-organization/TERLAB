@@ -1,0 +1,546 @@
+<!-- TERLAB · Phase 4 · Réglementation PLU & SCoT · ENSA La Réunion v2.0 -->
+<!-- Thème : dark accent violet · Reculs + gabarits + armature urbaine + densités -->
+
+<div class="left-panel">
+  <div class="lp-head anim-slide-up">
+    <div class="phase-label" style="color:#a78bfa">Phase 4 · Réglementation</div>
+    <h1 class="phase-title">📐 <em>PLU</em> & SCoT</h1>
+    <p class="phase-desc">Extraire les contraintes réglementaires de constructibilité. Le PLU définit les règles de zone (reculs, hauteurs, emprise). Le SCoT intercommunal fixe les densités minimales et la programmation logement.</p>
+  </div>
+
+  <div class="terrain-strip">
+    <span class="ts-item">📍 <strong id="ts-commune-p4">—</strong></span>
+    <span class="ts-sep">·</span>
+    <span class="ts-item">Interco <strong id="ts-interco-p4">—</strong></span>
+  </div>
+
+  <!-- Toggle cadastre / Plan IGN -->
+  <div style="display:flex;gap:6px;padding:4px 13px 8px">
+    <button class="map-ctl-btn" id="btn-toggle-cadastre-p4" onclick="P04.toggleCadastre()">🗂 Cadastre</button>
+    <button class="map-ctl-btn" id="btn-toggle-plan-p4" onclick="P04.togglePlan()">🗺 Plan IGN</button>
+  </div>
+
+  <!-- Zone PLU -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Zone PLU <span id="plu-auto-badge" style="display:none;font-size:8px;background:var(--success2);color:var(--success);padding:2px 6px;border-radius:3px;margin-left:6px;font-family:var(--font-mono)">IGN WFS</span></div>
+    <div class="stub-warning" id="plu-stub-banner">⚠️ STUB — PLU WMS Géoportail Urbanisme instable pour La Réunion. Vérification manuelle requise sur le site de l'intercommunalité.</div>
+    <div id="plu-auto-result" style="display:none;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:var(--r-sm);margin-bottom:8px;font-size:11px;line-height:1.6">
+      <div><strong id="plu-auto-zone">—</strong> <span id="plu-auto-type" style="font-family:var(--font-mono);font-size:9px;color:var(--muted)">—</span></div>
+      <div id="plu-auto-interp" style="color:var(--text2);margin-top:3px">—</div>
+    </div>
+    <div class="field-row">
+      <label class="field-label" for="zone-plu">Zone du Plan Local d'Urbanisme</label>
+      <select id="zone-plu" class="field-select" data-session-key="zone_plu" onchange="P04.updateZone()">
+        <option value="">-- Sélectionner après vérification --</option>
+        <option value="UA">UA — Urbain central dense</option>
+        <option value="UB">UB — Urbain résidentiel</option>
+        <option value="UC">UC — Urbain périphérique</option>
+        <option value="AU">AU — À urbaniser</option>
+        <option value="AUs">AUs — À urbaniser strictement</option>
+        <option value="N">N — Naturelle</option>
+        <option value="A">A — Agricole ⚠</option>
+      </select>
+    </div>
+    <div class="zone-a-alert" id="zone-a-alert" style="display:none">
+      🔴 <strong>Zone A — Agricole.</strong> Constructibilité quasi nulle. Seul le logement de l'exploitant agricole peut être autorisé sous conditions strictes. Un projet résidentiel nécessite une révision du PLU (2–5 ans de procédure).
+    </div>
+    <div class="plu-links" id="plu-links"></div>
+  </div>
+
+  <!-- Règlement PLU — GPU -->
+  <div class="form-section anim-slide-up" id="reglement-section" style="display:none">
+    <div class="fs-head">Règlement PLU <span id="reglement-badge" style="font-size:8px;background:var(--success2);color:var(--success);padding:2px 6px;border-radius:3px;margin-left:6px;font-family:var(--font-mono)">GPU</span></div>
+    <div id="reglement-info" style="padding:6px 10px;background:var(--card);border:1px solid var(--border);border-radius:var(--r-sm);font-size:11px;line-height:1.6;margin-bottom:8px">
+      <div><strong id="reglement-zone-label">—</strong> <span id="reglement-partition" style="font-family:var(--font-mono);font-size:9px;color:var(--muted)"></span></div>
+      <div id="reglement-datappro" style="color:var(--text2);margin-top:2px;font-size:10px"></div>
+    </div>
+    <a id="reglement-pdf-link" class="reglement-btn" href="#" target="_blank" rel="noopener" style="display:none">
+      📄 Ouvrir le règlement écrit (PDF)
+    </a>
+    <div id="reglement-files-list" style="margin-top:6px"></div>
+    <div class="reglement-note" style="margin-top:8px;font-size:10px;color:var(--muted);line-height:1.5">
+      ⚠️ Le règlement est extrait du <strong>Géoportail de l'Urbanisme</strong> (source officielle). Vérifier la date d'approbation — un PLU en révision peut être modifié.
+    </div>
+  </div>
+
+  <!-- Reculs -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Reculs & gabarits</div>
+    <div class="reculs-grid">
+      <div class="field-row">
+        <label class="field-label">Recul voie principale (m)</label>
+        <input type="number" id="r-voie" class="field-input" data-session-key="recul_voie_principale_m" placeholder="5" min="0" step="0.5" oninput="P04.updateReculs()"/>
+      </div>
+      <div class="field-row">
+        <label class="field-label">Recul voie secondaire (m)</label>
+        <input type="number" id="r-voie2" class="field-input" data-session-key="recul_voie_secondaire_m" placeholder="2" min="0" step="0.5"/>
+      </div>
+      <div class="field-row">
+        <label class="field-label">Recul limite séparative (m)</label>
+        <input type="number" id="r-sep" class="field-input" data-session-key="recul_limite_sep_m" placeholder="3" min="0" step="0.5"/>
+      </div>
+      <div class="field-row">
+        <label class="field-label">Recul fond de parcelle (m)</label>
+        <input type="number" id="r-fond" class="field-input" data-session-key="recul_fond_m" placeholder="3" min="0" step="0.5"/>
+      </div>
+      <div class="field-row">
+        <label class="field-label">Hauteur max autorisée (m)</label>
+        <input type="number" id="h-max" class="field-input" data-session-key="hauteur_max_m" placeholder="9" min="2.5" step="0.5"/>
+      </div>
+      <div class="field-row">
+        <label class="field-label">Emprise au sol max (%)</label>
+        <input type="number" id="emp-max" class="field-input" data-session-key="emprise_sol_max_pct" placeholder="60" min="5" max="100"/>
+      </div>
+    </div>
+    <div class="reculs-viz" id="reculs-viz" style="display:none">
+      <canvas id="reculs-canvas" width="200" height="200" aria-label="Schéma des reculs"></canvas>
+      <div class="rv-labels">
+        <span class="rv-l" id="rv-voie">Voie — m</span>
+        <span class="rv-l" id="rv-sep">Sep — m</span>
+        <span class="rv-l" id="rv-fond">Fond — m</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCoT — Armature urbaine & densité -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">SCoT intercommunal <span id="scot-badge" style="display:none;font-size:8px;background:var(--success2);color:var(--success);padding:2px 6px;border-radius:3px;margin-left:6px;font-family:var(--font-mono)">AUTO</span></div>
+    <div id="scot-loading" style="padding:8px 10px;font-size:11px;color:var(--muted)">Chargement des données SCoT...</div>
+    <div id="scot-unavailable" style="display:none;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:var(--r-sm);font-size:11px;color:var(--muted);line-height:1.6">
+      <strong>SCoT non intégré</strong> pour cette intercommunalité. Les données de densité et d'armature urbaine ne sont pas encore disponibles dans TERLAB.
+    </div>
+    <div id="scot-result" style="display:none">
+      <!-- Rang armature -->
+      <div class="scot-rang-card" id="scot-rang-card">
+        <div class="scot-rang-num" id="scot-rang-num">—</div>
+        <div class="scot-rang-body">
+          <div class="scot-rang-label" id="scot-rang-label">—</div>
+          <div class="scot-rang-place" id="scot-rang-place">—</div>
+        </div>
+      </div>
+      <!-- Densité -->
+      <div class="scot-densite-block">
+        <div class="scot-kv">
+          <span class="scot-kv-l">Densité minimale SCoT</span>
+          <span class="scot-kv-v" id="scot-densite-min">—</span>
+        </div>
+        <div class="scot-kv">
+          <span class="scot-kv-l">Capacité minimale terrain</span>
+          <span class="scot-kv-v" id="scot-capacite-min">—</span>
+        </div>
+        <div class="scot-kv">
+          <span class="scot-kv-l">% logements aidés attendu</span>
+          <span class="scot-kv-v" id="scot-pct-aides">—</span>
+        </div>
+      </div>
+      <!-- Note DOO -->
+      <div class="scot-note" id="scot-note" style="display:none"></div>
+      <!-- Source -->
+      <div style="margin-top:6px;font-size:9px;color:var(--muted);font-family:var(--font-mono)">
+        <span id="scot-source-label">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUP & ABF -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Servitudes & contraintes spéciales</div>
+    <div class="field-row">
+      <label class="field-label">Secteur ABF (Architecte des Bâtiments de France)</label>
+      <div class="radio-group">
+        <label class="radio-option" onclick="P04.sel(this,'abf','non')"><input type="radio" name="abf" value="non"/>Non</label>
+        <label class="radio-option" onclick="P04.sel(this,'abf','oui')"><input type="radio" name="abf" value="oui"/>⚠ Oui — avis conforme</label>
+        <label class="radio-option" onclick="P04.sel(this,'abf','verif')"><input type="radio" name="abf" value="verif"/>À vérifier</label>
+      </div>
+    </div>
+    <div class="field-row">
+      <label class="field-label">OAP sectorielle applicable</label>
+      <div class="radio-group">
+        <label class="radio-option" onclick="P04.sel(this,'oap','non')"><input type="radio" name="oap" value="non"/>Non</label>
+        <label class="radio-option" onclick="P04.sel(this,'oap','oui')"><input type="radio" name="oap" value="oui"/>⚠ Oui — lire l'OAP</label>
+        <label class="radio-option" onclick="P04.sel(this,'oap','inconnu')"><input type="radio" name="oap" value="inconnu"/>Inconnu</label>
+      </div>
+    </div>
+    <div class="field-row">
+      <label class="field-label">SUP lignes haute tension</label>
+      <div class="radio-group">
+        <label class="radio-option" onclick="P04.sel(this,'sup_ht','non')"><input type="radio" name="sup_ht" value="non"/>Non</label>
+        <label class="radio-option" onclick="P04.sel(this,'sup_ht','oui')"><input type="radio" name="sup_ht" value="oui"/>⚠ Oui</label>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
+    <button class="source-btn" onclick="TerlabSources.open(4)">→ Sources &amp; références PLU / SCoT</button>
+    <a href="https://www.geoportail-urbanisme.gouv.fr" target="_blank" rel="noopener" class="source-btn" style="margin-left:10px">→ Géoportail Urbanisme ↗</a>
+  </div>
+
+  <div class="val-block">
+    <div class="val-title">Validation de la phase 4</div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Zone PLU confirmée</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Tous les reculs saisis</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Règlement PLU consulté</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Servitudes d'utilité publique vérifiées</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Rang SCoT et densité minimale identifiés</span></div>
+    <div class="val-progress"><div class="val-bar"></div></div>
+    <div class="val-footer"><span>Phase indicative</span><span class="val-pct">0/5</span></div>
+    <button class="next-btn">Phase 5 — Voisinage & Réseaux →</button>
+  </div>
+</div>
+
+<div class="map-area"><div id="map" style="width:100%;height:100%"></div><div id="map-stub-banner" style="display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(167,139,250,.85);color:#000;padding:5px 14px;border-radius:4px;font-family:monospace;font-size:10px"></div></div>
+
+<div class="right-panel">
+  <div class="rp-section">
+    <div class="rp-head">Armature urbaine SCoT</div>
+    <div class="scot-armature-ref">
+      <div class="sar"><span class="sar-n">1</span><span class="sar-l">Coeur d'agglo</span><span class="sar-v">≥ 50 lgts/ha</span></div>
+      <div class="sar"><span class="sar-n">2</span><span class="sar-l">Pôle secondaire</span><span class="sar-v">≥ 50 lgts/ha</span></div>
+      <div class="sar"><span class="sar-n">3</span><span class="sar-l">Ville relais</span><span class="sar-v">≥ 30 lgts/ha</span></div>
+      <div class="sar"><span class="sar-n">4</span><span class="sar-l">Bourg proximité</span><span class="sar-v">20–30 lgts/ha</span></div>
+      <div class="sar"><span class="sar-n">5</span><span class="sar-l">Village / TRH</span><span class="sar-v">10–20 lgts/ha</span></div>
+    </div>
+    <div class="sar-note">
+      Densités d'aménagement minimales (DOO O8). Valeurs-guides incluant espaces publics, hors équipements supra-proximité.
+    </div>
+  </div>
+  <div class="rp-section"><div class="rp-head">Acteurs & ressources</div><div id="actors-zone" class="stagger anim-fade-in"></div></div>
+  <div class="rp-section"><div class="rp-head">Risques de phase</div><div id="risks-zone"></div></div>
+  <div class="rp-section">
+    <div class="rp-head">Logement SCoT</div>
+    <div id="scot-logement-rp" class="scot-logement-ref">
+      <div class="rkv"><span class="rkv-l">Production 10 ans</span><span class="rkv-v" id="rp-scot-prod">—</span></div>
+      <div class="rkv"><span class="rkv-l">% aidés dans production</span><span class="rkv-v" id="rp-scot-aides">—</span></div>
+      <div class="rkv"><span class="rkv-l">Logements aidés / an</span><span class="rkv-v" id="rp-scot-aides-an">—</span></div>
+    </div>
+    <div id="scot-orientations-rp" style="margin-top:8px"></div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">Exemples enviroBAT-Réunion</div>
+    <div id="eb-cards-p04"></div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">Note pédagogique</div>
+    <div class="ped-note">
+      <strong>PLU en révision ?</strong> Vérifier la date d'approbation sur Géoportail Urbanisme. Un PLU en révision peut évoluer significativement avant approbation. En cas de doute, contacter directement le service urbanisme de la commune.<br/><br/>
+      <strong>OAP non lue = piège.</strong> Les Orientations d'Aménagement et de Programmation peuvent imposer des obligations de mixité sociale, de stationnement, de traitement des espaces extérieurs qui ne sont pas visibles dans le règlement de zone seul.
+    </div>
+  </div>
+</div>
+
+<style>
+.zone-a-alert { background:var(--danger2); border:1px solid rgba(242,87,87,.3); border-left:3px solid var(--danger); border-radius:var(--r-sm); padding:9px 11px; font-size:11px; color:var(--danger); margin-top:8px; line-height:1.6; }
+.plu-links { display:flex; flex-direction:column; gap:4px; margin-top:8px; }
+.plu-link-btn { padding:6px 10px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); font-family:var(--font-mono); font-size:9px; color:var(--muted); cursor:pointer; transition:all var(--tx-fast); text-align:left; text-decoration:none; display:block; }
+.plu-link-btn:hover { border-color:var(--purple); color:var(--purple); }
+.reculs-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+.reculs-viz { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:10px; display:flex; flex-direction:column; align-items:center; gap:6px; }
+.rv-labels { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+.rv-l { font-family:var(--font-mono); font-size:8.5px; color:var(--muted); }
+.scot-rang-card { display:flex; gap:12px; align-items:center; padding:10px 12px; background:var(--card); border:1.5px solid var(--purple); border-left:4px solid var(--purple); border-radius:var(--r); margin-bottom:8px; }
+.scot-rang-num { width:32px; height:32px; border-radius:50%; background:var(--purple2); border:2px solid var(--purple); display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:16px; font-weight:700; color:var(--purple); flex-shrink:0; }
+.scot-rang-label { font-size:12px; color:var(--text); font-weight:600; }
+.scot-rang-place { font-family:var(--font-mono); font-size:9px; color:var(--muted); margin-top:2px; }
+.scot-densite-block { display:flex; flex-direction:column; gap:4px; }
+.scot-kv { display:flex; justify-content:space-between; align-items:center; padding:5px 8px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); }
+.scot-kv-l { font-size:10.5px; color:var(--muted); }
+.scot-kv-v { font-family:var(--font-mono); font-size:11px; font-weight:700; color:var(--text); }
+.scot-note { background:var(--raised); border:1px solid var(--border2); border-radius:var(--r-sm); padding:8px 10px; font-size:10px; color:var(--muted); margin-top:8px; line-height:1.6; }
+.scot-armature-ref { display:flex; flex-direction:column; gap:3px; }
+.sar { display:flex; align-items:center; gap:8px; padding:4px 8px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); }
+.sar-n { width:20px; height:20px; border-radius:50%; background:var(--purple2); border:1.5px solid var(--border2); display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--purple); flex-shrink:0; }
+.sar-l { font-size:10px; color:var(--text); flex:1; }
+.sar-v { font-family:var(--font-mono); font-size:9px; font-weight:600; color:var(--muted); }
+.sar-note { font-size:9px; color:var(--muted); margin-top:6px; line-height:1.5; padding:0 4px; }
+.reglement-btn { display:flex; align-items:center; gap:6px; padding:8px 12px; background:var(--purple2); border:1.5px solid var(--purple); border-radius:var(--r-sm); font-family:var(--font-mono); font-size:11px; font-weight:600; color:var(--purple); cursor:pointer; text-decoration:none; transition:all var(--tx-fast); }
+.reglement-btn:hover { background:var(--purple); color:#fff; }
+.reglement-file-link { display:block; padding:5px 10px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); font-family:var(--font-mono); font-size:9px; color:var(--muted); text-decoration:none; margin-bottom:3px; transition:all var(--tx-fast); }
+.reglement-file-link:hover { border-color:var(--purple); color:var(--purple); }
+.reglement-file-tag { display:inline-block; font-size:8px; padding:1px 5px; border-radius:3px; margin-right:4px; font-weight:600; text-transform:uppercase; }
+.reglement-file-tag.reglement { background:var(--purple2); color:var(--purple); }
+.reglement-file-tag.oap { background:var(--warning2); color:var(--warning); }
+.reglement-file-tag.zonage { background:var(--success2); color:var(--success); }
+.reglement-file-tag.rapport, .reglement-file-tag.padd { background:var(--info2,rgba(96,165,250,.1)); color:var(--info,#60a5fa); }
+.reglement-file-tag.autre { background:var(--raised); color:var(--muted); }
+.rkv { display:flex; justify-content:space-between; align-items:center; padding:5px 8px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); }
+.rkv-l { font-size:10.5px; color:var(--muted); }
+.rkv-v { font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--text); }
+.scot-logement-ref { display:flex; flex-direction:column; gap:4px; }
+</style>
+<script type="module">
+const SessionManager = window.SessionManager;
+const INTERCOS_URLS = { CINOR:'https://www.cinor.re', CIREST:'https://www.cirest.fr', CASUD:'https://www.casud.re', TCO:'https://www.tco.re' };
+const PLUService = window.PLUService;
+const MapViewer  = window.TerlabMap;
+
+const P04 = {
+  _cadastreOn: true,
+  _planOn: false,
+
+  toggleCadastre() {
+    this._cadastreOn = !this._cadastreOn;
+    MapViewer?.toggleCadastre?.(this._cadastreOn);
+    document.getElementById('btn-toggle-cadastre-p4')?.classList.toggle('active', this._cadastreOn);
+  },
+  togglePlan() {
+    this._planOn = !this._planOn;
+    MapViewer?.togglePlanIGN?.(this._planOn);
+    document.getElementById('btn-toggle-plan-p4')?.classList.toggle('active', this._planOn);
+  },
+
+  updateZone() {
+    const z = document.getElementById('zone-plu')?.value;
+    document.getElementById('zone-a-alert').style.display = z === 'A' ? 'block' : 'none';
+    SessionManager.saveTerrain({ zone_plu: z });
+  },
+  updateReculs() {
+    const v = parseFloat(document.getElementById('r-voie')?.value ?? 0);
+    const s = parseFloat(document.getElementById('r-sep')?.value ?? 0);
+    const f = parseFloat(document.getElementById('r-fond')?.value ?? 0);
+    if (!v && !s && !f) return;
+    document.getElementById('reculs-viz').style.display = 'flex';
+    document.getElementById('rv-voie').textContent  = `Voie ${v}m`;
+    document.getElementById('rv-sep').textContent   = `Sep ${s}m`;
+    document.getElementById('rv-fond').textContent  = `Fond ${f}m`;
+    const canvas = document.getElementById('reculs-canvas');
+    const ctx = canvas?.getContext('2d');
+    if (!ctx) return;
+    const W = 200, H = 200, M = 20;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--card').trim() || '#fcf9f3';
+    ctx.fillRect(0, 0, W, H);
+    const scale = 8;
+    ctx.strokeStyle = '#c4b396'; ctx.lineWidth = 1;
+    ctx.strokeRect(M, M, W - M*2, H - M*2);
+    ctx.strokeStyle = '#a78bfa'; ctx.lineWidth = 1.5;
+    const rv = Math.min(v * scale, H/3), rs = Math.min(s * scale, W/3), rf = Math.min(f * scale, H/3);
+    ctx.strokeRect(M + rs, M + rv, W - M*2 - rs*2, H - M*2 - rv - rf);
+    ctx.fillStyle = 'rgba(167,139,250,0.08)';
+    ctx.fillRect(M + rs, M + rv, W - M*2 - rs*2, H - M*2 - rv - rf);
+    ctx.font = '9px monospace'; ctx.fillStyle = '#a78bfa'; ctx.textAlign = 'center';
+    ctx.fillText('Zone constructible', W/2, H/2 + 4);
+  },
+  sel(label, field, val) {
+    document.querySelectorAll(`[name="${field}"]`).forEach(r => r.closest('.radio-option')?.classList.remove('selected'));
+    label.classList.add('selected');
+    SessionManager.saveTerrain({ [field]: val });
+  },
+
+  // ─── Affichage résultat SCOT ─────────────────────────────────
+  displaySCOT(result) {
+    document.getElementById('scot-loading').style.display = 'none';
+    if (result.status !== 'ok') {
+      document.getElementById('scot-unavailable').style.display = 'block';
+      return;
+    }
+    document.getElementById('scot-result').style.display = 'block';
+    document.getElementById('scot-badge').style.display = 'inline';
+
+    // Rang
+    const rang = result.rang;
+    if (rang) {
+      document.getElementById('scot-rang-num').textContent = rang.rang_num;
+      document.getElementById('scot-rang-label').textContent = rang.label;
+      document.getElementById('scot-rang-place').textContent = rang.place_urbaine;
+    }
+
+    // Densité
+    const d = result.densite;
+    if (d?.densite_min_lgts_ha) {
+      const label = d.densite_max_lgts_ha
+        ? `${d.densite_min_lgts_ha}–${d.densite_max_lgts_ha} lgts/ha`
+        : `≥ ${d.densite_min_lgts_ha} lgts/ha`;
+      document.getElementById('scot-densite-min').textContent = label;
+    }
+
+    // Capacité
+    if (result.capacite) {
+      const cap = result.capacite;
+      const label = cap.logements_max_scot
+        ? `${cap.logements_min_scot}–${cap.logements_max_scot} logements`
+        : `≥ ${cap.logements_min_scot} logements`;
+      document.getElementById('scot-capacite-min').textContent = label;
+    }
+
+    // % aidés
+    if (result.logement?.pct_aides) {
+      document.getElementById('scot-pct-aides').textContent = `${result.logement.pct_aides}%`;
+    }
+
+    // Note DOO
+    if (d?.note) {
+      const noteEl = document.getElementById('scot-note');
+      noteEl.textContent = d.note;
+      noteEl.style.display = 'block';
+    }
+
+    // Source
+    document.getElementById('scot-source-label').textContent =
+      `${result.scot_nom} — approuvé ${result.approbation}${result.modification ? ', modifié ' + result.modification : ''}`;
+
+    // Panneau droit — logement
+    if (result.logement) {
+      const log = result.logement;
+      const rules = this._scotRules;
+      if (rules?.logement) {
+        const el = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+        el('rp-scot-prod', `${rules.logement.production_10ans_total?.toLocaleString()} lgts`);
+        el('rp-scot-aides', `${log.pct_aides}%`);
+        el('rp-scot-aides-an', `${rules.logement.production_annuelle_logements_aides} lgts/an`);
+        // Orientations
+        const orientDiv = document.getElementById('scot-orientations-rp');
+        if (orientDiv && log.orientations_resume?.length) {
+          orientDiv.innerHTML = log.orientations_resume.map(o =>
+            `<div style="font-size:9px;color:var(--muted);padding:3px 0;border-bottom:1px solid var(--border)">→ ${o}</div>`
+          ).join('');
+        }
+      }
+    }
+
+    // Sauvegarder en session
+    SessionManager.saveTerrain({
+      scot_interco: result.interco,
+      scot_rang: rang?.rang_num ?? null,
+      scot_rang_label: rang?.label ?? null,
+      scot_place_urbaine: rang?.place_urbaine ?? null,
+      scot_densite_min: d?.densite_min_lgts_ha ?? null,
+      scot_pct_aides: result.logement?.pct_aides ?? null,
+      scot_capacite_min: result.capacite?.logements_min_scot ?? null,
+    });
+  },
+
+  _scotRules: null,
+};
+const terrain = SessionManager.getTerrain();
+if (terrain?.commune) document.getElementById('ts-commune-p4').textContent = terrain.commune;
+if (terrain?.intercommunalite) {
+  document.getElementById('ts-interco-p4').textContent = terrain.intercommunalite;
+  const url = INTERCOS_URLS[terrain.intercommunalite];
+  if (url) {
+    document.getElementById('plu-links').innerHTML = `
+      <a class="plu-link-btn" href="${url}" target="_blank" rel="noopener">→ PLU ${terrain.intercommunalite} — ${url.replace('https://','')}</a>
+      <a class="plu-link-btn" href="https://www.geoportail-urbanisme.gouv.fr" target="_blank" rel="noopener">→ Géoportail de l'Urbanisme national</a>`;
+  }
+}
+
+// ─── Zone RTAA auto-détectée silencieusement (pour P7 esquisse) ──
+const altitude = parseFloat(terrain?.altitude_ngr ?? 0);
+if (altitude) {
+  const zone = altitude < 400 ? 1 : altitude < 800 ? 2 : 3;
+  SessionManager.saveTerrain({ zone_rtaa: String(zone) });
+}
+window.P04 = P04;
+
+// ─── Auto-fetch SCOT ────────────────────────────────────────────
+(async () => {
+  const t = SessionManager.getTerrain();
+  if (!t?.code_insee) {
+    document.getElementById('scot-loading').textContent = 'Code INSEE non disponible — identifier le terrain en phase 0.';
+    return;
+  }
+  try {
+    const SCOTService = (await import('../services/scot-service.js')).default;
+    const interco = SCOTService.getInterco(t.code_insee);
+    if (interco) {
+      const rules = await SCOTService.loadRules(interco);
+      P04._scotRules = rules;
+    }
+    const result = await SCOTService.analyze({
+      insee: t.code_insee,
+      commune: t.commune,
+      quartier: t.lieu_dit ?? t.quartier ?? null,
+      surface_m2: parseFloat(t.surface_m2 ?? t.contenance_m2 ?? 0) || undefined,
+    });
+    P04.displaySCOT(result);
+  } catch (e) {
+    console.warn('[P04] SCOT auto-fetch failed:', e.message);
+    document.getElementById('scot-loading').textContent = 'Erreur chargement SCoT.';
+  }
+})();
+
+// ─── Auto-fetch PLU WFS depuis position terrain ─────────────
+(async () => {
+  const t = SessionManager.getTerrain();
+  if (!t?.lat || !t?.lng || !PLUService?.fetch) return;
+  try {
+    const plu = await PLUService.fetch(parseFloat(t.lng), parseFloat(t.lat));
+    if (!plu) return;
+    // Remplir l'affichage auto
+    document.getElementById('plu-auto-result').style.display = 'block';
+    document.getElementById('plu-auto-zone').textContent = plu.zone;
+    document.getElementById('plu-auto-type').textContent = `(${plu.typeZone})`;
+    document.getElementById('plu-auto-interp').textContent = plu.interpretation;
+    document.getElementById('plu-auto-badge').style.display = 'inline';
+    document.getElementById('plu-stub-banner').style.display = 'none';
+    // Pré-sélectionner le select si possible
+    const sel = document.getElementById('zone-plu');
+    if (sel && plu.typeZone) {
+      const opt = [...sel.options].find(o => o.value.startsWith(plu.typeZone));
+      if (opt) { sel.value = opt.value; P04.updateZone(); }
+    }
+    // Sauvegarder en session
+    SessionManager.saveTerrain({
+      zone_plu: plu.zone,
+      zone_plu_type: plu.typeZone,
+      zone_plu_constructible: plu.constructible,
+    });
+  } catch (e) {
+    console.warn('[P04] PLU auto-fetch failed:', e.message);
+  }
+})();
+
+// ─── Auto-fetch Règlement PLU via GPU API ───────────────────
+(async () => {
+  const t = SessionManager.getTerrain();
+  if (!t?.lat || !t?.lng || !PLUService?.fetchReglement) return;
+  try {
+    const reg = await PLUService.fetchReglement(parseFloat(t.lat), parseFloat(t.lng));
+    if (!reg || reg.zone === '—') return;
+
+    // Afficher la section
+    const section = document.getElementById('reglement-section');
+    section.style.display = '';
+
+    // Infos zone
+    document.getElementById('reglement-zone-label').textContent = `${reg.libelle} (${reg.zone})`;
+    document.getElementById('reglement-partition').textContent = reg.partition ?? '';
+    if (reg.datappro && reg.datappro !== '—') {
+      document.getElementById('reglement-datappro').textContent = `Approuvé le ${reg.datappro}`;
+    }
+
+    // Lien direct règlement PDF
+    if (reg.reglementUrl) {
+      const link = document.getElementById('reglement-pdf-link');
+      link.href = reg.reglementUrl;
+      link.style.display = 'flex';
+    }
+
+    // Liste des fichiers du document (OAP, rapport, etc.)
+    const filesList = document.getElementById('reglement-files-list');
+    const keyFiles = reg.files.filter(f => f.type !== 'autre').slice(0, 10);
+    if (keyFiles.length) {
+      filesList.innerHTML = keyFiles.map(f =>
+        `<a class="reglement-file-link" href="${f.url}" target="_blank" rel="noopener">` +
+        `<span class="reglement-file-tag ${f.type}">${f.type}</span>${f.name}</a>`
+      ).join('');
+    }
+
+    // Sauvegarder en session
+    SessionManager.saveTerrain({
+      plu_reglement_url: reg.reglementUrl ?? null,
+      plu_partition: reg.partition,
+      plu_nomfic: reg.nomfic,
+      plu_datappro: reg.datappro,
+      plu_document_id: reg.documentId,
+    });
+
+  } catch (e) {
+    console.warn('[P04] Règlement GPU fetch failed:', e.message);
+  }
+})();
+
+// enviroBAT cards
+if (window.EnvirobatCards) EnvirobatCards.render('eb-cards-p04', 'p04');
+</script>

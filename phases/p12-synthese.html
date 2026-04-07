@@ -1,0 +1,443 @@
+<!-- TERLAB · Phase 12 · Synthèse & Exports · ENSA La Réunion v1.0 -->
+<!-- Thème : dark · PDF A3 6 pages · DXF · GLB · JSON · QR code session -->
+
+<div class="left-panel">
+  <div class="lp-head anim-slide-up">
+    <div class="phase-label">Phase 12 · Synthèse finale</div>
+    <h1 class="phase-title">📄 <em>Synthèse</em> & Exports</h1>
+    <p class="phase-desc">Générer tous les livrables de l'analyse. Le PDF A3 en 6 pages est le livrable académique principal. Le DXF et le GLB permettent d'intégrer le travail dans AutoCAD et BIMSHOW.</p>
+  </div>
+
+  <!-- Terrain summary -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Résumé terrain</div>
+    <div class="synth-terrain" id="synth-terrain"><!-- rempli dynamiquement --></div>
+  </div>
+
+  <!-- Progression phases -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Progression des phases</div>
+    <div class="phase-progress-list" id="phase-progress-list"><!-- rempli dynamiquement --></div>
+    <div class="completion-bar-wrap" style="margin-top:10px">
+      <div class="cb-header">
+        <span class="cb-label">Complétion globale</span>
+        <span class="cb-pct" id="cb-pct">0%</span>
+      </div>
+      <div class="completion-bar"><div class="cb-fill" id="cb-fill"></div></div>
+    </div>
+  </div>
+
+  <!-- Commentaire étudiant -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Commentaire général</div>
+    <div class="field-row">
+      <label class="field-label" for="commentaire-global">Observations et synthèse personnelle (optionnel)</label>
+      <textarea id="commentaire-global" class="field-textarea" data-session-key="commentaire_global" rows="4" placeholder="Synthèse des enjeux principaux identifiés, questions à approfondir, parti pris architectural…"></textarea>
+    </div>
+    <div class="field-row">
+      <label class="field-label" for="enseignant">Enseignant référent</label>
+      <input type="text" id="enseignant" class="field-input" data-session-key="enseignant" placeholder="Nom de l'enseignant"/>
+    </div>
+  </div>
+
+  <!-- Score GIEP synthèse -->
+  <div class="form-section anim-slide-up" id="giep-score-synthese-section">
+    <div class="fs-head">Score GIEP — Eaux Pluviales</div>
+    <div id="giep-score-synthese">
+      <div class="stub-warning">Score GIEP calculé automatiquement si les données terrain et gabarit sont renseignées</div>
+    </div>
+  </div>
+
+  <!-- Accès pompiers SDIS 974 — récap depuis Phase 8 -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Accès pompiers — SDIS 974</div>
+    <div id="synthese-sdis" class="rp-section"></div>
+  </div>
+
+  <!-- Avertissement légal -->
+  <div class="form-section anim-slide-up">
+    <div class="legal-disclaimer">
+      <div class="ld-icon">⚖</div>
+      <div class="ld-body">
+        <div class="ld-title">Document pédagogique</div>
+        <div class="ld-text">Ce document est produit avec TERLAB v1.0, outil pédagogique de l'ENSA La Réunion. Il <strong>ne se substitue pas</strong> aux documents réglementaires officiels (PPRN, PLU, CU, ERP, attestations techniques). Toute décision de construction doit s'appuyer sur les documents officiels vérifiés.</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
+    <button class="source-btn" onclick="TerlabSources.open(12)">→ Sources &amp; références</button>
+  </div>
+
+  <div class="val-block">
+    <div class="val-title">Validation de la phase 12</div>
+    <div class="check-item blocking" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Phases 0 à 3 toutes complètes</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Export PDF A3 généré et vérifié</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Session Firebase sauvegardée</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0" id="p12-check-aero"><div class="check-box"></div><span>Score aéraulique global calculé et documenté</span></div>
+    <div class="val-progress"><div class="val-bar"></div></div>
+    <div class="val-footer"><span>Livrable final</span><span class="val-pct">0/4</span></div>
+    <!-- Phase World masquée — pas encore prête -->
+    <!-- <button class="next-btn" onclick="window.location.hash='#phase/13'">Phase World — Architectures tropicales mondiales →</button> -->
+  </div>
+</div>
+
+<!-- ═══════════════════ CARTE OVERVIEW ══════════════════════════ -->
+<div class="map-area"><div id="map" style="width:100%;height:100%"></div></div>
+
+<!-- ═══════════════════ COLONNE DROITE — EXPORTS ═════════════════ -->
+<div class="right-panel">
+
+  <!-- Wind Score Dashboard — Sprint 4 -->
+  <div class="rp-section" id="p12-wind-score">
+    <div class="rp-head">Synthèse Aéraulique</div>
+    <div id="p12-wind-dashboard"></div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">Exports académiques</div>
+    <div class="export-panel">
+
+      <div class="ep-main">
+        <button class="ep-btn ep-pdf" onclick="TerlabExport.generatePDF()">
+          <span class="ep-icon">📄</span>
+          <div class="ep-label">PDF A3 — 6 pages</div>
+          <div class="ep-desc">Synthèse complète · Cartouche ENSA La Réunion</div>
+        </button>
+      </div>
+
+      <div class="ep-secondary">
+        <button class="ep-btn ep-dxf" onclick="TerlabExport.generateDXF()">
+          <span class="ep-icon">📐</span>
+          <div class="ep-label">DXF</div>
+          <div class="ep-desc">Parcelle + reculs</div>
+        </button>
+        <button class="ep-btn ep-glb" onclick="TerlabExport.generateGLB()">
+          <span class="ep-icon">🏗</span>
+          <div class="ep-label">GLB</div>
+          <div class="ep-desc">Contexte 3D</div>
+        </button>
+        <button class="ep-btn ep-json" onclick="TerlabExport.generateJSON()">
+          <span class="ep-icon">📦</span>
+          <div class="ep-label">JSON</div>
+          <div class="ep-desc">Session complète</div>
+        </button>
+      </div>
+
+      <div class="ep-ifc">
+        <button class="ep-btn ep-ifc-btn" onclick="window.TerlabToast?.show('Export IFC — STUB. Voir __stubs__/ifc-worker.js','warning',5000)">
+          <span class="ep-icon">🏛</span>
+          <div class="ep-label">IFC <span class="stub-tag">STUB</span></div>
+          <div class="ep-desc">Phase 7 — en développement</div>
+        </button>
+      </div>
+
+      <div class="stub-warning" style="margin-top:8px">⚠️ Les exports contiennent des métadonnées de session. Purger avant diffusion si confidentialité requise.</div>
+    </div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">QR Code session</div>
+    <div class="qr-panel">
+      <div class="qr-canvas-wrap">
+        <div id="qr-placeholder" class="qr-placeholder">
+          <span style="font-size:28px">📱</span>
+          <span style="font-family:monospace;font-size:9px;color:var(--faint)">Générer le QR code</span>
+        </div>
+        <canvas id="qr-canvas" style="display:none;max-width:120px;max-height:120px"></canvas>
+      </div>
+      <div class="qr-info">
+        <div class="qr-url" id="qr-url">bimshow.io/terlab/#session/…</div>
+        <button class="qr-btn" onclick="P12.generateQR()">Générer QR code</button>
+        <div class="stub-warning" style="margin-top:4px">⚠️ STUB — Librairie QR code à intégrer</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">Firebase — Sauvegarde session</div>
+    <div class="firebase-panel">
+      <div class="fb-status" id="fb-status">
+        <span class="fb-dot" id="fb-dot"></span>
+        <span id="fb-label">Non connecté</span>
+      </div>
+      <button class="fb-sync-btn" onclick="P12.syncFirebase()">⬆ Synchroniser Firebase</button>
+      <div class="fb-id" id="fb-id">Session : —</div>
+    </div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">Acteurs & ressources</div>
+    <div id="actors-zone" class="stagger anim-fade-in"></div>
+  </div>
+
+</div>
+
+<style>
+.synth-terrain { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+.st-cell { background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); padding:6px 9px; }
+.st-label { font-family:var(--font-mono); font-size:8px; color:var(--faint); text-transform:uppercase; letter-spacing:.1em; display:block; margin-bottom:2px; }
+.st-val { font-size:12px; color:var(--text); font-weight:500; }
+
+.phase-progress-list { display:flex; flex-direction:column; gap:3px; }
+.ppl-item { display:flex; align-items:center; gap:8px; padding:5px 9px; border-radius:var(--r-sm); }
+.ppl-num { font-family:var(--font-mono); font-size:9px; width:20px; color:var(--faint); }
+.ppl-name { font-size:11px; flex:1; }
+.ppl-status { font-family:var(--font-mono); font-size:9px; }
+.ppl-item.done { background:var(--success2); }
+.ppl-item.done .ppl-status { color:var(--success); }
+.ppl-item.partial { background:var(--warning2); }
+.ppl-item.partial .ppl-status { color:var(--warning); }
+.ppl-item.empty { background:var(--card); }
+.ppl-item.empty .ppl-status { color:var(--faint); }
+
+.completion-bar-wrap { }
+.cb-header { display:flex; justify-content:space-between; margin-bottom:4px; }
+.cb-label { font-family:var(--font-mono); font-size:9px; color:var(--muted); }
+.cb-pct { font-family:var(--font-mono); font-size:11px; font-weight:700; color:var(--accent); }
+.completion-bar { height:5px; background:var(--raised); border-radius:3px; overflow:hidden; }
+.cb-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--success)); border-radius:3px; transition:width .5s ease; }
+
+.legal-disclaimer { background:rgba(56,74,92,.3); border:1px solid var(--border2); border-radius:var(--r); padding:10px 12px; display:flex; gap:10px; }
+.ld-icon { font-size:20px; flex-shrink:0; }
+.ld-title { font-family:var(--font-mono); font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; margin-bottom:4px; }
+.ld-text { font-size:10.5px; color:var(--muted); line-height:1.6; }
+
+.export-panel { }
+.ep-main { margin-bottom:6px; }
+.ep-btn { width:100%; padding:10px 12px; background:var(--card); border:1.5px solid var(--border2); border-radius:var(--r); cursor:pointer; transition:all var(--tx-fast); display:flex; align-items:center; gap:10px; }
+.ep-btn:hover { border-color:var(--accent); background:var(--accent2); }
+.ep-pdf { border-color:rgba(154,120,32,.3); background:rgba(154,120,32,.05); }
+.ep-pdf:hover { background:var(--accent2); }
+.ep-icon { font-size:20px; flex-shrink:0; }
+.ep-label { font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--text); }
+.ep-desc { font-size:10px; color:var(--muted); }
+.ep-secondary { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-bottom:6px; }
+.ep-secondary .ep-btn { flex-direction:column; gap:4px; padding:8px 5px; text-align:center; }
+.ep-ifc .ep-btn { background:rgba(106,127,150,.1); opacity:.7; }
+.stub-tag { font-size:8px; background:rgba(245,158,11,.2); color:var(--warning); padding:1px 4px; border-radius:2px; }
+
+.qr-panel { display:flex; gap:12px; align-items:center; }
+.qr-canvas-wrap { width:90px; height:90px; background:var(--card); border:1px solid var(--border); border-radius:var(--r); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.qr-placeholder { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.qr-info { flex:1; }
+.qr-url { font-family:var(--font-mono); font-size:8px; color:var(--faint); margin-bottom:6px; word-break:break-all; }
+.qr-btn { width:100%; padding:6px 10px; background:var(--raised); border:1px solid var(--border2); border-radius:var(--r-sm); font-family:var(--font-mono); font-size:9px; color:var(--muted); cursor:pointer; transition:all var(--tx-fast); }
+.qr-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+.firebase-panel { }
+.fb-status { display:flex; align-items:center; gap:7px; margin-bottom:8px; font-family:var(--font-mono); font-size:10px; color:var(--muted); }
+.fb-dot { width:8px; height:8px; border-radius:50%; background:var(--faint); }
+.fb-dot.connected { background:var(--success); animation:pulse-dot 2.5s ease infinite; }
+.fb-sync-btn { width:100%; padding:7px; background:var(--raised); border:1px solid var(--border2); border-radius:var(--r-sm); font-family:var(--font-mono); font-size:9px; color:var(--muted); cursor:pointer; transition:all var(--tx-fast); margin-bottom:6px; }
+.fb-sync-btn:hover { border-color:var(--success); color:var(--success); }
+.fb-id { font-family:var(--font-mono); font-size:8px; color:var(--faint); }
+</style>
+
+<script type="module">
+const SessionManager = window.SessionManager;
+const GIEPScore      = window.GIEPScore;
+
+const PHASE_NAMES = ['Identification','Topographie','Géologie','Risques','PLU','Voisinage','Biodiversité','Esquisse','Chantier','Carbone','Entretien','Fin de vie','Synthèse','World'];
+
+const P12 = {
+  init() {
+    const terrain = SessionManager.getTerrain();
+    const session = SessionManager._data;
+
+    // Résumé terrain
+    const fields = [
+      ['Commune', terrain?.commune],
+      ['Parcelle', terrain?.section && terrain?.parcelle ? `${terrain.section} ${terrain.parcelle}` : null],
+      ['Contenance', terrain?.contenance_m2 ? `${terrain.contenance_m2} m²` : null],
+      ['Altitude NGR', terrain?.altitude_ngr ? `${terrain.altitude_ngr} m` : null],
+      ['Intercommunalité', terrain?.intercommunalite],
+      ['Zone PPRN', terrain?.zone_pprn],
+      ['Zone PLU', SessionManager.getPhase(4)?.data?.zone_plu?.split(' ')[0]],
+      ['RTAA Zone', terrain?.zone_rtaa ? `Zone ${terrain.zone_rtaa}` : null]
+    ];
+
+    const st = document.getElementById('synth-terrain');
+    if (st) {
+      st.innerHTML = fields.filter(([,v]) => v).map(([l,v]) => `
+        <div class="st-cell"><span class="st-label">${l}</span><span class="st-val">${v}</span></div>`).join('');
+    }
+
+    // Progression phases
+    const pll = document.getElementById('phase-progress-list');
+    if (pll) {
+      let done = 0;
+      pll.innerHTML = Array.from({length:14}, (_,i) => {
+        const phase = SessionManager.getPhase(i);
+        const status = phase?.completed ? 'done' : phase?.data && Object.keys(phase.data).length > 0 ? 'partial' : 'empty';
+        const label  = phase?.completed ? '✓ Complète' : phase?.data ? '○ Partielle' : '— Non démarrée';
+        if (phase?.completed) done++;
+        return `<div class="ppl-item ${status}"><span class="ppl-num">${i}</span><span class="ppl-name">${PHASE_NAMES[i]}</span><span class="ppl-status">${label}</span></div>`;
+      }).join('');
+
+      const pct = Math.round(done / 14 * 100);
+      document.getElementById('cb-fill').style.width = pct + '%';
+      document.getElementById('cb-pct').textContent  = pct + '%';
+    }
+
+    // Session ID
+    const sid = SessionManager._sessionId;
+    if (sid) {
+      document.getElementById('qr-url').textContent = `bimshow.io/terlab/#session/${sid}`;
+      document.getElementById('fb-id').textContent  = `Session : ${sid.slice(-12)}`;
+    }
+
+    // Firebase status
+    if (window.TERLAB_DB) {
+      document.getElementById('fb-dot').classList.add('connected');
+      document.getElementById('fb-label').textContent = 'Firebase connecté';
+    }
+  },
+
+  generateQR() {
+    // ⚠️ STUB — librairie QR code à intégrer
+    window.TerlabToast?.show('QR code — STUB. Librairie qrcode-generator à intégrer.', 'warning', 5000);
+    const url = `https://bimshow.io/terlab/#session/${SessionManager._sessionId}`;
+    document.getElementById('qr-url').textContent = url;
+  },
+
+  async syncFirebase() {
+    try {
+      await SessionManager.syncFirebase();
+      document.getElementById('fb-dot').classList.add('connected');
+      document.getElementById('fb-label').textContent = 'Synchronisé';
+      window.TerlabToast?.show('Session sauvegardée sur Firebase', 'success');
+    } catch(e) {
+      window.TerlabToast?.show('Firebase indisponible — session locale uniquement', 'warning', 4000);
+    }
+  },
+
+  // ─── Wind Score Dashboard (Sprint 4) ────────────────────────
+  buildWindDashboard() {
+    const MU  = window.TerlabMU;
+    const el  = document.getElementById('p12-wind-dashboard');
+    if (!el) return;
+
+    const p1  = SessionManager.getPhase(1)?.data ?? {};
+    const p4  = SessionManager.getPhase(4)?.data ?? {};
+    const p5  = SessionManager.getPhase(5)?.data ?? {};
+    const p7  = SessionManager.getPhase(7)?.data ?? {};
+
+    const criteria = [
+      {
+        label: 'Score site (topo)',
+        val: p1.aeraulique_score ?? null,
+        max: 100,
+        detail: p1.aeraulique_ctp ? `C_TP moy. ${p1.aeraulique_ctp} C₀` : null,
+        source: 'Phase 1 · Topographie',
+      },
+      {
+        label: 'RTAA ventilation',
+        val: p4.rtaa_ventilation_ok ? 100 : (p4.rtaa_C ? Math.round(p4.rtaa_C * 100) : null),
+        max: 100,
+        detail: p4.rtaa_C ? `C = ${p4.rtaa_C.toFixed(2)}` : null,
+        source: 'Phase 4 · RTAA DOM',
+      },
+      {
+        label: 'Rb voisinage',
+        val: p5.aeraulique_rb ? Math.round((1 - p5.aeraulique_rb.Rb) * 100) : null,
+        max: 100,
+        detail: p5.aeraulique_rb ? `Rb=${p5.aeraulique_rb.Rb.toFixed(2)}` : null,
+        source: 'Phase 5 · Voisinage',
+      },
+      {
+        label: 'Variante plan-masse',
+        val: p7.aeraulique_planner_score ?? null,
+        max: 100,
+        detail: p7.aeraulique_planner_rb != null ? `Rb moy=${p7.aeraulique_planner_rb.toFixed(2)}` : null,
+        source: 'Phase 7 · Esquisse',
+      },
+    ];
+
+    const available = criteria.filter(c => c.val !== null);
+    const global    = available.length
+      ? Math.round(available.reduce((s,c) => s + c.val, 0) / available.length)
+      : null;
+    const globalColor = global >= 70 ? '#2a7040' : global >= 50 ? '#b05800' : '#8a2020';
+    const globalLabel = global >= 70 ? 'Favorable' : global >= 50 ? 'Passable' : 'Défavorable';
+
+    const recs = [];
+    if ((criteria[1].val ?? 0) < 80)  recs.push('→ RTAA insuffisant : agrandir les ouvrants.');
+    if (criteria[2].val !== null && criteria[2].val < 50)
+                                       recs.push('→ Rue canyon : envisager passages couverts ou rue orientée vent.');
+    if (criteria[0].val !== null && criteria[0].val < 50)
+                                       recs.push('→ Site défavorable : implantation alternative conseillée.');
+    if (!recs.length) recs.push('✓ Site aérauliquement favorable — maintenir les orientations et espacements choisis.');
+
+    el.innerHTML = `
+      <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
+        <div style="font-size:2rem;font-weight:700;color:${global?globalColor:'var(--ink3)'};line-height:1">
+          ${global ?? '—'}<span style="font-size:.8rem">/100</span>
+        </div>
+        <div>
+          <div style="font-size:.85rem;font-weight:600;color:var(--ink)">Score Aéraulique Global</div>
+          <div style="font-size:.7rem;color:var(--ink3);font-style:italic">
+            ${global ? globalLabel : 'Données insuffisantes — complétez les phases 1, 4, 5, 7'}
+          </div>
+        </div>
+      </div>
+      <div style="padding:6px 0">
+        ${criteria.map(c => `
+          <div style="padding:5px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+            <div style="flex:1">
+              <div style="font-size:.72rem;font-weight:600;color:var(--ink)">${c.label}</div>
+              <div style="font-size:.62rem;color:var(--ink3);font-style:italic">${c.detail ?? '—'} · ${c.source}</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+              <div style="width:60px;height:4px;background:rgba(100,100,100,.15);border-radius:2px;overflow:hidden">
+                <div style="width:${c.val??0}%;height:100%;background:${
+                  (c.val??0)>=70?'#2a7040':(c.val??0)>=50?'#b05800':'#8a2020'};border-radius:2px"></div>
+              </div>
+              <div style="font-family:Inconsolata,monospace;font-size:.72rem;font-weight:bold;
+                   color:${c.val===null?'var(--ink3)':(c.val>=70?'#2a7040':c.val>=50?'#b05800':'#8a2020')};
+                   min-width:36px;text-align:right">
+                ${c.val !== null ? c.val + '/100' : '—'}
+              </div>
+            </div>
+          </div>`).join('')}
+      </div>
+      <div style="padding:8px 12px;font-size:.7rem;color:var(--ink3);font-style:italic;border-top:1px solid var(--border)">
+        ${recs.join('<br>')}
+      </div>`;
+
+    if (global !== null) {
+      SessionManager.savePhase(12, { aeraulique_score_global: global, aeraulique_label: globalLabel });
+      const c = document.getElementById('p12-check-aero');
+      if (c) { c.setAttribute('aria-checked','true'); c.classList.add('checked'); }
+    }
+  },
+};
+
+P12.init();
+P12.buildWindDashboard();
+
+// ─── SDIS 974 Synthèse ────────────────────────────────────────
+const sdisStates = SessionManager.getPhase(8)?.data?.acces_pompiers_states ?? {};
+const sdisScore  = Object.values(sdisStates).filter(s => s === 'ok').length;
+const sdisTotal  = 5;
+const sdisNonConf = Object.values(sdisStates).filter(s => s === 'err').length;
+
+const sdisBlock = document.getElementById('synthese-sdis');
+if (sdisBlock) {
+  if (Object.keys(sdisStates).length > 0) {
+    sdisBlock.innerHTML = `
+      <div class="synth-block-title" style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px">Accès pompiers SDIS 974</div>
+      <div style="padding:8px 10px;border-radius:var(--r-sm);background:${sdisNonConf > 0 ? 'var(--danger2)' : sdisScore === sdisTotal ? 'var(--success2)' : 'var(--warning2)'};border:1px solid ${sdisNonConf > 0 ? 'rgba(239,68,68,.3)' : sdisScore === sdisTotal ? 'rgba(45,200,154,.3)' : 'rgba(245,158,11,.3)'};font-size:12px;color:${sdisNonConf > 0 ? 'var(--danger)' : sdisScore === sdisTotal ? 'var(--success)' : 'var(--warning)'}">
+        ${sdisScore}/${sdisTotal} critères conformes
+        ${sdisNonConf > 0 ? `— ${sdisNonConf} non-conformité(s)` : ''}
+      </div>`;
+  } else {
+    sdisBlock.innerHTML = '<div class="stub-warning">Accès pompiers non évalué — compléter en Phase 8</div>';
+  }
+}
+
+// ─── GIEP Score Synthèse ────────────────────────────────────────
+GIEPScore.render('giep-score-synthese', SessionManager._data);
+
+window.P12 = P12;
+</script>

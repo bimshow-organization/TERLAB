@@ -1,0 +1,489 @@
+<!-- TERLAB · Phase 8 v2 · Chantier & Construction · ENSA La Réunion -->
+<!-- Thème : site · Risques sanitaires complets + GIEP intégré -->
+
+<div class="left-panel">
+  <div class="lp-head anim-slide-up">
+    <div class="phase-label" style="color:#f0b800">Phase 8 · Chantier</div>
+    <h1 class="phase-title">⚙ <em>Chantier</em> & Construction</h1>
+    <p class="phase-desc">Le contexte tropical réunionnais crée des risques sanitaires et structurels spécifiques. Anticiper les aléas cycloniques, les maladies vectorielles, et les pollutions historiques avant l'ouverture du chantier.</p>
+  </div>
+
+  <div class="terrain-strip">
+    <span class="ts-item">📍 <strong id="ts-c-p8">—</strong></span>
+    <span class="ts-sep">·</span>
+    <span class="ts-item">Structure <strong id="ts-struct-p8">—</strong></span>
+  </div>
+
+  <!-- Période de démarrage -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Période de démarrage du chantier</div>
+    <div class="saison-selector">
+      <div class="saison-item" id="sai-ok" onclick="P08.selectSaison(this,'hors_cyclone')">
+        <div class="saison-icon">☀</div>
+        <div class="saison-body">
+          <div class="saison-name">Mai – Octobre</div>
+          <div class="saison-label">Hors saison cyclonique</div>
+          <div class="saison-note">Recommandé — chantier serein, pas de protocole cyclonique requis</div>
+        </div>
+        <div class="saison-badge ok">RECOMMANDÉ</div>
+      </div>
+      <div class="saison-item" id="sai-warn" onclick="P08.selectSaison(this,'cyclone')">
+        <div class="saison-icon">🌀</div>
+        <div class="saison-body">
+          <div class="saison-name">Novembre – Avril</div>
+          <div class="saison-label">Saison cyclonique</div>
+          <div class="saison-note">Protocole de sécurité obligatoire dans le PPSPS</div>
+        </div>
+        <div class="saison-badge warn">PRÉCAUTIONS</div>
+      </div>
+    </div>
+    <div class="cyclone-protocol" id="cyclone-protocol" style="display:none">
+      <div class="cp-title">📋 Protocole chantier cyclonique obligatoire</div>
+      <div class="cp-steps">
+        <div class="cp-step"><span class="cp-num">1</span>Bâchage et lestage de tous les matériaux en vrac</div>
+        <div class="cp-step"><span class="cp-num">2</span>Fixation ou mise à l'abri de tous les engins (grue, bétonnière)</div>
+        <div class="cp-step warning"><span class="cp-num">⚠</span>Alerte orange → évacuation totale du chantier</div>
+        <div class="cp-step warning"><span class="cp-num">⚠</span>Alerte rouge → aucune intervention, confinement</div>
+        <div class="cp-step"><span class="cp-num">4</span>PPSPS obligatoire avec chapitre cyclones signé</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Matrice risques sanitaires COMPLÈTE -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Risques sanitaires — Cocher ceux identifiés sur le terrain</div>
+    <div class="sante-matrix">
+
+      <!-- Leptospirose -->
+      <div class="sm-cell" onclick="P08.toggleSante(this,'leptospirose')" data-niveau="danger">
+        <span class="sm-icon">💧</span>
+        <div class="sm-name">Leptospirose</div>
+        <div class="sm-note">Eau stagnante · ravines · zones humides</div>
+        <div class="sm-tags">
+          <span class="risque-sante-tag danger">🩺 Mortel</span>
+          <span class="risque-sante-tag warning">Bottes EPI</span>
+        </div>
+      </div>
+
+      <!-- Dengue / Chikungunya -->
+      <div class="sm-cell" onclick="P08.toggleSante(this,'dengue')" data-niveau="warning">
+        <span class="sm-icon">🦟</span>
+        <div class="sm-name">Dengue / Chikungunya</div>
+        <div class="sm-note">Eau stagnante · Aedes albopictus</div>
+        <div class="sm-tags">
+          <span class="risque-sante-tag warning">Éliminer l'eau</span>
+          <span class="risque-sante-tag info">Hebdomadaire</span>
+        </div>
+      </div>
+
+      <!-- Amiante -->
+      <div class="sm-cell" onclick="P08.toggleSante(this,'amiante')" data-niveau="danger">
+        <span class="sm-icon">🏚</span>
+        <div class="sm-name">Amiante</div>
+        <div class="sm-note">Bâti antérieur à 1997 (toiture, dalle, flocage)</div>
+        <div class="sm-tags">
+          <span class="risque-sante-tag danger">Diagnostic OBLIGATOIRE</span>
+        </div>
+      </div>
+
+      <!-- Plomb -->
+      <div class="sm-cell" onclick="P08.toggleSante(this,'plomb')" data-niveau="danger">
+        <span class="sm-icon">🎨</span>
+        <div class="sm-name">Plomb (peintures)</div>
+        <div class="sm-note">Bâti antérieur à 1948 — peintures au plomb</div>
+        <div class="sm-tags">
+          <span class="risque-sante-tag danger">CREP obligatoire</span>
+        </div>
+      </div>
+
+      <!-- Silicose basalte -->
+      <div class="sm-cell" onclick="P08.toggleSante(this,'silicose')" data-niveau="warning">
+        <span class="sm-icon">🪨</span>
+        <div class="sm-name">Silicose (basalte)</div>
+        <div class="sm-note">Terrassements · silice cristalline</div>
+        <div class="sm-tags">
+          <span class="risque-sante-tag warning">FFP2 + arrosage</span>
+        </div>
+      </div>
+
+      <!-- Champignons / Mérule -->
+      <div class="sm-cell" onclick="P08.toggleSante(this,'merule')" data-niveau="danger">
+        <span class="sm-icon">🍄</span>
+        <div class="sm-name">Mérule / Champignons</div>
+        <div class="sm-note">Humidité > 20% · bois dégradé · maçonnerie</div>
+        <div class="sm-tags">
+          <span class="risque-sante-tag danger">Structure compromise</span>
+          <span class="risque-sante-tag warning">Traitement fongicide</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Détails amiante (s'ouvre si sélectionné) -->
+    <div class="amiante-detail" id="amiante-detail" style="display:none">
+      <div class="ad-title">📋 Amiante — Obligations réglementaires</div>
+      <div class="ad-content">
+        <div class="ad-item"><span class="ad-when">Avant travaux</span>Diagnostic amiante obligatoire (SS3 si friable). Repérage avant travaux (RAT) décret 2012.</div>
+        <div class="ad-item"><span class="ad-when">Désamiantage</span>Entreprise SS3 certifiée obligatoire si amiante friable. Plan de retrait soumis à l'Inspection du Travail.</div>
+        <div class="ad-item"><span class="ad-when">Coût indicatif</span>50 à 200 €/m² selon type et surface. À budgétiser AVANT tout projet de réhabilitation.</div>
+        <div class="ad-item"><span class="ad-when">À La Réunion</span>Fibrociment (plaques de toiture) fréquent dans bâtis 1960–1990. Dalles de sol vinyle-amiante courantes.</div>
+      </div>
+    </div>
+
+    <!-- Détails mérule (s'ouvre si sélectionné) -->
+    <div class="merule-detail" id="merule-detail" style="display:none">
+      <div class="ad-title">🍄 Mérule (Serpula lacrymans) — Danger structurel</div>
+      <div class="ad-content">
+        <div class="ad-item"><span class="ad-when">Détection</span>Filaments blancs/gris, odeur de champignon, bois friable. Fréquent dans les pièces humides non ventilées (salle de bain, sous-sol).</div>
+        <div class="ad-item"><span class="ad-when">Réunion</span>Hygrométrie > 80% permanente dans certaines zones. Bâtis anciens en maçonnerie avec charpente bois non traité particulièrement exposés.</div>
+        <div class="ad-item"><span class="ad-when">Traitement</span>Injection fongicide sous pression + séchage forcé + ventilation. Remplacement charpente atteinte. Traitement préventif classe 4 systématique.</div>
+        <div class="ad-item"><span class="ad-when">Légal</span>Depuis la loi ALUR 2014 : obligation d'information de la commune si mérule détecté (article L. 133-6 CCH).</div>
+      </div>
+    </div>
+
+    <!-- Détails plomb -->
+    <div class="plomb-detail" id="plomb-detail" style="display:none">
+      <div class="ad-title">🎨 Plomb — CREP (Constat de Risque d'Exposition au Plomb)</div>
+      <div class="ad-content">
+        <div class="ad-item"><span class="ad-when">Obligatoire</span>CREP obligatoire pour toute vente ou location d'un logement construit avant le 1er janvier 1949.</div>
+        <div class="ad-item"><span class="ad-when">Pendant les travaux</span>Intervention sur peintures au plomb : protections individuelles obligatoires, confinement de chantier.</div>
+        <div class="ad-item"><span class="ad-when">À La Réunion</span>Bâtis coloniaux (Saint-Denis, Saint-Paul) peuvent contenir des peintures au plomb sous plusieurs couches de rénovation.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gestion des eaux de chantier -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Gestion des eaux de chantier</div>
+    <div class="field-row">
+      <select class="field-select" data-session-key="gestion_eaux_chantier">
+        <option value="">-- Dispositif prévu --</option>
+        <option value="bassin">Bassin de décantation provisoire</option>
+        <option value="cunettes">Cunettes + bâchage</option>
+        <option value="ponton">Ponton + filtration sédiments</option>
+        <option value="a_definir">À définir avec BET fluides</option>
+      </select>
+    </div>
+    <div class="field-row" style="margin-top:8px">
+      <label class="field-label">Présence de ravine à moins de 50m</label>
+      <div class="radio-group">
+        <label class="radio-option" onclick="P08.selectRavineProximite(this,'non')"><input type="radio" name="ravine-proche" value="non"/>Non</label>
+        <label class="radio-option" onclick="P08.selectRavineProximite(this,'oui')"><input type="radio" name="ravine-proche" value="oui"/>⚠ Oui — filtration renforcée</label>
+      </div>
+    </div>
+    <div class="ravine-alert" id="ravine-alert" style="display:none">
+      ⚠️ Ravine à moins de 50m — Dispositif anti-turbidité obligatoire (géotextile + bassin). Interdit de rejeter dans la ravine (Code de l'Environnement Art. L.214-1).
+    </div>
+  </div>
+
+  <!-- GIEP — Gestion Intégrée des Eaux Pluviales -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">GIEP — Gestion des Eaux Pluviales</div>
+    <div class="giep-card">
+      <div class="giep-icon">💧</div>
+      <div class="giep-body">
+        <div class="giep-title">Gestion Intégrée des Eaux Pluviales — Réunion</div>
+        <div class="giep-text">
+          La Réunion est soumise à des événements pluvieux extrêmes (record mondial 72h : 3 929mm en 2007).
+          Le GIEP impose de gérer les eaux à la parcelle : infiltration, rétention, réutilisation.
+        </div>
+        <div class="giep-measures">
+          <div class="giep-measure" onclick="P08.toggleGIEP(this,'toiture_verte')">
+            <span class="gm-icon">🌿</span><span class="gm-label">Toiture végétale</span>
+          </div>
+          <div class="giep-measure" onclick="P08.toggleGIEP(this,'citerne_ep')">
+            <span class="gm-icon">🏺</span><span class="gm-label">Citerne EP</span>
+          </div>
+          <div class="giep-measure" onclick="P08.toggleGIEP(this,'noue_infiltration')">
+            <span class="gm-icon">〰</span><span class="gm-label">Noue d'infiltration</span>
+          </div>
+          <div class="giep-measure" onclick="P08.toggleGIEP(this,'pave_dreainant')">
+            <span class="gm-icon">⬛</span><span class="gm-label">Pavé drainant</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Score GIEP automatique (calculé depuis les données session) -->
+  <div class="form-section anim-slide-up" id="giep-score-section">
+    <div class="fs-head">Score GIEP du projet</div>
+    <div id="giep-score-widget">
+      <div class="stub-warning">Compléter Phase 0 (parcelle) et Phase 7 (gabarit) pour calculer le score GIEP</div>
+    </div>
+  </div>
+
+  <!-- Défense incendie — SDIS 974 -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Défense incendie — SDIS 974</div>
+
+    <!-- Récapitulatif statuts rapide -->
+    <div class="sdis-status-row" id="sdis-status-row" aria-live="polite">
+      <span class="sdis-pill warn">Voie ≥ 3m : ?</span>
+      <span class="sdis-pill warn">Hydrant ≤ 150m : ?</span>
+      <span class="sdis-pill warn">Dégagement ≥ 6m : ?</span>
+    </div>
+
+    <!-- Bouton principal — ouvre le canvas -->
+    <button class="acces-pompiers-trigger"
+            id="btn-acces-pompiers"
+            onclick="P08.openAccesPompiers()"
+            aria-label="Ouvrir l'analyse détaillée des accès pompiers SDIS 974">
+
+      <!-- Icône pompier SVG inline -->
+      <div class="apt-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+             stroke="#ef4444" stroke-width="1.5" stroke-linecap="round">
+          <path d="M12 2L8 6h8L12 2z"/>
+          <rect x="8" y="6" width="8" height="3" rx="1"/>
+          <path d="M7 9v8a5 5 0 0010 0V9"/>
+          <line x1="4" y1="12" x2="7" y2="12"/>
+          <line x1="17" y1="12" x2="20" y2="12"/>
+          <line x1="4" y1="15" x2="7" y2="15"/>
+          <line x1="17" y1="15" x2="20" y2="15"/>
+        </svg>
+      </div>
+
+      <div class="apt-body">
+        <div class="apt-title">Analyse accès pompiers</div>
+        <div class="apt-sub">
+          Plan SDIS 974 · 5 critères réglementaires · Adapté à la parcelle
+        </div>
+      </div>
+
+      <div class="apt-score">
+        <div class="apt-score-num" id="apt-score-num" style="color:var(--warning)">—/5</div>
+        <div class="apt-score-lbl">conformité</div>
+      </div>
+    </button>
+
+    <!-- Note pédagogique -->
+    <div class="ped-note" style="margin-top:8px">
+      <strong>SDIS 974 — Données non open data.</strong> Les positions d'hydrants ne sont
+      pas accessibles en open data à La Réunion. La vérification terrain est obligatoire.
+      Contacter la mairie ou le SDIS directement.
+    </div>
+  </div>
+
+  <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
+    <button class="source-btn" onclick="TerlabSources.open(8)">→ Sources &amp; références chantier</button>
+    <a href="https://www.reunion.ars.sante.fr" target="_blank" rel="noopener" class="source-btn" style="margin-left:12px">→ ARS Réunion ↗</a>
+  </div>
+
+  <div class="val-block">
+    <div class="val-title">Validation de la phase 8</div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Saison cyclonique prise en compte (protocole ou hors saison)</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Risques sanitaires évalués (amiante, plomb, champignons)</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Plan gestion eaux de chantier esquissé</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>GIEP — mesures de rétention EP identifiées</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Accès pompiers vérifié — SDIS 974 (voie ≥ 3m, hydrant ≤ 150m)</span></div>
+    <div class="val-progress"><div class="val-bar"></div></div>
+    <div class="val-footer"><span>Phase indicative</span><span class="val-pct">0/5</span></div>
+    <button class="next-btn">Phase 9 — Impact Carbone →</button>
+  </div>
+</div>
+
+<div class="map-area"><div id="map" style="width:100%;height:100%"></div></div>
+
+<div class="right-panel">
+  <div class="rp-section">
+    <div class="rp-head">Calendrier saison cyclonique</div>
+    <div class="cyclone-calendar">
+      <div class="cc-row ok"><span class="cc-mois">Mai → Oct</span><span class="cc-label">☀ Hors risque — démarrage recommandé</span></div>
+      <div class="cc-row warn"><span class="cc-mois">Nov → Fév</span><span class="cc-label">⚠ Saison active — protocole requis</span></div>
+      <div class="cc-row danger"><span class="cc-mois">Jan → Mar</span><span class="cc-label">🌀 Pic cyclonique — risque maximal</span></div>
+      <div class="cc-row warn"><span class="cc-mois">Avr</span><span class="cc-label">↘ Fin de saison — vigilance</span></div>
+    </div>
+    <div class="ped-note" style="margin-top:8px;font-size:10.5px">
+      <strong>Alerte jaune</strong> → réduire les voiles (grues, bâches)<br/>
+      <strong>Alerte orange</strong> → sécuriser, évacuer le chantier<br/>
+      <strong>Alerte rouge</strong> → confinement, aucune intervention<br/>
+      <strong>Belal jan. 2024</strong> → rafales > 200 km/h à Sainte-Rose
+    </div>
+  </div>
+  <div class="rp-section"><div class="rp-head">Acteurs & ressources</div><div id="actors-zone" class="stagger anim-fade-in"></div></div>
+  <div class="rp-section"><div class="rp-head">Risques de phase</div><div id="risks-zone"></div></div>
+</div>
+
+<style>
+.saison-selector { display:flex; flex-direction:column; gap:5px; }
+.saison-item { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:var(--card); border:1.5px solid var(--border2); border-radius:var(--r); cursor:pointer; transition:all var(--tx-fast); }
+.saison-item:hover { border-color:var(--border3); background:var(--raised); }
+.saison-item.selected-ok   { border-color:var(--success); background:var(--success2); }
+.saison-item.selected-warn { border-color:var(--warning); background:var(--warning2); }
+.saison-icon { font-size:22px; flex-shrink:0; }
+.saison-name { font-family:var(--font-serif); font-size:13px; color:var(--text); font-weight:600; }
+.saison-label { font-family:var(--font-mono); font-size:9px; color:var(--muted); margin:2px 0; }
+.saison-note { font-size:10.5px; color:var(--faint); }
+.saison-badge { margin-left:auto; padding:3px 8px; border-radius:var(--r-sm); font-family:var(--font-mono); font-size:8px; font-weight:700; flex-shrink:0; }
+.saison-badge.ok   { background:var(--success2); color:var(--success); border:1px solid rgba(45,212,160,.3); }
+.saison-badge.warn { background:var(--warning2); color:var(--warning); border:1px solid rgba(245,158,11,.3); }
+
+.cyclone-protocol { background:rgba(245,158,11,.07); border:1px solid rgba(245,158,11,.25); border-radius:var(--r); padding:10px 12px; margin-top:8px; }
+.cp-title { font-family:var(--font-mono); font-size:9.5px; font-weight:700; color:var(--warning); margin-bottom:8px; letter-spacing:.05em; }
+.cp-steps { display:flex; flex-direction:column; gap:4px; }
+.cp-step { display:flex; align-items:flex-start; gap:8px; font-size:11px; color:var(--muted); }
+.cp-step.warning { color:var(--warning); }
+.cp-num { width:18px; height:18px; border-radius:50%; background:var(--raised); border:1px solid var(--border2); font-family:var(--font-mono); font-size:8.5px; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--muted); }
+.cp-step.warning .cp-num { background:var(--warning2); border-color:rgba(245,158,11,.3); color:var(--warning); }
+
+.sm-cell { cursor:pointer; }
+.sm-cell.selected { border-color:var(--warning) !important; background:var(--warning2) !important; }
+.sm-cell[data-niveau="danger"].selected { border-color:var(--danger) !important; background:var(--danger2) !important; }
+
+.amiante-detail, .merule-detail, .plomb-detail {
+  background:var(--raised); border:1px solid var(--border2); border-left:3px solid var(--danger);
+  border-radius:var(--r-sm); padding:10px 12px; margin-top:8px;
+}
+.ad-title { font-family:var(--font-mono); font-size:9.5px; font-weight:700; color:var(--danger); margin-bottom:8px; }
+.ad-content { display:flex; flex-direction:column; gap:5px; }
+.ad-item { display:flex; gap:8px; font-size:11px; color:var(--muted); line-height:1.55; }
+.ad-when { font-family:var(--font-mono); font-size:8.5px; color:var(--warning); font-weight:700; white-space:nowrap; min-width:80px; padding-top:1px; }
+
+.ravine-alert { background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.25); border-left:3px solid var(--danger); border-radius:var(--r-sm); padding:8px 10px; font-size:11px; color:var(--danger); margin-top:8px; line-height:1.6; }
+
+.giep-card { background:var(--card); border:1px solid var(--border2); border-radius:var(--r-lg); padding:12px; display:flex; gap:10px; }
+.giep-icon { font-size:26px; flex-shrink:0; }
+.giep-title { font-family:var(--font-mono); font-size:9.5px; font-weight:700; color:var(--accent); margin-bottom:4px; }
+.giep-text { font-size:10.5px; color:var(--muted); line-height:1.6; margin-bottom:8px; }
+.giep-measures { display:flex; flex-wrap:wrap; gap:4px; }
+.giep-measure { display:flex; align-items:center; gap:5px; padding:4px 9px; background:var(--raised); border:1px solid var(--border2); border-radius:var(--r-sm); cursor:pointer; transition:all var(--tx-fast); }
+.giep-measure:hover { border-color:var(--accent); background:var(--accent3); }
+.giep-measure.selected { border-color:var(--accent); background:var(--accent2); }
+.gm-icon { font-size:13px; }
+.gm-label { font-family:var(--font-mono); font-size:9px; color:var(--muted); }
+.giep-measure.selected .gm-label { color:var(--accent); }
+
+.cyclone-calendar { display:flex; flex-direction:column; gap:3px; }
+.cc-row { display:flex; align-items:center; gap:8px; padding:5px 8px; border-radius:var(--r-sm); }
+.cc-row.ok     { background:var(--success2); }
+.cc-row.warn   { background:var(--warning2); }
+.cc-row.danger { background:var(--danger2); }
+.cc-mois { font-family:var(--font-mono); font-size:9px; font-weight:700; min-width:70px; flex-shrink:0; }
+.cc-row.ok .cc-mois     { color:var(--success); }
+.cc-row.warn .cc-mois   { color:var(--warning); }
+.cc-row.danger .cc-mois { color:var(--danger); }
+.cc-label { font-size:11px; color:var(--text2); }
+</style>
+
+<script type="module">
+const SessionManager = window.SessionManager;
+const RiskPlayer     = window.RiskPlayer;
+const GIEPScore      = window.GIEPScore;
+const AccesPompiers  = window.AccesPompiers;
+
+const P08 = {
+  _santesSelected: new Set(),
+  _giepSelected:   new Set(),
+
+  selectSaison(el, val) {
+    document.querySelectorAll('.saison-item').forEach(s => s.classList.remove('selected-ok','selected-warn'));
+    el.classList.add(val === 'hors_cyclone' ? 'selected-ok' : 'selected-warn');
+    document.getElementById('cyclone-protocol').style.display = val === 'cyclone' ? 'block' : 'none';
+    SessionManager.savePhase(8, { demarrage_saison: val });
+  },
+
+  toggleSante(el, id) {
+    const wasSelected = el.classList.contains('selected');
+    el.classList.toggle('selected', !wasSelected);
+    if (!wasSelected) this._santesSelected.add(id);
+    else this._santesSelected.delete(id);
+
+    // Afficher les détails selon l'item
+    const detailId = `${id === 'merule' ? 'merule' : id}-detail`;
+    const detail   = document.getElementById(detailId);
+    if (detail) detail.style.display = !wasSelected ? 'block' : 'none';
+
+    SessionManager.savePhase(8, { santes_identifiees: [...this._santesSelected] });
+  },
+
+  selectRavineProximite(label, val) {
+    document.querySelectorAll('[name="ravine-proche"]').forEach(r => r.closest('.radio-option')?.classList.remove('selected'));
+    label.classList.add('selected');
+    document.getElementById('ravine-alert').style.display = val === 'oui' ? 'block' : 'none';
+    SessionManager.savePhase(8, { ravine_proche: val });
+  },
+
+  toggleGIEP(el, id) {
+    el.classList.toggle('selected');
+    if (el.classList.contains('selected')) this._giepSelected.add(id);
+    else this._giepSelected.delete(id);
+    SessionManager.savePhase(8, { giep_mesures: [...this._giepSelected] });
+  }
+};
+
+// Injecter risk player
+const risksForPhase = (window.TERLAB_RISK?.risques ?? []).filter(r => r.phase === 8 || r.phase === '8');
+if (risksForPhase.length) {
+  const container = document.querySelector('.form-section:last-of-type');
+  if (container) {
+    const btn = document.createElement('div');
+    btn.innerHTML = RiskPlayer.buildOpenBtn(8, risksForPhase.length);
+    container.insertBefore(btn, container.firstChild);
+  }
+}
+
+// Init terrain strip
+const terrain = SessionManager.getTerrain();
+if (terrain?.commune) document.getElementById('ts-c-p8').textContent = terrain.commune;
+const p7 = SessionManager.getPhase(7)?.data ?? {};
+if (p7.type_structure) document.getElementById('ts-struct-p8').textContent = p7.type_structure;
+
+// ─── GIEP Score Widget ──────────────────────────────────────────
+GIEPScore.render('giep-score-widget', SessionManager._data);
+
+// Exposer globalement (requis pour onclick= HTML)
+window.AccesPompiers = AccesPompiers;
+window.P08 = P08;
+window.RiskPlayer = RiskPlayer;
+
+// ─── Méthodes SDIS AccesPompiers ──────────────────────────────
+Object.assign(P08, {
+
+  // Ouvre le canvas modal AccesPompiers
+  openAccesPompiers() {
+    AccesPompiers.open(SessionManager._data);
+  },
+
+  // Met à jour les badges rapides dans la section SDIS
+  updateSDISBadges() {
+    const states = SessionManager.getPhase(8)?.data?.acces_pompiers_states ?? {};
+    const badgeRow = document.getElementById('sdis-status-row');
+    const scoreNum = document.getElementById('apt-score-num');
+    if (!badgeRow) return;
+
+    const LABELS = {
+      largeur:    'Voie ≥ 3m',
+      hydrant:    'Hydrant ≤ 150m',
+      degagement: 'Dégagement ≥ 6m',
+    };
+
+    const criticsToShow = ['largeur', 'hydrant', 'degagement'];
+    badgeRow.innerHTML = criticsToShow.map(id => {
+      const s   = states[id] ?? 'warn';
+      const lbl = LABELS[id];
+      const txt = { ok:'✓', warn:'?', err:'✕' }[s];
+      return `<span class="sdis-pill ${s}">${lbl} : ${txt}</span>`;
+    }).join('');
+
+    // Score global
+    if (scoreNum) {
+      const all = Object.values(states);
+      const ok  = all.filter(s => s === 'ok').length;
+      const col = all.some(s => s === 'err')
+        ? 'var(--danger)'
+        : all.some(s => s === 'warn')
+          ? 'var(--warning)'
+          : 'var(--success)';
+      scoreNum.textContent = `${ok}/5`;
+      scoreNum.style.color = col;
+    }
+  },
+});
+
+// Mettre à jour les badges au chargement si des données existent
+P08.updateSDISBadges();
+
+// Écouter les changements de session pour màj des badges
+window.addEventListener('terlab:session-changed', () => P08.updateSDISBadges());
+</script>

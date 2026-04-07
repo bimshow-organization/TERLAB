@@ -1,0 +1,326 @@
+/* TERLAB — Phase 11 Esquisse */
+
+/* P11 utilise son propre grid (.p11-split) — bypasser le grid standard 3-colonnes */
+.phase-container:has(.p11-split) {
+  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
+}
+.phase-container:has(.p11-split) > .left-panel {
+  flex-shrink: 0;
+  border-right: none;
+  border-bottom: 1px solid var(--border);
+}
+.phase-container:has(.p11-split) > .p11-split {
+  flex: 1;
+  min-height: 0;
+}
+
+.p11-split {
+  display: grid;
+  grid-template-columns: var(--p11-left-w, 240px) 1fr var(--p11-right-w, 240px);
+  gap: 0;
+  height: 100%;
+  min-height: 0;
+  transition: grid-template-columns .25s ease;
+}
+.p11-split.left-collapsed  { --p11-left-w: 0px; }
+.p11-split.right-collapsed { --p11-right-w: 0px; }
+
+.p11-left {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px;
+  border-right: 1px solid var(--border);
+  background: var(--raised);
+  min-width: 0;
+  transition: padding .25s, opacity .2s;
+}
+.p11-split.left-collapsed .p11-left {
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.p11-canvas-wrap {
+  position: relative;
+  background: #f5f0e8;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Toolbar */
+.p11-toolbar {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.p11-tool {
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .08em;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 3px;
+}
+.p11-tool:hover { color: var(--accent); border-color: var(--accent); }
+.p11-sep { flex: 1; }
+
+/* Propositions */
+.p11-proposals-list { display: flex; flex-direction: column; gap: 6px; }
+.p11-proposal-card {
+  padding: 8px 10px;
+  border: 1.5px solid transparent;
+  border-radius: 5px;
+  background: var(--bg);
+  cursor: pointer;
+  transition: all .15s;
+}
+.p11-proposal-card:hover { background: var(--raised); }
+.p11-proposal-card.selected { background: rgba(154,120,32,.06); }
+
+.p11-card-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+.p11-family { font-family: var(--font-mono); font-size: 9px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: .06em; }
+.p11-score  { font-family: var(--font-mono); font-size: 11px; font-weight: 700; }
+.p11-card-dims { font-size: 8px; color: var(--muted); margin-bottom: 5px; }
+.p11-card-strategy { font-size: 8px; color: var(--muted); margin-top: 4px; font-style: italic; }
+
+.p11-score-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 7.5px;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.p11-score-row > span:first-child { min-width: 56px; }
+.p11-score-row > span:last-child  { min-width: 20px; text-align: right; }
+.p11-score-bar { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.p11-score-bar > div { height: 100%; border-radius: 2px; transition: width .4s ease; }
+
+/* PLU constraints */
+.plu-constraints { display: flex; flex-direction: column; gap: 2px; }
+.plu-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,.05); font-family: var(--font-mono); font-size: 8.5px; }
+.plu-label { color: var(--muted); }
+.plu-label small { opacity: .6; }
+.plu-val { color: var(--text); font-weight: 600; }
+
+/* Jardin */
+.p11-garden-panel { padding: 8px; background: rgba(45,200,154,.06); border: 1px solid rgba(45,200,154,.15); border-radius: 4px; }
+.p11-garden-preset { font-size: 9px; font-weight: 700; color: #2dc89a; margin-bottom: 4px; }
+.p11-garden-species { font-size: 8px; color: var(--muted); font-style: italic; }
+
+/* Légende */
+.p11-legend {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.p11-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #374151;
+}
+.p11-legend-item > span {
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ── Toggle buttons for panels ─────────────────────────────────── */
+.p11-toggle {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 20px;
+  height: 48px;
+  background: var(--raised);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  transition: background .15s, color .15s;
+}
+.p11-toggle:hover { background: var(--bg); color: var(--accent); }
+.p11-toggle-left  { left: 0; border-radius: 0 4px 4px 0; border-left: none; }
+.p11-toggle-right { right: 0; border-radius: 4px 0 0 4px; border-right: none; }
+
+/* ── RTAA Panel (right) ────────────────────────────────────────── */
+.p11-right {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0;
+  border-left: 1px solid var(--border);
+  background: var(--raised);
+  min-width: 0;
+  transition: padding .25s, opacity .2s;
+}
+.p11-split.right-collapsed .p11-right {
+  padding: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rtaa-score-header {
+  padding: 14px 13px;
+  border-bottom: 1px solid var(--border);
+}
+
+.rtaa-section {
+  padding: 8px 13px;
+  border-bottom: 1px solid var(--border);
+}
+.rtaa-section-title {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text);
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.rtaa-count {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.rtaa-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 4px 0;
+  font-size: 8.5px;
+  font-family: var(--font-mono);
+  color: var(--muted);
+}
+.rtaa-icon {
+  flex-shrink: 0;
+  width: 14px;
+  text-align: center;
+  font-size: 10px;
+}
+.rtaa-text {
+  line-height: 1.35;
+}
+.rtaa-row.rtaa-ok .rtaa-icon  { color: #22c55e; }
+.rtaa-row.rtaa-fail .rtaa-icon { color: #ef4444; }
+.rtaa-row.rtaa-info .rtaa-icon { color: #f59e0b; }
+
+.rtaa-baie-row {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 5px 4px;
+  margin: 2px 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background .15s;
+  font-size: 8.5px;
+  font-family: var(--font-mono);
+}
+.rtaa-baie-row:hover {
+  background: rgba(255,255,255,.05);
+}
+.rtaa-baie-row.rtaa-ok  { border-left: 2px solid #22c55e; }
+.rtaa-baie-row.rtaa-fail { border-left: 2px solid #ef4444; }
+.rtaa-baie-row.rtaa-info { border-left: 2px solid #f59e0b; }
+
+.rtaa-baie-label {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 8.5px;
+}
+.rtaa-baie-detail {
+  font-size: 7.5px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+.rtaa-suggestions {
+  margin-top: 4px;
+}
+.rtaa-suggest-item {
+  font-size: 7.5px;
+  color: var(--accent, #9a7820);
+  cursor: pointer;
+  padding: 2px 0;
+  transition: color .15s;
+}
+.rtaa-suggest-item:hover {
+  color: #fff;
+}
+
+.rtaa-action-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 4px 0;
+  font-size: 8.5px;
+  font-family: var(--font-mono);
+  color: var(--muted);
+}
+.rtaa-action-num {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #ef444420;
+  color: #ef4444;
+  font-size: 8px;
+  font-weight: 700;
+}
+.rtaa-action-text {
+  line-height: 1.35;
+}
+
+/* ── Node & Edge editing UX ──────────────────────────────────── */
+.edit-node {
+  transition: r .12s, fill .12s;
+  cursor: move !important;
+}
+.edit-node:hover {
+  r: 10;
+  fill: #fff;
+  stroke: var(--accent, #9a7820);
+  stroke-width: 3;
+}
+.edit-edge {
+  cursor: grab;
+  transition: stroke-opacity .15s;
+}
+.edit-edge:hover {
+  stroke-opacity: 0.6 !important;
+  cursor: grab;
+}
+.edit-edge:active {
+  cursor: grabbing;
+}

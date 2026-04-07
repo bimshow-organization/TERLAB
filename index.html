@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="ivory">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<meta name="description" content="TERLAB — Laboratoire d'analyse de terrain · ENSA La Réunion · Île de La Réunion"/>
+<title>TERLAB · Analyse de Terrain · ENSA La Réunion</title>
+
+<!-- Import Map — résout les bare specifiers "three" pour les addons Three.js -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.182.0/examples/jsm/"
+  }
+}
+</script>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:ital,wght@0,400;0,500;0,600;1,400&family=Inconsolata:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+
+<!-- Mapbox GL JS v3 -->
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.css" rel="stylesheet"/>
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.js"></script>
+
+<!-- Mapbox Draw (Phase 0 — dessin parcelle) -->
+<link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css" rel="stylesheet"/>
+<script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.js"></script>
+
+<!-- turf.js v7 -->
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@7/turf.min.js"></script>
+
+<!-- Chart.js v4 -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- jsPDF + html2canvas -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getDatabase, ref, set, get } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+
+  // ⚠️ STUB — Remplacer par la vraie config Firebase TERLAB/BIMSHOW
+  const firebaseConfig = {
+    apiKey: "TERLAB_FIREBASE_API_KEY",
+    authDomain: "terlab-reunion.firebaseapp.com",
+    databaseURL: "https://terlab-reunion-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "terlab-reunion",
+    storageBucket: "terlab-reunion.appspot.com"
+  };
+
+  try {
+    const app = initializeApp(firebaseConfig);
+    window.TERLAB_DB = getDatabase(app);
+    window.TERLAB_FB_REF = ref;
+    window.TERLAB_FB_SET = set;
+    window.TERLAB_FB_GET = get;
+  } catch(e) {
+    console.warn('TERLAB: Firebase init failed (stub config) — session locale seulement', e.message);
+    window.TERLAB_DB = null;
+  }
+</script>
+
+<!-- TERLAB CSS -->
+<link rel="stylesheet" href="assets/terlab-shell.css"/>
+<link rel="stylesheet" href="assets/terlab-map.css"/>
+<link rel="stylesheet" href="assets/terlab-print.css" media="print"/>
+<link rel="stylesheet" href="assets/terlab-v2-additions.css"/>
+<link rel="stylesheet" href="assets/acces-pompiers.css"/>
+<link rel="stylesheet" href="assets/terrain-3d.css"/>
+<link rel="stylesheet" href="assets/terlab-3d-viewer.css"/>
+<link rel="stylesheet" href="assets/envirobat-cards.css"/>
+</head>
+<body>
+
+<div class="terlab-app" id="terlab-app">
+
+  <!-- ═══════════════════════════════════════════════════════
+       TOPBAR
+  ═══════════════════════════════════════════════════════ -->
+  <header class="topbar" id="topbar" role="banner">
+
+    <!-- Logo -->
+    <div class="tb-logo" aria-label="TERLAB">
+      <svg viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <path d="M14 3L4 8.5v11L14 25l10-5.5V8.5z" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M14 3v22M4 8.5l10 5.5 10-5.5" stroke="var(--accent)" stroke-width="1" opacity=".4"/>
+        <circle cx="14" cy="14" r="2.5" fill="var(--accent)" opacity=".8"/>
+      </svg>
+    </div>
+
+    <!-- Marque + session -->
+    <div class="tb-brand">
+      <span class="tb-name">TERLAB</span>
+      <span class="tb-sep" aria-hidden="true">·</span>
+      <span class="tb-sub">Île de La Réunion</span>
+    </div>
+
+    <!-- Score bar (compact, masquée par défaut — visible dans tb-brand) -->
+    <div class="terlab-score-bar" id="terlab-score-bar" aria-label="Score de progression TERLAB" role="status" style="display:none">
+      <span class="tsb-loc">Aucune parcelle</span>
+      <div class="tsb-progress"><div class="tsb-bar" style="width:0%"></div></div>
+      <span class="tsb-pct">0%</span>
+    </div>
+
+    <!-- Navigation phases -->
+    <button class="phase-arrow" id="phase-prev" onclick="TerlabRouter.goto(TerlabRouter.currentPhase - 1)" title="Phase précédente" aria-label="Phase précédente">◀</button>
+    <nav class="tb-phases" id="tb-phases" aria-label="Phases d'analyse" role="navigation">
+      <!-- Généré dynamiquement par index.js depuis phases-meta.json -->
+    </nav>
+    <button class="phase-arrow" id="phase-next" onclick="TerlabRouter.goto(TerlabRouter.currentPhase + 1)" title="Phase suivante" aria-label="Phase suivante">▶</button>
+
+    <!-- Actions droite -->
+    <div class="tb-right" role="toolbar" aria-label="Actions">
+
+      <!-- Démos -->
+      <div class="demo-group" id="demo-group">
+        <span class="demo-label" aria-hidden="true">Démo</span>
+        <button class="demo-chip" data-demo="ville" title="Terrain urbain Saint-Denis" aria-label="Charger démo terrain urbain">
+          🏙 Ville
+        </button>
+        <button class="demo-chip" data-demo="village" title="Terrain bourg Saint-Joseph" aria-label="Charger démo terrain bourg rural">
+          🏘 Village
+        </button>
+        <button class="demo-chip" data-demo="isole" title="Terrain isolé Plaine des Cafres" aria-label="Charger démo terrain isolé montagnard">
+          🏔 Isolé
+        </button>
+      </div>
+
+      <div class="tb-divider" aria-hidden="true"></div>
+
+      <!-- Session badge -->
+      <div class="session-badge" id="session-badge" role="status" aria-live="polite">
+        <span class="session-dot" aria-hidden="true"></span>
+        <span id="session-id-display">—</span>
+      </div>
+
+      <!-- Export PDF -->
+      <button class="tb-btn btn-export" id="btn-export-pdf" onclick="TerlabExport.generatePDF()" title="Exporter PDF A3 complet" aria-label="Exporter synthèse PDF A3">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <path d="M3 1h6l3 3v9H3V1z" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M8 1v4h4" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M5 8h4M5 10.5h2.5" stroke="currentColor" stroke-width="1"/>
+        </svg>
+        PDF A3
+      </button>
+
+      <!-- BIMSHOW / 3D Viewer -->
+      <button class="tb-btn btn-bimshow" id="btn-bimshow" onclick="Terlab3DToggle()" title="Ouvrir le viewer 3D" aria-label="Ouvrir le viewer 3D intégré">
+        3D ☀
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SIDEBAR ICÔNES
+  ═══════════════════════════════════════════════════════ -->
+  <aside class="sidebar" id="sidebar" role="complementary" aria-label="Outils carte">
+
+    <button class="sb-btn active" id="sb-map" onclick="TerlabSidebar.activate('map')" title="Carte" aria-label="Carte" aria-pressed="true">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+        <path d="M2 4l5-2 4 2 5-2v12l-5 2-4-2-5 2V4z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+        <path d="M7 2v12M11 4v12" stroke="currentColor" stroke-width="1" opacity=".5"/>
+      </svg>
+    </button>
+
+    <button class="sb-btn" id="sb-layers" onclick="TerlabSidebar.activate('layers')" title="Calques" aria-label="Gestionnaire de calques">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+        <path d="M9 3L2 7l7 4 7-4-7-4z" stroke="currentColor" stroke-width="1.2"/>
+        <path d="M2 11l7 4 7-4" stroke="currentColor" stroke-width="1.2" opacity=".6"/>
+        <path d="M2 9l7 4 7-4" stroke="currentColor" stroke-width="1.2" opacity=".35"/>
+      </svg>
+    </button>
+
+    <div class="sb-div" aria-hidden="true"></div>
+
+    <button class="sb-btn" id="sb-profile" onclick="TerlabMap.activateTool('profile')" title="Profil altimétrique (P)" aria-label="Outil profil altimétrique" accesskey="p">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+        <path d="M2 14 L5 8 L8 10 L11 5 L14 9 L16 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <line x1="2" y1="15" x2="16" y2="15" stroke="currentColor" stroke-width="1" opacity=".4"/>
+      </svg>
+    </button>
+
+    <button class="sb-btn" id="sb-measure" onclick="TerlabMap.activateTool('measure')" title="Mesure distance (M)" aria-label="Outil mesure distance" accesskey="m">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+        <line x1="3" y1="9" x2="15" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        <line x1="3" y1="7" x2="3" y2="11" stroke="currentColor" stroke-width="1.2"/>
+        <line x1="15" y1="7" x2="15" y2="11" stroke="currentColor" stroke-width="1.2"/>
+        <line x1="9" y1="8" x2="9" y2="10" stroke="currentColor" stroke-width="1" opacity=".5"/>
+      </svg>
+    </button>
+
+    <button class="sb-btn" id="sb-3d" onclick="TerlabMap.toggle3D()" title="Terrain 3D (T)" aria-label="Basculer terrain 3D" accesskey="t">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+        <path d="M9 3 L16 7.5 L9 12 L2 7.5 Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" fill="none"/>
+        <path d="M2 7.5 L2 10.5 L9 15 L16 10.5 L16 7.5" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" fill="none" opacity=".5"/>
+      </svg>
+    </button>
+
+    <div class="sb-div" aria-hidden="true"></div>
+
+    <button class="sb-btn" id="sb-sources" onclick="TerlabSources.open(TerlabRouter.currentPhase)" title="Sources & Références" aria-label="Sources et références bibliographiques">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+        <path d="M3 3h12v12H3z" stroke="currentColor" stroke-width="1.2" rx="1"/>
+        <path d="M6 7h6M6 9.5h6M6 12h4" stroke="currentColor" stroke-width="1" opacity=".6"/>
+        <path d="M5 5h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".4"/>
+      </svg>
+    </button>
+
+    <button class="sb-btn" id="sb-export" onclick="TerlabExport.openModal()" title="Exports (PDF · DXF · GLB)" aria-label="Options d'export">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+        <path d="M9 3v9M6 9l3 3 3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M3 13v2h12v-2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+    </button>
+
+  </aside>
+
+  <!-- ═══════════════════════════════════════════════════════
+       ZONE PRINCIPALE
+  ═══════════════════════════════════════════════════════ -->
+  <main class="terlab-main" id="terlab-main" role="main">
+
+    <!-- Conteneur de phase (chargé dynamiquement) -->
+    <div id="phase-container" class="phase-container" aria-live="polite" aria-atomic="false">
+      <!-- Écran de chargement initial -->
+      <div class="splash-screen" id="splash">
+        <div class="splash-inner">
+          <svg class="splash-logo" viewBox="0 0 60 60" fill="none" aria-hidden="true">
+            <path d="M30 5L6 18v24L30 55l24-13V18z" stroke="#9a7820" stroke-width="2" stroke-linejoin="round" opacity=".8"/>
+            <path d="M30 5v50M6 18l24 13 24-13" stroke="#9a7820" stroke-width="1.2" opacity=".3"/>
+            <circle cx="30" cy="30" r="5" fill="#9a7820" opacity=".9">
+              <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite"/>
+              <animate attributeName="opacity" values="0.9;0.5;0.9" dur="2s" repeatCount="indefinite"/>
+            </circle>
+          </svg>
+          <div class="splash-title">TERLAB</div>
+          <div class="splash-sub">Laboratoire d'analyse de terrain · ENSA La Réunion</div>
+          <div class="splash-sub" style="font-size:.75rem;margin-top:4px;opacity:.5">Île de La Réunion · Master 1 Semestre 8</div>
+          <div class="splash-progress" id="splash-progress">
+            <div class="splash-bar" id="splash-bar"></div>
+          </div>
+          <div class="splash-status" id="splash-status">Chargement…</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ═══════════════════════════════════════════════════════
+       PANEL 3D VIEWER (mini-BIMSHOW intégré)
+  ═══════════════════════════════════════════════════════ -->
+  <div class="terlab-3d-panel" id="terlab-3d-panel" hidden>
+    <!-- Contenu injecté par terlab-3d-viewer.js -->
+  </div>
+
+</div><!-- /terlab-app -->
+
+<!-- ═══════════════════════════════════════════════════════
+     MODALS
+═══════════════════════════════════════════════════════ -->
+
+<!-- Token Mapbox -->
+<div class="modal-backdrop" id="modal-token" role="dialog" aria-labelledby="modal-token-title" aria-modal="true" hidden>
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-head">
+      <h2 id="modal-token-title" class="modal-title">Token Mapbox requis</h2>
+    </div>
+    <div class="modal-body">
+      <p class="modal-text">Entrez votre token Mapbox public pour activer la cartographie interactive. Créez un token gratuit sur <a href="https://account.mapbox.com" target="_blank" rel="noopener" class="modal-link">mapbox.com</a> avec les URLs <code>bimshow.io</code> et <code>localhost</code> autorisées.</p>
+      <input type="text" id="mapbox-token-input" class="modal-input" placeholder="pk.eyJ1IjoiYmltc2hvdyIsImEiOiJ..."
+             aria-label="Token Mapbox public" autocomplete="off" spellcheck="false"/>
+      <p class="modal-hint">Le token est stocké localement dans votre navigateur uniquement.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="modal-btn-primary" onclick="TerlabRouter.saveMapboxToken()">Activer la carte</button>
+      <button class="modal-btn-ghost" onclick="TerlabRouter.skipMapboxToken()">Continuer sans carte</button>
+    </div>
+  </div>
+</div>
+
+<!-- Sources & Références -->
+<div class="modal-backdrop" id="modal-sources" role="dialog" aria-labelledby="modal-sources-title" aria-modal="true" hidden>
+  <div class="modal-box modal-wide">
+    <div class="modal-head">
+      <h2 id="modal-sources-title" class="modal-title">Sources & Références</h2>
+      <button class="modal-close" onclick="TerlabSources.close()" aria-label="Fermer">✕</button>
+    </div>
+    <div class="modal-body" id="modal-sources-body">
+      <!-- Rempli dynamiquement par source-modal.js -->
+    </div>
+    <div class="modal-foot">
+      <p class="modal-disclaimer">TERLAB v1.0 — Outil pédagogique ENSA La Réunion. Les informations peuvent être incomplètes. Vérifier auprès des sources officielles.</p>
+      <button class="modal-btn-ghost" onclick="TerlabSources.close()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Détail acteur -->
+<div class="modal-backdrop" id="modal-actor" role="dialog" aria-labelledby="modal-actor-title" aria-modal="true" hidden>
+  <div class="modal-box" style="max-width:460px">
+    <div class="modal-head">
+      <h2 id="modal-actor-title" class="modal-title" id="actor-modal-nom">Acteur</h2>
+      <button class="modal-close" onclick="TerlabActors.closeModal()" aria-label="Fermer">✕</button>
+    </div>
+    <div class="modal-body" id="modal-actor-body">
+      <!-- Rempli par actor-card.js -->
+    </div>
+    <div class="modal-foot">
+      <button class="modal-btn-primary" id="actor-modal-btn-url" onclick="">Ouvrir le site →</button>
+      <button class="modal-btn-ghost" onclick="TerlabActors.closeModal()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export -->
+<div class="modal-backdrop" id="modal-export" role="dialog" aria-labelledby="modal-export-title" aria-modal="true" hidden>
+  <div class="modal-box" style="max-width:400px">
+    <div class="modal-head">
+      <h2 id="modal-export-title" class="modal-title">Exports TERLAB</h2>
+      <button class="modal-close" onclick="TerlabExport.closeModal()" aria-label="Fermer">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="export-grid">
+        <button class="export-btn" data-format="pdf" onclick="TerlabExport.generatePDF()">
+          <span class="export-icon">📄</span>
+          <span class="export-label">PDF A3</span>
+          <span class="export-desc">Synthèse 6 pages</span>
+        </button>
+        <button class="export-btn" data-format="dxf" onclick="TerlabExport.generateDXF()">
+          <span class="export-icon">📐</span>
+          <span class="export-label">DXF</span>
+          <span class="export-desc">Parcelle + reculs</span>
+        </button>
+        <button class="export-btn" data-format="glb" onclick="TerlabExport.generateGLB()">
+          <span class="export-icon">🏗</span>
+          <span class="export-label">GLB</span>
+          <span class="export-desc">Contexte 3D</span>
+        </button>
+        <button class="export-btn" data-format="json" onclick="TerlabExport.generateJSON()">
+          <span class="export-icon">📦</span>
+          <span class="export-label">JSON</span>
+          <span class="export-desc">Session complète</span>
+        </button>
+      </div>
+      <div class="stub-warning" id="export-stub-warning">
+        ⚠️ Export IFC (Phase 7) en cours d'implémentation — voir __stubs__/ifc-worker.js
+      </div>
+      <div class="export-progress" id="export-progress" hidden>
+        <div class="export-progress-bar" id="export-progress-bar"></div>
+        <div class="export-progress-label" id="export-progress-label">Génération…</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <p class="modal-disclaimer">⚠️ Document pédagogique — non opposable aux documents réglementaires officiels.</p>
+      <button class="modal-btn-ghost" onclick="TerlabExport.closeModal()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast notifications -->
+<div class="toast-container" id="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SCRIPTS
+═══════════════════════════════════════════════════════ -->
+<script type="module" src="components/session-manager.js"></script>
+<script type="module" src="components/terlab-storage.js"></script>
+<script type="module" src="components/map-viewer.js"></script>
+<script type="module" src="components/bimshow-bridge.js"></script>
+<script type="module" src="components/source-modal.js"></script>
+<script type="module" src="components/export-engine.js"></script>
+<script type="module" src="components/demo-loader.js"></script>
+<script src="components/envirobat-cards.js"></script>
+<script src="config.local.js" onerror="console.warn('config.local.js absent — token Mapbox requis via localStorage')"></script>
+<script type="module" src="index.js"></script>
+
+</body>
+</html>

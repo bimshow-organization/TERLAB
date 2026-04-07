@@ -1,0 +1,221 @@
+{
+  "version": "2026-04",
+  "scot": "SCoT Ouest",
+  "interco": "TCO",
+  "interco_nom": "Territoire de la Côte Ouest",
+  "approbation": "2016-12-21",
+  "modification_simplifiee_1": "2022-10-03",
+  "revision_prescrite": "2022-12-16",
+  "source_doo": "https://www.tco.re/wp-content/uploads/2022/10/08_scot-modifie-doo_cc10.22.pdf",
+  "communes": ["Le Port", "La Possession", "Saint-Paul", "Trois-Bassins", "Saint-Leu"],
+  "communes_insee": ["97407", "97406", "97415", "97423", "97416"],
+
+  "armature_urbaine": {
+    "description": "Hiérarchie des polarités urbaines du TCO en 5 rangs (DOO O5)",
+    "niveaux": {
+      "rang_1": {
+        "label": "Coeur d'Agglomération / Pôle principal",
+        "places_urbaines": [
+          { "nom": "Le Port", "commune": "Le Port" },
+          { "nom": "La Possession centre", "commune": "La Possession" },
+          { "nom": "Saint-Paul centre", "commune": "Saint-Paul" }
+        ],
+        "densite_min_lgts_ha": 50,
+        "pct_logements_neufs": { "min": 55, "max": 60 },
+        "volume_logements_10ans": { "min": 9900, "max": 10800 },
+        "note": "Localisation du grand projet d'Ecocité insulaire et tropicale. TCSP niveau I."
+      },
+      "rang_2": {
+        "label": "Pôles secondaires",
+        "places_urbaines": [
+          { "nom": "Plateau Caillou - Saint-Gilles-les-Hauts - L'Éperon", "commune": "Saint-Paul" },
+          { "nom": "Portail Piton Saint-Leu", "commune": "Saint-Leu" }
+        ],
+        "densite_min_lgts_ha": 50,
+        "pct_logements_neufs": { "min": 25, "max": 30 },
+        "volume_logements_10ans": { "min": 4500, "max": 6000 },
+        "note": "Fongibilité admise à Saint-Leu entre rang 2 (Piton) et rang 3 (Centre). Centre d'échange transport."
+      },
+      "rang_3": {
+        "label": "Villes relais",
+        "places_urbaines": [
+          { "nom": "Saint-Gilles-les-Bains", "commune": "Saint-Paul" },
+          { "nom": "La Plaine - Bois de Nèfles", "commune": "Saint-Paul" },
+          { "nom": "Le Guillaume", "commune": "Saint-Paul" },
+          { "nom": "La Saline", "commune": "Saint-Paul" },
+          { "nom": "Trois-Bassins centre et Souris Blanche", "commune": "Trois-Bassins" },
+          { "nom": "Saint-Leu centre", "commune": "Saint-Leu" }
+        ],
+        "densite_min_lgts_ha": 30,
+        "pct_logements_neufs": { "min": 10, "max": 15 },
+        "volume_logements_10ans": { "min": 1800, "max": 2700 },
+        "note": "TC niveau I entre pôles secondaires et villes relais."
+      },
+      "rang_4": {
+        "label": "Bourgs de proximité",
+        "places_urbaines": [
+          { "nom": "Dos d'Âne", "commune": "La Possession" },
+          { "nom": "Tan Rouge", "commune": "Saint-Paul" },
+          { "nom": "La Chaloupe Saint-Leu", "commune": "Saint-Leu" },
+          { "nom": "Le Plate", "commune": "Saint-Leu" }
+        ],
+        "densite_min_lgts_ha": { "min": 20, "max": 30 },
+        "pct_logements_neufs_environ": 5,
+        "volume_logements_10ans_environ": 900,
+        "note": "TC niveau II vers villes relais."
+      },
+      "rang_5": {
+        "label": "Villages et TRH (Territoires Ruraux Habités)",
+        "places_urbaines": [
+          { "nom": "Dos d'Âne Nord (seul village hors TRH)", "commune": "La Possession" }
+        ],
+        "densite_min_lgts_ha": { "min": 10, "max": 20 },
+        "exception_bellemene": {
+          "nom": "Bellemène-Bois Rouge",
+          "densite_max_lgts_ha": 30
+        },
+        "note": "Non significatif en développement résidentiel. SDU hors armature."
+      }
+    }
+  },
+
+  "logement": {
+    "description": "Politiques publiques du logement (DOO O13)",
+    "production_10ans_total": 18000,
+    "production_annuelle_logements_aides": 1100,
+    "pct_logements_aides_dans_production": 60,
+    "le_port_pct_social_actuel": 60,
+    "le_port_objectif_pct_social": 50,
+    "orientations": [
+      "Diversification des formes d'habitat: compacte et économe en foncier",
+      "Adaptation au vieillissement et diminution taille ménages",
+      "Logements sociaux au plus près des TC et services",
+      "Harmonie des types de produits dans chaque zone opérationnelle (éviter uniformité)",
+      "Remise sur marché des 6000 logements vacants via redéveloppement urbain",
+      "Lutte contre l'habitat indigne à chaque pôle urbain"
+    ]
+  },
+
+  "densite": {
+    "description": "Densités d'aménagement minimales (DOO O8)",
+    "note": "Valeurs-guides. Appréciation dans le temps de réalisation des phases. Hors surfaces d'équipements publics supra-proximité et infrastructures environnementales.",
+    "regles": [
+      { "rang": [1, 2], "densite_min_lgts_ha": 50, "label": "Coeur d'agglo + Pôles secondaires" },
+      { "rang": [3], "densite_min_lgts_ha": 30, "label": "Villes relais" },
+      { "rang": [4], "densite_min_lgts_ha": 20, "densite_max_lgts_ha": 30, "label": "Bourgs de proximité" },
+      { "rang": [5], "densite_min_lgts_ha": 10, "densite_max_lgts_ha": 20, "label": "TRH" }
+    ],
+    "zatt_500m": {
+      "description": "Zone d'Aménagement et de Transition vers les Transports - dans rayon 500m d'un arrêt TCSP/TC niveau I",
+      "rang_1_2_densite_min": 50,
+      "rang_3_densite_min": 30,
+      "stationnement_abattement_possible": true
+    },
+    "calcul_densite": {
+      "inclus": ["programmes résidentiels", "espaces publics de l'opération"],
+      "exclus": ["stations d'épuration", "lycée", "collège", "voies TCSP", "voiries primaires", "bassins pluviaux", "lagunage"]
+    }
+  },
+
+  "espaces_urbains_reference": {
+    "description": "EUD + EUP reconnus par SAR 2011 (DOO O6)",
+    "surface_totale_ha": 7200,
+    "eud_ha": 6000,
+    "eup_ha": 1200,
+    "enveloppe_urbaine_totale_ha": 8200,
+    "pct_min_projets_en_eud": 50,
+    "note": "Au moins 50% des projets résidentiels dans les EUD (espaces urbains à densifier)."
+  },
+
+  "environnement": {
+    "continuite_ecologique": {
+      "description": "Trame verte et bleue (DOO O4)",
+      "bande_ravine_enherbee_m": { "min": 3.5, "max": 10 },
+      "reservoirs_averes": [
+        "Coeur Parc national (partie)",
+        "Réserve naturelle Etang Saint-Paul",
+        "Grande Ravine",
+        "Ravine Bernica",
+        "Ravine Divon",
+        "Ravine Trois-Bassins",
+        "Ravine Colimaçons",
+        "Ravine Chaloupe",
+        "Piton des Roches Tendres - Pointe au Sel",
+        "Savane Cap La Houssaye (pointes littorales)"
+      ]
+    },
+    "lisieres_urbaines": {
+      "description": "Interface ville/nature/agriculture (DOO O9)",
+      "fonctions": ["paysagère", "écologique", "qualité urbaine", "agricole"],
+      "protection_cones_vue": true,
+      "corridors_ecologiques": true,
+      "ouvrages_ep_eu": true,
+      "modes_actifs": true,
+      "agriculture_periurbaine": true
+    },
+    "risques": {
+      "description": "Prévention risques naturels et technologiques (DOO O10)",
+      "impermeabilisation_minimisee": true,
+      "techniques_alternatives_ep": true,
+      "infiltration_a_la_source": true,
+      "stockage_temporaire_ep": true,
+      "seveso_non_augmentation_hydrocarbures_zi1_port": true
+    },
+    "eau": {
+      "description": "Protection ressource eau (DOO O11)",
+      "aquifere_plaine_galets_protege": true,
+      "assainissement_rang_1_2_3": "collectif obligatoire ou semi-collectif avec suivi",
+      "assainissement_rang_4_5": "autonome conforme réglementation",
+      "ep_gestion_a_la_source": true,
+      "permeable_part_minimale_significative": true,
+      "cuves_recuperation_pluie_recommandees": true
+    }
+  },
+
+  "transports": {
+    "description": "Cohérence urbanisation/transports (DOO O14)",
+    "tcsp_niveau_1": {
+      "perimetre": "Coeur d'Agglomération étendu à Plateau Caillou",
+      "type": "site propre: terrestre haut niveau de service et/ou câble"
+    },
+    "tc_niveau_1": {
+      "perimetre": "Entre pôles secondaires et villes relais",
+      "plaine_bois_nefles_liaison_directe_coeur_agglo": true
+    },
+    "tc_niveau_2": {
+      "perimetre": "Entre villes relais et bourgs de proximité"
+    },
+    "centres_echange": ["Coeur d'Agglomération", "Plateau Caillou", "Piton Saint-Leu Portail"],
+    "transports_cables_projetes": [
+      "Saint-Paul centre >> Plateau Caillou (altitudinal)",
+      "Saint-Leu centre >> La Chaloupe >> Grand Bénare/Cilaos (altitudinal)",
+      "La Possession Moulin Joli >> Le Port Sacré-Coeur/Mascareignes (horizontal)"
+    ],
+    "echangeurs_tamarins_projetes": [
+      "Trois-Bassins: demi-échangeur depuis/vers le sud",
+      "Saint-Leu Stella: demi-échangeur depuis/vers le nord"
+    ],
+    "stationnement": {
+      "mutualisation_partage": true,
+      "abattement_500m_tcsp_tc1": true,
+      "parking_relais_centres_echange": true,
+      "stationnement_velos_zatt": true,
+      "covoiturage_centres_echange": true
+    },
+    "modes_actifs": {
+      "itineraires_dedies": true,
+      "rn1a_loisirs_tourisme": true
+    }
+  },
+
+  "quartiers_remarquables": {
+    "plateau_caillou": {
+      "commune": "Saint-Paul",
+      "rang": 2,
+      "densite_min_lgts_ha": 50,
+      "quartiers_inclus": ["Plateau Caillou", "Saint-Gilles-les-Hauts", "L'Éperon", "Fleurimont"],
+      "centre_echange_transport": true,
+      "note": "Fleurimont fait partie du pôle secondaire de Plateau Caillou (cf. étude Montfleuri)."
+    }
+  }
+}

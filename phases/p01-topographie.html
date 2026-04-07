@@ -1,0 +1,1299 @@
+<!-- TERLAB · Phase 1 v2 · Topographie & Microclimat · ENSA La Réunion -->
+<!-- Thème : dark · Bloquante · Mapbox DEM 3D + ravines + profil live + parcelle contour -->
+
+<!-- ═══════════════════ COLONNE GAUCHE ═══════════════════════════ -->
+<div class="left-panel" id="left-panel-p01">
+
+  <div class="lp-head anim-slide-up">
+    <div class="phase-label">Phase 1 · Obligatoire</div>
+    <h1 class="phase-title">⛰ <em>Topographie</em> & Microclimat</h1>
+    <p class="phase-desc">Comprendre la morphologie du site, les flux naturels et le microclimat local. La topographie conditionne les risques d'inondation, les vents, l'ensoleillement et les fondations.</p>
+  </div>
+
+  <!-- Données terrain héritées -->
+  <div class="terrain-strip" id="terrain-strip-p01">
+    <span class="ts-item">📍 <strong id="ts-commune">—</strong></span>
+    <span class="ts-sep">·</span>
+    <span class="ts-item">Alt <strong id="ts-alt">— m</strong></span>
+    <span class="ts-sep">·</span>
+    <span class="ts-item">RTAA <strong id="ts-rtaa">—</strong></span>
+  </div>
+
+  <!-- Données altimétrique auto-détectées -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Altimétrie <span id="topo-source-badge" class="topo-source-badge">DEM Mapbox</span></div>
+    <div class="topo-grid">
+      <div class="topo-cell">
+        <span class="topo-label">Altitude min</span>
+        <span class="topo-val" id="topo-alt-min">—</span>
+        <span class="topo-unit">m NGR</span>
+      </div>
+      <div class="topo-cell">
+        <span class="topo-label">Altitude max</span>
+        <span class="topo-val" id="topo-alt-max">—</span>
+        <span class="topo-unit">m NGR</span>
+      </div>
+      <div class="topo-cell">
+        <span class="topo-label">Pente moyenne</span>
+        <span class="topo-val" id="topo-pente">—</span>
+        <span class="topo-unit">%</span>
+      </div>
+      <div class="topo-cell">
+        <span class="topo-label">Dénivelé</span>
+        <span class="topo-val" id="topo-denivele">—</span>
+        <span class="topo-unit">m</span>
+      </div>
+    </div>
+
+    <!-- LiDAR HD info (visible seulement si serveur dispo) -->
+    <div class="lidar-info" id="lidar-info" style="display:none">
+      <span class="lidar-info-icon">📡</span>
+      <span class="lidar-info-text" id="lidar-info-text">—</span>
+    </div>
+
+    <div class="alert-altitude" id="alert-altitude" style="display:none">
+      <span class="alert-icon">🏔</span>
+      <span id="alert-altitude-text">Terrain en altitude</span>
+    </div>
+
+    <div class="topo-btn-group">
+      <button class="topo-btn" onclick="P01.analyzeAltitude()" id="btn-analyze">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M2 10 L4 6 L6 7.5 L8 4 L10 6.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Analyser l'altimétrie
+      </button>
+      <button class="topo-btn lidar-btn" onclick="P01.analyzeLidar()" id="btn-lidar" style="display:none">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <circle cx="6" cy="6" r="2" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M3 3L2 2M9 3L10 2M3 9L2 10M9 9L10 10" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+        </svg>
+        LiDAR HD (±0.15m)
+      </button>
+    </div>
+  </div>
+
+  <!-- Visualisation LiDAR (visible après chargement des points) -->
+  <div class="form-section anim-slide-up" id="lidar-viz-section" style="display:none">
+    <div class="fs-head">Nuage de points LiDAR</div>
+
+    <!-- Sélecteur de couche -->
+    <div class="lidar-layer-selector">
+      <button class="lidar-layer-btn active" id="btn-lidar-class" onclick="P01.setLidarView('classification')">
+        <span class="lidar-swatch lidar-swatch-class"></span>
+        Classes
+      </button>
+      <button class="lidar-layer-btn" id="btn-lidar-rgb" onclick="P01.setLidarView('rgb')">
+        <span class="lidar-swatch lidar-swatch-rgb"></span>
+        Image ortho
+      </button>
+      <button class="lidar-layer-btn" id="btn-lidar-off" onclick="P01.setLidarView('off')">
+        Masquer
+      </button>
+    </div>
+
+    <!-- Légende classification -->
+    <div class="lidar-legend" id="lidar-legend">
+      <div class="lidar-legend-item"><span class="lidar-dot" style="background:#b8860b"></span>Sol</div>
+      <div class="lidar-legend-item"><span class="lidar-dot" style="background:#90ee90"></span>Vég. basse</div>
+      <div class="lidar-legend-item"><span class="lidar-dot" style="background:#32cd32"></span>Vég. moyenne</div>
+      <div class="lidar-legend-item"><span class="lidar-dot" style="background:#006400"></span>Vég. haute</div>
+      <div class="lidar-legend-item"><span class="lidar-dot" style="background:#ff4444"></span>Bâtiments</div>
+      <div class="lidar-legend-item"><span class="lidar-dot" style="background:#4488ff"></span>Eau</div>
+    </div>
+
+    <!-- Stats -->
+    <div class="lidar-stats" id="lidar-stats"></div>
+
+    <!-- Charger toutes les classes -->
+    <button class="topo-btn lidar-btn" id="btn-lidar-all-classes" onclick="P01.loadAllLidarClasses()" style="margin-top:4px">
+      Charger toutes les classes (sol + bâtiments + végétation)
+    </button>
+  </div>
+
+  <!-- Profil altimétrique -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Coupe altimétrique <span id="profile-status" class="profile-status-badge" style="display:none">✓ Validée</span></div>
+    <p class="field-note" style="margin-bottom:8px">Tracez une coupe sur la carte : le trait apparaît en temps réel. Validez-la pour l'inclure au dossier PDF.</p>
+    <div class="profile-canvas-wrap">
+      <canvas id="profile-chart" height="120" aria-label="Coupe altimétrique"></canvas>
+      <svg id="p01-aero-overlay" style="position:absolute;inset:0;pointer-events:none;z-index:2" xmlns="http://www.w3.org/2000/svg"></svg>
+      <div class="profile-empty" id="profile-empty">
+        Cliquez « Tracer une coupe » puis posez 2 points sur la carte
+      </div>
+    </div>
+
+    <!-- Résumé du profil tracé (affiché après tracé) -->
+    <div class="profile-summary" id="profile-summary" style="display:none">
+      <div class="ps-row"><span class="ps-label">Longueur</span><span class="ps-val" id="ps-length">—</span></div>
+      <div class="ps-row"><span class="ps-label">Alt. min</span><span class="ps-val" id="ps-alt-min">—</span></div>
+      <div class="ps-row"><span class="ps-label">Alt. max</span><span class="ps-val" id="ps-alt-max">—</span></div>
+      <div class="ps-row"><span class="ps-label">Dénivelé</span><span class="ps-val" id="ps-denivele">—</span></div>
+      <div class="ps-row"><span class="ps-label">Pente moy.</span><span class="ps-val" id="ps-pente">—</span></div>
+    </div>
+
+    <div class="profile-actions">
+      <button class="topo-btn" onclick="P01.startProfile()" id="btn-trace-profile">
+        ✏ Tracer une coupe
+      </button>
+      <button class="topo-btn profile-validate-btn" onclick="P01.validateProfile()" id="btn-validate-profile" style="display:none">
+        ✓ Valider cette coupe au dossier
+      </button>
+    </div>
+  </div>
+
+  <!-- Ravines -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Ravines & cours d'eau</div>
+    <div class="field-row">
+      <label class="field-label" for="nom-ravine">Nom de la ravine / cours d'eau le plus proche</label>
+      <input type="text" id="nom-ravine" class="field-input" data-session-key="nom_ravine"
+             placeholder="Ex : Ravine Saint-Denis, Rivière des Remparts…"/>
+    </div>
+    <div class="field-row">
+      <label class="field-label" for="distance-ravine">Distance (m)</label>
+      <input type="number" id="distance-ravine" class="field-input" data-session-key="distance_ravine_m"
+             placeholder="120" min="0" step="10"/>
+    </div>
+    <button class="topo-btn" id="btn-flyover" onclick="P01.triggerFlyover()" style="display:none">
+      🎬 Fly-over 3D de la ravine
+    </button>
+  </div>
+
+  <!-- SVG Terrain GIEP (géométrie + pente + orientation + ravine) -->
+  <div class="form-section anim-slide-up" id="terrain-svg-section">
+    <div class="fs-head">Géométrie & Topographie GIEP</div>
+    <svg id="terrainSVG" viewBox="0 0 300 200" width="100%" height="160"
+         style="background:var(--card);border-radius:var(--r);border:1px solid var(--border)">
+      <text x="150" y="100" text-anchor="middle" font-size="11"
+            fill="var(--faint)" font-family="monospace">
+        Sélectionner une parcelle en Phase 0
+      </text>
+    </svg>
+    <div class="detected-grid" style="margin-top:6px">
+      <div class="det-cell"><span class="det-label">Pente moy.</span><span class="det-val" id="svg-pente" data-session-key="pente_moy_pct">—</span></div>
+      <div class="det-cell"><span class="det-label">Zone climatique</span><span class="det-val" id="svg-zone" data-session-key="zone_climatique">—</span></div>
+      <div class="det-cell"><span class="det-label">RTAA Zone</span><span class="det-val" id="svg-rtaa" data-session-key="zone_rtaa">—</span></div>
+      <div class="det-cell"><span class="det-label">Pluvio T10</span><span class="det-val" id="svg-pluvio">—</span></div>
+    </div>
+  </div>
+
+  <!-- Orientation & vents -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Orientation & vents dominants</div>
+    <div class="field-row">
+      <label class="field-label">Orientation principale du terrain</label>
+      <div class="radio-group">
+        <label class="radio-option" onclick="P01.selectOrientation(this, 'Nord')"><input type="radio" name="orientation" value="Nord"/>N</label>
+        <label class="radio-option" onclick="P01.selectOrientation(this, 'Nord-Est')"><input type="radio" name="orientation" value="Nord-Est"/>NE</label>
+        <label class="radio-option" onclick="P01.selectOrientation(this, 'Est')"><input type="radio" name="orientation" value="Est"/>E</label>
+        <label class="radio-option" onclick="P01.selectOrientation(this, 'Sud-Est')"><input type="radio" name="orientation" value="Sud-Est"/>SE</label>
+        <label class="radio-option" onclick="P01.selectOrientation(this, 'Sud')"><input type="radio" name="orientation" value="Sud"/>S</label>
+        <label class="radio-option" onclick="P01.selectOrientation(this, 'Sud-Ouest')"><input type="radio" name="orientation" value="Sud-Ouest"/>SO</label>
+        <label class="radio-option" onclick="P01.selectOrientation(this, 'Ouest')"><input type="radio" name="orientation" value="Ouest"/>O</label>
+        <label class="radio-option" onclick="P01.selectOrientation(this, 'Nord-Ouest')"><input type="radio" name="orientation" value="Nord-Ouest"/>NO</label>
+      </div>
+    </div>
+    <div class="field-row">
+      <label class="field-label">Zone pluviométrique</label>
+      <div class="radio-group">
+        <label class="radio-option" onclick="P01.selectZonePluvio(this, 'vent')"><input type="radio" name="pluvio" value="vent"/>🌧 Côte au vent (E–NE)</label>
+        <label class="radio-option" onclick="P01.selectZonePluvio(this, 'sous_vent')"><input type="radio" name="pluvio" value="sous_vent"/>☀ Sous le vent (O–SO)</label>
+        <label class="radio-option" onclick="P01.selectZonePluvio(this, 'hauts')"><input type="radio" name="pluvio" value="hauts"/>⛅ Hauts (convergence)</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Station météo -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Station météo de référence</div>
+    <div class="field-row">
+      <label class="field-label" for="station-meteo">Station Météo-France</label>
+      <select id="station-meteo" class="field-select" data-session-key="station_meteo" onchange="P01.updateMeteoData()">
+        <option value="">-- Sélectionner (auto-détection au chargement) --</option>
+        <option value="saint-denis-gillot">Saint-Denis — Gillot</option>
+        <option value="saint-pierre">Saint-Pierre</option>
+        <option value="le-port">Le Port (Réunion)</option>
+        <option value="sainte-rose">Sainte-Rose</option>
+        <option value="saint-benoit">Saint-Benoît</option>
+        <option value="plaine-cafres">Plaine des Cafres</option>
+        <option value="cilaos">Cilaos</option>
+        <option value="maido">Maido — La Plaine</option>
+        <option value="saint-louis">Saint-Louis</option>
+        <option value="saint-leu">Saint-Leu</option>
+      </select>
+    </div>
+    <div class="meteo-source-note" id="meteo-source-note" style="display:none">
+      <span id="meteo-source-icon">📡</span>
+      <span id="meteo-source-text">—</span>
+    </div>
+    <div class="meteo-grid" id="meteo-grid" style="display:none">
+      <div class="meteo-cell"><span class="meteo-label">Pluvio annuelle</span><span class="meteo-val" id="m-pluvio">—</span><span class="meteo-unit">mm</span></div>
+      <div class="meteo-cell"><span class="meteo-label">T° moy</span><span class="meteo-val" id="m-tmoy">—</span><span class="meteo-unit">°C</span></div>
+      <div class="meteo-cell"><span class="meteo-label">T° min</span><span class="meteo-val" id="m-tmin">—</span><span class="meteo-unit">°C</span></div>
+      <div class="meteo-cell"><span class="meteo-label">T° max</span><span class="meteo-val" id="m-tmax">—</span><span class="meteo-unit">°C</span></div>
+      <div class="meteo-cell"><span class="meteo-label">Vent moy</span><span class="meteo-val" id="m-vent">—</span><span class="meteo-unit">km/h</span></div>
+      <div class="meteo-cell"><span class="meteo-label">Amplitude</span><span class="meteo-val" id="m-amplitude">—</span><span class="meteo-unit">°C</span></div>
+    </div>
+    <a href="https://meteofrance.re" target="_blank" rel="noopener" class="source-btn" style="margin-top:6px;display:inline-flex">
+      → Météo-France Réunion ↗
+    </a>
+  </div>
+
+  <!-- Section Aéraulique (Sprint 1) -->
+  <div class="form-section anim-slide-up" id="p01-aeraulique-section">
+    <div class="fs-head">Analyse Aéraulique</div>
+
+    <div style="padding:8px 12px">
+      <label class="field-label">Type de rugosité estimée</label>
+      <select id="p01-terrain-type" class="field-select" data-session-key="aeraulique_rugosite">
+        <option value="ouvert">Ouvert · Plaine dégagée (Zg 250m)</option>
+        <option value="suburbain" selected>Suburbain · Tissu résidentiel (Zg 400m)</option>
+        <option value="urbain">Urbain · Centre dense (Zg 500m)</option>
+        <option value="dense">Dense · R+5+ (Zg 600m)</option>
+      </select>
+    </div>
+
+    <div style="padding:0 12px 8px">
+      <label class="field-label">Direction vent dominant (°N géographique)</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="range" id="p01-wind-dir" min="0" max="360" value="105"
+               style="flex:1" oninput="P01.updateWindDir(+this.value)"/>
+        <span id="p01-wind-dir-val" style="font-family:monospace;font-size:.72rem;
+              min-width:40px;color:var(--accent)">105°</span>
+      </div>
+      <div style="font-size:.65rem;color:var(--ink3);margin-top:2px;font-style:italic">
+        Alizé dominant La Réunion : 105° (ESE)
+      </div>
+    </div>
+
+    <div style="padding:4px 12px 10px">
+      <button class="topo-btn" onclick="P01.runAeraulique()" style="width:100%">
+        Calculer l'aéraulique du profil
+      </button>
+    </div>
+
+    <div id="p01-aero-score" style="display:none;padding:0 12px 8px"></div>
+
+    <!-- Overlay C_TP — Sprint 2 -->
+    <div style="padding:4px 12px 8px">
+      <button class="topo-btn" onclick="P01.toggleCtpOverlay()"
+              id="p01-ctp-btn" style="width:100%">
+        Overlay C_TP sur carte
+      </button>
+      <div class="stub-warning" id="p01-ctp-stub" style="display:none">
+        C_TP estimé depuis altitude Mapbox uniquement. Précision ±30%. Nécessite DEM chargé (zoom > 12).
+      </div>
+    </div>
+  </div>
+
+  <!-- Risk player -->
+  <div style="padding:4px 13px 8px;border-bottom:1px solid var(--border)" id="risk-player-container-p01"></div>
+
+  <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
+    <button class="source-btn" onclick="TerlabSources.open(1)">→ Sources &amp; références topographie</button>
+  </div>
+
+  <!-- Validation -->
+  <div class="val-block">
+    <div class="val-title">Validation de la phase 1</div>
+    <div class="check-item blocking" role="checkbox" aria-checked="false" tabindex="0">
+      <div class="check-box"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6 8 1" stroke="var(--success)" stroke-width="1.5" stroke-linecap="round" class="check-svg" style="display:none"/></svg></div>
+      <span>Cours d'eau et ravines nommés</span>
+    </div>
+    <div class="check-item blocking" role="checkbox" aria-checked="false" tabindex="0">
+      <div class="check-box"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6 8 1" stroke="var(--success)" stroke-width="1.5" stroke-linecap="round" class="check-svg" style="display:none"/></svg></div>
+      <span>Orientation principale et pente validées</span>
+    </div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0">
+      <div class="check-box"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6 8 1" stroke="var(--success)" stroke-width="1.5" stroke-linecap="round" class="check-svg" style="display:none"/></svg></div>
+      <span>Coupe altimétrique tracée et validée au dossier</span>
+    </div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0">
+      <div class="check-box"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6 8 1" stroke="var(--success)" stroke-width="1.5" stroke-linecap="round" class="check-svg" style="display:none"/></svg></div>
+      <span>Station météo de référence identifiée</span>
+    </div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0" id="p01-check-aeraulique">
+      <div class="check-box"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6 8 1" stroke="var(--success)" stroke-width="1.5" stroke-linecap="round" class="check-svg" style="display:none"/></svg></div>
+      <span>Analyse aéraulique du profil réalisée (score calculé)</span>
+    </div>
+    <div class="val-progress"><div class="val-bar"></div></div>
+    <div class="val-footer"><span>2 validations bloquantes</span><span class="val-pct">0/5</span></div>
+    <button class="next-btn">Phase 2 — Géologie & Géotechnique →</button>
+  </div>
+
+</div><!-- /left-panel -->
+
+<!-- ═══════════════════ CARTE ════════════════════════════════════ -->
+<div class="map-area">
+  <div id="map" style="width:100%;height:100%"></div>
+  <div id="map-stub-banner" style="display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(245,158,11,.9);color:#0c0a00;padding:5px 14px;border-radius:4px;font-family:monospace;font-size:10px;white-space:nowrap"></div>
+
+  <!-- Label parcelle sélectionnée -->
+  <div class="terrain-marker-label" id="terrain-label-p01" style="display:none">
+    <span id="terrain-label-text-p01">—</span>
+  </div>
+
+  <!-- Contrôles carte -->
+  <div class="map-ctl-group">
+    <button class="map-ctl-btn" onclick="P01.toggle3DExag()" title="Exagération terrain">3D ×1.4</button>
+    <button class="map-ctl-btn" onclick="TerlabMap.toggle3D()" title="Vue 2D/3D">Pitch</button>
+    <button class="map-ctl-btn active" id="btn-ravines-toggle" onclick="P01.toggleRavines()" title="Ravines">Ravines</button>
+  </div>
+</div>
+
+<!-- ═══════════════════ COLONNE DROITE ══════════════════════════ -->
+<div class="right-panel">
+
+  <div class="rp-section">
+    <div class="rp-head">Contexte altitudinal Réunion</div>
+    <div class="koppen-etages">
+      <div class="etage-item" id="etage-aw">
+        <span class="etage-badge" style="background:#a5c88a20;color:#a5c88a;border-color:#a5c88a40">Aw</span>
+        <div class="etage-body">
+          <div class="etage-name">Côte tropicale</div>
+          <div class="etage-range">0 – 400 m · RTAA Zone 1</div>
+        </div>
+      </div>
+      <div class="etage-item" id="etage-cf">
+        <span class="etage-badge" style="background:#c5e68a20;color:#c5e68a;border-color:#c5e68a40">Cf</span>
+        <div class="etage-body">
+          <div class="etage-name">Mi-pentes subtropicales</div>
+          <div class="etage-range">400 – 900 m · RTAA Zone 2</div>
+        </div>
+      </div>
+      <div class="etage-item" id="etage-cwb">
+        <span class="etage-badge" style="background:#daeaea20;color:#daeaea;border-color:#daeaea40">Cwb</span>
+        <div class="etage-body">
+          <div class="etage-name">Hauts montagnards</div>
+          <div class="etage-range">> 1000 m · RTAA Zone 3 · Gel possible</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">Acteurs & ressources</div>
+    <div id="actors-zone" class="stagger anim-fade-in"></div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">Risques de phase</div>
+    <div id="risks-zone"></div>
+  </div>
+
+  <div class="rp-section" id="p01-aero-diag-section" style="display:none">
+    <div class="rp-head">Diagnostic Aéraulique</div>
+    <div id="p01-aero-diag"></div>
+    <div style="padding:6px 10px">
+      <button class="source-btn" onclick="TerlabSources?.open(1,'aeraulique')">
+        → Références Izard / CSTB
+      </button>
+    </div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">Exemples enviroBAT-Réunion</div>
+    <div id="eb-cards-p01"></div>
+  </div>
+
+  <div class="rp-section">
+    <div class="rp-head">Note pédagogique</div>
+    <div class="ped-note">
+      <strong>NGR ≠ NGF</strong> — À La Réunion, toutes les cotes sont en NGR (Nivellement Général de La Réunion).
+      Le DEM Mapbox fournit des valeurs en mètres WGS84 ≈ NGF. Appliquer +0.48m pour obtenir le NGR approx.
+      <br/><br/>
+      <strong>Ravines = corridors écologiques + risques</strong> — Une ravine à moins de 100m impose des reculs PPRN,
+      peut créer un effet de canalisation des vents, et constitue une trame verte à protéger (Phase 6).
+      <br/><br/>
+      <strong>Coupe altimétrique au dossier</strong> — La coupe validée est incluse dans le PDF final.
+      Elle permet de visualiser la pente réelle du terrain et les dénivelés pour le dimensionnement des fondations.
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════ STYLES PHASE 1 ══════════════════════════ -->
+<style>
+.topo-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:10px; }
+.topo-cell { background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); padding:7px 10px; }
+.topo-label { font-family:var(--font-mono); font-size:8px; color:var(--faint); text-transform:uppercase; letter-spacing:.1em; display:block; margin-bottom:2px; }
+.topo-val { font-size:18px; font-weight:700; color:var(--accent); display:block; line-height:1.1; }
+.topo-unit { font-family:var(--font-mono); font-size:9px; color:var(--muted); }
+.topo-btn { display:flex; align-items:center; gap:6px; padding:7px 12px; background:var(--raised); border:1px solid var(--border2); border-radius:var(--r-sm); color:var(--muted); cursor:pointer; font-family:var(--font-mono); font-size:10px; transition:all var(--tx-fast); width:100%; justify-content:center; }
+.topo-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent3); }
+
+.profile-validate-btn { background:var(--success2) !important; border-color:rgba(45,212,160,.4) !important; color:var(--success) !important; margin-top:4px; }
+.profile-validate-btn:hover { background:rgba(45,212,160,.2) !important; border-color:var(--success) !important; }
+
+.profile-status-badge { font-family:var(--font-mono); font-size:8px; padding:2px 7px; background:var(--success2); color:var(--success); border:1px solid rgba(45,212,160,.3); border-radius:3px; margin-left:8px; }
+
+.profile-summary { display:grid; grid-template-columns:1fr 1fr; gap:3px; margin-top:6px; padding:8px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); }
+.ps-row { display:flex; justify-content:space-between; padding:2px 4px; }
+.ps-label { font-family:var(--font-mono); font-size:8px; color:var(--faint); text-transform:uppercase; }
+.ps-val { font-family:var(--font-mono); font-size:10px; color:var(--accent); font-weight:700; }
+
+.profile-actions { display:flex; flex-direction:column; gap:4px; margin-top:6px; }
+
+.alert-altitude { background:rgba(245,158,11,.1); border:1px solid rgba(245,158,11,.3); border-left:3px solid var(--warning); border-radius:var(--r-sm); padding:7px 10px; font-size:11px; color:var(--warning); display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.alert-icon { font-size:16px; }
+
+.profile-canvas-wrap { position:relative; height:120px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); overflow:hidden; }
+.profile-canvas-wrap canvas { width:100%; height:100%; }
+.profile-empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:9px; color:var(--faint); text-align:center; padding:12px; pointer-events:none; }
+
+.meteo-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-top:8px; }
+.meteo-cell { background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); padding:6px 8px; text-align:center; }
+.meteo-label { font-family:var(--font-mono); font-size:7.5px; color:var(--faint); text-transform:uppercase; letter-spacing:.08em; display:block; }
+.meteo-val { font-size:15px; font-weight:700; color:var(--text); display:block; }
+.meteo-unit { font-family:var(--font-mono); font-size:8px; color:var(--muted); }
+
+.meteo-source-note { display:flex; align-items:center; gap:6px; padding:5px 8px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); font-family:var(--font-mono); font-size:9px; color:var(--faint); margin-top:6px; }
+
+.map-ctl-group { position:absolute; top:10px; left:10px; z-index:10; display:flex; gap:5px; }
+.map-ctl-btn { padding:5px 10px; background:var(--surface); border:1px solid var(--border2); border-radius:var(--r-sm); font-family:var(--font-mono); font-size:9px; color:var(--muted); cursor:pointer; transition:all var(--tx-fast); }
+.map-ctl-btn:hover,.map-ctl-btn.active { border-color:var(--accent); color:var(--accent); background:var(--accent2); }
+
+.topo-btn-group { display:flex; gap:4px; }
+.topo-btn-group .topo-btn { flex:1; }
+.lidar-btn { border-color:rgba(139,92,246,.4) !important; color:rgba(139,92,246,.9) !important; }
+.lidar-btn:hover { border-color:rgba(139,92,246,.7) !important; background:rgba(139,92,246,.1) !important; color:#a78bfa !important; }
+.lidar-btn.loading { pointer-events:none; opacity:.6; }
+
+.topo-source-badge { font-family:var(--font-mono); font-size:7.5px; padding:1px 6px; border-radius:3px; margin-left:6px; border:1px solid; }
+.topo-source-badge[data-source="dem"] { background:rgba(96,165,250,.1); color:rgba(96,165,250,.8); border-color:rgba(96,165,250,.3); }
+.topo-source-badge[data-source="lidar"] { background:rgba(139,92,246,.1); color:rgba(139,92,246,.9); border-color:rgba(139,92,246,.3); }
+
+.lidar-info { display:flex; align-items:center; gap:6px; padding:5px 8px; background:rgba(139,92,246,.06); border:1px solid rgba(139,92,246,.2); border-radius:var(--r-sm); font-family:var(--font-mono); font-size:9px; color:rgba(139,92,246,.8); margin-bottom:8px; }
+.lidar-info-icon { font-size:12px; }
+
+/* Layer selector */
+.lidar-layer-selector { display:flex; gap:3px; margin-bottom:8px; }
+.lidar-layer-btn { flex:1; display:flex; align-items:center; justify-content:center; gap:5px; padding:6px 8px; background:var(--raised); border:1px solid var(--border2); border-radius:var(--r-sm); color:var(--muted); cursor:pointer; font-family:var(--font-mono); font-size:9px; transition:all var(--tx-fast); }
+.lidar-layer-btn:hover { border-color:rgba(139,92,246,.5); color:rgba(139,92,246,.9); }
+.lidar-layer-btn.active { border-color:rgba(139,92,246,.6); color:rgba(139,92,246,.95); background:rgba(139,92,246,.1); }
+
+.lidar-swatch { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+.lidar-swatch-class { background:linear-gradient(135deg, #b8860b 25%, #32cd32 50%, #ff4444 75%); }
+.lidar-swatch-rgb { background:linear-gradient(135deg, #6b8f4a 25%, #8fa06b 50%, #a09070 75%); }
+
+/* Legend */
+.lidar-legend { display:flex; flex-wrap:wrap; gap:4px 10px; padding:6px 8px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); }
+.lidar-legend-item { display:flex; align-items:center; gap:4px; font-family:var(--font-mono); font-size:8px; color:var(--faint); }
+.lidar-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+
+/* Stats */
+.lidar-stats { font-family:var(--font-mono); font-size:8.5px; color:var(--faint); padding:4px 0; }
+.lidar-stats span { color:rgba(139,92,246,.9); font-weight:600; }
+
+.koppen-etages { display:flex; flex-direction:column; gap:5px; }
+.etage-item { display:flex; align-items:center; gap:8px; padding:6px 9px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); }
+.etage-item.active { border-color:var(--accent); background:var(--accent3); }
+.etage-badge { font-family:var(--font-mono); font-size:9px; padding:2px 6px; border-radius:3px; border:1px solid; font-weight:700; flex-shrink:0; }
+.etage-name { font-size:11px; color:var(--text2); font-weight:500; }
+.etage-range { font-family:var(--font-mono); font-size:8.5px; color:var(--faint); margin-top:1px; }
+</style>
+
+<!-- ═══════════════════ SCRIPT PHASE 1 ══════════════════════════ -->
+<script type="module">
+// Tous les modules sont exposés sur window par index.js
+const SessionManager  = window.SessionManager;
+const MapViewer       = window.TerlabMap;
+const MeteoService    = window.MeteoService;
+const RiskPlayer      = window.RiskPlayer;
+const TerrainAnalysis = window.TerrainAnalysis;
+const TerrainSVG      = window.TerrainSVG;
+const LidarService    = window.LidarService;
+
+const P01 = {
+  _exag: 1.4,
+  _ravinesVisible: true,
+  _orientation: null,
+  _profileValidated: false,
+  _lidarPoints: null,  // cache des points LiDAR chargés
+
+  // ─── Lancer le tracé du profil ────────────────────────────────
+  startProfile() {
+    MapViewer.activateTool('profile');
+    document.getElementById('btn-trace-profile').textContent = '⏳ En cours — posez 2 points…';
+  },
+
+  // ─── Valider la coupe au dossier ──────────────────────────────
+  validateProfile() {
+    const data = MapViewer.getProfileData();
+    if (!data) { window.TerlabToast?.show('Aucune coupe à valider', 'warning'); return; }
+
+    // Capturer le snap de la carte avec la ligne de coupe visible
+    const mapSnap = MapViewer.captureAsDataURL();
+
+    // Sauvegarder en session (Phase 1 data + terrain + snap carte)
+    SessionManager.savePhase(1, {
+      profile_validated: true,
+      profile_from:      data.from,
+      profile_to:        data.to,
+      profile_length_m:  data.length_m,
+      profile_alt_min:   data.alt_min,
+      profile_alt_max:   data.alt_max,
+      profile_denivele:  data.denivele,
+      profile_pente_moy: data.pente_moy,
+      profile_altitudes: data.altitudes,
+      profile_distances: data.distances,
+      profile_timestamp: data.timestamp,
+      profile_map_snap:  mapSnap
+    });
+
+    this._profileValidated = true;
+    document.getElementById('profile-status').style.display = 'inline';
+    document.getElementById('btn-validate-profile').style.display = 'none';
+    window.TerlabToast?.show('Coupe altimétrique validée — incluse au dossier PDF', 'success', 4000);
+  },
+
+  // ─── Génère des points d'échantillonnage dans la parcelle ────
+  _samplePointsInParcelle(geojson, center, count = 16) {
+    const feature = { type: 'Feature', geometry: geojson, properties: {} };
+    const bbox = turf.bbox(feature);
+    const points = [];
+
+    // Toujours inclure le centre
+    points.push(center);
+
+    // Coins + milieux des bords de la bbox, filtrés par parcelle
+    const [w, s, e, n] = bbox;
+    const candidates = [
+      [w, s], [e, s], [e, n], [w, n],                           // coins
+      [(w+e)/2, s], [e, (s+n)/2], [(w+e)/2, n], [w, (s+n)/2],  // milieux bords
+      [(w+e)/2, (s+n)/2],                                        // centre bbox
+    ];
+    for (const [lng, lat] of candidates) {
+      if (turf.booleanPointInPolygon(turf.point([lng, lat]), feature)) {
+        points.push([lng, lat]);
+      }
+    }
+
+    // Si parcelle polygonale : ajouter des sommets du contour
+    const coords = geojson.type === 'Polygon' ? geojson.coordinates[0]
+                 : geojson.type === 'MultiPolygon' ? geojson.coordinates[0][0]
+                 : null;
+    if (coords) {
+      for (const c of coords) points.push([c[0], c[1]]);
+    }
+
+    // Dédoublonner et limiter
+    const seen = new Set();
+    return points.filter(([lng, lat]) => {
+      const key = `${lng.toFixed(7)},${lat.toFixed(7)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, count);
+  },
+
+  // ─── Analyse altimétrique depuis DEM ─────────────────────────
+  async analyzeAltitude() {
+    const map = MapViewer.getMap();
+    const terrain = SessionManager.getTerrain();
+    if (!terrain?.lat || !terrain?.lng) {
+      window.TerlabToast?.show('Complétez la Phase 0 en premier', 'warning'); return;
+    }
+
+    const lat = parseFloat(terrain.lat), lng = parseFloat(terrain.lng);
+    const center = [lng, lat];
+    const pts = [];
+
+    // Déterminer les points d'échantillonnage : dans la parcelle si disponible, sinon grille locale
+    let sampleCoords;
+    if (terrain.parcelle_geojson) {
+      sampleCoords = this._samplePointsInParcelle(terrain.parcelle_geojson, center);
+    } else {
+      // Fallback grille 3x3 serrée autour du centre (~55m de pas)
+      const delta = 0.0005;
+      sampleCoords = [];
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++)
+          sampleCoords.push([lng + dx * delta, lat + dy * delta]);
+    }
+
+    // BIL IGN (précision ±1m) — fallback Mapbox DEM (±10m)
+    const BIL = window.BILTerrain;
+    if (BIL?.getElevation) {
+      const promises = sampleCoords.map(([x, y]) => BIL.getElevation(x, y));
+      const results = await Promise.allSettled(promises);
+      results.forEach(r => { if (r.status === 'fulfilled' && r.value != null) pts.push(r.value); });
+    }
+    // Fallback Mapbox si BIL a échoué
+    if (!pts.length && map?.queryTerrainElevation) {
+      for (const [x, y] of sampleCoords) {
+        const e = map.queryTerrainElevation([x, y]);
+        if (e != null) pts.push(e);
+      }
+    }
+
+    if (!pts.length) { window.TerlabToast?.show('DEM non disponible — carte non chargée', 'warning'); return; }
+
+    const min = Math.round(Math.min(...pts));
+    const max = Math.round(Math.max(...pts));
+
+    // Pente : calculée sur la diagonale de la bbox parcelle (ou fallback)
+    let pente = 0;
+    if (terrain.parcelle_geojson && pts.length > 1) {
+      const bbox = turf.bbox({ type: 'Feature', geometry: terrain.parcelle_geojson });
+      const diagDist = turf.distance([bbox[0], bbox[1]], [bbox[2], bbox[3]], { units: 'meters' });
+      pente = diagDist > 0 ? Math.round((max - min) / diagDist * 100) : 0;
+    } else if (pts.length > 1) {
+      const delta = 0.0005;
+      pente = Math.round((max - min) / (delta * 111000) * 100);
+    }
+
+    document.getElementById('topo-alt-min').textContent   = min;
+    document.getElementById('topo-alt-max').textContent   = max;
+    document.getElementById('topo-pente').textContent     = pente;
+    document.getElementById('topo-denivele').textContent  = max - min;
+
+    const altMoy = Math.round((min + max) / 2);
+    const rtaaZone = altMoy < 400 ? '1 (Aw côtier)' : altMoy < 900 ? '2 (Cf mi-pentes)' : '3 (Cwb hauts)';
+    document.getElementById('ts-rtaa').textContent = rtaaZone;
+
+    if (altMoy > 1000) {
+      document.getElementById('alert-altitude').style.display = 'flex';
+      document.getElementById('alert-altitude-text').textContent =
+        `Terrain à ${altMoy}m NGR — RTAA Zone 3. Gel nocturne possible. Isolation renforcée requise.`;
+    }
+
+    document.querySelectorAll('.etage-item').forEach(e => e.classList.remove('active'));
+    const etageId = altMoy < 400 ? 'etage-aw' : altMoy < 900 ? 'etage-cf' : 'etage-cwb';
+    document.getElementById(etageId)?.classList.add('active');
+
+    SessionManager.saveTerrain({
+      altitude_ngr: altMoy, pente_moy_pct: pente,
+      alt_min_dem: min, alt_max_dem: max, denivele: max - min
+    });
+    window.TerlabToast?.show('Altimétrie analysée — données sur la parcelle', 'success');
+
+    // Auto-détecter la station météo la plus proche
+    P01._autoDetectMeteo(lat, lng);
+  },
+
+  // ─── Analyse LiDAR HD ─────────────────────────────────────────
+  async analyzeLidar() {
+    const terrain = SessionManager.getTerrain();
+    if (!terrain?.parcelle_geojson) {
+      window.TerlabToast?.show('Parcelle non définie — complétez la Phase 0', 'warning');
+      return;
+    }
+
+    const btn = document.getElementById('btn-lidar');
+    btn?.classList.add('loading');
+    btn && (btn.textContent = '⏳ Chargement LiDAR…');
+
+    try {
+      // Récupérer les points sol (classe 2) dans la bbox parcelle + 50m
+      const result = await LidarService.getPointsForParcel(
+        terrain.parcelle_geojson, 50, { classes: '2', maxPoints: 200000 }
+      );
+
+      if (!result.points.length) {
+        window.TerlabToast?.show('Aucun point LiDAR disponible pour cette zone', 'warning');
+        return;
+      }
+
+      // Cacher les points pour le profil
+      this._lidarPoints = result.points;
+
+      // Analyser pente / exposition / altitudes
+      const analysis = LidarService.analyzeTerrain(result.points, terrain.parcelle_geojson);
+      if (analysis.error) {
+        window.TerlabToast?.show(analysis.error, 'warning');
+        return;
+      }
+
+      // Mettre à jour l'UI
+      document.getElementById('topo-alt-min').textContent  = analysis.alt_min;
+      document.getElementById('topo-alt-max').textContent  = analysis.alt_max;
+      document.getElementById('topo-pente').textContent    = analysis.pente_moy_pct;
+      document.getElementById('topo-denivele').textContent = analysis.denivele_m;
+
+      // Badge source
+      const badge = document.getElementById('topo-source-badge');
+      if (badge) {
+        badge.textContent = 'LiDAR HD';
+        badge.dataset.source = 'lidar';
+      }
+
+      // Info LiDAR
+      const info = document.getElementById('lidar-info');
+      const infoText = document.getElementById('lidar-info-text');
+      if (info && infoText) {
+        info.style.display = 'flex';
+        infoText.textContent = `${result.count.toLocaleString('fr')} pts · ${result.tile_count} tile(s) · ${analysis.exposition} · source: ${result.source}`;
+      }
+
+      // Sauvegarder en session
+      const altMoy = Math.round((analysis.alt_min + analysis.alt_max) / 2);
+      SessionManager.saveTerrain({
+        altitude_ngr: altMoy,
+        pente_moy_pct: analysis.pente_moy_pct,
+        orientation_terrain: analysis.exposition,
+      });
+      SessionManager.savePhase(1, {
+        lidar_available: true,
+        lidar_source: 'lidar_hd',
+        lidar_point_count: result.count,
+        lidar_ground_count: analysis.point_count,
+        lidar_alt_min: analysis.alt_min,
+        lidar_alt_max: analysis.alt_max,
+        lidar_pente: analysis.pente_moy_pct,
+        lidar_exposition: analysis.exposition,
+        lidar_denivele: analysis.denivele_m,
+        lidar_analysis_date: new Date().toISOString(),
+      });
+
+      // RTAA zone update
+      const rtaaZone = altMoy < 400 ? '1 (Aw côtier)' : altMoy < 900 ? '2 (Cf mi-pentes)' : '3 (Cwb hauts)';
+      document.getElementById('ts-rtaa').textContent = rtaaZone;
+      if (terrain.altitude_ngr) document.getElementById('ts-alt').textContent = `${altMoy} m`;
+
+      // Highlight étage
+      document.querySelectorAll('.etage-item').forEach(e => e.classList.remove('active'));
+      const etageId = altMoy < 400 ? 'etage-aw' : altMoy < 900 ? 'etage-cf' : 'etage-cwb';
+      document.getElementById(etageId)?.classList.add('active');
+
+      // Auto-select orientation radio
+      const expMap = { 'N': 'Nord', 'NE': 'Nord-Est', 'E': 'Est', 'SE': 'Sud-Est', 'S': 'Sud', 'SO': 'Sud-Ouest', 'O': 'Ouest', 'NO': 'Nord-Ouest' };
+      const expVal = expMap[analysis.exposition];
+      if (expVal) {
+        document.querySelectorAll('[name="orientation"]').forEach(r => {
+          if (r.value === expVal) {
+            r.checked = true;
+            r.closest('.radio-option')?.classList.add('selected');
+          }
+        });
+      }
+
+      window.TerlabToast?.show(`LiDAR HD — ${analysis.point_count} pts sol · pente ${analysis.pente_moy_pct}% ${analysis.exposition}`, 'success', 4000);
+      P01._autoDetectMeteo(parseFloat(terrain.lat), parseFloat(terrain.lng));
+
+      // Afficher les points sur la carte + panneau de visualisation
+      this._showLidarViz(result.points, result.count);
+
+    } catch (err) {
+      console.error('[P01] Erreur LiDAR:', err);
+      window.TerlabToast?.show(`Erreur LiDAR : ${err.message}`, 'error');
+    } finally {
+      if (btn) {
+        btn.classList.remove('loading');
+        btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="2" stroke="currentColor" stroke-width="1.2"/><path d="M3 3L2 2M9 3L10 2M3 9L2 10M9 9L10 10" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg> LiDAR HD (±0.15m)`;
+      }
+    }
+  },
+
+  // ─── Afficher la visualisation LiDAR sur la carte ─────────────
+  _showLidarViz(points, totalCount) {
+    // Stocker les points bruts dans MapViewer pour les changements de mode
+    MapViewer.setLidarRawPoints(points);
+    MapViewer.showLidarPoints(points, 'classification');
+
+    // Afficher la section de visualisation
+    document.getElementById('lidar-viz-section').style.display = 'block';
+
+    // Statistiques par classe
+    const classCount = {};
+    const classLabels = { 2: 'Sol', 3: 'Vég. basse', 4: 'Vég. moyenne', 5: 'Vég. haute', 6: 'Bâtiments', 9: 'Eau' };
+    for (const p of points) {
+      const cls = p.length >= 7 ? p[6] : 2;
+      classCount[cls] = (classCount[cls] ?? 0) + 1;
+    }
+
+    const statsEl = document.getElementById('lidar-stats');
+    if (statsEl) {
+      const parts = Object.entries(classCount)
+        .sort((a, b) => b[1] - a[1])
+        .map(([cls, n]) => `${classLabels[cls] ?? `#${cls}`}: <span>${n.toLocaleString('fr')}</span>`)
+        .join(' · ');
+      statsEl.innerHTML = `Total: <span>${totalCount.toLocaleString('fr')}</span> pts · ${parts}`;
+    }
+
+    this._lidarViewMode = 'classification';
+  },
+
+  // ─── Sélecteur de couche LiDAR ────────────────────────────────
+  setLidarView(mode) {
+    // Mettre à jour les boutons
+    document.querySelectorAll('.lidar-layer-btn').forEach(b => b.classList.remove('active'));
+    const legend = document.getElementById('lidar-legend');
+
+    if (mode === 'off') {
+      MapViewer.toggleLidarLayer(false);
+      document.getElementById('btn-lidar-off')?.classList.add('active');
+      if (legend) legend.style.display = 'none';
+    } else {
+      MapViewer.toggleLidarLayer(true);
+      MapViewer.setLidarMode(mode);
+      this._lidarViewMode = mode;
+
+      if (mode === 'classification') {
+        document.getElementById('btn-lidar-class')?.classList.add('active');
+        if (legend) legend.style.display = 'flex';
+      } else {
+        document.getElementById('btn-lidar-rgb')?.classList.add('active');
+        if (legend) legend.style.display = 'none';
+      }
+    }
+  },
+
+  // ─── Charger toutes les classes LiDAR (sol + bâtiments + végétation) ──
+  async loadAllLidarClasses() {
+    const terrain = SessionManager.getTerrain();
+    if (!terrain?.parcelle_geojson) return;
+
+    const btn = document.getElementById('btn-lidar-all-classes');
+    if (btn) { btn.classList.add('loading'); btn.textContent = '⏳ Chargement…'; }
+
+    try {
+      const result = await LidarService.getPointsForParcel(
+        terrain.parcelle_geojson, 50, { classes: '2,3,4,5,6,9', maxPoints: 300000 }
+      );
+
+      if (!result.points.length) {
+        window.TerlabToast?.show('Aucun point retourné', 'warning');
+        return;
+      }
+
+      // Mettre à jour le cache
+      this._lidarPoints = result.points;
+      this._showLidarViz(result.points, result.count);
+      this.setLidarView(this._lidarViewMode ?? 'classification');
+
+      window.TerlabToast?.show(`${result.count.toLocaleString('fr')} points chargés (toutes classes)`, 'success', 3000);
+    } catch (err) {
+      console.error('[P01] Erreur chargement toutes classes:', err);
+      window.TerlabToast?.show(`Erreur : ${err.message}`, 'error');
+    } finally {
+      if (btn) {
+        btn.classList.remove('loading');
+        btn.textContent = 'Charger toutes les classes (sol + bâtiments + végétation)';
+      }
+    }
+  },
+
+  // ─── Auto-détection station météo via MeteoService ─────────────
+  _autoDetectMeteo(lat, lng) {
+    const nearest = MeteoService.findNearest(lat, lng);
+    if (!nearest) return;
+    const select = document.getElementById('station-meteo');
+    if (select && !select.value) {
+      select.value = nearest.key;
+      P01.updateMeteoData();
+      window.TerlabToast?.show(`Station météo auto-détectée : ${nearest.label}`, 'info', 3000);
+    }
+  },
+
+  // ─── Fly-over ravine ─────────────────────────────────────────
+  triggerFlyover() {
+    const terrain = SessionManager.getTerrain();
+    if (!terrain?.lat) return;
+    MapViewer.flyOverRavine([[terrain.lng, terrain.lat - 0.005], [terrain.lng, terrain.lat], [terrain.lng, terrain.lat + 0.005]]);
+    window.TerlabToast?.show('Fly-over 3D — cliquez pour arrêter la rotation', 'info', 4000);
+  },
+
+  toggleRavines() {
+    const map = MapViewer.getMap();
+    if (!map) return;
+    this._ravinesVisible = !this._ravinesVisible;
+    try { map.setLayoutProperty('ravines', 'visibility', this._ravinesVisible ? 'visible' : 'none'); } catch {}
+    document.getElementById('btn-ravines-toggle')?.classList.toggle('active', this._ravinesVisible);
+  },
+
+  toggle3DExag() {
+    const map = MapViewer.getMap();
+    if (!map) return;
+    this._exag = this._exag === 1.4 ? 2.5 : 1.4;
+    try { map.setTerrain({ source: 'mapbox-dem', exaggeration: this._exag }); } catch {}
+    const btn = document.querySelector('.map-ctl-btn');
+    if (btn) btn.textContent = `3D ×${this._exag}`;
+  },
+
+  selectOrientation(label, val) {
+    document.querySelectorAll('[name="orientation"]').forEach(r => r.closest('.radio-option')?.classList.remove('selected'));
+    label.classList.add('selected');
+    this._orientation = val;
+    SessionManager.saveTerrain({ orientation_terrain: val });
+  },
+
+  selectZonePluvio(label, val) {
+    document.querySelectorAll('[name="pluvio"]').forEach(r => r.closest('.radio-option')?.classList.remove('selected'));
+    label.classList.add('selected');
+    SessionManager.saveTerrain({ zone_pluvio: val });
+  },
+
+  async updateMeteoData() {
+    const station = document.getElementById('station-meteo')?.value;
+    if (!station) return;
+
+    // Utiliser MeteoService pour données enrichies
+    const data = await MeteoService.getData(station);
+    if (!data) return;
+
+    document.getElementById('meteo-grid').style.display = 'grid';
+    document.getElementById('m-pluvio').textContent    = data.pluvio;
+    document.getElementById('m-tmoy').textContent      = data.tmoy;
+    document.getElementById('m-tmin').textContent      = data.tmin;
+    document.getElementById('m-tmax').textContent      = data.tmax;
+    document.getElementById('m-vent').textContent      = data.vent;
+    document.getElementById('m-amplitude').textContent = data.amp;
+
+    // Afficher la source des données
+    const srcNote = document.getElementById('meteo-source-note');
+    const srcIcon = document.getElementById('meteo-source-icon');
+    const srcText = document.getElementById('meteo-source-text');
+    if (srcNote) {
+      srcNote.style.display = 'flex';
+      srcIcon.textContent = data.source === 'api_meteofrance' ? '📡' : '📊';
+      srcText.textContent = data.note;
+    }
+
+    SessionManager.saveTerrain({
+      station_meteo: station,
+      zone_pluvio: data.zone_pluvio,
+      pluvio: data.pluvio, tmoy: data.tmoy, tmin: data.tmin, tmax: data.tmax
+    });
+
+    if (data.amp >= 15) {
+      document.getElementById('alert-altitude').style.display = 'flex';
+      document.getElementById('alert-altitude-text').textContent =
+        `Amplitude thermique ${data.amp}°C — Isolation renforcée et ruptures de pont thermique requises.`;
+    }
+  },
+
+  // ─── Aéraulique (Sprint 1) ──────────────────────────────────
+
+  /** Récupère les données du profil topo pour AeraulicSection */
+  _getProfileData() {
+    const raw = MapViewer.getProfileData?.();
+    if (!raw || !raw.altitudes?.length) return null;
+    const overlay = document.getElementById('p01-aero-overlay');
+    if (!overlay) return null;
+    const wrap = overlay.parentElement;
+    const rect = wrap?.getBoundingClientRect() ?? { width: 600, height: 120 };
+    const w = rect.width, h = rect.height;
+    // Mettre à jour le viewBox du SVG overlay
+    overlay.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    overlay.setAttribute('width', w);
+    overlay.setAttribute('height', h);
+    const pts = raw.altitudes.map((alt, i) => ({
+      dist: raw.distances?.[i] ?? (i * (raw.length_m / Math.max(raw.altitudes.length - 1, 1))),
+      alt,
+    }));
+    const denivele = (raw.alt_max ?? 0) - (raw.alt_min ?? 0);
+    return {
+      points:    pts,
+      svgWidth:  w,
+      svgHeight: h,
+      groundY:   h - 15,
+      scaleX:    w / Math.max(raw.length_m || 1, 1),
+      scaleY:    denivele > 0 ? (h - 30) / denivele : 1.5,
+    };
+  },
+
+  /** Lancer l'analyse aéraulique sur le profil courant */
+  runAeraulique() {
+    const AeraulicSection = window.AeraulicSection;
+    if (!AeraulicSection) { window.TerlabToast?.show('Module aéraulique non chargé', 'error'); return; }
+
+    const terrainType = document.getElementById('p01-terrain-type')?.value ?? 'suburbain';
+    const windDir     = +(document.getElementById('p01-wind-dir')?.value ?? 105);
+    const terrain     = SessionManager.getTerrain();
+
+    AeraulicSection.destroy();
+    AeraulicSection.init({ terrain, terrainType, windDir });
+
+    const profileData = this._getProfileData();
+    if (!profileData || profileData.points.length < 3) {
+      window.TerlabToast?.show('Tracez d\'abord un profil topographique', 'warning', 4000);
+      return;
+    }
+
+    // Nettoyer le SVG overlay et superposer
+    const overlaySvg = document.getElementById('p01-aero-overlay');
+    if (overlaySvg) {
+      overlaySvg.innerHTML = '';
+      AeraulicSection.renderOverlay(profileData, overlaySvg);
+    }
+
+    // Score
+    const { score, label, ctpMoyen } = AeraulicSection.computeSiteScore(profileData);
+    const scoreEl = document.getElementById('p01-aero-score');
+    if (scoreEl) {
+      scoreEl.style.display = 'block';
+      scoreEl.innerHTML = `
+        <div style="display:flex;gap:8px;align-items:center;padding:6px 0">
+          <div style="font-size:1.4rem;font-weight:700;
+                      color:${score>=60?'var(--accent)':'#c84040'}">${score}/100</div>
+          <div style="font-size:.75rem;color:var(--ink)">${label}<br>
+            <span style="font-family:monospace;font-size:.65rem;color:var(--ink3)">
+              C_TP moy. ${ctpMoyen} C₀
+            </span>
+          </div>
+        </div>`;
+    }
+
+    // Diagnostic dans colonne droite
+    const diagSection = document.getElementById('p01-aero-diag-section');
+    const diagEl      = document.getElementById('p01-aero-diag');
+    if (diagSection && diagEl) {
+      diagSection.style.display = 'block';
+      diagEl.innerHTML = AeraulicSection.generateDiagnostic(profileData);
+    }
+
+    // Sauvegarder en session
+    SessionManager.savePhase(1, {
+      aeraulique_score:    score,
+      aeraulique_ctp:      ctpMoyen,
+      aeraulique_rugosite: terrainType,
+    });
+
+    window.TerlabToast?.show(`Score aéraulique : ${score}/100 — ${label}`, 'success', 3500);
+    window.dispatchEvent(new CustomEvent('terlab:aeraulique-score', { detail: { score, ctpMoyen } }));
+  },
+
+  updateWindDir(val) {
+    const el = document.getElementById('p01-wind-dir-val');
+    if (el) el.textContent = val + '°';
+  },
+
+  // ─── Overlay C_TP (Sprint 2) ────────────────────────────────
+  _ctpOverlayActive: false,
+
+  toggleCtpOverlay() {
+    const AeraulicMapTools = window.AeraulicMapTools;
+    const map = window.TerlabMap?.getMap?.();
+    if (!map || !AeraulicMapTools) { window.TerlabToast?.show('Carte non disponible', 'warning'); return; }
+
+    const btn  = document.getElementById('p01-ctp-btn');
+    const stub = document.getElementById('p01-ctp-stub');
+    if (this._ctpOverlayActive) {
+      AeraulicMapTools.removeCtpOverlay(map);
+      this._ctpOverlayActive = false;
+      if (btn)  btn.textContent = 'Overlay C_TP sur carte';
+      if (stub) stub.style.display = 'none';
+    } else {
+      const windDir = +(document.getElementById('p01-wind-dir')?.value ?? 105);
+      AeraulicMapTools.addCtpOverlay(map, [], windDir);
+      this._ctpOverlayActive = true;
+      if (btn)  btn.textContent = 'Masquer overlay C_TP';
+      if (stub) stub.style.display = 'block';
+      window.TerlabToast?.show('Overlay C_TP activé — précision indicative', 'info', 4000);
+    }
+  },
+};
+
+// ─── Init données héritées Phase 0 ──────────────────────────
+const terrain = SessionManager.getTerrain();
+if (terrain?.commune) document.getElementById('ts-commune').textContent = terrain.commune;
+if (terrain?.altitude_ngr) document.getElementById('ts-alt').textContent = `${terrain.altitude_ngr} m`;
+
+// ─── Afficher le contour de la parcelle Phase 0 en surbrillance ──
+if (terrain?.parcelle_geojson) {
+  // Attendre que la carte soit prête
+  const waitMap = setInterval(() => {
+    const map = MapViewer.getMap();
+    if (map && map.isStyleLoaded()) {
+      clearInterval(waitMap);
+      MapViewer.showParcelleContour(terrain.parcelle_geojson);
+
+      // Afficher le label
+      const label = document.getElementById('terrain-label-p01');
+      const labelText = document.getElementById('terrain-label-text-p01');
+      if (label && labelText && terrain.section && terrain.parcelle) {
+        labelText.textContent = `${terrain.section} ${terrain.parcelle} — ${terrain.commune}`;
+        label.style.display = 'block';
+      }
+    }
+  }, 300);
+}
+
+// ─── Afficher bouton flyover si ravine renseignée ────────────
+document.getElementById('nom-ravine')?.addEventListener('input', e => {
+  const btn = document.getElementById('btn-flyover');
+  if (btn) btn.style.display = e.target.value.length > 2 ? 'flex' : 'none';
+});
+
+// ─── Écouter le profil tracé → enrichir avec LiDAR si dispo ────
+window.addEventListener('terlab:profile-drawn', (e) => {
+  const data = e.detail;
+  document.getElementById('profile-empty').style.display = 'none';
+  document.getElementById('btn-trace-profile').textContent = '✏ Retracer une nouvelle coupe';
+
+  // Si des points LiDAR sont en cache, recalculer le profil en HD
+  if (P01._lidarPoints && data?.from && data?.to) {
+    const lidarProfile = LidarService.getProfileFromPoints(
+      P01._lidarPoints, data.from, data.to, 5
+    );
+    if (lidarProfile.length > 5) {
+      const alts = lidarProfile.map(p => p.altitude_m);
+      data.alt_min    = Math.round(Math.min(...alts) * 10) / 10;
+      data.alt_max    = Math.round(Math.max(...alts) * 10) / 10;
+      data.denivele   = Math.round((data.alt_max - data.alt_min) * 10) / 10;
+      data.altitudes  = alts;
+      data.distances  = lidarProfile.map(p => p.distance_m);
+      data.pente_moy  = data.length_m > 0 ? Math.round(data.denivele / data.length_m * 1000) / 10 : 0;
+      data._lidar_hd  = true;
+    }
+  }
+
+  // Afficher le résumé
+  const summary = document.getElementById('profile-summary');
+  if (summary && data) {
+    summary.style.display = 'grid';
+    const suffix = data._lidar_hd ? ' (LiDAR)' : '';
+    document.getElementById('ps-length').textContent   = `${data.length_m} m`;
+    document.getElementById('ps-alt-min').textContent  = `${data.alt_min} m${suffix}`;
+    document.getElementById('ps-alt-max').textContent  = `${data.alt_max} m${suffix}`;
+    document.getElementById('ps-denivele').textContent = `${data.denivele} m`;
+    document.getElementById('ps-pente').textContent    = `${data.pente_moy} %`;
+  }
+
+  // Afficher le bouton de validation
+  document.getElementById('btn-validate-profile').style.display = 'flex';
+});
+
+// ─── Restaurer profil validé depuis session ────────────────────
+const p1data = SessionManager.getPhase(1)?.data ?? {};
+if (p1data.profile_validated) {
+  document.getElementById('profile-status').style.display = 'inline';
+  document.getElementById('profile-empty').style.display = 'none';
+  const summary = document.getElementById('profile-summary');
+  if (summary) {
+    summary.style.display = 'grid';
+    document.getElementById('ps-length').textContent   = `${p1data.profile_length_m} m`;
+    document.getElementById('ps-alt-min').textContent  = `${p1data.profile_alt_min} m`;
+    document.getElementById('ps-alt-max').textContent  = `${p1data.profile_alt_max} m`;
+    document.getElementById('ps-denivele').textContent = `${p1data.profile_denivele} m`;
+    document.getElementById('ps-pente').textContent    = `${p1data.profile_pente_moy} %`;
+  }
+}
+
+// ─── RiskPlayer injection ───────────────────────────────────────
+const risksForPhase = (window.TERLAB_RISK?.risques ?? []).filter(r => r.phase === 1 || r.phase === '1');
+const rpcContainer  = document.getElementById('risk-player-container-p01');
+if (rpcContainer && risksForPhase.length) {
+  rpcContainer.innerHTML = RiskPlayer.buildOpenBtn(1, risksForPhase.length);
+}
+
+// ─── Auto-détection météo si terrain déjà connu ────────────────
+if (terrain?.lat && terrain?.lng && !p1data.station_meteo) {
+  const nearest = MeteoService.findNearest(parseFloat(terrain.lat), parseFloat(terrain.lng));
+  if (nearest) {
+    const select = document.getElementById('station-meteo');
+    if (select && !select.value) {
+      select.value = nearest.key;
+      P01.updateMeteoData();
+    }
+  }
+}
+
+// ─── GIEP : Terrain SVG auto si données parcelle connues ────────
+if (terrain?.contenance_m2 || terrain?.largeur_m) {
+  const longueur = parseFloat(terrain.largeur_m ?? Math.sqrt(terrain.contenance_m2 ?? 400));
+  const largeur  = parseFloat(terrain.longueur_m ?? Math.sqrt(terrain.contenance_m2 ?? 400) * 0.7);
+  TerrainSVG.init('terrainSVG', {
+    longueur, largeur,
+    pente:       parseFloat(terrain.pente_moy_pct ?? 0),
+    exposition:  terrain.orientation_terrain ?? null,
+    ravine_dist: parseFloat(terrain.distance_ravine_m ?? 999),
+  });
+}
+
+// ─── GIEP : Hydrate les cellules détectées depuis la session ────
+if (terrain?.pente_moy_pct) {
+  const el = document.getElementById('svg-pente');
+  if (el) el.textContent = terrain.pente_moy_pct + '%';
+}
+if (terrain?.zone_climatique) {
+  const el = document.getElementById('svg-zone');
+  if (el) el.textContent = terrain.zone_climatique_nom ?? terrain.zone_climatique;
+}
+if (terrain?.zone_rtaa) {
+  const el = document.getElementById('svg-rtaa');
+  if (el) el.textContent = 'Zone ' + terrain.zone_rtaa;
+}
+if (terrain?.pluvio_T10) {
+  const el = document.getElementById('svg-pluvio');
+  if (el) el.textContent = terrain.pluvio_T10 + ' mm/h';
+}
+
+// ─── GIEP : Écouter terlab:parcelle-found pour analyse auto ─────
+window.addEventListener('terlab:parcelle-found', async (e) => {
+  const feature = e.detail;
+  const t = SessionManager.getTerrain();
+  try {
+    const analyse = await TerrainAnalysis.autoAnalyze(feature, t);
+    SessionManager.saveTerrain(analyse);
+
+    // Mettre à jour le SVG
+    const longueur = parseFloat(t.largeur_m ?? Math.sqrt(t.contenance_m2 ?? 400));
+    const largeur  = parseFloat(t.longueur_m ?? Math.sqrt(t.contenance_m2 ?? 400) * 0.7);
+    TerrainSVG.init('terrainSVG', {
+      longueur, largeur,
+      pente:       analyse.pente_moy_pct,
+      exposition:  analyse.orientation_terrain,
+      ravine_dist: parseFloat(t.distance_ravine_m ?? 999),
+    });
+
+    // Mettre à jour les cellules détectées
+    const pEl = document.getElementById('svg-pente');
+    if (pEl) pEl.textContent = analyse.pente_moy_pct + '%';
+    const zEl = document.getElementById('svg-zone');
+    if (zEl) zEl.textContent = analyse.zone_climatique_nom;
+    const rEl = document.getElementById('svg-rtaa');
+    if (rEl) rEl.textContent = 'Zone ' + analyse.zone_rtaa;
+    const plEl = document.getElementById('svg-pluvio');
+    if (plEl) plEl.textContent = analyse.pluvio_T10 + ' mm/h';
+
+    // Toast de confirmation
+    if (window.TerlabToast) {
+      window.TerlabToast.show(
+        `Zone ${analyse.zone_climatique_nom} · RTAA ${analyse.zone_rtaa} · Pente ≈${analyse.pente_moy_pct}%`,
+        'success', 4000
+      );
+    }
+  } catch (err) {
+    console.error('[P01] Erreur analyse terrain GIEP:', err);
+  }
+});
+
+// ─── LiDAR : vérifier disponibilité serveur au chargement ──────
+LidarService.isAvailable().then(available => {
+  if (available) {
+    document.getElementById('btn-lidar').style.display = 'flex';
+    document.getElementById('topo-source-badge').dataset.source = 'dem';
+    console.log('[P01] Serveur LiDAR HD disponible');
+  }
+});
+
+// ─── LiDAR : restaurer données depuis session ─────────────────
+if (p1data.lidar_source === 'lidar_hd') {
+  const badge = document.getElementById('topo-source-badge');
+  if (badge) { badge.textContent = 'LiDAR HD'; badge.dataset.source = 'lidar'; }
+  const info = document.getElementById('lidar-info');
+  const infoText = document.getElementById('lidar-info-text');
+  if (info && infoText) {
+    info.style.display = 'flex';
+    infoText.textContent = `${(p1data.lidar_point_count ?? 0).toLocaleString('fr')} pts · source: LiDAR HD`;
+  }
+}
+
+window.P01 = P01;
+
+// Validation automatique aéraulique
+window.addEventListener('terlab:aeraulique-score', () => {
+  const check = document.getElementById('p01-check-aeraulique');
+  if (check) { check.setAttribute('aria-checked','true'); check.classList.add('checked'); }
+});
+
+window.RiskPlayer = RiskPlayer;
+window.TerrainSVG = TerrainSVG;
+window.LidarService = LidarService;
+
+// enviroBAT cards
+if (window.EnvirobatCards) EnvirobatCards.render('eb-cards-p01', 'p01');
+</script>

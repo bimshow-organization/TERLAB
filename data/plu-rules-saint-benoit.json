@@ -1,0 +1,301 @@
+{
+  "meta": {
+    "version": "2026-04",
+    "region": "La Réunion",
+    "generated": "2026-04-07",
+    "commune": "Saint-Benoît",
+    "insee": "97411",
+    "intercommunalite": "CIREST",
+    "plu_type": "PLU",
+    "plu_date_approbation": "2020-02-06",
+    "plu_modifications": [],
+    "source": "Règlement PLU Saint-Benoît — GPU DU_97410 — 97410_reglement_20200206.pdf",
+    "note": "PLU post-réforme : zone U unique avec sous-zones Ua/Ub/Uc/Ud/Ue/Up/Ut. Hauteurs variables selon document graphique."
+  },
+
+  "zones": {
+
+    "U": {
+      "label": "Zone urbaine — règles communes à toutes sous-zones U",
+      "type": "U",
+      "sous_type": "urbaine_générique",
+      "sous_zones": ["Ua", "Ub", "Uc", "Ud", "Ue", "Up", "Ut"],
+      "usages": {
+        "habitation": true, "commerce": true, "bureau": true,
+        "activite": true, "entrepot": false, "hotel": true,
+        "camping": false, "agricole": false, "industriel": false,
+        "note": "Industriel interdit sauf zone Ub sous conditions art.U-3"
+      },
+      "reculs": {
+        "voie_principale_m": null,
+        "voie_alignement": false,
+        "voie_note": "Non réglementé en agglomération sauf hyper-centre. Rue G. Pompidou : recul 7m depuis axe. Rues Montfleury et L. Brunet : recul 5m depuis axe. Hors agglo : 75m axe RN.",
+        "voie_pompidou_axe_m": 7,
+        "voie_montfleury_brunet_axe_m": 5,
+        "voie_rn_hors_agglo_axe_m": 75,
+        "sep_lat_m": 1,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_note": "Sur 1 ou 2 limites latérales, ou retrait min 1m. Fond de parcelle : libre.",
+        "sep_fond_m": null,
+        "sep_fond_note": "Non réglementé",
+        "inter_batiments_m": null,
+        "inter_batiments_note": "Non réglementé"
+      },
+      "hauteurs": {
+        "he_max_m": null,
+        "hf_max_m": null,
+        "hauteur_note": "Variable selon document graphique : 15m (R+4), 13m (R+3), 10m (R+2), 7m (R+1), 4m (R+combles). Toutes à l'égout/acrotère.",
+        "hauteurs_possibles_he_m": [15, 13, 10, 7, 4],
+        "annexe_hf_max_m": null,
+        "zones_speciales": [
+          {
+            "code": "pompidou-eglise-marsouins",
+            "note": "Rue G. Pompidou entre rue de l'Église et pont rivière des Marsouins : hf max 13m. RdC commercial obligatoire. Dernier étage traité en couronnement.",
+            "hf_max_m": 13,
+            "rdc_commercial_obligatoire": true
+          },
+          {
+            "code": "pompidou-montfleury-brunet-4m",
+            "note": "Rues Pompidou, Montfleury, L. Brunet dans zones à 4m hé : hf max = hé + 3.5m",
+            "hf_supplement_m": 3.5
+          }
+        ]
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 80,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 20,
+        "aires_jeux_seuil_logements": 20,
+        "aires_jeux_min_m2": 100,
+        "especes_invasives_interdites": true,
+        "especes_invasives_annexe": "annexe n°13"
+      },
+      "toiture": {
+        "versants_obligatoire": null,
+        "versants_note": "Architecture de toit dans respect volumes environnants"
+      },
+      "stationnement": {
+        "logement_individuel_max5": "1 place / logement",
+        "logement_lotissement_plus5": "1 place / logement + 1 visiteur / 5 lots",
+        "logement_aide": "1 place / 2 logements",
+        "residence_agees_par_3": 1,
+        "commerce_bureau_ua": "non réglementé",
+        "commerce_bureau_autres": "30% SDP",
+        "hotel_ua": "non réglementé",
+        "hotel_autres": "1 place / 2 chambres",
+        "restaurant_ua": "non réglementé",
+        "restaurant_autres": "1 place / 10m² salle",
+        "enseignement_primaire_par_classe": 1.5,
+        "enseignement_secondaire_par_classe": 2,
+        "enseignement_superieur_par_classe": 5,
+        "erp_par_10places": 2,
+        "deux_roues_logement_collectif_par_logement": 1,
+        "deux_roues_activite_par_200m2": 1,
+        "deux_roues_enseignement_primaire_par_classe": 3,
+        "deux_roues_enseignement_secondaire_par_classe": 6,
+        "deux_roues_enseignement_superieur_par_classe": 8
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10,
+        "cloture_voie_hauteur_max_m": 2,
+        "cloture_transparence_hydraulique": true
+      },
+      "_meta": {
+        "confidence": 0.9,
+        "ambiguites": [
+          "Hauteurs variables selon document graphique — valeurs exactes par parcelle non extractibles du règlement écrit seul",
+          "Sous-zones Ua/Ub/Uc/Ud/Ue/Up/Ut : différences principalement dans usages autorisés et stationnement, pas dans gabarits"
+        ],
+        "source_articles": [1,2,3,4,5,6,7,8,9,10,11,12]
+      }
+    },
+
+    "Ua": {
+      "label": "Hyper-centre Saint-Benoît",
+      "type": "U",
+      "sous_type": "centre_urbain",
+      "ref": "U",
+      "ref_note": "Règles U + spécificités ci-dessous",
+      "differences_u": {
+        "stationnement_commerce": "non réglementé",
+        "stationnement_hotel": "non réglementé",
+        "stationnement_restaurant": "non réglementé"
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "Ub": {
+      "label": "Zone urbaine mixte avec activités",
+      "type": "U",
+      "sous_type": "résidentielle_mixte",
+      "ref": "U",
+      "ref_note": "Règles U. Industriel autorisé sous conditions (art.U-3).",
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "Ue": {
+      "label": "Zone urbaine équipements et activités économiques",
+      "type": "U",
+      "sous_type": "activites",
+      "ref": "U",
+      "ref_note": "Règles U. Inclut distillerie Rivière du Mât (Beaufonds), secteur Petit Saint-Pierre.",
+      "zones_speciales": [
+        {
+          "code": "Ue-distillerie",
+          "note": "Distillerie Rivière du Mât à Beaufonds — espace non aedificandi spécifique"
+        },
+        {
+          "code": "Ue-petit-st-pierre",
+          "note": "Petit Saint-Pierre — marge de recul vis-à-vis coupure urbanisation"
+        }
+      ],
+      "_meta": { "confidence": 0.9, "ambiguites": [] }
+    },
+
+    "Up": {
+      "label": "Zone activités économiques Beauvallon",
+      "type": "U",
+      "sous_type": "activites_economiques",
+      "ref": "U",
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "Ut": {
+      "label": "Zone tourisme — Les Orangers",
+      "type": "U",
+      "sous_type": "touristique",
+      "ref": "U",
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "AU": {
+      "label": "Zones à urbaniser",
+      "type": "AU",
+      "ref": "U",
+      "ref_note": "Règles identiques à U. Hauteurs selon document graphique (15m, 13m, 10m, 7m).",
+      "reculs": {
+        "voie_note": "Non réglementé en agglomération sauf dispositions fiche zone. Hors agglo : 75m axe RN.",
+        "sep_lat_m": 1,
+        "sep_lat_limite_autorisee": true,
+        "sep_fond_m": null
+      },
+      "hauteurs": {
+        "hauteurs_possibles_he_m": [15, 13, 10, 7],
+        "note": "Identiques aux secteurs U correspondants déjà urbanisés"
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 80
+      },
+      "permeabilite": {
+        "permeable_min_pct": 20
+      },
+      "_meta": {
+        "confidence": 0.9,
+        "ambiguites": ["Sous-zones AU détaillées dans fiches annexes non incluses dans le règlement écrit principal"]
+      }
+    },
+
+    "A": {
+      "label": "Zone agricole",
+      "type": "A",
+      "sous_type": "agricole",
+      "usages": {
+        "habitation": false, "activite_agricole": true,
+        "extension_habitation_existante": true,
+        "equipement_collectif": true
+      },
+      "reculs": {
+        "voie_principale_m": null,
+        "voie_note": "Non réglementé en agglomération. Hors agglo : 75m axe RN.",
+        "voie_rn_hors_agglo_axe_m": 75,
+        "sep_lat_m": 1,
+        "sep_lat_limite_autorisee": true,
+        "sep_fond_m": null,
+        "annexe_distance_habitation_m": 20
+      },
+      "hauteurs": {
+        "he_agricole_max_m": 12,
+        "he_habitation_max_m": 4,
+        "hf_habitation_max_m": 8
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": null
+      },
+      "toiture": {
+        "versants_obligatoire": null
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10,
+        "cloture_hauteur_max_m": 2,
+        "cloture_transparence_hydraulique": true,
+        "icpe_recul_zone_u_au_m": 100
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "N": {
+      "label": "Zone naturelle et forestière",
+      "type": "N",
+      "sous_type": "naturelle",
+      "sous_zones": ["Ns", "Nta", "Ntb"],
+      "usages": {
+        "habitation": false, "activite_agricole": true,
+        "loisirs_legers": true, "equipement_collectif": true
+      },
+      "reculs": {
+        "voie_principale_m": null,
+        "voie_note": "Non réglementé. Hors agglo : 75m axe RN.",
+        "voie_rn_hors_agglo_axe_m": 75,
+        "sep_lat_m": 1,
+        "sep_lat_limite_autorisee": true,
+        "sep_fond_m": null
+      },
+      "hauteurs": {
+        "he_agricole_max_m": 12,
+        "he_habitation_max_m": 4,
+        "hf_habitation_max_m": 8
+      },
+      "emprise": {
+        "emprise_ns_nta_max_pct": 70,
+        "emprise_ntb_note": "Réglementé par fiche annexe zone"
+      },
+      "permeabilite": {
+        "permeable_min_pct": null
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10,
+        "icpe_recul_zone_u_au_m": 100,
+        "cloture_hauteur_max_m": 2,
+        "cloture_transparence_hydraulique": true
+      },
+      "_meta": {
+        "confidence": 0.9,
+        "ambiguites": ["Sous-zones Ns/Nta/Ntb : emprises et usages détaillés dans fiches annexes"]
+      }
+    }
+  },
+
+  "regles_communes": {
+    "ravine_recul_m": 10,
+    "note_ravine": "Décret n°48-633 du 31 mars 1948",
+    "voie_rn_hors_agglo_axe_m": 75,
+    "note_rn": "Art. L.111-6 CU. Applicable hors agglomération uniquement.",
+    "reseaux_souterrain": true,
+    "eau_potable_obligatoire": true,
+    "assainissement_collectif_ou_individuel": true,
+    "cloture_voie_hauteur_max_m": 2,
+    "cloture_transparence_hydraulique_ppr": true,
+    "especes_invasives_interdites_annexe": "annexe n°13",
+    "logement_aide_note": "Programme > 10 logements ou SDP > 800m² en zone U : 30% logements aidés",
+    "logement_aide_seuil_logements": 10,
+    "logement_aide_seuil_m2": 800,
+    "logement_aide_pct": 30,
+    "rtaa_dom": "2016"
+  }
+}

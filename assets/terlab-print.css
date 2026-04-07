@@ -1,0 +1,220 @@
+/* ═══════════════════════════════════════════════════════════════
+   TERLAB · terlab-print.css
+   Styles impression et export PDF — A3 paysage
+   ENSA La Réunion · v1.0
+═══════════════════════════════════════════════════════════════ */
+
+@media print {
+  /* ─── Format A3 paysage ──────────────────────────────────────── */
+  @page {
+    size: A3 landscape;
+    margin: 12mm 14mm;
+  }
+
+  /* ─── Reset affichage impression ─────────────────────────────── */
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #1a1a1a !important;
+    font-size: 9pt !important;
+    font-family: 'Source Serif 4', Georgia, serif !important;
+    overflow: visible !important;
+  }
+
+  /* ─── Masquer les éléments non-imprimables ────────────────────── */
+  .topbar,
+  .sidebar,
+  .modal-backdrop,
+  .toast-container,
+  .map-ctl-group,
+  .globe-controls,
+  .topo-btn,
+  .risk-fetch-btn,
+  .search-btn,
+  .topo-btn,
+  .val-block,
+  .source-btn,
+  .stub-warning,
+  .bimshow-btns,
+  .demo-group,
+  .session-badge,
+  .tb-btn,
+  .next-btn,
+  .modal-backdrop {
+    display: none !important;
+  }
+
+  /* ─── Layout impression ──────────────────────────────────────── */
+  .terlab-app {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .terlab-main {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .phase-container {
+    display: block !important;
+    width: 100% !important;
+    page-break-inside: avoid;
+  }
+
+  .left-panel {
+    display: block !important;
+    width: 100% !important;
+    border: none !important;
+    overflow: visible !important;
+  }
+
+  /* ─── En-tête page PDF ───────────────────────────────────────── */
+  .print-header {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1.5pt solid #1a1a1a;
+    padding-bottom: 5mm;
+    margin-bottom: 6mm;
+  }
+  .print-header-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 14pt;
+    font-weight: 600;
+    letter-spacing: .02em;
+  }
+  .print-header-meta {
+    font-family: 'Inconsolata', monospace;
+    font-size: 7pt;
+    color: #666;
+    text-align: right;
+    line-height: 1.5;
+  }
+
+  /* ─── Pied de page PDF ───────────────────────────────────────── */
+  .print-footer {
+    display: flex !important;
+    justify-content: space-between;
+    font-family: 'Inconsolata', monospace;
+    font-size: 7pt;
+    color: #999;
+    border-top: 0.5pt solid #ccc;
+    padding-top: 3mm;
+    margin-top: 4mm;
+    font-style: italic;
+  }
+  .print-disclaimer {
+    max-width: 70%;
+    line-height: 1.4;
+  }
+
+  /* ─── Tableau de synthèse impression ─────────────────────────── */
+  .synth-terrain {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 3mm !important;
+    margin-bottom: 5mm;
+  }
+  .st-cell {
+    background: #f5f5f5 !important;
+    border: 0.5pt solid #ccc !important;
+    padding: 3mm !important;
+  }
+  .st-label {
+    font-size: 7pt !important;
+    color: #666 !important;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+  }
+  .st-val { font-size: 10pt !important; color: #1a1a1a !important; font-weight: 600; }
+
+  /* ─── Phase progress impression ──────────────────────────────── */
+  .phase-progress-list {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 2mm !important;
+  }
+  .ppl-item {
+    padding: 2mm 3mm !important;
+    border-radius: 2pt !important;
+    page-break-inside: avoid;
+  }
+  .ppl-item.done     { background: #e8f5e9 !important; }
+  .ppl-item.partial  { background: #fff8e1 !important; }
+  .ppl-item.empty    { background: #f5f5f5 !important; }
+  .ppl-num  { font-size: 8pt !important; color: #999 !important; }
+  .ppl-name { font-size: 9pt !important; }
+  .ppl-status { font-size: 8pt !important; }
+
+  /* ─── Carte : snapshot statique ──────────────────────────────── */
+  .map-area {
+    display: none !important; /* La carte est capturée via canvas dans jsPDF */
+  }
+  .print-map-placeholder {
+    display: block !important;
+    width: 100%;
+    height: 80mm;
+    background: #f0f0f0;
+    border: 1pt solid #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9pt;
+    color: #999;
+    font-style: italic;
+  }
+
+  /* ─── Risk cards impression ──────────────────────────────────── */
+  .risk-card {
+    border: 0.5pt solid !important;
+    border-left-width: 2pt !important;
+    padding: 3mm !important;
+    margin-bottom: 2mm !important;
+    page-break-inside: avoid;
+  }
+  .risk-card[data-level="warning"] { border-color: #f59e0b !important; }
+  .risk-card[data-level="danger"]  { border-color: #ef4444 !important; }
+  .risk-card[data-level="info"]    { border-color: #3b82f6 !important; }
+  .risk-label { font-size: 7pt !important; font-weight: 700 !important; }
+  .risk-text  { font-size: 8pt !important; color: #444 !important; }
+
+  /* ─── Note pédagogique impression ────────────────────────────── */
+  .ped-note {
+    background: #f8f8f8 !important;
+    border: 0.5pt solid #ddd !important;
+    border-radius: 3pt !important;
+    padding: 3mm !important;
+    font-size: 8pt !important;
+    color: #444 !important;
+    page-break-inside: avoid;
+  }
+
+  /* ─── Sauts de page entre pages PDF ──────────────────────────── */
+  .pdf-page-break {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+
+  /* ─── Masquer le fond sombre ──────────────────────────────────── */
+  [data-theme] {
+    --bg:      #ffffff;
+    --surface: #f8f8f8;
+    --card:    #f0f0f0;
+    --text:    #1a1a1a;
+    --muted:   #555555;
+    --border:  #cccccc;
+    --border2: #bbbbbb;
+  }
+}
+
+/* ─── Classes utilitaires print (utilisées par jsPDF html2canvas) */
+.print-only      { display: none; }
+@media print     { .print-only { display: block !important; } }
+@media screen    { .no-print   { display: block; } }
+@media print     { .no-print   { display: none !important; } }

@@ -1,0 +1,681 @@
+{
+  "version": "1.0",
+  "regulation": "RTAA DOM 2016",
+  "lastUpdate": "2025-01-03",
+  "zones": {
+    "1": { "altitude": "< 400m", "description": "Littoral et bas" },
+    "2": { "altitude": "400-600m", "description": "Zones intermédiaires" },
+    "3": { "altitude": "> 600m", "description": "Hauts" }
+  },
+  "categories": [
+    {
+      "id": "ventilation",
+      "name": "Ventilation Naturelle",
+      "weight": 25,
+      "icon": "wind",
+      "items": [
+        {
+          "id": "vent_01",
+          "code": "Art.9-1°",
+          "title": "Taux d'ouverture des pièces principales",
+          "description": "Vérifier que les surfaces d'ouverture libre respectent les taux minimaux par zone climatique",
+          "mandatory": true,
+          "requirements": {
+            "zone1": {
+              "sejour": "≥ 22%",
+              "chambres": "≥ 18%"
+            },
+            "zone2": {
+              "sejour": "≥ 18%",
+              "chambres": "≥ 14%"
+            }
+          },
+          "checkpoints": [
+            "Identifier toutes les pièces principales du logement",
+            "Mesurer la surface totale des parois extérieures",
+            "Calculer la surface d'ouverture libre (hors châssis)",
+            "Appliquer coefficient d'ouverture : française=1, coulissant 3 vantaux=2/3",
+            "Vérifier le ratio surface_ouverture / surface_paroi"
+          ],
+          "documents": [
+            "Plans de façades avec cotation des menuiseries",
+            "Fiches techniques menuiseries (dimensions, type d'ouverture)",
+            "Tableaux de calcul de porosité par pièce"
+          ],
+          "commonErrors": [
+            "Oublier de déduire l'épaisseur du châssis (7cm standard)",
+            "Ne pas appliquer le coefficient d'ouverture selon le type",
+            "Confondre surface totale de baie et surface ouvrante"
+          ],
+          "tolerance": 0,
+          "severity": "critical"
+        },
+        {
+          "id": "vent_02",
+          "code": "Art.9-2°",
+          "title": "Équilibre des ouvertures",
+          "description": "Aucune façade ne doit concentrer plus de 70% des ouvertures libres",
+          "mandatory": true,
+          "requirements": {
+            "limit": "70%",
+            "note": "Portes d'entrée avec grille anti-intrusion peuvent être comptées"
+          },
+          "checkpoints": [
+            "Inventorier toutes les ouvertures donnant sur l'extérieur ou circulations à l'air libre",
+            "Exclure les baies des pièces avec WC",
+            "Grouper par façade (Nord, Sud, Est, Ouest)",
+            "Calculer le pourcentage pour chaque façade",
+            "Vérifier qu'aucune façade ne dépasse 70%"
+          ],
+          "documents": [
+            "Plan de masse avec orientation",
+            "Récapitulatif des ouvertures par façade"
+          ],
+          "commonErrors": [
+            "Inclure les WC dans le calcul",
+            "Oublier de vérifier les portes d'entrée avec grille"
+          ],
+          "tolerance": 0,
+          "severity": "high"
+        },
+        {
+          "id": "vent_03",
+          "code": "Art.9-3°",
+          "title": "Balayage efficace des pièces principales",
+          "description": "Chaque pièce principale doit avoir 2 ouvertures ≥ 0,5m² sur parois opposées/latérales",
+          "mandatory": true,
+          "requirements": {
+            "minOpenings": 2,
+            "minArea": "0,5 m²",
+            "position": "parois opposées ou latérales",
+            "distance": "≥ moitié de la plus grande distance entre coins"
+          },
+          "checkpoints": [
+            "Pour chaque pièce principale, compter les ouvertures ≥ 0,5m²",
+            "Vérifier qu'elles sont sur des parois différentes",
+            "Mesurer la diagonale maximale de la pièce",
+            "Mesurer la distance entre centres des ouvertures",
+            "Vérifier : distance ≥ diagonale_max / 2"
+          ],
+          "documents": [
+            "Plans de chaque pièce principale avec cotation",
+            "Schémas de ventilation traversante"
+          ],
+          "commonErrors": [
+            "Compter des ouvertures < 0,5m²",
+            "Ne pas vérifier la règle de la demi-diagonale"
+          ],
+          "tolerance": 0,
+          "severity": "critical"
+        },
+        {
+          "id": "vent_04",
+          "code": "Art.9-4°",
+          "title": "Ouvertures intérieures minimales",
+          "description": "Surface minimale de percements internes si pas de balayage direct",
+          "mandatory": true,
+          "requirements": {
+            "surfaces": {
+              "< 12m²": "1,6 m²",
+              "12-25m²": "1,8 m²",
+              "> 25m²": "2,2 m²"
+            }
+          },
+          "checkpoints": [
+            "Identifier les pièces sans balayage autonome",
+            "Mesurer la surface au sol de chaque pièce",
+            "Calculer la surface totale des portes intérieures",
+            "Vérifier conformité selon tableau"
+          ],
+          "documents": [
+            "Plans avec surfaces de pièces",
+            "Dimensions des portes intérieures"
+          ],
+          "commonErrors": [
+            "Oublier cette vérification pour les pièces avec balayage"
+          ],
+          "tolerance": 0,
+          "severity": "medium"
+        },
+        {
+          "id": "vent_05",
+          "code": "Art.10",
+          "title": "Ventilateurs de plafond",
+          "description": "Attentes ou ventilateurs fixes selon configuration",
+          "mandatory": true,
+          "requirements": {
+            "chambres_sans_balayage": "1 ventilateur fixe",
+            "chambres_avec_balayage": "1 attente",
+            "sejour_moins_20m2": "1 attente",
+            "sejour_plus_20m2": "2 attentes",
+            "cuisine_ouverte": "cumuler surfaces séjour + cuisine"
+          },
+          "checkpoints": [
+            "Classifier chaque chambre (balayage autonome ou non)",
+            "Vérifier surface du séjour (± cuisine ouverte)",
+            "Compter attentes/ventilateurs requis",
+            "Vérifier présence sur plans électricité"
+          ],
+          "documents": [
+            "Plans électricité avec symboles ventilateurs",
+            "CCTP électricité mentionnant les attentes"
+          ],
+          "commonErrors": [
+            "Oublier de doubler les attentes pour grand séjour",
+            "Ne pas prévoir de fixe pour chambre sans balayage"
+          ],
+          "tolerance": 0,
+          "severity": "medium"
+        },
+        {
+          "id": "vent_06",
+          "code": "Art.11",
+          "title": "Aération des pièces de service",
+          "description": "Cuisine : baie ≥ 1m² dont 0,2m² à h≥1,9m. SDB/WC : baie ou VMC",
+          "mandatory": true,
+          "requirements": {
+            "cuisine": {
+              "surfaceMin": "1 m²",
+              "hauteSurface": "≥ 0,2 m² à h≥1,9m"
+            },
+            "sdb": {
+              "baie": "≥ 0,3 m²",
+              "vmc": "≥ 15 m³/h (T1-T2) ou ≥ 30 m³/h (T3+)"
+            },
+            "wc": {
+              "baie": "≥ 0,15 m²",
+              "vmc": "≥ 15 m³/h"
+            }
+          },
+          "checkpoints": [
+            "Vérifier chaque cuisine : surface totale et partie haute",
+            "Pour SDB/WC : choix entre baie ou VMC",
+            "Si VMC : vérifier débits selon typologie",
+            "Vérifier CCTP plomberie pour débits VMC"
+          ],
+          "documents": [
+            "Plans menuiseries avec hauteurs d'allège",
+            "CCTP plomberie avec débits VMC"
+          ],
+          "commonErrors": [
+            "Oublier la partie haute (0,2m² à h≥1,9m) pour cuisine",
+            "Sous-dimensionner les débits VMC"
+          ],
+          "tolerance": 0,
+          "severity": "high"
+        }
+      ]
+    },
+    {
+      "id": "solar_factors",
+      "name": "Facteurs Solaires",
+      "weight": 25,
+      "icon": "sun",
+      "items": [
+        {
+          "id": "solar_01",
+          "code": "Art.12-1°",
+          "title": "Facteur solaire des toitures",
+          "description": "S ≤ 0,03 pour toutes les toitures opaques",
+          "mandatory": true,
+          "requirements": {
+            "limit": "S ≤ 0,03",
+            "formula": "S = α × U × Cm × Cv",
+            "note": "α=absorption, U=coeff. transmission, Cm=masque, Cv=ventilation"
+          },
+          "checkpoints": [
+            "Identifier toutes les toitures (tôle, terrasse, tuiles)",
+            "Déterminer couleur/absorption (α) : clair≈0,4 / moyen≈0,6 / sombre≈0,8",
+            "Calculer U selon composition (avec isolation)",
+            "Appliquer Cm=1 (pas de masque sur toiture)",
+            "Calculer S et vérifier S ≤ 0,03"
+          ],
+          "documents": [
+            "Plans de toiture avec matériaux",
+            "Descriptifs isolation (épaisseur, λ)",
+            "Calculs facteurs solaires"
+          ],
+          "commonErrors": [
+            "Oublier de compter l'isolation dans le calcul de U",
+            "Utiliser mauvais coefficient d'absorption"
+          ],
+          "solutions": {
+            "tole_sombre": "Isolation ≥ 7cm (λ≤0,04)",
+            "tole_claire": "Isolation ≥ 5cm (λ≤0,04)",
+            "terrasse": "Isolation ≥ 7cm (λ≤0,04)"
+          },
+          "tolerance": 0,
+          "severity": "critical"
+        },
+        {
+          "id": "solar_02",
+          "code": "Art.12-2°",
+          "title": "Facteur solaire des parois verticales",
+          "description": "S ≤ 0,09 pour toutes les parois opaques verticales",
+          "mandatory": true,
+          "requirements": {
+            "limit": "S ≤ 0,09",
+            "formula": "S = α × U × Cm"
+          },
+          "checkpoints": [
+            "Inventorier toutes les parois extérieures par orientation",
+            "Déterminer couleur/absorption de chaque paroi",
+            "Calculer U selon composition (béton, doublage, etc.)",
+            "Estimer Cm si protection solaire (débord, coursive)",
+            "Calculer S pour chaque paroi"
+          ],
+          "documents": [
+            "Plans façades avec composition des parois",
+            "Coupes de principe montrant débords/casquettes",
+            "Calculs par orientation"
+          ],
+          "commonErrors": [
+            "Paroi béton claire sans doublage : souvent S≈0,10 > 0,09",
+            "Paroi sombre sous terrasse : peut dépasser même avec Cm<1"
+          ],
+          "solutions": {
+            "beton_clair": "Ajouter doublage BA13",
+            "beton_sombre": "Couleur claire OU isolation 2cm + BA13",
+            "sous_terrasse_sombre": "Couleur claire OU isolation + BA13"
+          },
+          "tolerance": 0,
+          "severity": "high"
+        },
+        {
+          "id": "solar_03",
+          "code": "Art.12-3°",
+          "title": "Facteur solaire des baies",
+          "description": "S variable selon orientation : Nord≤0,6 / Sud≤0,8 / Est,Ouest≤0,6",
+          "mandatory": true,
+          "requirements": {
+            "limits": {
+              "nord": 0.6,
+              "sud": 0.8,
+              "est": 0.6,
+              "ouest": 0.6
+            },
+            "formula": "S = So(vitrage) × So(protection) × Cm",
+            "note": "Baies < 0,5m² des pièces de service exemptées"
+          },
+          "checkpoints": [
+            "Classifier chaque baie par orientation",
+            "Déterminer So(vitrage) : clair≈0,85, FE≈0,60",
+            "Déterminer So(protection) : sans=1, volets=0,15-0,30",
+            "Calculer Cm si casquette/encadrement (outil RTAA)",
+            "Vérifier S ≤ limite selon orientation"
+          ],
+          "documents": [
+            "Plans façades avec nomenclature baies",
+            "Fiches techniques vitrages",
+            "Calculs Cm pour protections architecturales",
+            "Photos/coupes des encadrements"
+          ],
+          "commonErrors": [
+            "Baie sud sans protection : S≈0,85 > 0,8",
+            "Baie est/ouest sans protection : S≈0,85 > 0,6",
+            "Sous-estimer profondeur casquette nécessaire"
+          ],
+          "solutions": {
+            "nord_non_conforme": "Encadrement ≥20cm ou casquette",
+            "sud_non_conforme": "Casquette/débord ou vitrage FE",
+            "est_non_conforme": "Encadrement ≥40cm ou volets",
+            "ouest_non_conforme": "Casquette ≥70cm ou volets persiennes"
+          },
+          "tolerance": 0,
+          "severity": "critical"
+        }
+      ]
+    },
+    {
+      "id": "solar_hot_water",
+      "name": "Eau Chaude Sanitaire Solaire",
+      "weight": 15,
+      "icon": "droplet",
+      "items": [
+        {
+          "id": "ecs_01",
+          "code": "Art.13-1°",
+          "title": "Couverture solaire minimale",
+          "description": "Production solaire ≥ 50% des besoins ECS",
+          "mandatory": true,
+          "requirements": {
+            "coverage": "≥ 50%",
+            "exception": "Ensoleillement insuffisant de la parcelle"
+          },
+          "checkpoints": [
+            "Estimer besoins quotidiens : 50L/pers/jour à 40°C",
+            "Dimensionner capteurs : ≈1m²/60L à La Réunion",
+            "Vérifier disponibilité toiture orientée N-NE-NO",
+            "Calculer taux de couverture prévu",
+            "Vérifier certification capteurs (CSTBat ou Solar Keymark)"
+          ],
+          "documents": [
+            "Note de calcul ECS solaire",
+            "Plans toiture avec implantation panneaux",
+            "Fiches techniques capteurs certifiés",
+            "Schéma hydraulique"
+          ],
+          "commonErrors": [
+            "Sous-dimensionner nombre de capteurs",
+            "Panneaux non certifiés",
+            "Orientation défavorable non justifiée"
+          ],
+          "tolerance": 0,
+          "severity": "critical"
+        },
+        {
+          "id": "ecs_02",
+          "code": "Art.13-2°",
+          "title": "Caractéristiques installation",
+          "description": "Orientation, inclinaison, stockage selon règles RTAA",
+          "mandatory": true,
+          "requirements": {
+            "orientation": "Entre NE et NO (optimal : Nord)",
+            "inclinaison": "10° à 40° (optimal : latitude ≈ 21°)",
+            "stockage": "60 à 120 L/m² de capteur",
+            "ombrage": "Aucun masque significatif"
+          },
+          "checkpoints": [
+            "Vérifier orientation dans plage autorisée",
+            "Vérifier inclinaison 10-40°",
+            "Calculer volume ballon : 60-120L × surface_capteurs",
+            "Étude d'ombres portées (végétation, bâtiments)",
+            "Prévention légionellose : T≥60°C ou appoint"
+          ],
+          "documents": [
+            "Plan masse avec azimut panneaux",
+            "Coupe toiture avec inclinaison",
+            "Dimensionnement ballon",
+            "Étude ombrages"
+          ],
+          "commonErrors": [
+            "Inclinaison trop faible (<10°) ou trop forte (>40°)",
+            "Ballon sous-dimensionné",
+            "Ombrage par végétation non pris en compte"
+          ],
+          "tolerance": 0,
+          "severity": "high"
+        }
+      ]
+    },
+    {
+      "id": "acoustics",
+      "name": "Acoustique",
+      "weight": 20,
+      "icon": "volume",
+      "items": [
+        {
+          "id": "acou_01",
+          "code": "Art.14-1°",
+          "title": "Parois verticales séparatives",
+          "description": "Masse surfacique selon type de séparation",
+          "mandatory": true,
+          "requirements": {
+            "logements_differents": {
+              "simple": "≥ 350 kg/m²",
+              "composee": "≥ 200 kg/m²",
+              "Rw_C": "≥ 54 dB"
+            },
+            "circulations_communes": {
+              "simple": "≥ 350 kg/m²",
+              "composee": "≥ 200 kg/m²",
+              "Rw_C": "≥ 54 dB"
+            },
+            "local_activites": {
+              "simple": "≥ 400 kg/m²",
+              "composee": "≥ 200 kg/m²",
+              "Rw_C": "≥ 57 dB"
+            }
+          },
+          "checkpoints": [
+            "Identifier toutes les parois séparatives",
+            "Mesurer épaisseur et déterminer matériau",
+            "Calculer masse : épaisseur × densité (béton≈2300kg/m³)",
+            "Vérifier conformité selon type de séparation"
+          ],
+          "documents": [
+            "Plans avec épaisseurs de murs",
+            "Descriptifs matériaux",
+            "Calculs masses surfaciques"
+          ],
+          "commonErrors": [
+            "Béton 18cm : 414 kg/m² < 450 kg/m² (planchers)",
+            "Confondre exigences logements et circulations"
+          ],
+          "solutions": {
+            "mur_insuffisant": "Passer à 20cm béton minimum"
+          },
+          "tolerance": 0,
+          "severity": "critical"
+        },
+        {
+          "id": "acou_02",
+          "code": "Art.14-2°",
+          "title": "Planchers séparatifs",
+          "description": "4 dispositions possibles selon masse et performances",
+          "mandatory": true,
+          "requirements": {
+            "disposition1": "m ≥ 450 kg/m²",
+            "disposition2": "m ≥ 400 kg/m² ET ΔLw ≥ 9 dB (revêtement)",
+            "disposition3_logements": "Rw+C ≥ 57 dB ET Ln,w ≤ 67 dB",
+            "disposition3_circulations": "Rw+C ≥ 59 dB ET Ln,w ≤ 74 dB"
+          },
+          "checkpoints": [
+            "Mesurer épaisseur dalle",
+            "Calculer masse (béton 2400kg/m³ recommandé)",
+            "Si disposition 2 : vérifier ΔLw du revêtement",
+            "Prévoir chape flottante si nécessaire"
+          ],
+          "documents": [
+            "Coupes planchers avec épaisseurs",
+            "Fiches techniques revêtements acoustiques",
+            "PV essais si disposition 3"
+          ],
+          "commonErrors": [
+            "Dalle 18cm béton 2300 : 414 kg/m² < 450",
+            "Revêtement sans performances acoustiques"
+          ],
+          "solutions": {
+            "dalle_insuffisante": "Passer à 20cm béton 2400kg/m³ = 480kg/m²"
+          },
+          "tolerance": 0,
+          "severity": "critical"
+        },
+        {
+          "id": "acou_03",
+          "code": "Art.14-3°",
+          "title": "Circulations verticales communes",
+          "description": "Escaliers désolidarisés OU parois ≥450kg/m²",
+          "mandatory": true,
+          "requirements": {
+            "option1": "Escalier désolidarisé structure (sauf paliers)",
+            "option2": "Parois ≥ 450 kg/m²"
+          },
+          "checkpoints": [
+            "Identifier escaliers communs",
+            "Vérifier si désolidarisés sur plans structure",
+            "Si solidaires : vérifier masse parois ≥450kg/m²"
+          ],
+          "documents": [
+            "Plans structure avec détails escaliers",
+            "Coupes montrant désolidarisation si applicable"
+          ],
+          "commonErrors": [
+            "Escalier solidaire avec parois < 450kg/m²"
+          ],
+          "tolerance": 0,
+          "severity": "high"
+        },
+        {
+          "id": "acou_04",
+          "code": "Art.14-4°",
+          "title": "Distances entre baies",
+          "description": "Distances minimales horizontales et verticales entre fenêtres de logements différents",
+          "mandatory": true,
+          "requirements": {
+            "meme_plan": {
+              "horizontale": "≥ 1,5 m",
+              "verticale": "≥ 1,2 m"
+            },
+            "vision_directe_angle90": "≥ 3,5 m",
+            "vision_directe_angle_moins90": "≥ 5 m"
+          },
+          "checkpoints": [
+            "Identifier toutes les baies de pièces principales",
+            "Vérifier appartenance à logements différents",
+            "Mesurer distances horizontales (même plan)",
+            "Mesurer distances verticales (plans superposés)",
+            "Si vision directe : mesurer angle et distance en fil tendu"
+          ],
+          "documents": [
+            "Plans façades avec repérage logements",
+            "Coupes avec distances verticales",
+            "Vues 3D ou axonométries montrant vis-à-vis"
+          ],
+          "commonErrors": [
+            "Oublier de vérifier entre opérations différentes (collectif ↔ réhabilité)",
+            "Distances insuffisantes en cas de décrochés"
+          ],
+          "solutions": {
+            "distance_insuffisante": "Décaler baies, ajouter joues/balcons, revoir implantation"
+          },
+          "tolerance": 0,
+          "severity": "high"
+        },
+        {
+          "id": "acou_05",
+          "code": "Art.14-5°",
+          "title": "Bruits des équipements",
+          "description": "LnAT ≤ 35 dB(A) dans pièces principales et cuisines",
+          "mandatory": true,
+          "requirements": {
+            "vmc": "≤ 35 dB(A) en débit minimal",
+            "equipements_individuels": "≤ 35 dB(A) dans autres logements"
+          },
+          "checkpoints": [
+            "Vérifier fiches techniques VMC (LnAT)",
+            "Prévoir caissons VMC en zones techniques isolées",
+            "Éloigner équipements bruyants des pièces de vie"
+          ],
+          "documents": [
+            "Fiches techniques VMC avec niveaux sonores",
+            "Plans implantation équipements",
+            "CCTP plomberie précisant exigences acoustiques"
+          ],
+          "commonErrors": [
+            "VMC premier prix sans données acoustiques",
+            "Caisson VMC trop proche pièces de vie"
+          ],
+          "tolerance": 0,
+          "severity": "medium"
+        },
+        {
+          "id": "acou_06",
+          "code": "Art.14-6°",
+          "title": "Réseaux d'évacuation",
+          "description": "Règles de passage dans les différentes pièces",
+          "mandatory": true,
+          "requirements": {
+            "pieces_principales": "Aucun passage EU/EV/EP",
+            "cuisines": "EU autorisé, EV/EP interdits",
+            "cuisines_ouvertes": "EU autorisé sous conditions (encoffrement Rw+C≥40dB)"
+          },
+          "checkpoints": [
+            "Tracer tous les réseaux EU/EV/EP",
+            "Vérifier absence passage pièces principales",
+            "Si cuisine ouverte : prévoir encoffrement acoustique",
+            "Vérifier trappes de visite accessibles"
+          ],
+          "documents": [
+            "Plans plomberie avec tracés réseaux",
+            "Détails encoffrements acoustiques",
+            "CCTP plomberie et cloisons"
+          ],
+          "commonErrors": [
+            "Chute EV traversant pièce principale",
+            "Cuisine ouverte sans encoffrement EU",
+            "Oublier trappe de visite"
+          ],
+          "solutions": {
+            "encoffrement_cuisine": "BA13 + laine minérale + trappe acoustique"
+          },
+          "tolerance": 0,
+          "severity": "high"
+        }
+      ]
+    },
+    {
+      "id": "exterior_noise",
+      "name": "Bruits Extérieurs",
+      "weight": 15,
+      "icon": "road",
+      "items": [
+        {
+          "id": "ext_01",
+          "code": "Art.15",
+          "title": "Isolement contre bruits infrastructures",
+          "description": "Selon classement route et distance",
+          "mandatory": false,
+          "requirements": {
+            "note": "Applicable uniquement si infrastructure classée en catégorie 1, 2 ou 3",
+            "verification": "Consulter arrêté préfectoral de classement"
+          },
+          "checkpoints": [
+            "Vérifier si infrastructure classée proche",
+            "Déterminer catégorie (1 à 5)",
+            "Mesurer distance façade-infrastructure",
+            "Appliquer tableau isolement minimum",
+            "Vérifier performances menuiseries si applicable"
+          ],
+          "documents": [
+            "Arrêté préfectoral classement des infrastructures",
+            "Plan de situation avec distances",
+            "Fiches techniques menuiseries (Rw+Ctr)"
+          ],
+          "commonErrors": [
+            "Ne pas vérifier l'existence d'un classement",
+            "Mauvaise mesure de distance"
+          ],
+          "tolerance": 0,
+          "severity": "medium"
+        }
+      ]
+    }
+  ],
+  "exampleProjects": [
+    {
+      "name": "Grand Bois - Logements Collectifs",
+      "location": "Saint-Pierre, La Réunion",
+      "typologie": "26 logements (T1 à T4)",
+      "altitude": 25,
+      "zone": 1,
+      "completionRate": 65,
+      "issues": [
+        {
+          "categoryId": "ventilation",
+          "itemId": "vent_01",
+          "status": "non_conforme",
+          "details": "Porosité chambres T3/T4 insuffisante (11-13% au lieu de 18%)"
+        },
+        {
+          "categoryId": "ventilation",
+          "itemId": "vent_02",
+          "status": "non_conforme",
+          "details": "Équilibre > 70% pour plusieurs logements"
+        },
+        {
+          "categoryId": "solar_factors",
+          "itemId": "solar_02",
+          "status": "non_conforme",
+          "details": "Parois béton claire sans doublage : S≈0,10 > 0,09"
+        },
+        {
+          "categoryId": "acoustics",
+          "itemId": "acou_04",
+          "status": "non_conforme",
+          "details": "Distances horizontales < 5m entre collectif et réhabilitation"
+        }
+      ]
+    }
+  ]
+}

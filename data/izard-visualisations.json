@@ -1,0 +1,206 @@
+{
+  "version": "1.0",
+  "note": "Cartographie des visualisations Izard dans TERLAB — quel moteur de rendu pour quel concept, dans quelle phase.",
+
+  "moteurs": {
+    "svg_2d": "SVG animé via terlab-mat-utils.js (sections E/F/G/H) — schémas coupes, profils, diagrammes",
+    "threejs_3d": "Three.js r182 via window.THREE — gabarits, sillages 3D, ombres portées, particules vent",
+    "mapbox_map": "Mapbox GL JS v3.7 — couches terrain, bâtiments 3D, heatmap, wind layer",
+    "chartjs": "Chart.js v4 — diagrammes bioclimatiques, profils température, histogrammes"
+  },
+
+  "par_phase": {
+    "p01_topographie": {
+      "theme": "dark",
+      "visualisations": [
+        {
+          "id": "profil-aeraulique",
+          "concept_izard": "Couche limite atmosphérique + C_TP sur profil topographique",
+          "sources": ["izard-climat-bas-1", "izard-microclimat-urbain-2"],
+          "moteur": "svg_2d",
+          "description": "Overlay SVG animé sur le profil altimétrique existant. Flèches de vent, zones de sillage derrière les collines, zones accélérées entre reliefs, coefficient C_TP par zone.",
+          "mat_utils": ["windProfilePower()", "cTP()", "wakeLength()", "streamline()", "boundaryLayerSVG()"],
+          "donnees_entree": "DEM Mapbox → profil altimétrique points [{dist, alt}]",
+          "interaction": "Slider direction du vent (alizé ESE ↔ brise thermique O). Le profil se recalcule en temps réel."
+        },
+        {
+          "id": "zone-perene-auto",
+          "concept_izard": "Zones PERENE 1/2/3 selon altitude du terrain",
+          "sources": ["izard-climat-bas-1"],
+          "moteur": "mapbox_map",
+          "description": "Coloration automatique de la parcelle selon altitude → zone PERENE. Bandes de couleur sur le profil topo.",
+          "donnees_entree": "Altitude parcelle (DEM) → seuils 400m / 800m",
+          "interaction": "Auto depuis p00. Badge 'Zone PERENE X' affiché."
+        },
+        {
+          "id": "masques-topo-ensoleillement",
+          "concept_izard": "Dissymétrie matin/après-midi + masques de ravines (Roche Écrite, Langevin)",
+          "sources": ["izard-altitude-2", "izard-hauts-solaire"],
+          "moteur": "svg_2d",
+          "description": "Sur le profil topo, tracer le cône d'ombre des reliefs environnants pour le solstice d'hiver. Indique les heures perdues matin/soir.",
+          "mat_utils": ["solarHeight()", "solarAzimuth() — à créer"],
+          "donnees_entree": "Profil altimétrique + azimuts solaires"
+        }
+      ]
+    },
+
+    "p04_plu_rtaa": {
+      "theme": "dark accent violet",
+      "visualisations": [
+        {
+          "id": "diagramme-solaire-parcelle",
+          "concept_izard": "Diagramme solaire latitude 21°S + angles de masques architecturaux",
+          "sources": ["izard-climat-bas-3", "izard-climat-bas-4"],
+          "moteur": "svg_2d",
+          "description": "Diagramme solaire polaire interactif centré sur la parcelle. Superposition des angles d'occultation 45°/60°/75° par orientation de façade. L'étudiant voit immédiatement quel débord est nécessaire.",
+          "mat_utils": ["overhangAngle() — à créer depuis données Izard Fig.18-21"],
+          "donnees_entree": "Orientation parcelle (p00) + zone RTAA (p01)",
+          "interaction": "Cliquer une façade → affiche l'angle d'occultation requis + la profondeur d'auvent correspondante"
+        },
+        {
+          "id": "simulateur-porosite-rtaa",
+          "concept_izard": "Porosités minimales RTAA DOM par zone (22%/18%/15%)",
+          "sources": ["izard-climat-bas-1"],
+          "moteur": "svg_2d",
+          "description": "Schéma de façade avec ouvrants dimensionnés. Calcul automatique S_ouvrant ≥ S_hab/6. Jauge visuelle vert/rouge.",
+          "mat_utils": ["rtaaMinOpening()"],
+          "donnees_entree": "Surface habitable pièce (saisie p04) + zone RTAA",
+          "interaction": "Slider surface pièce → surface ouvrant minimale se met à jour"
+        },
+        {
+          "id": "carte-rtaa-zones",
+          "concept_izard": "Zones PERENE 1/2/3 sur carte Mapbox",
+          "sources": ["izard-climat-bas-1"],
+          "moteur": "mapbox_map",
+          "description": "Couche Mapbox colorée par altitude avec les 3 zones PERENE. La parcelle est mise en évidence dans sa zone.",
+          "donnees_entree": "DEM Mapbox + parcelle p00"
+        }
+      ]
+    },
+
+    "p05_voisinage": {
+      "theme": "dark",
+      "visualisations": [
+        {
+          "id": "ratio-hl-rues",
+          "concept_izard": "Rapport H/L des rues → canyon / dégagé / intermédiaire",
+          "sources": ["izard-microclimat-urbain-2"],
+          "moteur": "mapbox_map + svg_2d",
+          "description": "Depuis les bâtiments 3D Mapbox autour de la parcelle, calculer le rapport H/L des rues adjacentes. Afficher en overlay la typologie (canyon/dégagé). Coupe transversale SVG de la rue avec le bâtiment projeté.",
+          "mat_utils": ["blockageRatio()", "streetVelocity()"],
+          "donnees_entree": "Hauteurs bâtiments Mapbox 3D + largeurs voies",
+          "interaction": "Cliquer une rue → coupe SVG animée avec flux de vent + ratio H/L + Rb"
+        },
+        {
+          "id": "ilot-chaleur-heatmap",
+          "concept_izard": "Îlot de chaleur urbain — effet de la densité bâtie",
+          "sources": ["izard-microclimat-urbain-1"],
+          "moteur": "mapbox_map",
+          "description": "Heatmap Mapbox de l'emprise bâtie autour de la parcelle. Plus c'est dense → plus rouge (ICU potentiel). La parcelle apparaît dans son contexte thermique.",
+          "donnees_entree": "Emprises bâtiments Mapbox + rugosité calculée",
+          "interaction": "Toggle : densité bâtie / végétation / perméabilité sols"
+        },
+        {
+          "id": "profil-vent-rue",
+          "concept_izard": "Profil de vent en loi puissance selon rugosité urbaine",
+          "sources": ["izard-microclimat-urbain-2"],
+          "moteur": "svg_2d",
+          "description": "Profil vertical de vitesse du vent à la parcelle. Comparaison terrain ouvert vs suburbain vs urbain dense. L'étudiant voit combien de vent il perd selon son contexte.",
+          "mat_utils": ["windProfilePower()", "windProfilePoints()", "ROUGHNESS", "ALPHA"],
+          "interaction": "Sélecteur de type de terrain → le profil change"
+        }
+      ]
+    },
+
+    "p07_esquisse": {
+      "theme": "dark accent ambre",
+      "visualisations": [
+        {
+          "id": "gabarit-3d-sillage",
+          "concept_izard": "Sillage du bâtiment + zones de pression façades",
+          "sources": ["izard-microclimat-urbain-2", "izard-climat-bas-1"],
+          "moteur": "threejs_3d",
+          "description": "Le gabarit 3D existant (Three.js) reçoit une visualisation de sillage : zone tourbillonnaire colorée derrière le bâtiment, coefficients Cp sur les façades (rouge surpression, bleu dépression). Particules de vent animées.",
+          "mat_utils": ["wakeLength()", "pressureCp()", "windArrow()", "vortexPoints()"],
+          "donnees_entree": "Gabarit esquisse (p07) + direction vent (p01/alizé)",
+          "interaction": "Rose des vents cliquable → le sillage pivote en temps réel. Slider vitesse."
+        },
+        {
+          "id": "varangue-ombres",
+          "concept_izard": "Varangues encastrée vs accolée — ombrage au sol",
+          "sources": ["izard-climat-bas-5"],
+          "moteur": "threejs_3d",
+          "description": "Simulation d'ombres portées du gabarit avec varangue. Toggle encastrée/accolée. Slider heure/date → position du soleil et ombre sur le plancher. Jauge de couverture d'ombre (objectif ≥ 75%).",
+          "mat_utils": ["solarHeight()", "solarAzimuth() — à créer"],
+          "donnees_entree": "Gabarit + orientation + profondeur varangue",
+          "interaction": "Slider date/heure + toggle type varangue"
+        },
+        {
+          "id": "ventilation-traversante",
+          "concept_izard": "Ventilation naturelle traversante — flux d'air dans le plan",
+          "sources": ["izard-climat-bas-1", "izard-microclimat-urbain-2"],
+          "moteur": "svg_2d",
+          "description": "Plan du logement (simplifié depuis gabarit) avec flèches de flux d'air. Calcul débit via ΔCp × S_ouvrant. Indicateur C (CSTB) vert/rouge.",
+          "mat_utils": ["pressureCp()", "ventilationC()", "rtaaMinOpening()", "streamline()"],
+          "donnees_entree": "Plan gabarit + ouvrants + direction vent",
+          "interaction": "Déplacer/redimensionner les ouvrants → débit recalculé en temps réel"
+        },
+        {
+          "id": "debords-orientation",
+          "concept_izard": "Dimensionnement des débords et auvents par orientation",
+          "sources": ["izard-climat-bas-4"],
+          "moteur": "svg_2d",
+          "description": "Coupe de façade avec l'angle d'occultation recommandé (Izard Fig.17). Slider de profondeur d'auvent → l'angle change et le diagramme solaire montre la couverture.",
+          "donnees_entree": "Orientation façade + hauteur fenêtre + zone PERENE",
+          "interaction": "Slider profondeur (m) → angle calculé → couverture solaire affichée"
+        }
+      ]
+    },
+
+    "p09_carbone": {
+      "theme": "green",
+      "visualisations": [
+        {
+          "id": "comparatif-materiaux-izard",
+          "concept_izard": "Effusivité thermique des matériaux (béton >1000, bois <500)",
+          "sources": ["izard-climat-bas-1"],
+          "moteur": "chartjs",
+          "description": "Histogramme comparatif effusivité + empreinte carbone des matériaux. Superposition inertie thermique / impact carbone. L'étudiant voit le compromis.",
+          "donnees_entree": "Matériaux sélectionnés en p09 + données Izard Fig.7",
+          "interaction": "Cliquer un matériau → détail effusivité + kgCO₂eq/m²"
+        }
+      ]
+    },
+
+    "p10_entretien": {
+      "theme": "earth",
+      "visualisations": [
+        {
+          "id": "diagnostic-condensation",
+          "concept_izard": "Risque de condensation en altitude — diagramme psychrométrique",
+          "sources": ["izard-altitude-1", "izard-altitude-2"],
+          "moteur": "chartjs + svg_2d",
+          "description": "Diagramme de l'air humide simplifié. L'étudiant entre la température extérieure et l'humidité → le point apparaît sur le diagramme. Alerte si risque de condensation sur parois froides.",
+          "donnees_entree": "Altitude terrain (p01) → T° et HR de référence Izard",
+          "interaction": "Slider température consigne intérieure (17.5°C / 22.5°C) + production vapeur"
+        },
+        {
+          "id": "pathologies-toiture",
+          "concept_izard": "Dalles non isolées = pathologie majeure dans les Hauts",
+          "sources": ["izard-hauts-solaire"],
+          "moteur": "svg_2d",
+          "description": "Coupe de toiture : comparaison dalle béton nue vs isolée vs ventilée. Flux thermique descendant le jour, rayonnement vers ciel la nuit. Alerte visuelle si zone ≥ 2 et dalle non isolée.",
+          "donnees_entree": "Zone PERENE + type de couverture choisi en p07"
+        }
+      ]
+    }
+  },
+
+  "synthese_moteurs": {
+    "svg_2d_total": 11,
+    "threejs_3d_total": 2,
+    "mapbox_map_total": 4,
+    "chartjs_total": 2,
+    "note": "Le SVG 2D (mat-utils) est le moteur principal car il est léger, animable, et s'intègre dans le flux HTML existant. Three.js est réservé au gabarit 3D (p07). Mapbox est réservé aux couches cartographiques. Chart.js aux données quantitatives."
+  }
+}

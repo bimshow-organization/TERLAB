@@ -1,0 +1,382 @@
+{
+  "meta": {
+    "version": "2026-04",
+    "region": "La Réunion",
+    "generated": "2026-04-07",
+    "commune": "Sainte-Marie",
+    "insee": "97419",
+    "intercommunalite": "CINOR",
+    "plu_type": "PLU",
+    "plu_date_approbation": "2025-11-26",
+    "source": "Règlement PLU Sainte-Marie — GPU DU_97418 — 97418_reglement_20251126.pdf",
+    "note": "PLU post-réforme 2025. Zones résidentielles (UA/UB/UC/UD) + zones activités (UEa/UEc/UEm/UEp/UR/UT) + AU + A + N. Hauteurs variables par sous-zone."
+  },
+
+  "zones": {
+
+    "UA": {
+      "label": "Centre urbain principal",
+      "type": "U",
+      "sous_type": "centre_urbain",
+      "reculs": {
+        "voie_principale_m": 0,
+        "voie_alignement": true,
+        "voie_alternative_m": 3,
+        "voie_note": "Alignement ou retrait min 3m. Secteur UAz : retrait min 2m. 2x2 voies : 35m axe.",
+        "voie_uaz_m": 2,
+        "voie_2x2_axe_m": 35,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_note": "Sur limites latérales ou retrait min 3m. Distance min 3m entre 2 corps en limite.",
+        "sep_fond_m": 3,
+        "inter_batiments_m": 3,
+        "piscine_retrait_m": 1
+      },
+      "hauteurs": {
+        "he_max_m": 27,
+        "hf_max_m": 30,
+        "acrotere_max_m": 28,
+        "note": "Secteur le plus haut : UA = 27m hé / 30m hf / 28m acrotère"
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "emprise_note": "Non réglementée en UA"
+      },
+      "permeabilite": {
+        "espace_libre_min_pct": 15,
+        "permeable_min_pct": 20
+      },
+      "toiture": {
+        "versants_pct_emprise": 50,
+        "pente_max_pct": 100,
+        "chiens_assis_interdits": true,
+        "lucarne_rampante_interdite": true,
+        "animation_facade_seuil_m": 20
+      },
+      "stationnement": {
+        "logement_lls": "0.5 place / logement (< 500m gare)",
+        "logement_prive_lt80m2": "1 place / logement",
+        "logement_prive_gte80m2_solo": "1.5 place / logement",
+        "logement_prive_gte80m2_multi": "1.5 place / logement",
+        "logement_prive_500m_gare": "1 place / logement",
+        "residence_agees_par_3chambres": 1,
+        "commerce_par_100m2": 1,
+        "hotel_par_2chambres": 1,
+        "restaurant_par_100m2": 1.5,
+        "enseignement_par_classe": 1,
+        "bureau_par_100m2": 1,
+        "sante_par_150m2": 1,
+        "hopital_par_lit": 1,
+        "sport_par_100m2": 1
+      },
+      "logement_aide": {
+        "sdp_seuil_m2": 2500,
+        "pct_aide": 20,
+        "types": ["LLTS", "LLS"]
+      },
+      "contraintes_specifiques": {
+        "cloture_voie_mur_max_m": 1.5,
+        "cloture_voie_total_max_m": 2,
+        "cloture_bahut_max_m": 0.4,
+        "cloture_mitoyen_max_m": 2,
+        "mur_soutenement_max_m": 3,
+        "mur_soutenement_redan_m": 1,
+        "mur_soutenement_cumul_max_m": 9,
+        "mur_soutenement_tranche_m": 30
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "UAz": {
+      "label": "Secteur centre urbain — retrait réduit",
+      "type": "U", "ref": "UA",
+      "reculs": { "voie_principale_m": 2 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "UB": {
+      "label": "Zone urbaine mixte",
+      "type": "U",
+      "sous_type": "résidentielle_mixte",
+      "reculs": {
+        "voie_principale_m": 3,
+        "voie_alignement": true,
+        "voie_note": "Alignement ou retrait min 3m",
+        "voie_2x2_axe_m": 35,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_fond_m": 3,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 18,
+        "hf_max_m": 21,
+        "acrotere_max_m": 19,
+        "bonus_commerce_rdc_m": 0.5
+      },
+      "emprise": { "emprise_sol_max_pct": 70 },
+      "permeabilite": {
+        "espace_libre_min_pct": 20,
+        "permeable_min_pct": 25
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "UC": {
+      "label": "Zone résidentielle intermédiaire",
+      "type": "U",
+      "sous_type": "résidentielle_intermédiaire",
+      "reculs": {
+        "voie_principale_m": 3,
+        "voie_2x2_axe_m": 35,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_fond_m": 3,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 12,
+        "hf_max_m": 15,
+        "acrotere_max_m": 13,
+        "bonus_commerce_rdc_m": 0.5
+      },
+      "emprise": { "emprise_sol_max_pct": 60 },
+      "permeabilite": {
+        "espace_libre_min_pct": 25,
+        "permeable_min_pct": 30
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "UC1": {
+      "label": "Secteur résidentiel Loi Littoral — SDU",
+      "type": "U", "sous_type": "sdu_loi_littoral",
+      "loi_littoral": true,
+      "ref": "UC",
+      "ref_note": "Règles UC. Constructions limitées amélioration offre logement/hébergement et services publics.",
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "UC2": {
+      "label": "Secteur résidentiel contraint — extension limitée",
+      "type": "U",
+      "ref": "UC",
+      "ref_note": "Réhabilitation et extension limitée uniquement (max +30% SDP existante).",
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "UD": {
+      "label": "Zone résidentielle diffuse",
+      "type": "U",
+      "sous_type": "résidentielle_diffuse",
+      "reculs": {
+        "voie_principale_m": 3,
+        "voie_2x2_axe_m": 35,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_fond_m": 3,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 10,
+        "hf_max_m": 13,
+        "acrotere_max_m": 11
+      },
+      "emprise": { "emprise_sol_max_pct": 50 },
+      "permeabilite": {
+        "espace_libre_min_pct": 25,
+        "permeable_min_pct": 30
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "UD1": {
+      "label": "Secteur résidentiel diffus — contraintes",
+      "type": "U", "ref": "UD",
+      "hauteurs": {
+        "he_max_m": 8,
+        "hf_max_m": 11,
+        "acrotere_max_m": 10
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "UEa": {
+      "label": "Zone d'activités artisanales",
+      "type": "U",
+      "sous_type": "activites",
+      "reculs": {
+        "voie_principale_m": 5,
+        "voie_2x2_axe_m": 35,
+        "sep_lat_m": 4,
+        "sep_lat_limite_autorisee": true,
+        "sep_fond_m": 4,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": { "hf_max_m": 24 },
+      "emprise": { "emprise_sol_max_pct": 60 },
+      "permeabilite": { "espace_libre_min_pct": 20, "permeable_min_pct": 15 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "UEc": {
+      "label": "Zone d'activités commerciales",
+      "type": "U",
+      "sous_type": "activites_commerciales",
+      "reculs": {
+        "voie_principale_m": 3,
+        "voie_2x2_axe_m": 35,
+        "sep_lat_m": 4,
+        "sep_lat_limite_autorisee": true,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": { "hf_max_m": 14 },
+      "emprise": { "emprise_sol_max_pct": 70 },
+      "permeabilite": { "espace_libre_min_pct": 20, "permeable_min_pct": 25 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "UEm": {
+      "label": "Zone d'activités mixtes",
+      "type": "U",
+      "sous_type": "activites_mixtes",
+      "reculs": {
+        "voie_principale_m": 3,
+        "sep_lat_m": 4,
+        "sep_lat_limite_autorisee": true,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": { "hf_max_m": null, "hf_note": "Non réglementée UEm" },
+      "emprise": { "emprise_sol_max_pct": 75 },
+      "permeabilite": { "espace_libre_min_pct": 15, "permeable_min_pct": 15 },
+      "_meta": { "confidence": 0.8, "ambiguites": ["Hauteur UEm non trouvée dans texte extrait"] }
+    },
+
+    "UEp": {
+      "label": "Zone d'activités portuaires/aéroportuaires",
+      "type": "U",
+      "sous_type": "activites_port_aero",
+      "reculs": { "voie_principale_m": 3, "sep_lat_m": 4, "inter_batiments_m": 3 },
+      "hauteurs": { "hf_max_m": null },
+      "emprise": { "emprise_sol_max_pct": 75 },
+      "permeabilite": { "espace_libre_min_pct": 15, "permeable_min_pct": 15 },
+      "_meta": { "confidence": 0.8, "ambiguites": ["Hauteur UEp non trouvée dans texte extrait"] }
+    },
+
+    "UR": {
+      "label": "Zone urbaine renouvellement",
+      "type": "U",
+      "sous_type": "renouvellement",
+      "reculs": { "voie_principale_m": 5, "sep_lat_m": 4, "inter_batiments_m": 3 },
+      "hauteurs": { "hf_max_m": 24 },
+      "emprise": { "emprise_sol_max_pct": 75 },
+      "permeabilite": { "espace_libre_min_pct": 10, "permeable_min_pct": 20 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "UT": {
+      "label": "Zone touristique",
+      "type": "U",
+      "sous_type": "touristique",
+      "reculs": { "voie_principale_m": 3, "sep_lat_m": 4, "inter_batiments_m": 3 },
+      "hauteurs": { "hf_max_m": 11 },
+      "emprise": { "emprise_sol_max_pct": 30 },
+      "permeabilite": { "espace_libre_min_pct": 50, "permeable_min_pct": 55 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "AUa": {
+      "label": "Zone à urbaniser dense — 50 logt/ha",
+      "type": "AU",
+      "densite_min_logt_ha": 50,
+      "ref": "UA/UB",
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "AUb": {
+      "label": "Zone à urbaniser intermédiaire — 25 logt/ha",
+      "type": "AU",
+      "densite_min_logt_ha": 25,
+      "ref": "UC",
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "AUc": {
+      "label": "Zone à urbaniser diffuse — 25 logt/ha",
+      "type": "AU",
+      "densite_min_logt_ha": 25,
+      "ref": "UD",
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "A": {
+      "label": "Zone agricole",
+      "type": "A",
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_note": "Si parcelle ≤ 15m largeur sur rue : 2 limites autorisées, profondeur max 10m.",
+        "sep_fond_m": 3,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 4,
+        "hf_max_m": 6,
+        "annexe_hf_max_m": 3.5
+      },
+      "emprise": { "emprise_sol_max_pct": null },
+      "permeabilite": { "permeable_min_pct": null },
+      "toiture": { "versants_pct_emprise": 50, "pente_min_pct": 25, "pente_max_pct": 100 },
+      "stationnement": { "logement_standard": "2 places / logement" },
+      "contraintes_specifiques": {
+        "cloture_voie_max_m": 1.8,
+        "cloture_mitoyen_max_m": 2,
+        "mur_soutenement_max_m": 3
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "N": {
+      "label": "Zone naturelle et forestière",
+      "type": "N",
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 4,
+        "sep_fond_m": 4,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 4,
+        "hf_max_m": 6,
+        "annexe_hf_max_m": 3.5
+      },
+      "emprise": { "emprise_sol_max_pct": null },
+      "toiture": { "versants_pct_emprise": 50, "pente_max_pct": 100 },
+      "stationnement": { "logement_standard": "2 places / logement" },
+      "contraintes_specifiques": {
+        "cloture_voie_max_m": 2,
+        "cloture_mitoyen_max_m": 2,
+        "mur_soutenement_max_m": 3
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    }
+  },
+
+  "regles_communes": {
+    "ravine_recul_m": 10,
+    "voie_2x2_axe_m": 35,
+    "voie_emprise_min_m": 3.5,
+    "voie_impasse_retournement_m": 50,
+    "reseaux_souterrain": true,
+    "cloture_mur_soutenement_max_m": 3,
+    "cloture_mur_soutenement_redan_m": 1,
+    "cloture_mur_cumul_max_m": 9,
+    "logement_aide_seuil_m2": 2500,
+    "logement_aide_pct": 20,
+    "logement_aide_types": ["LLTS", "LLS"],
+    "performance_energetique_bande_ombrage_m": 3,
+    "rtaa_dom": "2016",
+    "equivalent_logement_m2": 80
+  }
+}

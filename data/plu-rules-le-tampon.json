@@ -1,0 +1,244 @@
+{
+  "meta": {
+    "version": "2026-04",
+    "region": "La Réunion",
+    "generated": "2026-04-07",
+    "commune": "Le Tampon",
+    "insee": "97422",
+    "intercommunalite": "CASUD",
+    "plu_type": "PLU",
+    "plu_date_approbation": "2018-12-08",
+    "source": "Règlement PLU Le Tampon — GPU DU_97422 — 97422_reglement_20230811.pdf"
+  },
+
+  "zones": {
+
+    "Ua": {
+      "label": "Grand centre-ville agglomération du Tampon (SAR)",
+      "type": "U",
+      "sous_type": "centre_urbain",
+      "reculs": {
+        "voie_principale_m": 0,
+        "voie_alignement": true,
+        "voie_alternative_m": 4,
+        "voie_note": "Alignement ou retrait 4m min. RD3 entre RN3 et Ravine Blanche : recul supplémentaire.",
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": 18,
+        "sep_lat_note": "Sur 2 limites, 1 ou retrait. Max 18m en limite. Angle 2 limites interdit, espace libre ≥ 3m.",
+        "sep_fond_m": 3,
+        "inter_batiments_m": 4
+      },
+      "hauteurs": {
+        "he_max_m": 21,
+        "hf_max_m": 25,
+        "annexe_hf_max_m": 3.5
+      },
+      "emprise": { "emprise_sol_max_pct": null, "note": "Non explicitement mentionnée pour Ua" },
+      "permeabilite": {
+        "permeable_min_pct": 20,
+        "espace_vert_min_pct": 15
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_emprise": 60,
+        "pente_min_pct": 30,
+        "pente_max_pct": 100,
+        "longueur_facade_max_m": 40
+      },
+      "stationnement": {
+        "commerce_bureau": "50% SDP",
+        "activite_industrielle": "30% SDP",
+        "note": "Normes identiques toutes zones U — voir regles_communes"
+      },
+      "logement_aide": { "sdp_seuil_m2": 3000, "pct_aide": 30 },
+      "contraintes_specifiques": {
+        "cloture_voie_hauteur_max_m": 2,
+        "cloture_partie_pleine_max_m": 1,
+        "mur_soutenement_max_m": 3
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "Uav": {
+      "label": "Secteur centre-ville patrimonial",
+      "type": "U",
+      "sous_type": "centre_patrimonial",
+      "ref": "Ua",
+      "ref_note": "Règles Ua sauf hauteurs et perméabilité réduites",
+      "hauteurs": { "he_max_m": 16, "hf_max_m": 20 },
+      "permeabilite": { "permeable_min_pct": 30, "espace_vert_min_pct": 20 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "Ub": {
+      "label": "Abords centre-ville et centralités urbaines — 23e Km, bourgs",
+      "type": "U",
+      "sous_type": "résidentielle_dense",
+      "reculs": {
+        "voie_principale_m": 0,
+        "voie_alignement": true,
+        "voie_alternative_m": 4,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": 18,
+        "sep_fond_m": 3,
+        "inter_batiments_m": 4
+      },
+      "hauteurs": {
+        "he_max_m": 13,
+        "hf_max_m": 17,
+        "annexe_hf_max_m": 3.5
+      },
+      "emprise": { "emprise_sol_max_pct": null },
+      "permeabilite": { "permeable_min_pct": 35, "espace_vert_min_pct": 25 },
+      "toiture": { "versants_pct_emprise": 60, "pente_min_pct": 30, "pente_max_pct": 100 },
+      "logement_aide": { "sdp_seuil_m2": 1000, "pct_aide": 30 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "Uc": {
+      "label": "Tissu résidentiel principal du Tampon",
+      "type": "U",
+      "sous_type": "résidentielle_intermédiaire",
+      "reculs": {
+        "voie_principale_m": 4,
+        "voie_alignement": false,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": 18,
+        "sep_fond_m": 3,
+        "inter_batiments_m": 4
+      },
+      "hauteurs": {
+        "he_max_m": 9,
+        "hf_max_m": 13,
+        "annexe_hf_max_m": 3.5
+      },
+      "emprise": { "emprise_sol_max_pct": null },
+      "permeabilite": { "permeable_min_pct": 40, "espace_vert_min_pct": 30 },
+      "toiture": { "versants_pct_emprise": 60, "pente_min_pct": 30, "pente_max_pct": 100 },
+      "logement_aide": { "sdp_seuil_m2": 1000, "pct_aide": 30 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "Ud": {
+      "label": "Espaces urbains hors zone préférentielle SAR",
+      "type": "U",
+      "sous_type": "résidentielle_diffuse",
+      "reculs": {
+        "voie_principale_m": 4,
+        "voie_alignement": false,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": 18,
+        "sep_lat_note": "1 seule limite latérale autorisée (pas 2 comme Ua-Uc)",
+        "sep_fond_m": 3,
+        "inter_batiments_m": 4
+      },
+      "hauteurs": {
+        "he_max_m": 7,
+        "hf_max_m": 11,
+        "annexe_hf_max_m": 3.5
+      },
+      "emprise": { "emprise_sol_max_pct": null },
+      "permeabilite": { "permeable_min_pct": 40, "espace_vert_min_pct": 30 },
+      "toiture": { "versants_pct_emprise": 60, "pente_min_pct": 30, "pente_max_pct": 100 },
+      "logement_aide": { "sdp_seuil_m2": 1000, "pct_aide": 30 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "Ue": {
+      "label": "Zone d'activités économiques",
+      "type": "U",
+      "sous_type": "activites",
+      "usages": {
+        "habitation": false, "commerce": true, "bureau": true,
+        "activite": true, "entrepot": true
+      },
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 5,
+        "sep_lat_limite_autorisee": true,
+        "sep_fond_m": 5,
+        "inter_batiments_m": 4
+      },
+      "hauteurs": {
+        "he_max_m": 12,
+        "hf_max_m": null,
+        "hf_note": "hé 12m, hf non explicitement mentionné"
+      },
+      "emprise": { "emprise_sol_max_pct": null },
+      "permeabilite": { "permeable_min_pct": 15 },
+      "_meta": { "confidence": 0.9, "ambiguites": ["hf Ue non trouvé explicitement"] }
+    },
+
+    "AUindicee": {
+      "label": "Zones à urbaniser prioritaires (SAR)",
+      "type": "AU",
+      "ref": "zone U correspondante",
+      "ref_note": "Se reporter au règlement de la zone U indiquée en indice. 1AU = prioritaire, 2AU = après 1AU.",
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "A": {
+      "label": "Zone agricole",
+      "type": "A",
+      "sous_zones": ["Aba"],
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 5,
+        "sep_fond_m": 5
+      },
+      "hauteurs": {
+        "he_max_m": 4,
+        "hf_max_m": 7,
+        "annexe_hf_max_m": 3.5
+      },
+      "emprise": { "emprise_sol_max_pct": null },
+      "permeabilite": { "permeable_min_pct": 70 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "N": {
+      "label": "Zone naturelle et forestière",
+      "type": "N",
+      "sous_zones": ["Nco", "Npnr", "Nto"],
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 5,
+        "sep_fond_m": 5
+      },
+      "hauteurs": {
+        "he_max_m": 4,
+        "hf_max_m": 7,
+        "annexe_hf_max_m": 3.5
+      },
+      "emprise": { "emprise_sol_max_pct": null },
+      "permeabilite": { "permeable_min_pct": 70 },
+      "zones_speciales": {
+        "Nco": "Corridors écologiques — trames vertes et bleues",
+        "Npnr": "Cœur Parc National — construction interdite",
+        "Nto": "Tourisme et loisirs"
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    }
+  },
+
+  "regles_communes": {
+    "ravine_recul_m": 10,
+    "voie_emprise_min_m": 5,
+    "voie_impasse_retournement_m": 60,
+    "reseaux_souterrain": true,
+    "cloture_voie_hauteur_max_m": 2,
+    "cloture_partie_pleine_max_m": 1,
+    "mur_soutenement_max_m": 3,
+    "annexe_hf_max_m": 3.5,
+    "stationnement_commerce_bureau": "50% SDP",
+    "stationnement_activite_industrielle": "30% SDP",
+    "zone_inondation_surelevation_m": 1,
+    "monuments_historiques_abf": true,
+    "ppr_applicable": true,
+    "rtaa_dom": "2016"
+  }
+}

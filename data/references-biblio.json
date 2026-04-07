@@ -1,0 +1,708 @@
+{
+  "version": "1.1",
+  "note": "Bibliographie complète classée par phase. Types : données, api, réglementaire, guide, retour-experience, ouvrage, portail, publication-academique, outil.",
+  "fiches_envirobat": [
+    {
+      "id": "envirobat-mediatheque-saint-leu",
+      "titre": "Fiche enviroBAT — Médiathèque de Saint-Leu (Olivier Brabant, 2019)",
+      "auteur": "enviroBAT-Réunion",
+      "annee": 2020,
+      "type": "retour-experience",
+      "url": "https://www.envirobat-reunion.com/fr/portail/357/observatoire/55035/fiche-envirobat-reunion-mediatheque-saint-leu-olivier-brabant-2020.html",
+      "pdf": "https://cdn.s-pass.org/SPASSDATA/attachments/2021_03/01/83498-fiche-mediateque-st-leu-3.pdf",
+      "local": ".docs/terlab-v1/references/envirobat/fiche-mediatheque-saint-leu-2020.pdf",
+      "commune": "Saint-Leu",
+      "programme": "Équipement culturel — 1 500 m²",
+      "cout_ht": "4 800 000 €",
+      "mots_cles": ["ventilation naturelle", "soufflerie", "aéraulique", "front de mer", "bois", "terrasse végétalisée"],
+      "phases_terlab": ["p04", "p05", "p07"],
+      "resume": "Médiathèque 100% ventilation naturelle en bord de mer. Conception aéraulique testée en soufflerie turbulente (J. Gandemer). Vitesses d'air 1 m/s = -4°C ressenti. Liaison ville-mer, protections solaires, façade bois, terrasse végétalisée."
+    },
+    {
+      "id": "envirobat-zac-coeur-ville-possession",
+      "titre": "Fiche enviroBAT — ZAC Cœur de Ville, La Possession (SEMADER, 2012-2026)",
+      "auteur": "enviroBAT-Réunion",
+      "annee": 2022,
+      "type": "retour-experience",
+      "url": "https://www.envirobat-reunion.com/fr/portail/357/mediatheque/47677/visite-doperations-ilet-du-centre-saint-pierre.html",
+      "pdf": "https://cdn.s-pass.org/SPASSDATA/attachments/2023_03/20/124228-fiche-coeur-de-ville-la-possession.pdf",
+      "local": ".docs/terlab-v1/references/envirobat/fiche-coeur-de-ville-la-possession.pdf",
+      "commune": "La Possession",
+      "programme": "Éco-quartier ZAC 34 ha — 1 800 logements — 5 500 habitants",
+      "cout_ht": "350 000 000 €",
+      "mots_cles": ["éco-quartier", "densification", "mixité sociale", "TCSP", "jardins partagés", "mail tropical", "label Éco-quartier"],
+      "phases_terlab": ["p04", "p05", "p07", "p09"],
+      "resume": "Éco-quartier de 34 ha, 60% logements aidés, densité 50 log/ha. Mail tropical piéton (Promenade des Banians), TCSP, constructions bioclimatiques, jardins partagés en cœur d'îlot. Labellisation Éco-quartier National."
+    },
+    {
+      "id": "envirobat-ufr-sante-saint-pierre",
+      "titre": "Fiche enviroBAT — UFR Santé, Terre Sainte, Saint-Pierre (T&T Architecture, 2023)",
+      "auteur": "enviroBAT-Réunion",
+      "annee": 2025,
+      "type": "retour-experience",
+      "url": "https://www.envirobat-reunion.com/fr/portail/357/observatoire/88088/fiche-envirobat-reunion-ufr-sante-saint-pierre-2023.html",
+      "pdf": "https://cdn.s-pass.org/SPASSDATA/attachments/2025_12/17/242159-251215-ufr-sante-fiche-envirobat-sc-2-compressed.pdf",
+      "local": ".docs/terlab-v1/references/envirobat/fiche-ufr-sante-saint-pierre-2023.pdf",
+      "commune": "Saint-Pierre",
+      "programme": "UFR Santé — 6 770 m² — 1 000 étudiants",
+      "cout_ht": "22 000 000 €",
+      "mots_cles": ["campus", "parc habité", "structure mixte", "ventilation naturelle", "rue intérieure", "PREBAT", "production solaire"],
+      "phases_terlab": ["p04", "p07", "p09"],
+      "resume": "Campus universitaire 'parc habité' avec jardins thématiques. Structure mixte béton/ossature légère. Ventilation naturelle via rue intérieure semi-couverte. Équilibre énergétique par production solaire. Suivi PREBAT/ADEME."
+    },
+    {
+      "id": "envirobat-olea-saint-pierre",
+      "titre": "Fiche enviroBAT — OLEA, Saint-Pierre (Co-Architectes / SHLMR, 2021)",
+      "auteur": "enviroBAT-Réunion",
+      "annee": 2025,
+      "type": "retour-experience",
+      "url": "https://www.envirobat-reunion.com/fr/portail/357/observatoire/88087/fiche-envirobat-reunion-olea-saint-pierre-2021.html",
+      "pdf": "https://cdn.s-pass.org/SPASSDATA/attachments/2025_12/17/242157-251215-olea-fiche-envirobat-sc-2-compressed.pdf",
+      "local": ".docs/terlab-v1/references/envirobat/fiche-olea-saint-pierre-2021.pdf",
+      "commune": "Saint-Pierre",
+      "programme": "28 LLTS — 1 821 m²",
+      "cout_ht": "3 684 000 €",
+      "mots_cles": ["logement social", "conception participative", "NF Habitat HQE", "jardins partagés", "bioclimatique", "ANRU"],
+      "phases_terlab": ["p04", "p05", "p07"],
+      "resume": "28 logements sociaux avec conception participative inédite à La Réunion (4 ateliers, 22 familles). Certification NF Habitat HQE Très Performant. Cœur vert, principes bioclimatiques, 1 logement = 1 jardin."
+    },
+    {
+      "id": "envirobat-ecotole-saint-pierre",
+      "titre": "Fiche enviroBAT — ECOTOLE, Saint-Pierre (LAB Réunion, 2025)",
+      "auteur": "enviroBAT-Réunion",
+      "annee": 2025,
+      "type": "retour-experience",
+      "url": "https://www.envirobat-reunion.com/fr/portail/357/observatoire/88086/fiche-envirobat-reunion-batiment-industriel-et-bureaux-ecotole-saint-pierre-2025.html",
+      "pdf": "https://cdn.s-pass.org/SPASSDATA/attachments/2025_12/17/242155-fiche-envirobat-ecotole-sc.pdf",
+      "local": ".docs/terlab-v1/references/envirobat/fiche-ecotole-saint-pierre-2025.pdf",
+      "commune": "Saint-Pierre",
+      "programme": "Bâtiment industriel + bureaux — 1 364 m²",
+      "cout_ht": "2 700 000 €",
+      "mots_cles": ["industriel", "puits dépressionnaire", "PREBAT", "noues végétalisées", "récupération eau", "essences endémiques"],
+      "phases_terlab": ["p04", "p07", "p09", "p10"],
+      "resume": "Atelier + bureaux avec ventilation naturelle traversante et puits dépressionnaire (110 vol/h atelier, 80 vol/h bureaux). Noues végétalisées, cuve 3 200 L, essences endémiques. Suivi PREBAT."
+    },
+    {
+      "id": "envirobat-agence-tt-saint-paul",
+      "titre": "Fiche enviroBAT — Agence T&T Architecture, Saint-Paul (2025)",
+      "auteur": "enviroBAT-Réunion",
+      "annee": 2025,
+      "type": "retour-experience",
+      "url": "https://www.envirobat-reunion.com/fr/portail/357/observatoire/88084/fiche-envirobat-reunion-agence-et-bureaux-t-t-architecture-saint-paul-2025.html",
+      "pdf": "https://cdn.s-pass.org/SPASSDATA/attachments/2025_12/17/242153-fiche-envirobat-agence-t-t-sc.pdf",
+      "local": ".docs/terlab-v1/references/envirobat/fiche-agence-tt-architecture-saint-paul-2025.pdf",
+      "commune": "Saint-Paul",
+      "programme": "Bureaux R+2 — 330 m²",
+      "cout_ht": "450 000 €",
+      "mots_cles": ["sobriété", "matériaux locaux", "réversibilité", "0 climatisation", "patios", "enduits chaux scories", "menuiseries artisanales"],
+      "phases_terlab": ["p07", "p09", "p10", "p11"],
+      "resume": "Manifeste de sobriété : 0 clim, matériaux locaux bruts (parpaings endogènes, enduits chaux/talc de scories, menuiseries artisanales). Bâtiment 'capable' réversible. Patios végétalisés, chauffe-eau solaire."
+    },
+    {
+      "id": "envirobat-coarm-saint-denis",
+      "titre": "Fiche enviroBAT — COARM, Saint-Denis (Co-Architectes, 2022)",
+      "auteur": "enviroBAT-Réunion",
+      "annee": 2025,
+      "type": "retour-experience",
+      "url": "https://www.envirobat-reunion.com/fr/portail/357/observatoire/88083/fiche-envirobat-reunion-coarm-saint-denis-2022-1.html",
+      "pdf": "https://cdn.s-pass.org/SPASSDATA/attachments/2025_12/17/242151-251215-coarm-fiche-envirobat-sc-2-compressed.pdf",
+      "local": ".docs/terlab-v1/references/envirobat/fiche-coarm-saint-denis-2022.pdf",
+      "commune": "Saint-Denis",
+      "programme": "Bureaux Ordre des Architectes — surélévation 54 m² + rénovation 86 m²",
+      "cout_ht": "270 000 €",
+      "mots_cles": ["réemploi intégral", "surélévation", "case Satec", "économie circulaire", "décarbonation", "ESS", "frugalité"],
+      "phases_terlab": ["p09", "p10", "p11"],
+      "resume": "Premier bâtiment intégralement en réemploi à La Réunion. Surélévation bioclimatique d'une case Satec années 70. Matériaux récupérés (pont rivière de l'Est, gîte du Volcan, palettes Ecopal). 33 kWhef/m²/an. Grand Prix Trophées Bâtiments Circulaires 2022."
+    },
+    {
+      "id": "envirobat-les-mahots-le-port",
+      "titre": "Fiche enviroBAT — Les Mahots, Le Port (Co-Architectes / SEMADER, 2018)",
+      "auteur": "enviroBAT-Réunion",
+      "annee": 2019,
+      "type": "retour-experience",
+      "url": "https://www.envirobat-reunion.com/fr/portail/357/observatoire/49223/fiche-envirobat-reunion-operation-les-mahots-le-port-co-architectes-2019.html",
+      "pdf": "https://cdn.s-pass.org/SPASSDATA/attachments/2020_03/25/5f7f4dd1d5c0f-d77775.pdf",
+      "local": ".docs/terlab-v1/references/envirobat/fiche-les-mahots-le-port-2019.pdf",
+      "commune": "Le Port",
+      "programme": "45 LLTS — 3 737 m²",
+      "cout_ht": "4 800 000 €",
+      "mots_cles": ["logement social", "acoustique vs ventilation", "mur antibruit chicanes", "RTAA DOM", "brises thermiques", "ZAC"],
+      "phases_terlab": ["p04", "p05", "p07"],
+      "resume": "45 logements très sociaux. Résolution du dilemme ventilation naturelle vs acoustique en milieu urbain (N1E). Implantation perpendiculaire à la voie, mur antibruit en chicanes. Étude acoustique fenêtres ouvertes (bureau suisse)."
+    },
+    {
+      "id": "envirobat-ecole-denise-salai-saint-benoit",
+      "titre": "Fiche enviroBAT — École maternelle Denise Salaï, Saint-Benoît (NEO, 2018)",
+      "auteur": "enviroBAT-Réunion",
+      "annee": 2019,
+      "type": "retour-experience",
+      "url": "https://www.envirobat-reunion.com/fr/portail/357/observatoire/49217/fiche-envirobat-reunion-ecole-maternelle-denise-salai-saint-benoit-neo-architectes-2019.html",
+      "pdf": "https://cdn.s-pass.org/SPASSDATA/attachments/2020_03/25/5f7f4dd051f7a-d77734.pdf",
+      "local": ".docs/terlab-v1/references/envirobat/fiche-ecole-denise-salai-saint-benoit-2019.pdf",
+      "commune": "Saint-Benoît",
+      "programme": "École maternelle 12 classes — 300 élèves",
+      "cout_ht": "7 300 000 €",
+      "mots_cles": ["enseignement", "forme proue", "alizé", "PERENE zone 2", "cour triangulaire", "ventilation traversante"],
+      "phases_terlab": ["p04", "p07"],
+      "resume": "École en forme de proue dans le lit de l'alizé (côte au vent). PERENE zone 2 en adoption volontaire. Bâtiments de faible épaisseur autour d'une cour centrale triangulaire végétalisée. Ventilation naturelle traversante intégrale."
+    },
+    {
+      "id": "envirobat-hotel-region-saint-denis",
+      "titre": "Fiche enviroBAT — Hôtel de Région, Le Moufia, Saint-Denis (Atelier Grouard, 2016)",
+      "auteur": "enviroBAT-Réunion",
+      "annee": 2019,
+      "type": "retour-experience",
+      "url": "https://www.envirobat-reunion.com/fr/portail/357/observatoire/46974/fiche-envirobat-reunion-restructuration-et-extension-de-lhotel-de-region-saint-denis-atelier-grouard-architectes-2019.html",
+      "pdf": "https://cdn.s-pass.org/SPASSDATA/attachments/2019_10/17/5f7f4bbb5f1e4-d72226.pdf",
+      "local": ".docs/terlab-v1/references/envirobat/fiche-hotel-de-region-saint-denis-2019.pdf",
+      "commune": "Saint-Denis",
+      "programme": "Tertiaire — restructuration + extension — 17 003 m² SU",
+      "cout_ht": "23 149 537 €",
+      "mots_cles": ["puits dépressionnaire", "écope", "atrium", "HQE", "PERENE", "rénovation thermique", "pyramide inversée"],
+      "phases_terlab": ["p04", "p07", "p09"],
+      "resume": "Restructuration de la pyramide inversée + Annexe avec rue intérieure = puits dépressionnaire coiffé d'une écope. Démarche HQE + PERENE (porosités 30%). Ventilation naturelle d'un bâtiment R+5 tertiaire."
+    },
+    {
+      "id": "envirobat-corem-le-port",
+      "titre": "Fiche enviroBAT — COREM / INNOVAL, Le Port (T&T Architecture, 2011)",
+      "auteur": "enviroBAT-Réunion",
+      "annee": 2011,
+      "type": "retour-experience",
+      "url": "https://www.envirobat-reunion.com/fr/portail/357/observatoire/46944/fiche-envirobat-reunion-corem-le-port-t-t-architecture-2011.html",
+      "pdf": "https://cdn.s-pass.org/SPASSDATA/attachments/2019_10/16/5f7f4bb5db4d7-d72224.pdf",
+      "local": ".docs/terlab-v1/references/envirobat/fiche-corem-le-port-2011.pdf",
+      "commune": "Le Port",
+      "programme": "Bureaux + stockage ossature bois — 721 m²",
+      "cout_ht": "1 060 765 €",
+      "mots_cles": ["ossature bois", "Feng Shui", "PREBAT", "TEEO", "patio caducs", "façade zinc hypertrophiée", "ventilation naturelle"],
+      "phases_terlab": ["p07", "p09", "p10"],
+      "resume": "Bureaux ossature bois avec démarche Feng Shui convergente avec qualité environnementale. Patio végétalisé (arbres caducs), escalier-cheminée de ventilation, façades zinc 30 cm. Logiciel TEEO de suivi énergétique. Primé PREBAT/ADEME."
+    },
+    {
+      "id": "envirobat-maison-parc-national-palmistes",
+      "titre": "Fiche enviroBAT — Maison du Parc National, Plaine des Palmistes (AP Architectures + 2APMR, 2013)",
+      "auteur": "enviroBAT-Réunion",
+      "annee": 2014,
+      "type": "retour-experience",
+      "url": "https://www.envirobat-reunion.com/fr/portail/357/observatoire/46970/fiche-envirobat-reunion-maison-du-parc-national-plaine-des-palmistes-antoine-perrau-architectures-2apmr-2014.html",
+      "pdf": "https://cdn.s-pass.org/SPASSDATA/attachments/2019_10/17/5f7f4bba48806-d72231.pdf",
+      "local": ".docs/terlab-v1/references/envirobat/fiche-maison-parc-national-plaine-palmistes-2014.pdf",
+      "commune": "Plaine des Palmistes",
+      "programme": "Siège Parc National — bureaux — 1 215 m²",
+      "cout_ht": "4 445 900 €",
+      "mots_cles": ["altitude 1000m", "confort hiver", "restauration écologique", "espèces endémiques", "zonage climatique", "bois", "cascade Biberon"],
+      "phases_terlab": ["p06", "p07", "p09", "p10"],
+      "resume": "Siège du Parc National à 1 000 m d'altitude. Enjeu inversé : confort d'hiver (11°C nuit). Bâtiment en branches ouvertes sur le paysage. Restauration écologique préalable (arrachage espèces envahissantes). Zonage climatique passif, 0 chauffage/clim."
+    },
+    {
+      "id": "envirobat-college-ouangani-mayotte",
+      "titre": "Fiche enviroBAT — Collège de Ouangani, Mayotte (Terreneuve, 2017-2019)",
+      "auteur": "enviroBAT-Réunion",
+      "annee": 2020,
+      "type": "retour-experience",
+      "url": "https://www.envirobat-reunion.com/fr/portail/357/observatoire/54603/fiche-envirobat-reunion-college-de-ouangani-mayotte-terreneuve-2020.html",
+      "pdf": "https://cdn.s-pass.org/SPASSDATA/attachments/2021_04/26/80912-fiche-college-ouangani.pdf",
+      "local": ".docs/terlab-v1/references/envirobat/fiche-college-ouangani-mayotte-2020.pdf",
+      "commune": "Ouangani, Mayotte",
+      "programme": "Collège 1 128 élèves — 10 000 m²",
+      "cout_ht": "25 000 000 €",
+      "mots_cles": ["Mayotte", "tropical", "terrasses décalées", "topographie", "déblais-remblais", "enseignement"],
+      "phases_terlab": ["p01", "p07", "p13"],
+      "resume": "Collège 1 128 élèves en terrasses décalées épousant la topographie (équilibre déblais/remblais). Climat tropical maritime, vues préservées (Baie de Chiconi, Mont Bénara). Circulations abritées, plan masse ouvert extensible."
+    },
+    {
+      "id": "envirobat-college-mandela-mayotte",
+      "titre": "Fiche enviroBAT — Collège Nelson Mandela, Doujani, Mayotte (Co-Architectes, 2014)",
+      "auteur": "enviroBAT-Réunion",
+      "annee": 2016,
+      "type": "retour-experience",
+      "url": "https://www.envirobat-reunion.com/fr/portail/357/observatoire/47455/fiche-envirobat-reunion-college-nelson-mandela-mayotte-co-architectes-2016.html",
+      "pdf": "https://cdn.s-pass.org/SPASSDATA/attachments/2019_11/29/5f7f4c1a1bf17-d73471.pdf",
+      "local": ".docs/terlab-v1/references/envirobat/fiche-college-nelson-mandela-mayotte-2016.pdf",
+      "commune": "Mamoudzou, Mayotte",
+      "programme": "Extension collège — 620 m² — panneaux KLH",
+      "cout_ht": "2 100 000 €",
+      "mots_cles": ["Mayotte", "KLH", "construction sèche", "chantier rapide", "terrain inondable", "gradins enherbés", "bois massif"],
+      "phases_terlab": ["p03", "p07", "p09", "p13"],
+      "resume": "Extension en panneaux massifs contrecollés (KLH) = construction sèche, chantier rapide en site occupé. Bâtiment surélevé 1 m (terrain inondable). Talus naturels reconvertis en gradins enherbés anti-bruit. 0 climatisation."
+    }
+  ],
+  "par_phase": {
+    "global": [
+      {
+        "id": "rtaa-dom-2016-deal",
+        "titre": "RTAA DOM 2016 — Fiches d'application",
+        "auteur": "DEAL Réunion / Ministère Écologie",
+        "annee": 2016,
+        "type": "réglementaire",
+        "url": "https://www.reunion.developpement-durable.gouv.fr/reglementation-thermique-acoustique-et-aeration-r162.html",
+        "note": "Référence fondamentale — s'applique à TOUTES les constructions neuves d'habitation à La Réunion."
+      },
+      {
+        "id": "caue-rtaa-fiche10",
+        "titre": "Fiche pratique 10 — RTAA DOM",
+        "auteur": "CAUE de La Réunion",
+        "type": "guide",
+        "url": "https://www.caue974.com/fr/portail/356/mediatheque/49897/fiche-pratique-10-rtaa-dom.html",
+        "note": "Synthèse accessible de la RTAA DOM. 22% de porosité séjour, 18% chambres en zone 1."
+      },
+      {
+        "id": "aqc-ventilation-reunion",
+        "titre": "12 enseignements à connaître — La ventilation naturelle à La Réunion",
+        "auteur": "AQC / CAUE La Réunion",
+        "annee": 2022,
+        "type": "retour-experience",
+        "url": "https://qualiteconstruction.com/ressource/rex-batiments-performants/ventilation-naturelle-la-reunion-12-enseignements/",
+        "note": "REX sur panel de bâtiments réunionnais. Enseignements pratiques sur la ventilation naturelle en contexte tropical humide."
+      }
+    ],
+    "p00": [
+      {
+        "id": "pci-ign-data",
+        "titre": "Plan Cadastral Informatisé (PCI) — Données ouvertes",
+        "auteur": "DGFiP / IGN",
+        "type": "données",
+        "url": "https://cadastre.data.gouv.fr/datasets/plan-cadastral-informatise",
+        "note": "Mise à jour trimestrielle. Parcelles, sections, bâti, habillage. Pas les données de propriété."
+      },
+      {
+        "id": "api-carto-cadastre",
+        "titre": "API Carto — Module Cadastre",
+        "auteur": "IGN / data.gouv.fr",
+        "type": "api",
+        "url": "https://apicarto.ign.fr/api/doc/cadastre",
+        "note": "API REST gratuite pour la géométrie GeoJSON des parcelles. Recherche par section/numéro ou bbox."
+      },
+      {
+        "id": "agorah-ohf",
+        "titre": "Observatoire de l'Habitat et du Foncier (OHF)",
+        "auteur": "AGORAH",
+        "annee": 2023,
+        "type": "données",
+        "url": "https://www.agorah.com/index.php/observatoire-de-lhabitat-et-du-foncier-ohf/",
+        "note": "Regard croisé production de logements et mobilisation foncière. ZAN Réunion. Friches urbaines."
+      },
+      {
+        "id": "agorah-otif",
+        "titre": "Observatoire des Transactions Immobilières et Foncières (OTIF)",
+        "auteur": "AGORAH",
+        "type": "données",
+        "url": "https://www.agorah.com/index.php/observatoire-des-transactions-immobilieres-et-foncieres/",
+        "note": "Données marché foncier Réunion — utile pour le contexte de valeur et tension foncière."
+      }
+    ],
+    "p01": [
+      {
+        "id": "meteofrance-reunion-data",
+        "titre": "Données climatiques et météorologiques — La Réunion",
+        "auteur": "Météo-France Réunion",
+        "type": "données",
+        "url": "https://meteofrance.re",
+        "note": "Référence pour pluviométrie annuelle, températures, vents, données cycloniques."
+      },
+      {
+        "id": "mapbox-dem-v1",
+        "titre": "Mapbox Terrain-DEM v1 — Documentation",
+        "auteur": "Mapbox",
+        "type": "api",
+        "url": "https://docs.mapbox.com/data/tilesets/reference/mapbox-terrain-dem-v1/",
+        "note": "DEM 512px utilisé pour les altitudes, profils et simulation inondation dans TERLAB."
+      },
+      {
+        "id": "shom-donnees-cotières",
+        "titre": "Données côtières et marégraphiques",
+        "auteur": "SHOM",
+        "type": "données",
+        "url": "https://data.shom.fr",
+        "note": "Houle historique, trait de côte, surcote marine. Utile pour les terrains littoraux."
+      }
+    ],
+    "p02": [
+      {
+        "id": "brgm-infoterre-reunion",
+        "titre": "InfoTerre — Carte géologique de La Réunion (1:50 000)",
+        "auteur": "BRGM",
+        "type": "données",
+        "url": "https://infoterre.brgm.fr",
+        "note": "Référence géologique officielle. Basaltes récents, anciens, alluvions, remblais."
+      },
+      {
+        "id": "ovpf-ipgp",
+        "titre": "Observatoire Volcanologique du Piton de la Fournaise",
+        "auteur": "IPGP / Université de La Réunion",
+        "type": "données",
+        "url": "https://www.ipgp.fr/fr/ovpf/observatoire-volcanologique-du-piton-de-la-fournaise",
+        "note": "Surveillance en temps réel, coulées historiques, zones d'exclusion."
+      },
+      {
+        "id": "eurocode8-re",
+        "titre": "Eurocode 8 — Calcul des structures en zone sismique",
+        "auteur": "AFNOR / EN 1998",
+        "type": "réglementaire",
+        "url": "https://www.afnor.org",
+        "note": "Réunion = zone sismique 2 (aléa modéré). Chaînage obligatoire en maçonnerie."
+      }
+    ],
+    "p03": [
+      {
+        "id": "pprn-saintdenis-2023",
+        "titre": "PPRN Saint-Denis — Règlement + 8 planches de zonage (2023)",
+        "auteur": "Préfecture de La Réunion",
+        "annee": 2023,
+        "type": "réglementaire",
+        "url": "https://www.reunion.gouv.fr/Actions-de-l-Etat/Securite-protection-des-personnes-et-des-biens/Protection-civile/Prevention-des-risques-naturels-et-technologiques/Les-risques-naturels-a-La-Reunion/Plans-de-prevention-des-risques-naturels-PPRN-et-PAC/Saint-Denis",
+        "note": "Document de travail fondamental pour le Cycle 2 studio ENSA La Réunion. 8 planches : Ruisseau Blanc, La Montagne, Chaudron, St-François, Les Hauts..."
+      },
+      {
+        "id": "risquesnaturels-re-portail",
+        "titre": "risquesnaturels.re — Portail risques naturels Réunion",
+        "auteur": "AGORAH / DEAL Réunion",
+        "type": "portail",
+        "url": "https://www.risquesnaturels.re",
+        "note": "Portail central. Enquêtes publiques PPRN et PPRL en cours. Informations par commune."
+      },
+      {
+        "id": "aqc-zones-inondables-2024",
+        "titre": "Constructions en Zones Inondables — Conception et Adaptation",
+        "auteur": "AQC",
+        "annee": 2024,
+        "type": "guide",
+        "url": "https://qualiteconstruction.com/wp-content/uploads/2024/05/Plaquette-Constructions-Zones-Inondables-Conception-Adaptation-AQC.pdf",
+        "note": "Guide opérationnel pour architectes. Prescriptions techniques, matériaux, exemples."
+      },
+      {
+        "id": "cerema-resilience-2023",
+        "titre": "Aménagement résilient en zone inondable constructible",
+        "auteur": "CEREMA / Grenoble-Alpes Métropole",
+        "annee": 2023,
+        "type": "guide",
+        "url": "https://www.cerema.fr/fr/actualites/amenagement-resilient-zone-inondable-constructible",
+        "note": "5 principes : libre écoulement, sécurité des personnes, réduction dommages, absence pollution, culture du risque partagée."
+      },
+      {
+        "id": "deal-pprn-catalogue",
+        "titre": "PPRN en vigueur à La Réunion — Catalogue",
+        "auteur": "DEAL Réunion",
+        "type": "réglementaire",
+        "url": "https://www.reunion.developpement-durable.gouv.fr/plans-de-preventions-des-risques-naturels-pprn-r308.html",
+        "note": "Liste complète des PPRN et PAC par commune."
+      },
+      {
+        "id": "georisques-api-doc",
+        "titre": "API Géorisques v1 — Documentation",
+        "auteur": "BRGM / Géorisques",
+        "type": "api",
+        "url": "https://georisques.gouv.fr/doc-api",
+        "note": "Endpoint GASPAR : /api/v1/gaspar/risques?latlon={lat},{lon}&rayon=500. Couvre La Réunion."
+      }
+    ],
+    "p04": [
+      {
+        "id": "geoportail-urbanisme",
+        "titre": "Géoportail de l'Urbanisme — PLU nationaux",
+        "auteur": "DGALN / Ministère Logement",
+        "type": "données",
+        "url": "https://www.geoportail-urbanisme.gouv.fr",
+        "note": "PLU numérisés téléchargeables. Certaines communes réunionnaises rurales non encore intégrées."
+      },
+      {
+        "id": "rtaa-dom-arretes",
+        "titre": "RTAA DOM — Arrêtés 17 avril 2009 et 11 janvier 2016",
+        "auteur": "Ministère Écologie / DEAL",
+        "type": "réglementaire",
+        "url": "https://www.ecologie.gouv.fr/politiques-publiques/reglementation-thermique-acoustique-aeration-logements-neufs-outre-mer",
+        "note": "Textes réglementaires officiels. Arrêté thermique, acoustique, aération DOM."
+      },
+      {
+        "id": "fiche-rtaa-ventilation",
+        "titre": "Fiche d'application RTAA DOM 2016 — Ventilation naturelle",
+        "auteur": "DEAL Réunion / DHUP",
+        "annee": 2021,
+        "type": "guide",
+        "url": "https://www.ecologie.gouv.fr/politiques-publiques/reglementation-technique-construction-outre-mer",
+        "note": "PDF téléchargeable. Détails techniques pour le calcul de la ventilation naturelle RTAA."
+      },
+      {
+        "id": "fiche-rtaa-solaire",
+        "titre": "Fiche d'application RTAA DOM 2016 — Protection contre les rayonnements solaires",
+        "auteur": "DEAL Réunion / DHUP",
+        "annee": 2016,
+        "type": "guide",
+        "url": "https://www.ecologie.gouv.fr/politiques-publiques/reglementation-technique-construction-outre-mer",
+        "note": "Facteur solaire maximum par zone et orientation. Essentiel pour le dimensionnement des débords et brise-soleil."
+      }
+    ],
+    "p05": [
+      {
+        "id": "georisques-basias",
+        "titre": "BASIAS / BASOL — Sites et sols pollués",
+        "auteur": "BRGM / Géorisques",
+        "type": "données",
+        "url": "https://www.georisques.gouv.fr/risques/sites-et-sols-pollues/donnees",
+        "note": "Inventaire sites industriels anciens et sites pollués. Indispensable avant toute acquisition."
+      },
+      {
+        "id": "arcep-thd",
+        "titre": "Observatoire du déploiement du THD — La Réunion",
+        "auteur": "ARCEP",
+        "type": "données",
+        "url": "https://www.arcep.fr/cartes-et-donnees/nos-publications-chiffres/deploiement-fixe/le-tableau-de-bord-du-deploiement-de-la-fibre-en-france.html",
+        "note": "Couverture fibre optique par commune et adresse."
+      }
+    ],
+    "p06": [
+      {
+        "id": "envirobat-cocoteraie",
+        "titre": "Fiche enviroBAT — La Cocoteraie, Saint-Paul, 2015",
+        "auteur": "enviroBAT-Réunion / Faubourg 234 / DP Urba",
+        "annee": 2015,
+        "type": "retour-experience",
+        "url": "https://www.envirobat-reunion.com",
+        "note": "REX fondamental. Logements en zone inondable littorale réunionnaise. Dispositifs architecturaux de résilience."
+      },
+      {
+        "id": "envirobat-nout",
+        "titre": "Fiche enviroBAT — NOUT, premier logement participatif de La Réunion",
+        "auteur": "enviroBAT-Réunion",
+        "type": "retour-experience",
+        "url": "https://www.envirobat-reunion.com",
+        "note": "Référence habitat participatif Réunion. Mixité sociale, autopromotion, spécificités tropicales."
+      },
+      {
+        "id": "envirobat-maison-parc-national-ref-p06",
+        "titre": "Fiche enviroBAT — Maison du Parc National, Plaine des Palmistes",
+        "auteur": "enviroBAT-Réunion / AP Architectures + 2APMR",
+        "annee": 2014,
+        "type": "retour-experience",
+        "url": "https://www.envirobat-reunion.com/fr/portail/357/observatoire/46970/fiche-envirobat-reunion-maison-du-parc-national-plaine-des-palmistes-antoine-perrau-architectures-2apmr-2014.html",
+        "note": "Restauration écologique préalable (arrachage espèces envahissantes, replantation endémiques). Référence biodiversité + construction. Voir fiches_envirobat[].id = envirobat-maison-parc-national-palmistes."
+      },
+      {
+        "id": "cbm-atlas-envahissantes",
+        "titre": "Atlas des plantes envahissantes de La Réunion",
+        "auteur": "CBN Mascarin",
+        "type": "guide",
+        "url": "https://www.cbnm.org",
+        "note": "Référence pour l'identification des espèces exotiques envahissantes. Longose, Lantana, Filaos..."
+      },
+      {
+        "id": "seor-petrel-barau",
+        "titre": "Le Pétrel de Barau — Biologie et conservation",
+        "auteur": "SEOR / Parc National Réunion",
+        "type": "guide",
+        "url": "https://www.seor.fr",
+        "note": "Espèce endémique menacée. Nidification dans les falaises des hauts. Sensible à la pollution lumineuse nocturne."
+      },
+      {
+        "id": "inpn-znieff-reunion",
+        "titre": "ZNIEFF à La Réunion — Inventaire INPN",
+        "auteur": "MNHN / INPN",
+        "type": "données",
+        "url": "https://inpn.mnhn.fr/zone/znieff/list?reg=06",
+        "note": "Inventaire national des ZNIEFF (type 1 et 2) présentes à La Réunion."
+      }
+    ],
+    "p07": [
+      {
+        "id": "envirobat-centre-ressources",
+        "titre": "enviroBAT-Réunion — Centre de ressources (14 fiches PDF téléchargées)",
+        "auteur": "CAUE Réunion / DEAL / ADEME",
+        "type": "portail",
+        "url": "https://www.envirobat-reunion.com",
+        "note": "Fiches opérations classées : logements, enseignement, tertiaire, aménagements. 14 fiches PDF disponibles localement dans .docs/terlab-v1/references/envirobat/. Voir fiches_envirobat[] pour le détail."
+      },
+      {
+        "id": "mar-par-10ans",
+        "titre": "Prix d'Architecture de La Réunion — 10 ans 2014–2024",
+        "auteur": "Maison de l'Architecture de La Réunion / Ter'la éditions",
+        "annee": 2024,
+        "type": "publication",
+        "url": "https://maisondelarchitecture.re",
+        "note": "Ouvrage rétrospectif des projets primés. Référence culture architecturale locale."
+      },
+      {
+        "id": "capeb-bois-reunion",
+        "titre": "Construction bois et charpente à La Réunion — Guide artisans",
+        "auteur": "CAPEB Réunion",
+        "type": "guide",
+        "url": "https://www.capeb974.fr",
+        "note": "Techniques locales, essences disponibles, traitement anti-termites, cyclone."
+      },
+      {
+        "id": "three-js-r182",
+        "titre": "Three.js r182 — Documentation",
+        "auteur": "Three.js Foundation",
+        "type": "api",
+        "url": "https://threejs.org/docs/",
+        "note": "Version Three.js utilisée dans BIMSHOW et TERLAB pour l'extrusion gabarit et l'export GLB."
+      }
+    ],
+    "p08": [
+      {
+        "id": "carsat-reunion-btp",
+        "titre": "Prévention BTP en milieu tropical — Guide CARSAT",
+        "auteur": "CARSAT Réunion-Mayotte",
+        "type": "guide",
+        "url": "https://www.carsat-reunionmayotte.fr",
+        "note": "Risques spécifiques chantier Réunion : chaleur, leptospirose, terrassements basaltiques."
+      },
+      {
+        "id": "ars-oi-dengue",
+        "titre": "Dengue et maladies vectorielles à La Réunion",
+        "auteur": "ARS Océan Indien",
+        "type": "guide",
+        "url": "https://www.ars.sante.fr",
+        "note": "Protocoles prévention, élimination gîtes larvaires, équipements de protection."
+      }
+    ],
+    "p09": [
+      {
+        "id": "ademe-bilan-carbone",
+        "titre": "Bilan Carbone® — Méthodologie ADEME",
+        "auteur": "ADEME",
+        "type": "outil",
+        "url": "https://bilans-ges.ademe.fr",
+        "note": "Référence pour le calcul des émissions de CO₂eq. Facteurs d'émission matériaux."
+      },
+      {
+        "id": "caue-biotool",
+        "titre": "BIOTOOL — Guide matériaux biosourcés à La Réunion",
+        "auteur": "CAUE Réunion / DEAL",
+        "type": "outil",
+        "url": "https://www.caue974.com",
+        "note": "Inventaire des matériaux biosourcés disponibles localement. Performances thermiques et carbone."
+      },
+      {
+        "id": "rtaa-dom-ecs-solaire",
+        "titre": "Fiche d'application RTAA DOM — Eau chaude sanitaire solaire",
+        "auteur": "DEAL Réunion / DHUP",
+        "annee": 2016,
+        "type": "réglementaire",
+        "url": "https://www.ecologie.gouv.fr/politiques-publiques/reglementation-technique-construction-outre-mer",
+        "note": "ECS solaire obligatoire couvrant ≥ 50% des besoins en zones 1 et 2."
+      }
+    ],
+    "p10": [
+      {
+        "id": "envirobat-renovation",
+        "titre": "Rénovation bioclimatique tropicale — Fiches enviroBAT",
+        "auteur": "enviroBAT-Réunion / CAUE",
+        "type": "retour-experience",
+        "url": "https://www.envirobat-reunion.com",
+        "note": "REX rénovations bioclimatiques réunionnaises. Voir aussi fiches_envirobat[] : COARM (réemploi intégral), Agence T&T (sobriété matériaux locaux), COREM (Feng Shui + qualité énergie)."
+      },
+      {
+        "id": "adil974-copro",
+        "titre": "Guide copropriété et entretien — ADIL Réunion",
+        "auteur": "ADIL 974",
+        "type": "guide",
+        "url": "https://www.adil974.com",
+        "note": "Aspects juridiques et financiers de l'entretien. Obligations propriétaires."
+      },
+      {
+        "id": "deal-dpe-dom",
+        "titre": "DPE adapté aux DOM — Méthode et seuils spécifiques",
+        "auteur": "DEAL Réunion / DHUP",
+        "type": "réglementaire",
+        "url": "https://www.reunion.developpement-durable.gouv.fr",
+        "note": "Le DPE DOM utilise des seuils et une méthode de calcul différents de la métropole (pas de chauffage en général)."
+      }
+    ],
+    "p11": [
+      {
+        "id": "ileva-dechets-btp",
+        "titre": "Filières de valorisation déchets BTP — La Réunion",
+        "auteur": "ILEVA / DEAL Réunion",
+        "type": "guide",
+        "url": "https://www.ileva.re",
+        "note": "Déchetteries professionnelles, filières inertes (béton, parpaings), dangereux (amiante), valorisation bois."
+      },
+      {
+        "id": "ademe-economie-circulaire",
+        "titre": "Économie circulaire dans la construction",
+        "auteur": "ADEME",
+        "type": "guide",
+        "url": "https://www.ademe.fr",
+        "note": "Passeport matériaux, réemploi, ACV fin de vie. Applicable au contexte insulaire réunionnais."
+      }
+    ],
+    "p12": [
+      {
+        "id": "jspdf-docs",
+        "titre": "jsPDF v2.5 — Documentation",
+        "auteur": "MrRio / jsPDF contributors",
+        "type": "api",
+        "url": "https://raw.githack.com/MrRio/jsPDF/master/docs/",
+        "note": "Librairie PDF client-side utilisée pour les exports A3 TERLAB."
+      },
+      {
+        "id": "dxf-writer-docs",
+        "titre": "dxf-writer — Documentation",
+        "auteur": "Yasuhiro Yahata",
+        "type": "api",
+        "url": "https://github.com/PointLineWorld/dxf-writer",
+        "note": "Librairie JavaScript pour la génération de fichiers DXF (parcelle, reculs, gabarit)."
+      }
+    ],
+    "p13_world": [
+      {
+        "id": "koppen-geiger-2018",
+        "titre": "Present and future Köppen-Geiger climate classification maps at 1-km resolution",
+        "auteur": "Beck, H.E. et al.",
+        "annee": 2018,
+        "type": "publication-academique",
+        "url": "https://www.nature.com/articles/sdata2018214",
+        "doi": "10.1038/sdata2018214",
+        "note": "Référence académique pour la classification climatique mondiale utilisée dans la Phase World."
+      },
+      {
+        "id": "koenigsberger-tropical",
+        "titre": "Tropical Architecture in the Dry and Humid Zones",
+        "auteur": "Koenigsberger, O.H. et al.",
+        "annee": 1974,
+        "type": "ouvrage",
+        "editeur": "Krieger Publishing",
+        "note": "Référence fondatrice de l'architecture bioclimatique tropicale. Toujours pertinent."
+      },
+      {
+        "id": "climate-consultant-ucla",
+        "titre": "Climate Consultant — Analyse données climatiques locales",
+        "auteur": "UCLA Energy Design Tools Group",
+        "type": "outil",
+        "url": "https://www.energy-design-tools.aud.ucla.edu/climate-consultant/",
+        "note": "Analyse les fichiers EPW (EnergyPlus Weather) pour produire des recommandations bioclimatiques. Fichier EPW La Réunion disponible sur ladybug.tools."
+      },
+      {
+        "id": "vigano-eau-urbanisme",
+        "titre": "Pour de nouvelles relations entre l'eau et l'urbanisme",
+        "auteur": "Paola Viganò",
+        "type": "ouvrage",
+        "note": "Référence théorique pour l'approche 'faire avec' l'eau. Territoire isotrope, ville éponge."
+      },
+      {
+        "id": "envirobat-projet-mahots",
+        "titre": "Fiche enviroBAT — Opération Les Mahots, Le Port (Co-Architectes, 2018)",
+        "auteur": "enviroBAT-Réunion / Co-Architectes",
+        "type": "retour-experience",
+        "url": "https://www.envirobat-reunion.com/fr/portail/357/observatoire/49223/fiche-envirobat-reunion-operation-les-mahots-le-port-co-architectes-2019.html",
+        "note": "45 LLTS. Dilemme ventilation/acoustique résolu par implantation perpendiculaire + mur antibruit chicanes. PDF disponible : .docs/terlab-v1/references/envirobat/fiche-les-mahots-le-port-2019.pdf. Voir fiches_envirobat[].id = envirobat-les-mahots-le-port."
+      },
+      {
+        "id": "mar-pau",
+        "titre": "Architecture contemporaine à La Réunion — Prix d'Architecture Réunion (PAR)",
+        "auteur": "Maison de l'Architecture de La Réunion",
+        "annee": 2014,
+        "type": "publication",
+        "url": "https://maisondelarchitecture.re",
+        "note": "Depuis 2014, le PAR recense et valorise les meilleures réalisations architecturales de l'île."
+      },
+      {
+        "id": "laaroussi-architecture-tropicale",
+        "titre": "Architecture tropicale — Techniques de confort dans les pays chauds",
+        "auteur": "CTBAT / Jean-Louis Izard",
+        "type": "ouvrage",
+        "note": "Manuel technique de référence pour la conception bioclimatique en zone tropicale humide et sèche."
+      }
+    ]
+  }
+}

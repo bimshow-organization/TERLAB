@@ -1,0 +1,110 @@
+{
+  "meta": {
+    "version": "2026-04",
+    "region": "La Réunion",
+    "generated": "2026-04-07",
+    "commune": "Sainte-Suzanne",
+    "insee": "97421",
+    "intercommunalite": "CINOR",
+    "plu_type": "PLU",
+    "plu_date_approbation": "2025-09-29",
+    "source": "GPU DU_97420"
+  },
+  "zones": {
+    "U": {
+      "label": "Zones UA/UB/UC résidentielles",
+      "type": "U",
+      "sous_zones": [
+        "UA",
+        "UB",
+        "UC"
+      ],
+      "reculs": {
+        "sep_lat_m": 3,
+        "sep_fond_m": 3,
+        "inter_batiments_m": 4
+      },
+      "stationnement": {
+        "logement_lls": "0.5 pl/logt",
+        "logement_prive_lt80m2": "1 pl/logt",
+        "logement_prive_gte80m2": "2 pl/logt"
+      },
+      "logement_aide": {
+        "pct_aide": 40
+      },
+      "_meta": {
+        "confidence": 0.8,
+        "ambiguites": [
+          "Hauteurs et emprise non chiffrées — renvoi graphique"
+        ]
+      }
+    },
+    "UE": {
+      "label": "Zone activités",
+      "type": "U",
+      "sous_type": "activites",
+      "reculs": {
+        "voie_note": "D=H/2 min 4m",
+        "sep_lat_m": 4,
+        "sep_fond_m": 4
+      },
+      "hauteurs": {
+        "hf_max_m": 12
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 70
+      },
+      "permeabilite": {
+        "permeable_min_pct": 15
+      },
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    },
+    "AU": {
+      "label": "Zones à urbaniser",
+      "type": "AU",
+      "ref": "zone U correspondante",
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    },
+    "A": {
+      "label": "Zone agricole",
+      "type": "A",
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 5
+      },
+      "hauteurs": {
+        "h_max_m": 6
+      },
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    },
+    "N": {
+      "label": "Zone naturelle",
+      "type": "N",
+      "reculs": {
+        "voie_principale_m": 6,
+        "sep_lat_m": 4
+      },
+      "hauteurs": {
+        "h_max_m": 6
+      },
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    }
+  },
+  "regles_communes": {
+    "ravine_recul_m": 10,
+    "cloture_voie_hauteur_max_m": 2,
+    "rtaa_dom": "2016"
+  }
+}

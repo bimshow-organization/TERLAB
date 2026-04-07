@@ -1,0 +1,346 @@
+{
+  "demos": [
+    {
+      "id": "demo-ville",
+      "label": "Terrain urbain dense — Saint-Denis centre",
+      "description": "Parcelle en tissu urbain dense, CINOR, proche d'une ravine, PPRN inondation zone B2, PLU zone UA.",
+      "thumbnail": "assets/demos/demo-ville-thumb.jpg",
+      "scenario_pedagogique": "Illustre les contraintes typiques d'un projet urbain réunionnais : risque inondation en zone B2, reculs stricts, RTAA zone 1, accès SDIS à vérifier.",
+      "terrain": {
+        "adresse": "Chemin des Alpilles, 97400 Saint-Denis",
+        "commune": "Saint-Denis",
+        "code_insee": "97411",
+        "intercommunalite": "CINOR",
+        "parcelles_cadastrales": [
+          { "section": "AE", "numero": "0298" },
+          { "section": "AE", "numero": "0300" }
+        ],
+        "note_cadastre": "Données cadastrales indicatives — sans valeur juridique. Un bornage par géomètre-expert est indispensable avant tout projet.",
+        "lat": -20.87905,
+        "lng": 55.45095,
+        "altitude_ngr": 38,
+        "contenance_m2": 845,
+        "parcelle_geojson": {
+          "type": "Polygon",
+          "coordinates": [[[55.45069941,-20.87889933],[55.45077741,-20.87915721],[55.45080892,-20.87926147],[55.45082365,-20.87930623],[55.45100626,-20.87925116],[55.4511049,-20.87922088],[55.45123429,-20.87918113],[55.45139049,-20.87913323],[55.4513453,-20.87898485],[55.45105683,-20.87906237],[55.45098319,-20.87882015],[55.45069941,-20.87889933]]]
+        }
+      },
+      "p01_topographie": {
+        "altitude_min": 36,
+        "altitude_max": 40,
+        "pente_moy_pct": 2,
+        "orientation": "Nord-Est",
+        "ravine_proche": "Ravine Saint-Denis",
+        "distance_ravine_m": 120,
+        "station_meteo": "Saint-Denis — Gillot",
+        "pluvio_annuelle_mm": 800,
+        "temp_moy_c": 26,
+        "vent_moyen_kh": 15,
+        "zone_pluvio": "sous_vent"
+      },
+      "p02_geologie": {
+        "nature": "basalte_recents_coulees",
+        "remblai": false,
+        "geotechnicien_requis": false,
+        "nappe_phrea_100m": false,
+        "zone_sismique": "2"
+      },
+      "p03_risques": {
+        "zone_pprn": "B2",
+        "cote_reference_ngr": 36.5,
+        "distance_mer_m": 3200,
+        "zone_pprl": false,
+        "sdis_hydrant_distance_m": 80,
+        "sdis_acces_ok": true,
+        "risques_georisques": ["Inondation PPRi aléa modéré (B2)", "Cyclone tropical", "Mouvement de terrain (hors zone)", "Séisme zone 2"],
+        "simulation_scenario": "Avec slider à +2m, la parcelle est à 0.5m au-dessus du niveau d'eau simulé — montrer la marge de sécurité faible.",
+        "note_pedagogique": "La zone B2 permet de construire sous conditions : plancher habitable à +0.40m au-dessus de la cote de référence NGR. Toute construction en sous-sol est interdite."
+      },
+      "p04_plu": {
+        "zone_plu": "UA",
+        "recul_voie_principale_m": 5,
+        "recul_voie_secondaire_m": 2,
+        "recul_limite_sep_m": 3,
+        "recul_fond_m": 3,
+        "hauteur_max_m": 9,
+        "emprise_sol_max_pct": 60,
+        "zone_rtaa": "1",
+        "secteur_abf": false,
+        "sup_lignes_ht": false,
+        "plu_url": "https://www.geoportail-urbanisme.gouv.fr"
+      },
+      "p05_voisinage": {
+        "icpe_present": false,
+        "assainissement": "collectif",
+        "eau_potable": "reseau_public",
+        "fibre": true,
+        "sdis_hydrant_distance_m": 80,
+        "hauteurs_voisins_m": [7, 9, 6],
+        "nuisances_sonores": "modérées",
+        "batiments_3d_ok": true
+      },
+      "p06_biodiversite": {
+        "parc_national": "hors_parc",
+        "znieff": "aucune",
+        "corridor_tvb": "Oui (ravine Saint-Denis à 120m)",
+        "especes_protegees": [],
+        "especes_invasives": ["Lantana caché en bordure est"],
+        "defrichement": "non",
+        "brise_vent": false
+      },
+      "p07_esquisse": {
+        "surface_plancher_m2": 180,
+        "niveaux": 2,
+        "gabarit_l_m": 12,
+        "gabarit_w_m": 8,
+        "gabarit_h_m": 7.2,
+        "type_structure": "maconnerie",
+        "type_toiture": "4pentes",
+        "emprise_calculee_pct": 11.4,
+        "checks_plu": {
+          "emprise_sol": "vert",
+          "hauteur": "vert",
+          "recul_voie": "vert",
+          "recul_sep": "vert",
+          "recul_fond": "vert"
+        },
+        "note_pedagogique": "Emprise 96m² / 845m² = 11.4% << 60% max. Hauteur 7.2m < 9m max. Tous checks verts. C'est un gabarit modeste sur une grande parcelle."
+      },
+      "phase_progress_demo": [0, 1, 2, 3, 4, 5, 6, 7]
+    },
+
+    {
+      "id": "demo-village",
+      "label": "Terrain bourg rural — Saint-Joseph",
+      "description": "Parcelle en bourg rural, CASUD, pente modérée, végétation endémique, proche zone d'adhésion Parc National.",
+      "thumbnail": "assets/demos/demo-village-thumb.jpg",
+      "scenario_pedagogique": "Illustre les enjeux d'un bourg rural réunionnais : biodiversité, pente, RTAA zone 2, distance Parc National.",
+      "terrain": {
+        "adresse": "Chemin près Rivière des Remparts, 97480 Saint-Joseph",
+        "commune": "Saint-Joseph",
+        "code_insee": "97416",
+        "intercommunalite": "CASUD",
+        "parcelles_cadastrales": [
+          { "section": "BN", "numero": "0637" }
+        ],
+        "note_cadastre": "Données cadastrales indicatives — sans valeur juridique. Un bornage par géomètre-expert est indispensable avant tout projet.",
+        "lat": -21.38337,
+        "lng": 55.61565,
+        "altitude_ngr": 185,
+        "contenance_m2": 1240,
+        "parcelle_geojson": {
+          "type": "Polygon",
+          "coordinates": [[[55.61570563,-21.38346397],[55.6156011,-21.38345218],[55.61559846,-21.38341476],[55.61557883,-21.38337937],[55.61556593,-21.38335605],[55.61559383,-21.38335348],[55.6155976,-21.38335261],[55.61559233,-21.38331851],[55.61558823,-21.38328243],[55.61563372,-21.38327531],[55.61566067,-21.38327101],[55.61566917,-21.38331065],[55.61569294,-21.38332711],[55.61572805,-21.38332676],[55.61570563,-21.38346397]]]
+        }
+      },
+      "p01_topographie": {
+        "altitude_min": 180,
+        "altitude_max": 195,
+        "pente_moy_pct": 12,
+        "orientation": "Ouest",
+        "ravine_proche": "Rivière des Remparts",
+        "distance_ravine_m": 380,
+        "station_meteo": "Saint-Joseph — Manapany",
+        "pluvio_annuelle_mm": 1500,
+        "temp_moy_c": 24,
+        "zone_pluvio": "vent_modéré",
+        "note_pedagogique": "Pente 12% significative — terrassement nécessaire. Ubac ou adret selon orientation à préciser avec boussole sur site."
+      },
+      "p02_geologie": {
+        "nature": "basalte_anciens_series",
+        "remblai": false,
+        "geotechnicien_requis": false,
+        "nappe_phrea_100m": false,
+        "zone_sismique": "2"
+      },
+      "p03_risques": {
+        "zone_pprn": "W",
+        "cote_reference_ngr": null,
+        "distance_mer_m": 5800,
+        "zone_pprl": false,
+        "sdis_hydrant_distance_m": 210,
+        "sdis_acces_ok": true,
+        "risques_georisques": ["Cyclone tropical", "Mouvement de terrain (aléa faible)", "Séisme zone 2"],
+        "note_pedagogique": "Terrain hors zone PPRN inondation (zone W). Le risque principal est cyclonique (vents). Pente > 10% : vigilance mouvements de terrain lors d'épisodes pluvieux intenses."
+      },
+      "p04_plu": {
+        "zone_plu": "UB",
+        "recul_voie_principale_m": 5,
+        "recul_voie_secondaire_m": 2,
+        "recul_limite_sep_m": 2.5,
+        "recul_fond_m": 2,
+        "hauteur_max_m": 7,
+        "emprise_sol_max_pct": 40,
+        "zone_rtaa": "2",
+        "secteur_abf": false,
+        "note_pedagogique": "Zone RTAA 2 (mi-pentes 400–800m) ici à 185m — à vérifier. Certains PLU définissent la zone RTAA selon l'altitude réelle, d'autres utilisent les plages DEAL."
+      },
+      "p05_voisinage": {
+        "icpe_present": false,
+        "assainissement": "ANC",
+        "eau_potable": "reseau_public",
+        "fibre": false,
+        "sdis_hydrant_distance_m": 210,
+        "sdis_acces_ok": true,
+        "nuisances_sonores": "faibles",
+        "note_pedagogique": "ANC — Assainissement Non Collectif. Sur pente 12% : filière compacte agréée SPANC requise. Prévoir budget supplémentaire 8 000 à 15 000€."
+      },
+      "p06_biodiversite": {
+        "parc_national": "zone_adhesion_proche",
+        "distance_parc_m": 650,
+        "znieff": "ZNIEFF type 2 à 400m",
+        "corridor_tvb": "Oui (terrain concerné — pente végétalisée)",
+        "especes_protegees": ["Flore endémique (vérification CBN Mascarin recommandée)"],
+        "especes_invasives": ["Longose (Hedychium gardnerianum)", "Raisiniers des hauts"],
+        "defrichement": "partiel",
+        "brise_vent": true,
+        "note_pedagogique": "Zone d'adhésion Parc National à 650m. Éclairage nocturne : luminaires full cut-off obligatoires. Contacter SEOR pour inventaire faunistique si déclenchement de travaux proches de la lisière."
+      },
+      "p07_esquisse": {
+        "surface_plancher_m2": 130,
+        "niveaux": 1,
+        "gabarit_l_m": 14,
+        "gabarit_w_m": 10,
+        "gabarit_h_m": 4.5,
+        "type_structure": "bois",
+        "type_toiture": "2pentes",
+        "emprise_calculee_pct": 11.3,
+        "checks_plu": {
+          "emprise_sol": "vert",
+          "hauteur": "vert",
+          "recul_voie": "vert",
+          "recul_sep": "vert",
+          "recul_fond": "vert"
+        },
+        "note_pedagogique": "Charpente bois recommandée : pente 12% → fondations sur plots permettant adaptation au terrain. Traitement anti-termites OBLIGATOIRE. Zone RTAA 2 → ECS solaire obligatoire."
+      },
+      "phase_progress_demo": [0, 1, 2, 3, 4, 5, 6, 7]
+    },
+
+    {
+      "id": "demo-isole",
+      "label": "Terrain isolé montagnard — Plaine des Cafres",
+      "description": "Parcelle en zone montagnarde à 1620m NGR, froid nocturne (gel possible), zone A agricole, Parc National cœur proche, risques cycloniques amplifiés en altitude.",
+      "thumbnail": "assets/demos/demo-isole-thumb.jpg",
+      "scenario_pedagogique": "Illustre les cas extrêmes : zone A agricole (constructibilité quasi nulle), altitude élevée (RTAA zone 3, gel nocturne), Pétrel de Barau, accès SDIS non conforme.",
+      "terrain": {
+        "adresse": "Lieu-dit Bras de la Plaine, 97418 La Plaine des Cafres",
+        "commune": "Le Tampon",
+        "code_insee": "97422",
+        "intercommunalite": "CASUD",
+        "parcelles_cadastrales": [
+          { "section": "DM", "numero": "0344", "note": "Parcelle principale — emprise projet" }
+        ],
+        "note_cadastre": "Terrain défini par coordonnées GPS. Le polygone ne suit pas les limites cadastrales. Parcelles DM 0344 et voisines potentiellement concernées. Un bornage par géomètre-expert est indispensable.",
+        "lat": -21.2340,
+        "lng": 55.5612,
+        "altitude_ngr": 1620,
+        "contenance_m2": 3500,
+        "parcelle_geojson": {
+          "type": "Polygon",
+          "coordinates": [[[55.5605,-21.2344],[55.5619,-21.2344],[55.5619,-21.2336],[55.5605,-21.2336],[55.5605,-21.2344]]]
+        }
+      },
+      "p01_topographie": {
+        "altitude_min": 1610,
+        "altitude_max": 1635,
+        "pente_moy_pct": 8,
+        "orientation": "Nord",
+        "ravine_proche": "Rivière des Remparts — tête de bassin",
+        "distance_ravine_m": 900,
+        "station_meteo": "Plaine des Cafres — Le Tampon hauts",
+        "pluvio_annuelle_mm": 2400,
+        "temp_moy_c": 14,
+        "temp_min_c": 3,
+        "temp_max_c": 22,
+        "amplitude_thermique_c": 19,
+        "zone_pluvio": "vent_fort",
+        "brouillard_frequent": true,
+        "alerte_altitude": true,
+        "note_pedagogique": "Amplitude thermique 19°C — record réunionnais. Le matin à l'aube en juillet : gelée blanche sur les toits. L'après-midi : 22°C au soleil. L'isolation thermique n'est pas une option ici, c'est une nécessité architecturale."
+      },
+      "p02_geologie": {
+        "nature": "coulees_recentes_piton_fournaise",
+        "remblai": false,
+        "geotechnicien_requis": true,
+        "note_geo": "Coulées de lave récentes. Basalte très résistant mais surface parfois scoriée. Vérifier la continuité de la dalle basaltique.",
+        "nappe_phrea_100m": false,
+        "zone_sismique": "2"
+      },
+      "p03_risques": {
+        "zone_pprn": "W",
+        "cote_reference_ngr": null,
+        "distance_mer_m": 22000,
+        "zone_pprl": false,
+        "risque_gel": true,
+        "sdis_hydrant_distance_m": 800,
+        "sdis_acces_ok": false,
+        "sdis_note": "Chemin non revêtu, portance insuffisante pour engins lourds en saison des pluies. Accès SDIS non conforme selon critères standard.",
+        "risques_georisques": ["Cyclone tropical (vents amplifiés en altitude)", "Mouvement de terrain volcanique", "Séisme zone 2", "Feux de végétation (ericacées en saison sèche)"],
+        "note_pedagogique": "Accès SDIS non conforme = potentiel refus de PC. Solution : créer une piste de 3m minimum, portance 13t, ou justifier d'une aire de retournement conforme. Le coût peut être prohibitif."
+      },
+      "p04_plu": {
+        "zone_plu": "A",
+        "zone_plu_note": "Zone Agricole — constructibilité quasi nulle. Seul le logement de l'exploitant agricole peut être autorisé, sous conditions strictes.",
+        "recul_voie_m": 8,
+        "recul_limite_sep_m": 10,
+        "hauteur_max_m": 5,
+        "emprise_sol_max_pct": 10,
+        "zone_rtaa": "3",
+        "secteur_abf": false,
+        "note_pedagogique": "ATTENTION — Zone A = terrain quasi inconstructible pour un projet résidentiel standard. Un projet nécessiterait soit : 1) une dérogation préfectorale logement exploitant agricole, 2) un changement de destination de zone (révision PLU, procédure 2-5 ans), ou 3) un projet agricole (gîte rural, ferme)."
+      },
+      "p05_voisinage": {
+        "icpe_present": false,
+        "assainissement": "ANC_obligatoire",
+        "eau_potable": "captage_prive_AEP",
+        "electricite_disponible": true,
+        "fibre": false,
+        "reseau_gaz": false,
+        "sdis_hydrant_distance_m": 800,
+        "sdis_acces_ok": false,
+        "nuisances_sonores": "aucune",
+        "note_pedagogique": "Pas de réseau public d'eau potable à cette altitude. Captage privé soumis à autorisation préfectorale. L'autonomie en eau est un enjeu majeur du projet."
+      },
+      "p06_biodiversite": {
+        "parc_national": "zone_coeur_proche",
+        "distance_parc_coeur_m": 200,
+        "znieff": "ZNIEFF type 1 et type 2 (terrain potentiellement concerné)",
+        "corridor_tvb": "Oui (terrain en zone de connexion Parc National)",
+        "especes_protegees": ["Pétrel de Barau (nidification confirmée à moins de 500m)", "Papangue (Circus maillardi)", "Endémiques végétaux (ericacées, indigènes hauts)"],
+        "especes_invasives": ["Ajoncs (Ulex europaeus)", "Canne de Castille"],
+        "defrichement": "non",
+        "brise_vent": true,
+        "alerte_petrel": true,
+        "note_pedagogique": "Pétrel de Barau nidifiant à moins de 500m. Tout éclairage nocturne est INTERDIT sauf luminaires full cut-off homologués. Contacter obligatoirement SEOR et le Parc National avant tout projet. Une étude d'impact environnementale est probablement requise."
+      },
+      "p07_esquisse": {
+        "surface_plancher_m2": 90,
+        "niveaux": 1,
+        "gabarit_l_m": 11,
+        "gabarit_w_m": 9,
+        "gabarit_h_m": 4.5,
+        "type_structure": "bois",
+        "type_toiture": "4pentes",
+        "isolation_specifique": "Isolation renforcée obligatoire. Amplitude thermique 19°C. Laine de bois ou ouate de cellulose. Ruptures de pont thermique. Poêle à bois ou PAC géothermique.",
+        "emprise_calculee_pct": 2.8,
+        "checks_plu": {
+          "emprise_sol": "vert",
+          "hauteur": "vert",
+          "recul_voie": "vert",
+          "recul_sep": "vert",
+          "recul_fond": "vert",
+          "zone_A_bloquant": "DANGER — Zone A : vérifier dérogation exploitant agricole"
+        },
+        "note_pedagogique": "Paradoxe : les checks PLU de reculs/gabarit sont verts, MAIS la zone A rend le projet quasiment impossible sans dérogation. Un terrain est plus qu'une géométrie — sa zone PLU conditionne tout.",
+        "materiaux_recommandes": [
+          "Bois lamellé-collé (résistance cyclone + isolation)",
+          "Laine de bois ou ouate (isolation amplitude thermique)",
+          "Tôle galvanisée (résistance gel + vent + cyclone)",
+          "Fondations plots béton (adaptation terrain volcanique)"
+        ]
+      },
+      "phase_progress_demo": [0, 1, 2, 3, 4, 5, 6, 7]
+    }
+  ]
+}

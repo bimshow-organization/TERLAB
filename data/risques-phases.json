@@ -1,0 +1,299 @@
+{
+  "version": "1.0",
+  "note": "Risques pédagogiques et techniques associés à chaque phase. Niveau : warning (orange), danger (rouge), info (bleu), bigdata (violet).",
+  "risques": [
+    {
+      "id": "cadastre-perime",
+      "phase": 0,
+      "niveau": "warning",
+      "titre": "Données cadastrales périmées",
+      "corps": "Le PCI (Plan Cadastral Informatisé) est mis à jour trimestriellement. Les divisions parcellaires récentes (moins de 3 mois) peuvent ne pas encore être intégrées. Une parcelle divisée récemment peut encore apparaître comme une seule unité.",
+      "consequence": "Référence cadastrale incorrecte → toutes les phases suivantes peuvent être erronées.",
+      "action": "Vérifier la date de mise à jour PCI sur data.geopf.fr avant de valider les références.",
+      "source": "DGFiP / IGN Géoplateforme"
+    },
+    {
+      "id": "bigdata-metadata",
+      "phase": 0,
+      "niveau": "bigdata",
+      "titre": "Métadonnées cachées dans les exports",
+      "corps": "Les fichiers PDF, DXF et GLB générés par TERLAB contiennent des métadonnées automatiques : auteur, logiciel, machine, date, et parfois des coordonnées GPS. Ces données 'fantômes' peuvent identifier involontairement l'étudiant ou révéler des informations confidentielles.",
+      "consequence": "Diffusion externe non maîtrisée de données personnelles ou de localisation.",
+      "action": "Purger les métadonnées avant toute diffusion externe. Outils : ExifTool (PDF/images), ODA File Converter (DXF).",
+      "applicable_aussi_phases": [7, 12]
+    },
+    {
+      "id": "indivision",
+      "phase": 0,
+      "niveau": "warning",
+      "titre": "Parcelles en indivision",
+      "corps": "Certaines parcelles réunionnaises sont en indivision (plusieurs propriétaires sans division formelle). Le projet nécessite l'accord de tous les co-indivisaires pour un permis de construire.",
+      "consequence": "Blocage du permis de construire si un co-indivisaire s'oppose.",
+      "action": "Vérifier l'état d'indivision via le service publicité foncière de la mairie ou un notaire."
+    },
+    {
+      "id": "pluies-cycloniques",
+      "phase": 1,
+      "niveau": "danger",
+      "titre": "Sous-estimation des pluies cycloniques",
+      "corps": "La pluviométrie réunionnaise est parmi les plus élevées au monde lors des passages cycloniques. Des précipitations de 1 000mm en 24h sont documentées. Les ravines peuvent atteindre des crues éclair en moins de 30 minutes.",
+      "consequence": "Fondations sous-dimensionnées, terrain inondé, accès coupé, chantier emporté.",
+      "action": "Consulter les données historiques Météo-France Réunion pour la station la plus proche. Prendre en compte la pluviométrie cyclonique — pas seulement la pluviométrie annuelle."
+    },
+    {
+      "id": "canalisation-vents",
+      "phase": 1,
+      "niveau": "warning",
+      "titre": "Effet de canalisation des vents en ravine",
+      "corps": "Les ravines peuvent créer des effets de canalisation qui amplifient significativement les vitesses de vent par rapport aux données météo de référence. Un terrain au fond d'une ravine peut être exposé à des vents supérieurs à ceux de la zone RTAA théorique.",
+      "consequence": "Menuiseries et toiture sous-dimensionnées si le vent de site n'est pas pris en compte.",
+      "action": "Si terrain à moins de 100m d'une ravine : envisager une étude de vent localisée ou appliquer la classification RTAA supérieure."
+    },
+    {
+      "id": "confusion-ngr-ngf",
+      "phase": 1,
+      "niveau": "warning",
+      "titre": "NGR ≠ NGF — Confusion des référentiels altimétriques",
+      "corps": "Le Nivellement Général de La Réunion (NGR) diffère du Nivellement Général de la France (NGF) d'environ 50cm. Toutes les cotes altimétriques à La Réunion sont en NGR. Les données IGN et DEM Mapbox sont en NGF — une correction est nécessaire.",
+      "consequence": "Cote de référence PPRN mal interprétée → simulation d'inondation décalée.",
+      "action": "Appliquer la correction NGR → NGF : cote_NGF = cote_NGR + 0.48m (valeur approx.). Vérifier avec DEAL pour chaque PPRN spécifique."
+    },
+    {
+      "id": "remblai-cache",
+      "phase": 2,
+      "niveau": "danger",
+      "titre": "Zone remblayée non détectée",
+      "corps": "À La Réunion, de nombreuses zones côtières (Port, Possession, embouchures de ravines) ont été remblayées. Un terrain en remblai peut présenter des tassements différentiels importants, incompatibles avec une construction sans fondations spéciales.",
+      "consequence": "Fissures structurelles, désordres de fondations, effondrement partiel à terme.",
+      "action": "En zone côtière ou proche d'une ancienne ravine remblayée : étude géotechnique G1 obligatoire."
+    },
+    {
+      "id": "geotechnique-obligatoire",
+      "phase": 2,
+      "niveau": "warning",
+      "titre": "Étude géotechnique G1 obligatoire non réalisée",
+      "corps": "En zone PPRN mouvements de terrain (R ou B), l'étude de sol G1 est légalement obligatoire avant dépôt de PC (article L562 du Code de l'Environnement).",
+      "consequence": "Refus de permis de construire si G1 manquante en zone PPRN mouvement.",
+      "action": "Identifier un géotechnicien agréé (annuaire SYNTEC). Délai : 2 à 4 semaines. Coût indicatif : 2 000 à 5 000€."
+    },
+    {
+      "id": "captage-aep",
+      "phase": 2,
+      "niveau": "warning",
+      "titre": "Périmètre de protection captage AEP",
+      "corps": "Certains secteurs des hauts de La Réunion sont en périmètre de protection de captage d'Alimentation en Eau Potable. Des servitudes strictes peuvent limiter ou interdire la construction dans un rayon de 100 à 500m.",
+      "consequence": "Construction interdite ou fortement contrainte, servitude d'utilité publique.",
+      "action": "Vérifier auprès de SPL Eau de Réunion ou de la DEAL si un périmètre de protection AEP est présent."
+    },
+    {
+      "id": "pac-prime-ppr",
+      "phase": 3,
+      "niveau": "danger",
+      "titre": "PAC prime sur PPR non approuvé",
+      "corps": "Si le PPRN de la commune n'est pas encore approuvé, le Porter à Connaissance (PAC) préfectoral s'applique. En cas de contradiction entre PAC et PPR en cours d'élaboration, toujours retenir le document le plus contraignant.",
+      "consequence": "Terrain considéré constructible selon PLU mais inconstructible selon PAC.",
+      "action": "Consulter simultanément le PLU, le PPRN approuvé (si existant) ET le PAC via la Préfecture de La Réunion."
+    },
+    {
+      "id": "multi-aleas",
+      "phase": 3,
+      "niveau": "danger",
+      "titre": "Interaction simultanée de plusieurs aléas non évaluée",
+      "corps": "À La Réunion, les aléas se combinent lors des passages cycloniques : vents violents + pluies intenses + houle cyclonique + submersion marine + crues rapides des ravines. Cette simultanéité n'est pas toujours intégrée dans les PPR.",
+      "consequence": "Sous-évaluation du risque réel. Dommages plus importants que prévu.",
+      "action": "Considérer les scénarios combinés (cyclone + inondation) dans la conception architecturale, même si le PPRN ne les impose pas explicitement."
+    },
+    {
+      "id": "pprl-en-cours",
+      "phase": 3,
+      "niveau": "warning",
+      "titre": "PPRL en cours d'élaboration — terrain potentiellement concerné",
+      "corps": "Plusieurs communes littorales de La Réunion font l'objet d'enquêtes publiques PPRL (submersion, recul côte). Un terrain côtier peut se retrouver en zone inconstructible lors de l'approbation du PPRL.",
+      "consequence": "Investissement sur un terrain qui pourrait perdre sa constructibilité dans 2 à 5 ans.",
+      "action": "Consulter risquesnaturels.re pour vérifier si une enquête publique PPRL est ouverte pour la commune. En cas de doute : ne pas construire en zone 0-300m du trait de côte."
+    },
+    {
+      "id": "plu-revision",
+      "phase": 4,
+      "niveau": "warning",
+      "titre": "PLU en révision — règles susceptibles d'évoluer",
+      "corps": "De nombreux PLU réunionnais sont en cours de révision (passage à PLUi, intégration SCOT, mise en conformité ZAN). Les règles d'une zone peuvent changer significativement lors d'une révision.",
+      "consequence": "Projet conçu avec les règles actuelles mais PC déposé sous de nouvelles règles plus contraignantes.",
+      "action": "Vérifier la date d'approbation du PLU sur Géoportail Urbanisme. Si révision en cours : contacter le service urbanisme pour connaître les orientations probables."
+    },
+    {
+      "id": "secteur-abf",
+      "phase": 4,
+      "niveau": "warning",
+      "titre": "Secteur ABF non détecté — avis conforme obligatoire",
+      "corps": "Un secteur ABF (périmètre de protection d'un monument historique ou site classé) peut concerner un terrain sans que ce soit visible sur une carte simple. Dans ce cas, l'ABF peut bloquer ou modifier un PC.",
+      "consequence": "PC refusé ou fortement modifié sur ordre de l'ABF — délais et coûts importants.",
+      "action": "Vérifier systématiquement la présence d'un périmètre ABF via le Géoportail de l'Urbanisme ou auprès de l'UDAP Réunion."
+    },
+    {
+      "id": "zone-a-agricole",
+      "phase": 4,
+      "niveau": "danger",
+      "titre": "Zone A agricole — constructibilité quasi nulle",
+      "corps": "En zone A (agricole) du PLU, seul le logement de l'exploitant agricole peut être autorisé, sous conditions très strictes. Un projet résidentiel standard est impossible.",
+      "consequence": "Projet architectural irrealisable légalement sur un terrain en zone A.",
+      "action": "Vérifier impérativement la zone PLU avant tout investissement. Un changement de destination de zone A nécessite une révision du PLU — procédure longue (2 à 5 ans)."
+    },
+    {
+      "id": "basol-cache",
+      "phase": 5,
+      "niveau": "danger",
+      "titre": "Site BASOL non signalé — pollution découverte en chantier",
+      "corps": "Certaines activités industrielles passées (stations service, teintureries, ateliers mécaniques) ont pollué les sols sans laisser de trace visible. Les bases BASIAS/BASOL sont incomplètes.",
+      "consequence": "Responsabilité du maître d'ouvrage en cas de pollution découverte. Coûts de dépollution non provisionnés.",
+      "action": "Consulter BASIAS et BASOL sur Géorisques avant achat ou démarrage de chantier. En cas de doute : analyse sol prescrite."
+    },
+    {
+      "id": "anc-pente",
+      "phase": 5,
+      "niveau": "warning",
+      "titre": "Assainissement non collectif en zone de forte pente",
+      "corps": "Sur les pentes réunionnaises, l'assainissement non collectif (ANC) classique (tranchées d'épandage) est difficile à mettre en œuvre. Des filières compactes agréées sont nécessaires, plus coûteuses.",
+      "consequence": "Sur-coût de 5 000 à 20 000€ pour une filière compacte. Contraintes d'entretien.",
+      "action": "Consulter le SPANC (Service Public d'Assainissement Non Collectif) de la commune avant tout projet en zone non raccordée."
+    },
+    {
+      "id": "acces-sdis-non-conforme",
+      "phase": 5,
+      "niveau": "danger",
+      "titre": "Accès SDIS non conforme — refus de permis de construire",
+      "corps": "Si la voie d'accès au terrain ne permet pas l'intervention des engins de pompiers (largeur < 3m, hauteur libre < 3.5m, portance insuffisante), le SDIS peut rendre un avis défavorable au PC.",
+      "consequence": "Refus de PC, ou obligation de créer une voie conforme (coût parfois prohibitif).",
+      "action": "Vérifier les dimensions de la voie d'accès sur place et via Google Maps (mesures approximatives). Contacter le SDIS 974 si doute."
+    },
+    {
+      "id": "eclairage-petrel",
+      "phase": 6,
+      "niveau": "warning",
+      "titre": "Éclairage nocturne — Pétrel de Barau en zone sensible",
+      "corps": "Le Pétrel de Barau niche dans les falaises des hauts de La Réunion et se désoriente par les sources lumineuses artificielles nocturnes. En zone d'adhésion du Parc National ou milieu semi-naturel, l'éclairage extérieur nocturne est réglementé.",
+      "consequence": "Amendes, obligation de modifier l'éclairage après coup. Dommages à l'espèce protégée.",
+      "action": "En zone sensible : utiliser uniquement des luminaires orientés vers le bas (full cut-off), lumière ambrée (3000K max), déclenchement par détecteur de présence uniquement."
+    },
+    {
+      "id": "defrichement-illegal",
+      "phase": 6,
+      "niveau": "danger",
+      "titre": "Défrichement sans autorisation — infraction pénale",
+      "corps": "Le défrichement de végétation naturelle ou semi-naturelle sans autorisation préfectorale constitue une infraction pénale à La Réunion (Code forestier). Les espèces endémiques ne peuvent être détruites.",
+      "consequence": "Amende, obligation de replantation, suspension du PC.",
+      "action": "Déposer une demande d'autorisation de défrichement à la DEAL avant tout début de travaux de terrassement en milieu naturel."
+    },
+    {
+      "id": "bigdata-bim",
+      "phase": 7,
+      "niveau": "bigdata",
+      "titre": "Métadonnées BIM — copies non conformes",
+      "corps": "Les fichiers CAO/BIM (DWG, IFC, GLB, RVT) contiennent des métadonnées : auteur, logiciel, machine, date, version, coordonnées GPS du terrain. Des versions intermédiaires peuvent circuler sans contrôle, créant des risques de copies non conformes utilisées pour la construction.",
+      "consequence": "Travaux réalisés sur une version obsolète du projet. Responsabilités juridiques en cas de désordres.",
+      "action": "Établir un BIM Execution Plan (BEP) dès l'esquisse. Définir les versions validées et les droits de diffusion. Purger les métadonnées avant dépôt de PC.",
+      "applicable_aussi_phases": [12]
+    },
+    {
+      "id": "bimshow-maillage",
+      "phase": 7,
+      "niveau": "info",
+      "titre": "BIMSHOW — maillage GLB trop dense",
+      "corps": "Si le modèle Three.js généré dans TERLAB contient plus de 100 000 polygones, l'import dans BIMSHOW viewerMode peut échouer ou être très lent.",
+      "consequence": "Snapshot BIMSHOW non généré, export GLB inutilisable.",
+      "action": "Utiliser THREE.SimplifyModifier avant export GLB. Cible : < 50 000 polygones pour le gabarit + contexte."
+    },
+    {
+      "id": "saison-cyclonique",
+      "phase": 8,
+      "niveau": "danger",
+      "titre": "Chantier en saison cyclonique (novembre–avril)",
+      "corps": "Un chantier en cours lors d'un passage cyclonique doit être mis en sécurité d'urgence : bâchage des fouilles, fixation ou mise à l'abri de tous les matériaux, évacuation des engins. En zone de vigilance, le chantier doit être abandonné.",
+      "consequence": "Dommages matériels majeurs, risques humains, coûts de remise en état.",
+      "action": "Inclure un protocole de mise en sécurité cyclonique dans le Plan Particulier de Sécurité et de Protection de la Santé (PPSPS)."
+    },
+    {
+      "id": "gites-larvaires",
+      "phase": 8,
+      "niveau": "warning",
+      "titre": "Gîtes larvaires — dengue et chikungunya",
+      "corps": "Toute eau stagnante sur un chantier réunionnais constitue un gîte larvaire potentiel pour le moustique tigre (Aedes albopictus), vecteur de dengue, chikungunya et Zika.",
+      "consequence": "Amendes, responsabilité du maître d'ouvrage, risques sanitaires pour ouvriers et riverains.",
+      "action": "Éliminer hebdomadairement toute eau stagnante (seaux, bidons, équipements). Bâcher les fouilles ouvertes. Signaler à l'ARS OI en cas de foyer.",
+      "source": "ARS Océan Indien"
+    },
+    {
+      "id": "silicose-basalte",
+      "phase": 8,
+      "niveau": "warning",
+      "titre": "Poussières siliceuses — terrassement basaltique",
+      "corps": "Le basalte et les scories réunionnaises contiennent de la silice cristalline (quartz). Les terrassements sans protection génèrent des poussières pouvant causer la silicose (maladie professionnelle grave et irréversible).",
+      "consequence": "Silicose professionnelle pour les ouvriers. Responsabilité du maître d'ouvrage.",
+      "action": "EPI obligatoires : masque FFP2 minimum lors des terrassements. Arrosage du terrain pour limiter les poussières. Formation sécurité CARSAT."
+    },
+    {
+      "id": "emissions-grises-sous-estimees",
+      "phase": 9,
+      "niveau": "warning",
+      "titre": "Émissions grises sous-estimées — matériaux importés",
+      "corps": "À La Réunion, l'insularité implique que tous les matériaux importés (acier, ciment clinker, plastiques, équipements) génèrent des émissions de transport supplémentaires (cargo maritime depuis Europe ou Asie). Ces émissions sont souvent omises dans les bilans carbone.",
+      "consequence": "ACV sous-estimée, objectif carbone manqué, surconsommation de ressources rares localement.",
+      "action": "Appliquer un coefficient multiplicateur × 1.2 à 1.5 sur les émissions des matériaux importés. Privilégier les matériaux locaux (basalte, bois de plantation, végétal)."
+    },
+    {
+      "id": "pv-saturation-reseau",
+      "phase": 9,
+      "niveau": "warning",
+      "titre": "Photovoltaïque — saturation du réseau EDF",
+      "corps": "Certaines zones de La Réunion connaissent une saturation du réseau basse tension. Un raccordement d'installation PV peut être refusé, limité en puissance, ou soumis à des délais importants.",
+      "consequence": "Installation PV inutilisable ou sous-exploitée. Surcoût de raccordement.",
+      "action": "Contacter EDF Réunion avant de dimensionner l'installation PV. Vérifier la capacité d'accueil du réseau local."
+    },
+    {
+      "id": "termites-structures",
+      "phase": 10,
+      "niveau": "danger",
+      "titre": "Termites — dégâts structurels en 5 à 10 ans",
+      "corps": "La Réunion est entièrement infestée par les termites souterrains (Coptotermes formosanus et Reticulitermes santonensis). Un bois non traité peut être entièrement détruit en 5 à 10 ans.",
+      "consequence": "Ruine structurelle des charpentes, planchers et huisseries en bois non traité.",
+      "action": "Traitement préventif anti-termites OBLIGATOIRE pour tout bois en contact avec le sol ou dans un bâtiment réunionnais. Utiliser des essences naturellement durables (classe 4-5) ou du bois traité autoclave."
+    },
+    {
+      "id": "corrosion-mer",
+      "phase": 10,
+      "niveau": "warning",
+      "titre": "Corrosion saline — à moins de 2km de la mer",
+      "corps": "L'atmosphère marine réunionnaise (brouillard salin, vents chargés d'embruns) est extrêmement corrosive pour les aciers non protégés. Une charpente acier non galvanisée peut rouiller en 2 à 5 ans.",
+      "consequence": "Dégradation prématurée des structures métalliques, coûts de remise en état importants.",
+      "action": "En zone marine (< 2km mer) : utiliser acier inox 316L, aluminium 6060, ou acier galvanisé + traitement époxy. Éviter tout acier non traité."
+    },
+    {
+      "id": "erp-non-fourni",
+      "phase": 10,
+      "niveau": "warning",
+      "titre": "ERP (État des Risques et Pollutions) non fourni lors de la vente",
+      "corps": "L'ERP est obligatoire dans tout dossier de vente ou de location. Son absence peut entraîner la nullité de la vente ou une réduction du prix.",
+      "consequence": "Vente annulable ou réduction de prix judiciaire.",
+      "action": "Générer l'ERP via le service officiel (erp.data.gouv.fr) dans les 6 mois avant la signature. Inclure dans le dossier de vente."
+    },
+    {
+      "id": "amiante-filiere",
+      "phase": 11,
+      "niveau": "danger",
+      "titre": "Déchets amiante — filière agréée obligatoire et coûteuse",
+      "corps": "Tout bâtiment construit avant 1997 peut contenir de l'amiante (toitures fibrociment, dalles de sol, flocages). Sa dépose et son évacuation nécessitent une entreprise agréée. Les coûts sont significatifs.",
+      "consequence": "Amende, responsabilité pénale, risques sanitaires graves (mésothéliome).",
+      "action": "Diagnostiquer systématiquement l'amiante avant toute démolition ou rénovation d'un bâtiment < 1997. Prévoir le budget dépollution dès la conception.",
+      "source": "Code du travail R4412-94"
+    },
+    {
+      "id": "remblaiement-non-declare",
+      "phase": 11,
+      "niveau": "danger",
+      "titre": "Remblaiement non déclaré — amende et obligation de dépollution",
+      "corps": "Le remblaiement d'un terrain avec des déchets inertes (béton, parpaings) doit faire l'objet d'une déclaration préfectorale. Un remblaiement non déclaré, même avec des matériaux apparemment inertes, est une infraction.",
+      "consequence": "Amende, obligation de dépollution aux frais du propriétaire.",
+      "action": "Contacter la DEAL ou ILEVA avant tout remblaiement pour connaître la procédure de déclaration applicable."
+    }
+  ]
+}

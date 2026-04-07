@@ -1,0 +1,32 @@
+# PLU sources (données locales, ne pas commiter)
+plu-sources/
+
+# Docs / references (PDFs, anciennes versions)
+.docs/
+
+# Export audit logs
+TERLAB_export_audit_*.txt
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+lidar-fetcher/.venv/
+
+# Claude Code local config
+.claude/
+
+# Stubs
+__stubs__/
+
+# Node
+node_modules/
+
+# Environment
+.env
+.env.local
+config.local.js
+
+# OS
+.DS_Store
+Thumbs.db

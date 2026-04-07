@@ -1,0 +1,416 @@
+/* ═══════════════════════════════════════════════════════════════
+   TERLAB · terlab-map.css
+   Surcharges Mapbox GL JS + composants cartographiques TERLAB
+   ENSA La Réunion · v1.0
+═══════════════════════════════════════════════════════════════ */
+
+/* ─── Conteneur carte ─────────────────────────────────────────── */
+.mapboxgl-map {
+  font-family: var(--font-mono), monospace;
+}
+
+/* ─── Attribution ─────────────────────────────────────────────── */
+.mapboxgl-ctrl-attrib {
+  background: rgba(226,219,205,.85) !important;
+  color: var(--muted) !important;
+  font-size: 9px !important;
+}
+.mapboxgl-ctrl-attrib a { color: var(--text2) !important; }
+
+/* ─── Contrôles de navigation ─────────────────────────────────── */
+.mapboxgl-ctrl-group {
+  background: var(--surface) !important;
+  border: 1px solid var(--border2) !important;
+  border-radius: var(--r) !important;
+  box-shadow: var(--sh) !important;
+}
+.mapboxgl-ctrl-group button {
+  background: transparent !important;
+  border-bottom: 1px solid var(--border) !important;
+  color: var(--muted) !important;
+  transition: all var(--tx-fast) !important;
+}
+.mapboxgl-ctrl-group button:last-child { border-bottom: none !important; }
+.mapboxgl-ctrl-group button:hover {
+  background: var(--raised) !important;
+  color: var(--text) !important;
+}
+.mapboxgl-ctrl-group button svg path { fill: var(--muted) !important; }
+
+/* ─── Barre d'échelle ─────────────────────────────────────────── */
+.mapboxgl-ctrl-scale {
+  background: rgba(226,219,205,.85) !important;
+  border-color: var(--border2) !important;
+  color: var(--muted) !important;
+  font-family: var(--font-mono), monospace !important;
+  font-size: 8.5px !important;
+}
+
+/* ─── Popups ──────────────────────────────────────────────────── */
+.mapboxgl-popup-content {
+  background: var(--surface) !important;
+  border: 1px solid var(--border2) !important;
+  border-radius: var(--r-lg) !important;
+  box-shadow: var(--sh-lg) !important;
+  padding: 12px 14px !important;
+  color: var(--text) !important;
+  font-size: 12px !important;
+  font-family: var(--font-body), serif !important;
+  max-width: 240px !important;
+}
+.mapboxgl-popup-close-button {
+  color: var(--muted) !important;
+  font-size: 16px !important;
+  right: 6px !important;
+  top: 4px !important;
+}
+.mapboxgl-popup-close-button:hover { color: var(--text) !important; }
+.mapboxgl-popup-tip {
+  border-top-color: var(--surface) !important;
+  border-bottom-color: var(--surface) !important;
+}
+
+/* Contenu popup TERLAB */
+.terlab-popup-title {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.terlab-popup-body { font-size: 11px; color: var(--muted); line-height: 1.6; }
+.terlab-popup-val  { color: var(--text); font-weight: 500; }
+.terlab-popup-row  { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; border-bottom: 1px solid var(--border); }
+.terlab-popup-row:last-child { border-bottom: none; }
+
+/* ─── Marqueurs Mapbox Draw ───────────────────────────────────── */
+.mapboxgl-canvas-container canvas { cursor: default; }
+.mapboxgl-canvas-container canvas.mapboxgl-crosshair { cursor: crosshair; }
+
+/* ─── Marqueurs personnalisés TERLAB ──────────────────────────── */
+.terlab-marker {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.terlab-marker:hover { transform: scale(1.5); }
+.terlab-marker.reunion {
+  width: 16px;
+  height: 16px;
+  background: #FF6B4A;
+  border-color: white;
+  box-shadow: 0 0 8px rgba(255, 107, 74, 0.6);
+}
+
+/* Marqueurs Köppen par étage */
+.koppen-marker-aw   { background: #a5c88a; }
+.koppen-marker-am   { background: #6baa4e; }
+.koppen-marker-cf   { background: #c5e68a; }
+.koppen-marker-cwb  { background: #daeaea; }
+.koppen-marker-ensa {
+  border-color: rgba(60, 120, 220, 0.8) !important;
+  box-shadow: 0 0 6px rgba(60, 120, 220, 0.5) !important;
+}
+
+/* ─── Bannière stub carte ─────────────────────────────────────── */
+.map-stub-banner {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  padding: 5px 14px;
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ─── Couche simulation eau ───────────────────────────────────── */
+.flood-overlay {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  background: rgba(14, 165, 233, 0.85);
+  color: white;
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  pointer-events: none;
+}
+
+/* ─── Panel détail Köppen (Phase World) ───────────────────────── */
+.koppen-detail-panel {
+  animation: slideUp var(--tx-slow) both;
+}
+.koppen-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+/* ─── Reculs canvas overlay (Phase 4) ────────────────────────── */
+#reculs-canvas {
+  image-rendering: pixelated;
+}
+
+/* ─── Responsive carte ───────────────────────────────────────── */
+@media (max-width: 1280px) {
+  .map-area { min-width: 300px; }
+}
+
+/* ─── Barre de statut géographique (GeoStatusBar) ────────────── */
+.geo-status-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 15;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: rgba(8, 10, 13, 0.92);
+  border-top: 1px solid var(--border2);
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  color: var(--muted);
+  user-select: none;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.gsb-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 100%;
+  white-space: nowrap;
+}
+
+.gsb-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border2);
+  flex-shrink: 0;
+}
+
+.gsb-label {
+  font-size: 9px;
+  letter-spacing: .06em;
+  color: var(--faint);
+}
+
+.gsb-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  color: var(--text2);
+  font-family: var(--font-mono), monospace;
+  font-size: 9.5px;
+  padding: 2px 20px 2px 6px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color var(--tx-fast);
+  background-image: url("data:image/svg+xml,%3Csvg width='8' height='5' viewBox='0 0 8 5' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l3 3 3-3' stroke='%236a7f96' stroke-width='1.2'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 5px center;
+}
+.gsb-select:hover { border-color: var(--border3); }
+.gsb-select:focus { border-color: var(--accent); }
+.gsb-select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* Barre graphique d'échelle */
+.gsb-scalebar {
+  width: 64px;
+  height: 6px;
+  background: var(--border);
+  border-radius: 1px;
+  overflow: hidden;
+  position: relative;
+}
+.gsb-scalebar-fill {
+  height: 100%;
+  width: 50%;
+  background: var(--accent);
+  opacity: .6;
+  border-radius: 1px;
+  transition: width .3s ease-out;
+}
+
+/* Coordonnées */
+.gsb-coords {
+  margin-left: auto;
+  gap: 16px;
+  padding-right: 16px;
+}
+.gsb-coord-x,
+.gsb-coord-y {
+  color: var(--text2);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .03em;
+  min-width: 120px;
+}
+
+/* Adaptation thèmes clairs */
+[data-theme="ivory"] .geo-status-bar,
+[data-theme="sand"] .geo-status-bar {
+  background: rgba(245, 240, 228, 0.94);
+  border-top-color: rgba(90,70,30,.2);
+}
+[data-theme="ivory"] .gsb-scalebar,
+[data-theme="sand"] .gsb-scalebar {
+  background: rgba(90,70,30,.15);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GEOJSON PANEL — Éditeur couches custom
+═══════════════════════════════════════════════════════════════ */
+
+.gjp-panel {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  padding: 8px;
+  font-size: 11px;
+  color: var(--text);
+  max-height: 420px;
+  overflow-y: auto;
+}
+.gjp-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.gjp-title { font-weight: 600; font-size: 12px; color: var(--text2); flex: 1; }
+
+.gjp-toolbar { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 4px; }
+.gjp-btn {
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  color: var(--text2);
+  font-size: 10px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: all var(--tx-fast);
+}
+.gjp-btn:hover { background: var(--raised); color: var(--text); border-color: var(--border3); }
+
+.gjp-draw-bar { border-top: 1px solid var(--border); padding-top: 4px; }
+.gjp-draw-btn {
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  color: var(--text2);
+  font-size: 10px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: all var(--tx-fast);
+}
+.gjp-draw-btn:hover { background: var(--raised); }
+.gjp-draw-active { background: rgba(154,120,32,.2) !important; border-color: #9a7820 !important; color: #9a7820 !important; }
+.gjp-draw-icon { font-size: 13px; vertical-align: middle; }
+
+.gjp-list { margin-top: 6px; display: flex; flex-direction: column; gap: 3px; }
+.gjp-empty { color: var(--faint); font-size: 10px; text-align: center; padding: 12px 0; }
+
+.gjp-item {
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 6px;
+  background: rgba(255,255,255,.02);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xs);
+  transition: all var(--tx-fast);
+}
+.gjp-item:hover { background: var(--raised); }
+.gjp-item.gjp-hidden { opacity: 0.45; }
+
+.gjp-color-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.15);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.gjp-color-dot:hover { transform: scale(1.2); }
+
+.gjp-badge {
+  font-size: 8px; font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.gjp-badge-gpu     { background: rgba(59,130,246,.2); color: #60a5fa; }
+.gjp-badge-import  { background: rgba(249,115,22,.2); color: #fb923c; }
+.gjp-badge-project { background: rgba(34,197,94,.2);  color: #4ade80; }
+
+.gjp-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.gjp-name:hover { color: var(--accent); }
+
+.gjp-count {
+  font-size: 9px;
+  color: var(--faint);
+  flex-shrink: 0;
+}
+
+.gjp-actions { display: flex; gap: 2px; flex-shrink: 0; }
+.gjp-btn-icon {
+  background: none; border: none;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 1px 3px;
+  color: var(--muted);
+  transition: color var(--tx-fast);
+}
+.gjp-btn-icon:hover { color: var(--text); }
+.gjp-btn-del:hover { color: var(--danger, #ef4444); }
+
+.gjp-expand {
+  padding: 4px 0 2px 18px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+.gjp-slider-row {
+  display: flex; align-items: center; gap: 6px;
+  margin-bottom: 3px;
+}
+.gjp-slider-row label { font-size: 9px; color: var(--faint); width: 55px; }
+.gjp-slider-row input[type="range"] {
+  flex: 1; height: 3px;
+  accent-color: #9a7820;
+}
+
+.gjp-footer {
+  display: flex; gap: 4px; flex-wrap: wrap;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FIN terlab-map.css
+═══════════════════════════════════════════════════════════════ */

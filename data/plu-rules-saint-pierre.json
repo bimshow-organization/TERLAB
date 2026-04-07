@@ -1,0 +1,977 @@
+{
+  "meta": {
+    "version": "2026-04",
+    "region": "La Réunion",
+    "generated": "2026-04-07",
+    "commune": "Saint-Pierre",
+    "insee": "97418",
+    "intercommunalite": "CIVIS",
+    "plu_type": "EcoPLU",
+    "plu_date_approbation": "2024-06-25",
+    "auteur": "CITADIA Conseil",
+    "source_fichier": "97416_reglement_20240625.pdf",
+    "note_cbs": "Ce PLU utilise le Coefficient de Biotope de Surface (CBS) au lieu du % perméable classique. CBS = surface éco-aménageable / surface parcelle. Coefficients par type : imperméable=0, semi-perméable=0.5, dalle plantée=0.7, toiture végétalisée=0.7, pleine terre=1.0.",
+    "note_hauteurs": "Toutes les hauteurs sont exprimées en hé (égout) et hf (faîtage). Les PLU Saint-Paul utilisent he/hf — même chose.",
+    "note_stationnement": "Normes exprimées par tranche de SDP (surface de plancher). Arrondi à l'entier supérieur. Réduction 30% si TCSP <200m. Réduction 30% si >50 logements (mutualisation). Recharge VE obligatoire pour >20 places (20% minimum).",
+    "note_logement_aide": "Seuil unique : >60 logements → 25% logements aidés (LLS, LLTS, PLS DOM, PSLA). ZAC résidentielle → 40% minimum.",
+    "zones_liste": ["UCV", "UD", "Udl", "UdBO", "UG", "UF", "UfCA", "US", "UP", "UT", "UA", "Uazp", "Uazpc", "Uaza", "Uazc", "Uazi", "UE", "Uea", "Uep", "Uemi", "AU0", "AUD", "AUG", "AUF", "AUT", "AUT1", "AUT2", "AUA", "AUE", "A", "N"]
+  },
+
+  "regles_communes": {
+    "reconstruction_sinistre_ans": 10,
+    "reconstruction_sinistre_exception": "Exclue si destruction par aléa inondation/mouvement terrain/submersion marine PPR",
+    "extension_existant_max_pct_emprise": 20,
+    "affouillements_max_m": 1.5,
+    "affouillements_parking_ss_exception": true,
+    "pente_terrain_bonus_aval_m": 1.5,
+    "surtoiture_vegetalisee_bonus_m": 0.5,
+    "ve_recharge_obligatoire_seuil_places": 20,
+    "ve_recharge_pct": 20,
+    "stationnement_perpendiculaire_interdit": true,
+    "stationnement_rayon_tcsp_reduction_pct": 30,
+    "stationnement_tcsp_distance_m": 200,
+    "stationnement_mutualisation_seuil_logements": 50,
+    "stationnement_mutualisation_reduction_pct": 30,
+    "stationnement_petite_parcelle_exoneration_m2": 150,
+    "stationnement_petite_parcelle_largeur_m": 8,
+    "toiture_versants_pct_batiments_lt12m": 60,
+    "toiture_versants_pct_si_terrasse_vegetalisee": 50,
+    "toiture_pente_portee_lte10m_min_pct": 20,
+    "toiture_pente_portee_gt10m_min_pct": 20,
+    "toiture_pente_portee_gt10m_max_pct": 30,
+    "toiture_4pans_si_pente_gt30pct_et_he_gte6m": true,
+    "toiture_monotoit_autorise_portee_lte7m": true,
+    "toiture_terrasse_vegetalisation_si_emprise_gt60pct": true,
+    "cloture_voie_max_m": 2,
+    "cloture_types": ["végétalisée", "maçonnée 1-2m", "grille bahut 0.2-0.9m"],
+    "50_pas_geometriques_regles_specifiques": true,
+    "mixite_sociale_seuil_logements": 60,
+    "mixite_sociale_pct": 25,
+    "mixite_sociale_types": ["LLS", "LLTS", "PLS DOM", "PSLA"],
+    "zac_residentielles_pct_aide": 40,
+    "mixite_sociale_bonus_etage_si_gt10_aides": true,
+    "rtaa_dom": "2016",
+    "loi_littoral_applicable": true,
+    "50_pas_geometriques": "Règles spécifiques dans secteurs concernés — voir zones individuelles",
+    "arbre_haute_tige_hauteur_plantation_min_m": 1.8
+  },
+
+  "zones": {
+
+    "UCV": {
+      "label": "Zone urbaine Centre-Ville de Saint-Pierre",
+      "type": "U",
+      "sous_type": "centre_ville_dense",
+      "loi_littoral": true,
+      "usages": {
+        "habitation": true,
+        "commerce": true,
+        "restauration": true,
+        "bureau": true,
+        "hotel": true,
+        "equipement_collectif": true,
+        "industrie": false,
+        "entrepot": false,
+        "agricole": false,
+        "camping": false
+      },
+      "mixite_fonctionnelle": {
+        "rdc_activites_obligatoire": true,
+        "rdc_destinations": ["restauration", "hôtellerie", "artisanat", "commerce détail"],
+        "changement_destination_logement_rdc_interdit": true,
+        "pct_sdp_logement_min": 30
+      },
+      "reculs": {
+        "voie_principale_m": 0,
+        "voie_alignement": true,
+        "voie_pietonne_m": 2,
+        "voie_note": "Constructions en premier rideau à l'alignement obligatoire. Voies piétonnes : recul 2m min.",
+        "sep_lat_m": 0,
+        "sep_lat_note": "Implanter sur au moins 1 limite séparative. Au max 2 limites séparatives (latérales ou fond). OU retrait 3m.",
+        "sep_lat_mitoyennete_profondeur_hab_m": 15,
+        "sep_lat_mitoyennete_profondeur_autres_m": 20,
+        "sep_lat_hauteur_limite_max_m": 4,
+        "inter_batiments_individuel_m": 3,
+        "inter_batiments_autres_m": 5,
+        "surplomb_domaine_public_m": 1,
+        "surplomb_auvent_brisesoleil_m": 2,
+        "surplomb_condition": "Au-dessus du trottoir, >3.5m de haut. Balcons/doubles peaux limités à 2/3 du linéaire. Débord sur chaussée interdit."
+      },
+      "hauteurs": {
+        "he_min_m": 9,
+        "he_max_m": 15,
+        "hf_max_m": 20,
+        "he_limite_sep_m": 9,
+        "he_limite_sep_lt20m_facades_m": 12,
+        "he_derogation_cbs60pct_m": 18,
+        "hf_derogation_cbs60pct_m": 23,
+        "he_derogation_10aides_m": 18,
+        "hf_derogation_10aides_m": 23,
+        "he_voie_max": "H = emprise voie projetée E, max 15m",
+        "gabarit_voie_oblique_pct": 100,
+        "rdc_zac_mail_min_m": 4,
+        "note": "hé entre 9m et 15m. hf max 20m. En limite sep.: hé max 9m (ou 12m si façade <20m). Gabarit oblique 100% à partir de H=E depuis voie."
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 70,
+        "emprise_lt200m2_non_reglementee": true,
+        "emprise_equipement_public_non_reglementee": true,
+        "cos": null
+      },
+      "cbs": {
+        "gt250m2_cbs_min_pct": 30,
+        "gt250m2_pleine_terre_min_pct": null,
+        "lte250m2_cbs_min_pct": 15,
+        "lte250m2_pleine_terre_min_pct": null,
+        "note": "CBS sans seuil de pleine terre explicite en UCV. Bonus hauteur si CBS>60%.",
+        "cbs_gt60pct_derogation_hauteur": true
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "versants_pct_si_terrasse_veg": 50,
+        "pente_portee_lte10m_min_pct": 20,
+        "pente_portee_gt10m_min_max_pct": [20, 30],
+        "monotoit_portee_lte7m": true,
+        "solaire_thermique_obligatoire": true
+      },
+      "stationnement": {
+        "logement_par_75m2_sdp": 1,
+        "logement_lls": 1,
+        "hotel_par_chambre": 0.5,
+        "bureau_par_50m2_sdp": 1,
+        "commerce_par_50m2_sdp": null,
+        "restauration_par_50m2_sdp": 1,
+        "deux_roues_logement_par_logement": 0.85,
+        "deux_roues_hotel_lt10ch_par_chambre": "1m² par chambre pour constructions >200m²",
+        "deux_roues_hotel_gt10ch": "0.2m² par chambre supplémentaire",
+        "deux_roues_bureau_pct_sdp_gt500m2": 2,
+        "enseignement_primaire_par_classe": 3,
+        "enseignement_secondaire_par_classe": 5,
+        "enseignement_autre_par_100m2_sdp": 7,
+        "places_gt20_integrees_batiment_pct": 50,
+        "note": "UCV : logement = 1pl/75m² SDP. Hôtel = 0.5pl/chambre. Bureau = 1pl/50m² SDP."
+      },
+      "logement_aide": {
+        "seuil_logements": 60,
+        "pct_aide": 25,
+        "types": ["LLS", "LLTS", "PLS DOM", "PSLA"],
+        "zac_pct": 40
+      },
+      "plantations": {
+        "arbres_par_m2_espaces_libres": "1 arbre haute tige essence locale/endémique pour 30m²",
+        "facade_gt10m_longueur_bande_vert_m": 2,
+        "facade_condition": "Sur 50% minimum du linéaire des façades non mitoyennes >10m dans UF >150m²"
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": ["CBS UCV : pas de seuil pleine terre explicite — à confirmer"],
+        "source_pages": [58, 74]
+      }
+    },
+
+    "UD": {
+      "label": "Zone urbaine de centralité — Bois d'Olives et autres quartiers",
+      "type": "U",
+      "sous_type": "centre_quartier",
+      "loi_littoral": true,
+      "secteurs": {
+        "Udl": "Secteur littoral — hauteurs réduites, hôtels sur terrain min 2000m²",
+        "UdBO": "Bois d'Olives — règles CBS et clôtures spécifiques"
+      },
+      "usages": {
+        "habitation": true, "commerce": true, "restauration": true,
+        "bureau": true, "hotel": true, "equipement_collectif": true,
+        "industrie": false, "entrepot": false, "agricole": false
+      },
+      "reculs": {
+        "voie_principale_m": 0,
+        "voie_alignement_ou_retrait_m": 3,
+        "voie_note": "Alignement ou retrait min 3m. En cas d'alignement : 50-70% du linéaire. Voies piétonnes : 2m (UdBO : 3-5m). RN3 commerces/services : 10m min.",
+        "voie_pietonne_m": 2,
+        "voie_pietonne_udbo_min_m": 3,
+        "voie_pietonne_udbo_max_m": 5,
+        "voie_rn_commerce_m": 10,
+        "voie_rn_autres_m": 30,
+        "sep_lat_m": 0,
+        "sep_lat_note": "Sur au moins 1 limite, max 2. Au max 80% du linéaire de chaque limite (UdBO : 65%). OU retrait 3m.",
+        "sep_lat_linéaire_max_pct": 80,
+        "sep_lat_linéaire_max_udbo_pct": 65,
+        "sep_lat_mitoyennete_profondeur_hab_m": 15,
+        "sep_lat_mitoyennete_profondeur_autres_m": 20,
+        "sep_lat_hauteur_limite_max_m": 4,
+        "inter_batiments_individuel_m": 3,
+        "inter_batiments_udbo_m": 5,
+        "inter_batiments_autres_m": 5
+      },
+      "hauteurs": {
+        "he_min_m": 6,
+        "he_max_m": 15,
+        "hf_max_m": 20,
+        "he_udbo_min_m": 8,
+        "he_udbo_max_m": 16,
+        "hf_udbo_min_m": 11,
+        "hf_udbo_max_m": 19,
+        "he_udl_max_m": 6,
+        "hf_udl_max_m": 9,
+        "he_udl_hotel_terrain_min_2000m2_m": 8,
+        "hf_udl_hotel_terrain_min_2000m2_m": 12,
+        "he_lt200m2_max_m": 7,
+        "hf_lt200m2_max_m": 12,
+        "he_limite_sep_m": 9,
+        "he_limite_sep_udl_m": 6,
+        "he_derogation_cbs60pct_m": 18,
+        "hf_derogation_cbs60pct_m": 23,
+        "he_udbo_derogation_cbs60pct_bonus_m": 3,
+        "he_derogation_10aides_m": 18,
+        "hf_derogation_10aides_m": 23,
+        "he_voie_max": "H = emprise voie E, max 9m. Gabarit oblique 100%.",
+        "equipements_publics_he_max_m": 25,
+        "equipements_publics_hf_max_m": 30
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 60,
+        "emprise_sol_udbo_max_pct": 55,
+        "emprise_lt200m2_non_reglementee": true,
+        "cos": null
+      },
+      "cbs": {
+        "gt250m2_cbs_min_pct": 30,
+        "gt250m2_pleine_terre_min_pct": 20,
+        "lte250m2_cbs_min_pct": 15,
+        "lte250m2_pleine_terre_min_pct": 20,
+        "udbo_gt250m2_cbs_min_pct": 50,
+        "udbo_gt250m2_pleine_terre_min_pct": 40,
+        "udbo_lte250m2_cbs_min_pct": 20,
+        "udbo_lte250m2_pleine_terre_min_pct": 25,
+        "cbs_gt60pct_derogation_hauteur": true,
+        "places_gt20_integrees_batiment_pct": 50,
+        "places_gt20_integrees_udbo_pct": 80
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "versants_pct_si_terrasse_veg": 50,
+        "pente_portee_lte10m_min_pct": 20,
+        "pente_portee_gt10m_min_max_pct": [20, 30],
+        "monotoit_portee_lte7m": true,
+        "terrasse_vegetalisation_obligatoire_si_emprise_gt60pct": true,
+        "solaire_thermique_obligatoire": true
+      },
+      "stationnement": {
+        "logement_par_75m2_sdp": 1,
+        "logement_lls": 1,
+        "logement_lotissement_individuel_par_parcelle": 0.5,
+        "hebergement_par_hebergement": 0.3,
+        "commerce_artisanat_par_70m2_sdp": 1,
+        "restauration_par_50m2_sdp": 1,
+        "hotel_par_chambre": 0.5,
+        "bureau_par_50m2_sdp": 1,
+        "deux_roues_sdp_gt300m2_pct": 5,
+        "deux_roues_hotel_lt10ch_par_chambre": "1m² (>200m² SDP)",
+        "deux_roues_hotel_gt10ch": "0.2m²/ch supp.",
+        "deux_roues_bureau_pct_sdp_gt500m2": 2,
+        "commerce_gt400m2_deux_roues_pct": 3,
+        "note": "UD : logement = 1pl/75m² SDP. Commerce/artisanat = 1pl/70m². Bureau = 1pl/50m². Hôtel = 0.5pl/ch."
+      },
+      "logement_aide": {
+        "seuil_logements": 60, "pct_aide": 25,
+        "types": ["LLS", "LLTS", "PLS DOM", "PSLA"], "zac_pct": 40
+      },
+      "plantations": {
+        "arbres_par_m2_espaces_libres_lte1000m2": "1 arbre haute tige essence locale pour 30m²",
+        "arbres_par_m2_espaces_libres_gt1000m2": "1 arbre haute tige essence locale pour 50m²",
+        "facade_gt10m_bande_vert_m": 2,
+        "facade_condition": "50% minimum du linéaire"
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": ["Vérifier règles ZAC Océan Indien (non réglementé article Ud3)", "Vérifier règles spécifiques ZAC Cap Austral"],
+        "source_pages": [75, 95]
+      }
+    },
+
+    "UG": {
+      "label": "Zone urbaine mixte générale — densité modérée",
+      "type": "U",
+      "sous_type": "résidentielle_mixte",
+      "loi_littoral": true,
+      "usages": {
+        "habitation": true, "commerce": true, "restauration": true,
+        "bureau": true, "hotel": true, "equipement_collectif": true,
+        "industrie": false, "entrepot": false, "agricole": false
+      },
+      "reculs": {
+        "voie_principale_m": 3,
+        "voie_lt3m_si_he_lte3m_m": 1,
+        "voie_note": "3m min (ou 1m si hé≤3m et hf≤5m). Voies piétonnes : 2m. RN 1,2,3 commerces : 10m. Autres : 30m.",
+        "voie_pietonne_m": 2,
+        "voie_rn_commerce_m": 10,
+        "voie_rn_autres_m": 30,
+        "sep_lat_m": 0,
+        "sep_lat_note": "Sur au moins 1 limite max 2. OU retrait 3m (individuel) ou 5m (autres).",
+        "sep_lat_individuel_m": 3,
+        "sep_lat_autres_m": 5,
+        "sep_lat_mitoyennete_profondeur_hab_m": 15,
+        "sep_lat_mitoyennete_profondeur_autres_m": 20,
+        "sep_lat_hauteur_limite_max_m": 4,
+        "inter_batiments_individuel_m": 3,
+        "inter_batiments_autres_m": 5
+      },
+      "hauteurs": {
+        "he_max_m": 7,
+        "hf_max_m": 12,
+        "he_50pas_geometriques_m": 6,
+        "hf_50pas_geometriques_m": 9,
+        "he_limite_sep_m": 6,
+        "he_derogation_cbs70pct_m": 10,
+        "hf_derogation_cbs70pct_m": 15,
+        "attique_hf_max_m": 13,
+        "attique_retrait_m": 2,
+        "equipements_publics_he_max_m": 10,
+        "equipements_publics_hf_max_m": 15
+      },
+      "emprise": {
+        "emprise_sol_lte150m2_pct": 80,
+        "emprise_sol_gt150m2_pct": 60,
+        "cos": null,
+        "note": "Emprise 80% si UF ≤150m², 60% si >150m²"
+      },
+      "cbs": {
+        "gt250m2_cbs_min_pct": 40,
+        "gt250m2_pleine_terre_min_pct": 30,
+        "lte250m2_cbs_min_pct": 30,
+        "lte250m2_pleine_terre_min_pct": 25,
+        "cbs_gt70pct_derogation_hauteur": true,
+        "places_gt20_integrees_batiment_pct": 50
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_portee_lte10m_min_pct": 20,
+        "pente_portee_gt10m_min_max_pct": [20, 30],
+        "monotoit_portee_lte7m": true,
+        "4pans_si_pente_gt30pct_et_he_gte6m": true,
+        "terrasse_vegetalisation_obligatoire_si_emprise_gt60pct": true,
+        "solaire_thermique_obligatoire": true
+      },
+      "stationnement": {
+        "logement_par_logement": 1.5,
+        "logement_lls": 1,
+        "logement_lotissement_individuel_par_parcelle": 0.5,
+        "hebergement_par_hebergement": 0.3,
+        "deux_roues_sdp_gt300m2_pct": 5,
+        "note": "UG : logement = 1.5 place/logement"
+      },
+      "logement_aide": {
+        "seuil_logements": 60, "pct_aide": 25,
+        "types": ["LLS", "LLTS", "PLS DOM", "PSLA"], "zac_pct": 40
+      },
+      "plantations": {
+        "arbres_par_m2_espaces_libres": "1 arbre haute tige essence locale pour 50m²",
+        "stationnement_arbre_par_4places": true
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": [],
+        "source_pages": [96, 110]
+      }
+    },
+
+    "UF": {
+      "label": "Zone urbaine de faible densité — proximité espaces naturels",
+      "type": "U",
+      "sous_type": "résidentielle_faible_densité",
+      "loi_littoral": true,
+      "secteurs": {
+        "UfCA": "Secteur Casabois — règles spécifiques (mur anti-bruit 3m, hauteur 6m/7.5m)"
+      },
+      "usages": {
+        "habitation": true, "commerce": false, "restauration": false,
+        "bureau": false, "hotel": false, "equipement_collectif": true,
+        "industrie": false, "entrepot": false, "agricole": false,
+        "note": "UF résidentielle essentiellement. Commerce/bureau très limités."
+      },
+      "reculs": {
+        "voie_principale_m": 4,
+        "voie_pietonne_m": 2,
+        "voie_rn_commerce_m": 10,
+        "voie_rn_autres_m": 30,
+        "voie_zac_cap_austral_rn2_m": 20,
+        "sep_lat_m": 0,
+        "sep_lat_individuel_m": 3,
+        "sep_lat_autres_m": 5,
+        "sep_lat_mitoyennete_profondeur_hab_m": 15,
+        "sep_lat_mitoyennete_profondeur_autres_m": 20,
+        "sep_lat_hauteur_limite_max_m": 4,
+        "inter_batiments_individuel_m": 3,
+        "inter_batiments_autres_m": 5
+      },
+      "hauteurs": {
+        "he_max_m": 6,
+        "hf_max_m": 11,
+        "he_ufca_max_m": 6,
+        "hf_ufca_max_m": 7.5,
+        "hf_aufgb_max_m": 5.5,
+        "he_limite_sep_m": 4,
+        "equipements_publics_he_max_m": 8,
+        "equipements_publics_hf_max_m": 13
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "note": "Emprise non réglementée explicitement en UF — CBS prend le relais",
+        "cos": null
+      },
+      "cbs": {
+        "gt250m2_cbs_min_pct": 50,
+        "gt250m2_pleine_terre_min_pct": 40,
+        "lte250m2_cbs_min_pct": 40,
+        "lte250m2_pleine_terre_min_pct": 30,
+        "places_gt20_integrees_batiment_pct": 50
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_portee_lte10m_min_pct": 20,
+        "pente_portee_gt10m_min_max_pct": [20, 30],
+        "monotoit_portee_lte7m": true,
+        "4pans_si_pente_gt30pct_et_he_gte5m": true,
+        "terrasse_vegetalisation_obligatoire_si_emprise_gt60pct": true,
+        "cloture_ufca_mur_antibruit_max_m": 3,
+        "solaire_thermique_obligatoire": true
+      },
+      "stationnement": {
+        "logement_par_logement": 1.5,
+        "logement_lls": 1,
+        "logement_lotissement_individuel_par_parcelle": 0.5,
+        "hebergement_par_hebergement": 0.3,
+        "deux_roues_sdp_gt300m2_pct": 5,
+        "note": "UF : 1.5 place/logement"
+      },
+      "logement_aide": {
+        "seuil_logements": 60, "pct_aide": 25,
+        "types": ["LLS", "LLTS", "PLS DOM", "PSLA"], "zac_pct": 40
+      },
+      "plantations": {
+        "arbres_par_m2_espaces_libres": "1 arbre haute tige essence locale pour 50m²",
+        "stationnement_arbre_par_4places": true
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": ["Emprise sol non réglementée explicitement — confirmer"],
+        "source_pages": [111, 127]
+      }
+    },
+
+    "US": {
+      "label": "Zone urbaine peu dense en milieu naturel/agricole — uniquement résidentielle",
+      "type": "U",
+      "sous_type": "résidentielle_isolée",
+      "loi_littoral": false,
+      "note": "Zone gel : aucune nouvelle construction dans l'attente approbation modification SCoT. Extensions existant autorisées.",
+      "usages": {
+        "habitation": true, "extension_existant": true,
+        "commerce": false, "bureau": false, "hotel": false,
+        "industrie": false, "entrepot": false, "agricole": false
+      },
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_individuel_m": 3,
+        "sep_lat_autres_m": 5,
+        "sep_lat_mitoyennete_profondeur_hab_m": 15,
+        "sep_lat_mitoyennete_profondeur_autres_m": 20,
+        "sep_lat_hauteur_limite_max_m": 4,
+        "inter_batiments_individuel_m": 3,
+        "inter_batiments_autres_m": 5
+      },
+      "hauteurs": {
+        "he_max_m": 6,
+        "hf_max_m": 11,
+        "he_limite_sep_m": 4,
+        "equipements_publics_he_max_m": 8,
+        "equipements_publics_hf_max_m": 13
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "note": "Emprise non réglementée — CBS prend le relais",
+        "cos": null
+      },
+      "cbs": {
+        "cbs_min_pct": 60,
+        "pleine_terre_min_pct": 50,
+        "note": "CBS 60% minimum avec 50% de la surface en pleine terre — règle unique sans distinction </>250m²"
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_portee_lte10m_min_pct": 20,
+        "pente_portee_gt10m_min_max_pct": [20, 30],
+        "solaire_thermique_obligatoire": true
+      },
+      "stationnement": {
+        "logement_par_logement": 1.5,
+        "logement_lls": 1,
+        "logement_lotissement_individuel_par_parcelle": 0.5,
+        "note": "US : 1.5 place/logement"
+      },
+      "logement_aide": {
+        "seuil_logements": 60, "pct_aide": 25
+      },
+      "plantations": {
+        "arbres_par_m2_espaces_libres": "1 arbre haute tige essence locale pour 50m²",
+        "stationnement_arbre_par_4places": true
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": ["Zone en attente modification SCoT — vérifier si toujours applicable"],
+        "source_pages": [128, 140]
+      }
+    },
+
+    "UP": {
+      "label": "Zone urbaine patrimoniale — Village de pêcheurs Terre Sainte",
+      "type": "U",
+      "sous_type": "village_pecheurs_patrimonial",
+      "loi_littoral": true,
+      "note": "Tissu urbain très dense à préserver. Reculs libres — alignement ou retrait libre. Village de pêcheurs.",
+      "usages": {
+        "habitation": true, "commerce": true, "restauration": true,
+        "bureau": false, "hotel": false, "equipement_collectif": true,
+        "industrie": false, "entrepot": false, "agricole": false
+      },
+      "reculs": {
+        "voie_principale_m": 0,
+        "voie_alignement": true,
+        "voie_retrait_libre": true,
+        "voie_pietonne_m": 1,
+        "voie_note": "Alignement ou retrait libre. Voie piétonne : 1m depuis axe voie.",
+        "sep_lat_m": 0,
+        "sep_lat_note": "Retrait libre",
+        "sep_lat_hauteur_limite_max_m": 4,
+        "inter_batiments_si_he_gt3m_m": 1.9,
+        "inter_batiments_si_he_lte3m": null,
+        "surplomb_domaine_public_m": 1,
+        "surplomb_auvent_m": 2
+      },
+      "hauteurs": {
+        "he_max_m": 6,
+        "hf_max_m": 11,
+        "hf_50pas_geometriques_m": 9,
+        "he_limite_sep_m": 4,
+        "gabarit_limite_profondeur_m": 1.9,
+        "equipements_publics_he_max_m": 10,
+        "equipements_publics_hf_max_m": 15
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "note": "Emprise au sol réglementée mais valeur non explicitée dans le texte extrait — à vérifier",
+        "cos": null
+      },
+      "cbs": {
+        "cbs_reglemente": false,
+        "note": "CBS non réglementé en UP. 80% des espaces libres plantés 1 arbre/50m²."
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_portee_lte10m_min_pct": 20,
+        "4pans_si_pente_gt30pct_et_he_gte5m": true,
+        "terrasse_vegetalisation_obligatoire_si_emprise_gt60pct": true,
+        "solaire_thermique_obligatoire": true
+      },
+      "stationnement": {
+        "logement_par_logement": 1,
+        "logement_lls": 1,
+        "hebergement_par_hebergement": 0.3,
+        "note": "UP : 1 place/logement. Mutualisation si TCSP <200m (-30%)."
+      },
+      "plantations": {
+        "espaces_libres_plantes_pct": 80,
+        "arbres_par_m2": "1 arbre haute tige essence locale pour 50m²"
+      },
+      "_meta": {
+        "confidence": 0.85,
+        "ambiguites": ["Emprise sol : valeur exacte non visible dans les pages extraites — à vérifier p.145-146"],
+        "source_pages": [141, 154]
+      }
+    },
+
+    "UT": {
+      "label": "Zone urbaine à vocation touristique",
+      "type": "U",
+      "sous_type": "touristique",
+      "loi_littoral": true,
+      "note": "Petits secteurs pour projets touristiques structurants. Logement autorisé sous conditions.",
+      "usages": {
+        "habitation": true,
+        "habitation_note": "Autorisé sous conditions uniquement",
+        "commerce": true, "restauration": true,
+        "hotel": true, "autres_hebergements_touristiques": true,
+        "equipement_collectif": true,
+        "industrie": false, "entrepot": false, "agricole": false
+      },
+      "reculs": {
+        "voie_principale_m": 2,
+        "voie_pietonne_min_m": 2,
+        "voie_pietonne_max_m": 4,
+        "voie_note": "Retrait 2m min depuis emprise voie. Bretelle échangeur RN1 : 25m.",
+        "voie_bretelle_rn1_m": 25,
+        "sep_lat_m": 0,
+        "sep_lat_note": "Retrait libre sur limites séparatives",
+        "inter_batiments_hotel_individuel_m": 3,
+        "inter_batiments_autres_m": 5
+      },
+      "hauteurs": {
+        "he_max_m": 9,
+        "hf_max_m": 12,
+        "hf_aut1_max_m": 15,
+        "hf_aut2_max_m": 6,
+        "he_limite_sep_m": null,
+        "note": "UT : hé 9m / hf 12m. AUt1 : hf 15m. AUt2 : hf 6m."
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 50,
+        "piscine_lt30m2_exclue_emprise": true,
+        "cos": null
+      },
+      "cbs": {
+        "cbs_reglemente": false,
+        "espaces_libres_plantes_pct": 50,
+        "arbres_par_m2": "1 arbre haute tige essence locale pour 50m²",
+        "note": "CBS non réglementé en UT. 50% espaces libres plantés."
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_portee_lte10m_min_pct": 20,
+        "4pans_si_pente_gt30pct_et_he_gte5m": true,
+        "solaire_thermique_obligatoire": true
+      },
+      "stationnement": {
+        "logement_par_logement": 1,
+        "logement_lls": 1,
+        "hebergement_par_hebergement": 0.3,
+        "artisanat_commerce_par_m2": "voir tableau UT6",
+        "note": "UT : 1 place/logement. 0.3 place/hébergement."
+      },
+      "plantations": {
+        "espaces_libres_plantes_pct": 50,
+        "arbres_par_m2": "1 arbre haute tige pour 50m²",
+        "stationnement_arbre_par_4places": true
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": ["Vérifier OAP AUt1 et AUt2 pour règles complémentaires"],
+        "source_pages": [155, 169]
+      }
+    },
+
+    "UA": {
+      "label": "Zone urbaine et à urbaniser à vocation d'activités économiques",
+      "type": "U",
+      "sous_type": "activites_economiques",
+      "loi_littoral": false,
+      "secteurs": {
+        "Uazp": "ZAC Pierrefonds Aérodrome — reculs RN1 spécifiques, he max 15.5m/hf 20m",
+        "Uazpc": "Extension ZAC Pierrefonds",
+        "Uaza": "ZA artisanales (Cap Austral, Mon Caprice, Trois Cheminées, Mont Vert Hauts, Cafrine, ZI2) — hf max 14m",
+        "Uazc": "ZAC activités tertiaires/commerciales/industrie — hé 13m/hf 18m (Canabady : 7m/12m)",
+        "Uazi": "ZI activités industrielles/artisanales — hé non limité pour extraction matériaux ZI N°4"
+      },
+      "usages": {
+        "habitation": false, "commerce": true, "bureau": true,
+        "activite": true, "industrie": true, "entrepot": true,
+        "hotel": false, "agricole": false
+      },
+      "reculs": {
+        "voie_principale_m": 4,
+        "voie_uazc_canabady_m": 5,
+        "voie_uazc_face_canabady_alignement_ou_m": 4,
+        "voie_rn_m": 10,
+        "voie_uazp_rn1_nord_m": 40,
+        "voie_uazp_rn1_sud_m": 50,
+        "voie_uazc_canabady_rn3_m": 65,
+        "sep_lat_m": 0,
+        "sep_lat_note": "Retrait libre sur limites séparatives en UA",
+        "inter_batiments_m": null
+      },
+      "hauteurs": {
+        "he_max_m": 16,
+        "hf_max_m": 21,
+        "hf_uaza_max_m": 14,
+        "he_uazc_max_m": 13,
+        "hf_uazc_max_m": 18,
+        "he_uazc_canabady_m": 7,
+        "hf_uazc_canabady_m": 12,
+        "he_uazp_max_m": 15.5,
+        "hf_uazp_max_m": 20,
+        "equipements_publics_he_max_m": 25,
+        "equipements_publics_hf_max_m": 30,
+        "he_limite_sep_m": null,
+        "note": "UA général : hé 16m / hf 21m. Secteurs spécifiques voir ci-dessus."
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 75,
+        "emprise_sol_uazp_max_pct": 70,
+        "emprise_uazea_uaza_commerce_max_pct_uf": 5,
+        "cos": null
+      },
+      "cbs": {
+        "cbs_min_pct": 30,
+        "pleine_terre_min_pct": 20,
+        "note": "UA : CBS 30% minimum avec 20% pleine terre"
+      },
+      "toiture": {
+        "versants_obligatoire": false,
+        "note": "Toitures terrasses possibles, orientées E/O dans bande recul RN1 pour photovoltaïque",
+        "terrasse_orientation_rv1_e_o": true
+      },
+      "stationnement": {
+        "toutes_destinations_par_25m2_sdp": 1,
+        "note": "UA : norme unique 1 place/25m² SDP toutes destinations confondues"
+      },
+      "logement_aide": {
+        "applicable": false,
+        "note": "Zone d'activités — pas de logement aidé"
+      },
+      "plantations": {
+        "arbres_par_m2_espaces_libres": "1 arbre haute tige essence locale",
+        "haie_entre_batiment_parking_m": 1.5,
+        "stationnement_arbre_par_4places": true
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": ["Vérifier servitude aéronautique Uazp/Uazpc — gabarit plan servitude aéronautique primant"],
+        "source_pages": [170, 185]
+      }
+    },
+
+    "UE": {
+      "label": "Zone urbaine et à urbaniser à vocation d'équipements publics",
+      "type": "U",
+      "sous_type": "equipements_publics",
+      "loi_littoral": false,
+      "secteurs": {
+        "Uea": "Aérodrome Pierrefonds — emprise 30%, hé 9m/hf 15m",
+        "Uep": "Parcs et espaces verts loisirs — emprise 20m²/ha",
+        "Uemi": "Activités militaires"
+      },
+      "usages": {
+        "habitation": false,
+        "logements_de_fonction": true,
+        "equipement_collectif": true,
+        "aerodrome": true,
+        "militaire": true,
+        "loisirs": true,
+        "commerce": false, "industrie": false, "agricole": false
+      },
+      "reculs": {
+        "voie_principale_m": 4,
+        "voie_si_he_lte3m_m": 1,
+        "voie_pietonne_min_m": 2,
+        "voie_pietonne_max_m": 4,
+        "sep_lat_m": 0,
+        "sep_lat_note": "Sur une ou plusieurs limites ou en retrait libre"
+      },
+      "hauteurs": {
+        "he_max_m": 16,
+        "hf_max_m": 21,
+        "he_uea_max_m": 9,
+        "hf_uea_max_m": 15,
+        "he_limite_sep_m": 6,
+        "equipements_techniques_sans_limite": true,
+        "note": "UE/Uemi : hé 16m/hf 21m. Uea : hé 9m/hf 15m. Ouvrages techniques (antennes, pylônes) : pas de limite."
+      },
+      "emprise": {
+        "emprise_sol_ue_uemi_max_pct": 75,
+        "emprise_sol_uea_max_pct": 30,
+        "emprise_sol_uep_m2_par_ha": 20,
+        "cos": null
+      },
+      "cbs": {
+        "cbs_min_pct": 25,
+        "pleine_terre_min_pct": 20,
+        "note": "UE : CBS 25% minimum avec 20% pleine terre"
+      },
+      "toiture": {
+        "versants_obligatoire": false,
+        "note": "Équipements publics non soumis aux règles de toiture"
+      },
+      "stationnement": {
+        "logements_de_fonction_par_logement": 1,
+        "equipements_en_fonction_des_besoins": true,
+        "note": "UE : stationnement en fonction des besoins (équipements)"
+      },
+      "plantations": {
+        "arbres_par_m2_espaces_libres": "1 arbre haute tige essence locale pour 50m²",
+        "stationnement_arbre_par_4places": true
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": ["Vérifier plan de servitude aéronautique pour Uea — primant sur les règles PLU"],
+        "source_pages": [186, 198]
+      }
+    },
+
+    "AU0": {
+      "label": "Zones à urbaniser insuffisamment équipées — gel",
+      "type": "AU",
+      "sous_type": "strict",
+      "note": "Non ouvertes à l'urbanisation. Ouverture possible par modification PLU. Aucune construction neuve.",
+      "construction_neuve_interdite": true,
+      "ouverture_par_modification_plu": true,
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": [],
+        "source_pages": [199, 200]
+      }
+    },
+
+    "AUD": {
+      "label": "Zone à urbaniser de centralité — OAP obligatoire",
+      "type": "AU",
+      "ref": "UD",
+      "ref_note": "Règles UD applicables sauf articles non réglementés (AUdma : Ud3 et Ud4 non réglementés). OAP annexées obligatoires.",
+      "sous_zones": {
+        "AUdma": "Zone maritime — articles Ud3, Ud4, Ud5, Ud6 non réglementés"
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": ["Vérifier contenu OAP AUd pour prescriptions complémentaires"], "source_pages": [75, 95] }
+    },
+
+    "AUG": {
+      "label": "Zone à urbaniser mixte générale — OAP obligatoire",
+      "type": "AU",
+      "ref": "UG",
+      "ref_note": "Règles UG applicables. OAP annexées obligatoires.",
+      "_meta": { "confidence": 1.0, "ambiguites": [], "source_pages": [96, 110] }
+    },
+
+    "AUF": {
+      "label": "Zone à urbaniser de faible densité — OAP obligatoire",
+      "type": "AU",
+      "ref": "UF",
+      "ref_note": "Règles UF applicables. OAP annexées obligatoires.",
+      "sous_zones": {
+        "AUfGB": "Secteur Grand Bois — hf max 5.5m"
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [], "source_pages": [111, 127] }
+    },
+
+    "AUT": {
+      "label": "Zone à urbaniser touristique — OAP obligatoire",
+      "type": "AU",
+      "ref": "UT",
+      "sous_zones": {
+        "AUt1": "OAP spécifique — hf max 15m",
+        "AUt2": "OAP spécifique — hf max 6m"
+      },
+      "ref_note": "Règles UT applicables avec hauteurs spécifiques par secteur. OAP obligatoires.",
+      "_meta": { "confidence": 1.0, "ambiguites": [], "source_pages": [155, 169] }
+    },
+
+    "AUA": {
+      "label": "Zone à urbaniser d'activités économiques — OAP obligatoire",
+      "type": "AU",
+      "ref": "UA",
+      "sous_zones": {
+        "AUazc": "OAP activités tertiaires/commerciales",
+        "AUazi": "OAP activités industrielles/artisanales"
+      },
+      "ref_note": "Règles UA applicables. OAP annexées obligatoires pour AUazc et AUazi.",
+      "_meta": { "confidence": 1.0, "ambiguites": [], "source_pages": [170, 185] }
+    },
+
+    "AUE": {
+      "label": "Zone à urbaniser équipements publics — OAP obligatoire",
+      "type": "AU",
+      "ref": "UE",
+      "ref_note": "Règles UE applicables. OAP annexées obligatoires.",
+      "_meta": { "confidence": 1.0, "ambiguites": [], "source_pages": [186, 198] }
+    },
+
+    "A": {
+      "label": "Zone Agricole",
+      "type": "A",
+      "sous_type": "agricole",
+      "usages": {
+        "habitation": false,
+        "extension_habitation_existante": true,
+        "activite_agricole": true,
+        "agri_tourisme": true,
+        "equipement_collectif": true,
+        "industrie": false, "commerce": false
+      },
+      "reculs": {
+        "voie_principale_m": 6,
+        "sep_lat_m": 4,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_habitation_max_m": null,
+        "hf_habitation_max_m": null,
+        "agricole_non_reglemente": true,
+        "note": "Hauteurs agricoles non réglementées. Extension habitation : limitée à 120m² SDP supplémentaires max (sauf logement : aucune extension autorisée)."
+      },
+      "emprise": {
+        "extension_existant_autres_max_m2_sdp": 120,
+        "extension_logement_interdite": true,
+        "cos": null
+      },
+      "cbs": {
+        "cbs_reglemente": false,
+        "note": "Pas de CBS en zone A — règles paysagères spécifiques"
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "note": "Toitures à versants recommandées"
+      },
+      "stationnement": {
+        "en_fonction_des_besoins": true
+      },
+      "_meta": {
+        "confidence": 0.85,
+        "ambiguites": ["Pages A non extraites complètement — à vérifier pages 201-210 du PDF pour règles détaillées extension habitation"],
+        "source_pages": [201, 210]
+      }
+    },
+
+    "N": {
+      "label": "Zone Naturelle",
+      "type": "N",
+      "sous_type": "naturelle",
+      "usages": {
+        "habitation": false,
+        "extension_existant": true,
+        "activite_agricole": true,
+        "loisirs_legers": true,
+        "equipement_collectif": true,
+        "industrie": false, "commerce": false
+      },
+      "reculs": {
+        "voie_principale_m": 6,
+        "sep_lat_m": 4,
+        "inter_batiments_m": 4
+      },
+      "hauteurs": {
+        "he_max_m": null,
+        "hf_max_m": null,
+        "note": "Hauteurs selon destination. Extension existant limitée."
+      },
+      "emprise": {
+        "extension_existant_max_m2_sdp": 120,
+        "cos": null
+      },
+      "cbs": {
+        "cbs_reglemente": false
+      },
+      "stationnement": {
+        "en_fonction_des_besoins": true
+      },
+      "_meta": {
+        "confidence": 0.8,
+        "ambiguites": ["Pages N non extraites complètement — à vérifier pages 211-221 du PDF pour sous-zones Nea, Np, etc."],
+        "source_pages": [211, 221]
+      }
+    }
+  }
+}

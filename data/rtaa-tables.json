@@ -1,0 +1,115 @@
+{
+  "$version": "1.0.0",
+  "$ref": "RTAA DOM 2016 — Arrêté 17 avril 2009 modifié 11 janvier 2016 — Annexe III",
+  "$scope": "La Réunion uniquement (zones 1/2/3)",
+
+  "zones": {
+    "reunion_zone1": { "altitude_m": [0, 400],   "label": "La Réunion ≤400m" },
+    "reunion_zone2": { "altitude_m": [400, 600], "label": "La Réunion 400-600m" },
+    "reunion_zone3": { "altitude_m": [600, 9999], "label": "Hauts >600m — EXEMPTÉ Art.5+6" }
+  },
+
+  "S_max_parois_opaques": {
+    "toiture_horizontale": 0.03,
+    "mur_vertical_pp": 0.09
+  },
+
+  "S_max_baies": {
+    "reunion_zone1": {
+      "N": 0.60, "S": 0.80, "E": 0.60, "W": 0.60,
+      "NE": 0.60, "NO": 0.60, "SE": 0.80, "SO": 0.60
+    },
+    "reunion_zone2": {
+      "N": 0.80, "S": null, "E": 0.80, "W": 0.80,
+      "NE": 0.80, "NO": 0.80, "SE": null, "SO": 0.80
+    }
+  },
+
+  "alpha_absorption": {
+    "claire":  { "verticale": 0.40, "horizontale": 0.60 },
+    "moyenne": { "verticale": 0.60, "horizontale": 0.60 },
+    "sombre":  { "verticale": 0.80, "horizontale": 0.80 },
+    "noire":   { "verticale": 1.00, "horizontale": 1.00 },
+    "lasure_bois":         { "verticale": 0.80, "horizontale": 0.80 },
+    "toiture_vegetalisee": { "verticale": 0.60, "horizontale": 0.60 }
+  },
+
+  "So_par_menuiserie": {
+    "baie_libre":                   1.00,
+    "pf_coulissante_2v":            0.75,
+    "pf_coulissante_4v":            0.75,
+    "fen_battante":                 0.87,
+    "jalousie_opaque":              0.40,
+    "jalousie_opaque_clair":        0.53,
+    "jalousie_opaque_sombre":       0.28,
+    "lame_reflechissante":          0.30,
+    "store_projetable_opaque":      0.35,
+    "volet_battant_persienne":      0.40,
+    "volet_coulissant_lames":       0.40,
+    "pare_soleil_vertical_ventile": 0.30,
+    "porte_opaque":                 0.00
+  },
+
+  "Cm_forfaitaire": {
+    "reunion_nord": {
+      "dh": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0],
+      "debord_fini":   [0.88, 0.79, 0.72, 0.67, 0.63, 0.61, 0.59, 0.58],
+      "debord_05h":    [0.86, 0.74, 0.64, 0.57, 0.52, 0.48, 0.45, 0.43],
+      "debord_2h":     [0.85, 0.72, 0.61, 0.53, 0.46, 0.42, 0.37, 0.35],
+      "debord_1joue":  [0.84, 0.73, 0.64, 0.58, 0.54, 0.51, 0.49, 0.47],
+      "debord_2joues": [0.80, 0.66, 0.56, 0.49, 0.45, 0.41, 0.38, 0.36]
+    },
+    "reunion_sud": {
+      "dh": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0],
+      "debord_fini":   [0.94, 0.89, 0.84, 0.81, 0.78, 0.76, 0.74, 0.73],
+      "debord_05h":    [0.93, 0.87, 0.81, 0.76, 0.72, 0.69, 0.65, 0.63],
+      "debord_2h":     [0.93, 0.86, 0.79, 0.74, 0.69, 0.66, 0.61, 0.58],
+      "debord_1joue":  [0.92, 0.86, 0.80, 0.75, 0.72, 0.69, 0.65, 0.63],
+      "debord_2joues": [0.91, 0.83, 0.76, 0.71, 0.67, 0.64, 0.60, 0.57]
+    },
+    "reunion_est": {
+      "dh": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0],
+      "debord_fini":   [0.86, 0.76, 0.68, 0.63, 0.59, 0.56, 0.53, 0.52],
+      "debord_05h":    [0.84, 0.71, 0.62, 0.55, 0.50, 0.46, 0.42, 0.40],
+      "debord_2h":     [0.83, 0.70, 0.60, 0.52, 0.46, 0.42, 0.37, 0.34],
+      "debord_1joue":  [0.82, 0.70, 0.62, 0.55, 0.50, 0.47, 0.43, 0.41],
+      "debord_2joues": [0.78, 0.64, 0.55, 0.48, 0.43, 0.40, 0.36, 0.33]
+    },
+    "reunion_ouest": {
+      "dh": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0],
+      "debord_fini":   [0.86, 0.76, 0.68, 0.63, 0.59, 0.56, 0.53, 0.52],
+      "debord_05h":    [0.84, 0.71, 0.62, 0.55, 0.50, 0.46, 0.42, 0.40],
+      "debord_2h":     [0.83, 0.70, 0.60, 0.52, 0.46, 0.42, 0.37, 0.34],
+      "debord_1joue":  [0.82, 0.70, 0.62, 0.55, 0.50, 0.47, 0.43, 0.41],
+      "debord_2joues": [0.78, 0.64, 0.55, 0.48, 0.43, 0.40, 0.36, 0.33]
+    }
+  },
+
+  "Cm_special": {
+    "bardage_ventile":        0.30,
+    "surtoiture_standard":    0.30,
+    "surtoiture_performante": 0.15,
+    "sans_paresoleil":        1.00
+  },
+
+  "protections_courantes": {
+    "varangue_2m": {
+      "label": "Varangue 2m",
+      "type": "debord",
+      "debord_m": 2.00,
+      "orientations_ideales": ["N", "NE", "NO"]
+    },
+    "casquette_060": {
+      "label": "Casquette béton 60cm",
+      "type": "debord",
+      "debord_m": 0.60,
+      "orientations_ideales": ["E", "SE"]
+    },
+    "debord_toit_080": {
+      "label": "Débord de toiture 80cm",
+      "type": "debord",
+      "debord_m": 0.80,
+      "orientations_ideales": ["N", "NE", "NO", "E"]
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "meta": {
+    "version": "2026-04",
+    "region": "La Réunion",
+    "generated": "2026-04-07",
+    "commune": "Saint-Philippe",
+    "insee": "97417",
+    "intercommunalite": "CASUD",
+    "plu_type": "PLU",
+    "status": "PLU_INTROUVABLE",
+    "note": "Règlement PLU non disponible sur le GPU ni en téléchargement direct. À chercher auprès de la mairie ou de la CASUD."
+  },
+  "zones": {}
+}

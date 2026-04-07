@@ -1,0 +1,326 @@
+<!-- TERLAB · Phase 11 · Esquisse Plan Masse SVG · ENSA La Réunion v1.0 -->
+<!-- Éditeur SVG enveloppes volumétriques · Score Pareto · Jardin BPF -->
+
+<link rel="stylesheet" href="../assets/esquisse.css"/>
+
+<div class="left-panel">
+  <div class="lp-head anim-slide-up">
+    <div class="phase-label" style="color:var(--accent, #9a7820)">Phase 11 · Esquisse</div>
+    <h1 class="phase-title">📐 <em>Esquisse</em> Plan Masse</h1>
+    <p class="phase-desc">Enveloppes volumétriques scorées Pareto 5 objectifs. Édition par drag des nœuds et arêtes. Analyse RTAA DOM temps réel.</p>
+  </div>
+
+  <div class="terrain-strip">
+    <span class="ts-item">📐 Parcelle <strong id="ts-contenance-p11">— m²</strong></span>
+    <span class="ts-sep">·</span>
+    <span class="ts-item">PLU <strong id="ts-zone-plu-p11">—</strong></span>
+    <span class="ts-sep">·</span>
+    <span class="ts-item">Alt. <strong id="ts-alt-p11">— m</strong></span>
+  </div>
+</div>
+
+<!-- SPLIT : LEFT PANEL + CANVAS SVG -->
+<div class="p11-split">
+
+  <!-- LEFT PANEL -->
+  <div class="p11-left">
+
+    <!-- Contraintes PLU (résumé depuis Phase 4) -->
+    <div class="form-section">
+      <div class="fs-head">Contraintes PLU actives</div>
+      <div class="plu-constraints" id="p11-plu-constraints">
+        <!-- Injecté dynamiquement depuis session -->
+      </div>
+    </div>
+
+    <!-- Propositions scorées -->
+    <div class="form-section">
+      <div class="fs-head">Propositions générées</div>
+      <div id="p11-score-panel" class="p11-proposals-list">
+        <!-- Injecté par EsquisseCanvas._renderScorePanel() -->
+      </div>
+    </div>
+
+    <!-- Jardin recommandé BPF -->
+    <div class="form-section">
+      <div class="fs-head">🌿 Jardin recommandé (BPF)</div>
+      <div id="p11-garden-hint" class="p11-garden-panel">
+        <!-- Injecté par EsquisseCanvas._renderGardenHint() -->
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="form-section">
+      <div class="btn-row" style="display:flex;gap:8px">
+        <button class="btn-secondary" onclick="P11.regenerate()" style="flex:1;padding:6px 12px;font-family:var(--font-mono);font-size:9px;background:var(--raised);border:1px solid var(--border);color:var(--muted);cursor:pointer;border-radius:4px">🔄 Régénérer</button>
+        <button class="btn-primary" onclick="P11.saveAndExport()" style="flex:1;padding:6px 12px;font-family:var(--font-mono);font-size:9px;background:var(--accent, #9a7820);border:none;color:#000;cursor:pointer;border-radius:4px;font-weight:700">💾 Sauvegarder</button>
+      </div>
+    </div>
+
+    <!-- Sources -->
+    <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
+      <button class="source-btn" onclick="TerlabSources.open(11)">→ Sources & références</button>
+    </div>
+
+    <!-- Validation -->
+    <div class="val-block">
+      <div class="val-title">Validation de la phase 11</div>
+      <div class="check-item" role="checkbox" aria-checked="false" tabindex="0" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <span>Au moins une proposition d'enveloppe a été explorée</span>
+      </div>
+      <div class="check-item" role="checkbox" aria-checked="false" tabindex="0" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <span>L'enveloppe retenue respecte les reculs PLU</span>
+      </div>
+      <div class="check-item" role="checkbox" aria-checked="false" tabindex="0" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <span>Le jardin BPF recommandé a été noté</span>
+      </div>
+      <div class="check-item" role="checkbox" aria-checked="false" tabindex="0" onclick="toggleCheck(this)">
+        <div class="check-box"></div>
+        <span>L'analyse RTAA a été consultée</span>
+      </div>
+      <div class="val-progress"><div class="val-bar"></div></div>
+      <div class="val-footer">
+        <span>Phase indicative</span>
+        <span class="val-pct">0/4</span>
+      </div>
+      <button class="next-btn">Phase 12 → Synthèse</button>
+    </div>
+
+  </div>
+
+  <!-- CANVAS SVG -->
+  <div class="p11-canvas-wrap" id="p11-canvas-wrap">
+    <!-- Toggle buttons -->
+    <button class="p11-toggle p11-toggle-left" onclick="P11.toggleLeft()" title="Masquer/Afficher panneau gauche">◂</button>
+    <button class="p11-toggle p11-toggle-right" onclick="P11.toggleRight()" title="Masquer/Afficher panneau RTAA">▸</button>
+
+    <!-- Toolbar Canvas -->
+    <div class="p11-toolbar">
+      <button class="p11-tool" onclick="P11.setMode('select')"  title="Sélection">↖</button>
+      <button class="p11-tool" onclick="P11.setMode('edit')"    title="Éditer nœuds + arêtes">◉</button>
+      <button class="p11-tool" onclick="P11.zoomFit()"          title="Ajuster vue">⊙</button>
+      <span class="p11-sep"></span>
+      <button class="p11-tool" id="p11-btn-cadastre" onclick="P11.toggleCadastre()" title="Afficher/masquer le plan cadastral IGN">⊞ Cadastre</button>
+      <span class="p11-sep"></span>
+      <button class="p11-tool" onclick="P11.exportSVG()"        title="Export SVG">↓ SVG</button>
+    </div>
+
+    <!-- Canvas SVG overlay (positionne par EsquisseCanvas sur le container Mapbox ou standalone) -->
+    <svg id="p11-svg"
+         xmlns="http://www.w3.org/2000/svg"
+         style="position:relative;z-index:1;width:100%;height:100%;cursor:default">
+    </svg>
+
+    <!-- Légende -->
+    <div class="p11-legend">
+      <div class="p11-legend-item"><span style="background:var(--accent, #9a7820);opacity:.5"></span>Zone constructible</div>
+      <div class="p11-legend-item"><span style="background:#f59e0b;opacity:.5"></span>Reculs PLU</div>
+      <div class="p11-legend-item"><span style="background:#6366f1;opacity:.5"></span>Vue mer/montagne</div>
+      <div class="p11-legend-item"><span style="background:#22c55e;opacity:.5"></span>Facade conforme RTAA</div>
+      <div class="p11-legend-item"><span style="background:#ef4444;opacity:.5"></span>Facade non conforme</div>
+      <div class="p11-legend-item"><span style="background:#0ea5e9;opacity:.5"></span>Accroche limite (0m)</div>
+      <div class="p11-legend-item"><span style="background:#475569;opacity:.4"></span>Bâti existant</div>
+      <div class="p11-legend-item"><span style="background:#1e3a5f;opacity:.3"></span>Cadastre IGN</div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL : RTAA REPORT -->
+  <div class="p11-right" id="p11-rtaa-panel">
+    <div style="padding:20px;text-align:center;color:var(--muted)">
+      <div style="font-size:32px;margin-bottom:8px;opacity:0.3">◎</div>
+      <div style="font-size:10px">Sélectionnez une proposition pour lancer l'analyse RTAA</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Phase 11 Script -->
+<script type="module">
+// Tous les modules sont exposés sur window par index.js
+const SessionManager    = window.SessionManager;
+const EsquisseCanvas    = window.EsquisseCanvas;
+const EnvelopeGenerator = window.EnvelopeGenerator;
+const ParetoScorer      = window.ParetoScorer;
+const ViewDetector      = window.ViewDetector;
+const BpfGardenAdvisor  = window.BpfGardenAdvisor;
+const RTAAAnalyzer      = window.RTAAAnalyzer;
+const RTAAPanel         = window.RTAAPanel;
+
+const P11 = {
+
+  async init() {
+    const session = SessionManager._data;
+    const terrain = session?.terrain ?? {};
+
+    // Terrain strip
+    const el = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+    el('ts-contenance-p11', (terrain.contenance_m2 ?? '—') + ' m²');
+    el('ts-zone-plu-p11',   session?.phases?.[4]?.data?.zone_plu ?? session?.phases?.[4]?.data?.plu_zone ?? terrain?.zone_plu ?? '—');
+    el('ts-alt-p11',        (terrain.altitude_ngr ?? '—') + ' m');
+
+    // Injecter les contraintes PLU depuis Phase 4
+    this._renderPLUConstraints(session);
+
+    // Resize SVG sur le canvas wrap
+    const wrap = document.getElementById('p11-canvas-wrap');
+    const svg  = document.getElementById('p11-svg');
+    if (wrap && svg) {
+      svg.setAttribute('width', wrap.clientWidth - 50);
+      svg.setAttribute('height', wrap.clientHeight - 60);
+    }
+
+    // Initialiser le canvas
+    await EsquisseCanvas.init('p11-svg', session);
+
+    // Lancer l'analyse RTAA sur la proposition sélectionnée
+    const prop = EsquisseCanvas._proposals?.[0];
+    if (prop) {
+      try {
+        const report = await RTAAAnalyzer.analyze(session, { polygon: prop.polygon });
+        SessionManager.saveRTAAReport(report);
+        RTAAPanel.render(report, document.getElementById('p11-rtaa-panel'));
+      } catch (e) {
+        console.warn('[P11] Analyse RTAA initiale échouée:', e);
+      }
+    }
+
+    // Écouter les mises à jour RTAA (drag reanalysis)
+    window.addEventListener('terlab:rtaa-updated', (e) => {
+      RTAAPanel.render(e.detail.report, document.getElementById('p11-rtaa-panel'));
+    });
+  },
+
+  _pluRulesCache: null,
+
+  async _loadPluRules() {
+    if (this._pluRulesCache) return this._pluRulesCache;
+    try {
+      const resp = await fetch('../data/plu-rules.json');
+      this._pluRulesCache = await resp.json();
+    } catch { this._pluRulesCache = null; }
+    return this._pluRulesCache;
+  },
+
+  async _renderPLUConstraints(session) {
+    const p4 = session?.phases?.[4]?.data ?? {};
+    const terrain = session?.terrain ?? {};
+    const el = document.getElementById('p11-plu-constraints');
+    if (!el) return;
+
+    // Clé zone PLU : P04 sauvegarde sous zone_plu (pas plu_zone)
+    const zoneKey = p4.zone_plu ?? terrain.zone_plu ?? p4.plu_zone ?? null;
+
+    // Fallback : charger les règles depuis plu-rules.json
+    let pluRule = null;
+    if (zoneKey) {
+      const rules = await this._loadPluRules();
+      const zoneId = zoneKey.split(' ')[0].trim();
+      pluRule = rules?.zones?.[zoneId] ?? null;
+    }
+
+    // Résoudre chaque valeur : session P4 → terrain → plu-rules.json → '—'
+    const he  = p4.hauteur_egout_m  ?? p4.hauteur_max_m   ?? pluRule?.he_max_m  ?? null;
+    const hf  = p4.hauteur_faitage_m ?? pluRule?.hf_max_m  ?? null;
+    const rv  = p4.recul_voie_m ?? p4.recul_voie_principale_m ?? pluRule?.recul_voie_m ?? null;
+    const rl  = p4.recul_lat_m ?? p4.recul_limite_sep_m ?? pluRule?.recul_sep_lat_m ?? null;
+    const rf  = p4.recul_fond_m ?? pluRule?.recul_sep_fond_m ?? null;
+    const ces = p4.ces_max ?? p4.emprise_sol_max_pct ?? null;
+    const perm = p4.permeabilite_min_pct ?? pluRule?.permeable_min_pct ?? null;
+
+    const fmt = (v, suffix = '') => v != null ? v + suffix : '—';
+
+    const constraints = [
+      { label: 'Zone PLU',          val: zoneKey ? `${zoneKey}${pluRule ? ' — ' + pluRule.label : ''}` : '—' },
+      { label: 'Hauteur égout',     val: fmt(he, ' m'), note: 'sablière/gouttière' },
+      { label: 'Hauteur faîtage',   val: fmt(hf, ' m'), note: 'point le plus haut' },
+      { label: 'Recul voie',        val: fmt(rv, ' m') },
+      { label: 'Reculs latéraux',   val: fmt(rl, ' m') },
+      { label: 'Recul fond',        val: fmt(rf, ' m') },
+      { label: 'CES max',           val: ces ? (parseFloat(ces) > 1 ? ces + '%' : (ces * 100).toFixed(0) + '%') : '—' },
+      { label: 'COS max',           val: p4.cos_max ?? '—' },
+      { label: 'Perméabilité min',  val: fmt(perm, '%') },
+    ];
+
+    el.innerHTML = constraints.map(c => `
+      <div class="plu-row">
+        <span class="plu-label">${c.label}${c.note ? ` <small>(${c.note})</small>` : ''}</span>
+        <span class="plu-val">${c.val}</span>
+      </div>
+    `).join('');
+  },
+
+  setMode(mode) { EsquisseCanvas._mode = mode; },
+
+  zoomFit() { EsquisseCanvas._autoFit(); EsquisseCanvas._refresh(); },
+
+  toggleLeft() {
+    const split = document.querySelector('.p11-split');
+    split.classList.toggle('left-collapsed');
+    const btn = document.querySelector('.p11-toggle-left');
+    btn.textContent = split.classList.contains('left-collapsed') ? '▸' : '◂';
+  },
+
+  toggleRight() {
+    const split = document.querySelector('.p11-split');
+    split.classList.toggle('right-collapsed');
+    const btn = document.querySelector('.p11-toggle-right');
+    btn.textContent = split.classList.contains('right-collapsed') ? '◂' : '▸';
+  },
+
+  _cadastreVisible: true,
+  toggleCadastre() {
+    this._cadastreVisible = !this._cadastreVisible;
+    EsquisseCanvas.toggleCadastre(this._cadastreVisible);
+    const btn = document.getElementById('p11-btn-cadastre');
+    if (btn) {
+      btn.style.opacity = this._cadastreVisible ? '1' : '0.4';
+      btn.title = this._cadastreVisible ? 'Masquer le plan cadastral IGN' : 'Afficher le plan cadastral IGN';
+    }
+  },
+
+  async regenerate() {
+    EsquisseCanvas._proposals = await EnvelopeGenerator.generate(
+      SessionManager._data, EsquisseCanvas._parcelLocal, EsquisseCanvas._edgeTypes
+    );
+    EsquisseCanvas._proposals.forEach(p => {
+      p.polygonGeo = EsquisseCanvas._localToGeo(p.polygon);
+    });
+    EsquisseCanvas._renderProposal(0);
+    EsquisseCanvas._renderScorePanel();
+    // Re-analyser RTAA
+    const prop = EsquisseCanvas._proposals?.[0];
+    if (prop) {
+      const report = await RTAAAnalyzer.analyze(SessionManager._data, { polygon: prop.polygon });
+      SessionManager.saveRTAAReport(report);
+      RTAAPanel.render(report, document.getElementById('p11-rtaa-panel'));
+    }
+  },
+
+  saveAndExport() {
+    EsquisseCanvas.exportSVG();
+    window.TerlabToast?.show('Phase 11 sauvegardée', 'success', 2000);
+  },
+
+  exportSVG() { return EsquisseCanvas.exportSVG(); },
+};
+
+window.P11 = P11;
+
+// Init
+P11.init();
+
+// Resize observer
+const wrapEl = document.getElementById('p11-canvas-wrap');
+if (wrapEl) {
+  new ResizeObserver(() => {
+    const svg = document.getElementById('p11-svg');
+    if (wrapEl && svg) {
+      svg.setAttribute('width', wrapEl.clientWidth - 50);
+      svg.setAttribute('height', wrapEl.clientHeight - 60);
+    }
+  }).observe(wrapEl);
+}
+</script>

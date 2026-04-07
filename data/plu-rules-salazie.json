@@ -1,0 +1,172 @@
+{
+  "meta": {
+    "version": "2026-04",
+    "region": "La Réunion",
+    "generated": "2026-04-07",
+    "commune": "Salazie",
+    "insee": "97424",
+    "intercommunalite": "CIREST",
+    "plu_type": "PLU",
+    "plu_date_approbation": "2022-05-24",
+    "source": "GPU DU_97421"
+  },
+  "zones": {
+    "UA": {
+      "label": "Centre-bourg",
+      "type": "U",
+      "sous_type": "centre_urbain",
+      "reculs": {
+        "voie_principale_m": 3,
+        "sep_lat_m": 3,
+        "sep_fond_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 12,
+        "annexe_hf_max_m": 3.5
+      },
+      "permeabilite": {
+        "permeable_min_pct": 10
+      },
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    },
+    "UA1": {
+      "label": "Centre historique",
+      "type": "U",
+      "ref": "UA",
+      "hauteurs": {
+        "he_max_m": 7
+      },
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    },
+    "UB": {
+      "label": "Résidentiel intermédiaire",
+      "type": "U",
+      "reculs": {
+        "voie_principale_m": 3,
+        "sep_lat_m": 3,
+        "sep_fond_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 12,
+        "annexe_hf_max_m": 3.5
+      },
+      "permeabilite": {
+        "permeable_min_pct": 20
+      },
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    },
+    "UC": {
+      "label": "Résidentiel diffus",
+      "type": "U",
+      "reculs": {
+        "voie_principale_m": 3,
+        "sep_lat_m": 3,
+        "sep_fond_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 9,
+        "annexe_hf_max_m": 3.5
+      },
+      "permeabilite": {
+        "permeable_min_pct": 25
+      },
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    },
+    "UT": {
+      "label": "Tourisme",
+      "type": "U",
+      "sous_type": "touristique",
+      "reculs": {
+        "voie_principale_m": 3,
+        "sep_lat_m": 3,
+        "sep_fond_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 12
+      },
+      "permeabilite": {
+        "permeable_min_pct": 25
+      },
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    },
+    "AU": {
+      "label": "Zones AU",
+      "type": "AU",
+      "ref": "zone U",
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    },
+    "AUE": {
+      "label": "AU économique",
+      "type": "AU",
+      "sous_type": "activites",
+      "reculs": {
+        "voie_principale_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 12
+      },
+      "permeabilite": {
+        "permeable_min_pct": 25
+      },
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    },
+    "A": {
+      "label": "Agricole",
+      "type": "A",
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 5
+      },
+      "hauteurs": {
+        "he_max_m": 4,
+        "hf_max_m": 7
+      },
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    },
+    "N": {
+      "label": "Naturelle",
+      "type": "N",
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 5
+      },
+      "hauteurs": {
+        "he_max_m": 4,
+        "hf_max_m": 7
+      },
+      "_meta": {
+        "confidence": 1,
+        "ambiguites": []
+      }
+    }
+  },
+  "regles_communes": {
+    "ravine_recul_m": 10,
+    "cloture_voie_hauteur_max_m": 2,
+    "rtaa_dom": "2016"
+  }
+}

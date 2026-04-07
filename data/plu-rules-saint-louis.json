@@ -1,0 +1,602 @@
+{
+  "meta": {
+    "version": "2026-04",
+    "region": "La Réunion",
+    "generated": "2026-04-07",
+    "commune": "Saint-Louis",
+    "insee": "97415",
+    "intercommunalite": "CIVIS",
+    "plu_type": "PLU",
+    "plu_date_approbation": "2014-03-11",
+    "plu_modifications": ["2020-02-27", "2025-07-09"],
+    "source": "Règlement PLU Saint-Louis — GPU DU_97414 — 97414_reglement_20251218.pdf"
+  },
+
+  "zones": {
+
+    "UA": {
+      "label": "Grand centre-ville de Saint-Louis",
+      "type": "U",
+      "sous_type": "centre_urbain",
+      "loi_littoral": false,
+      "usages": {
+        "habitation": true, "commerce": true, "bureau": true,
+        "activite": true, "entrepot": false, "hotel": true,
+        "camping": false, "agricole": false, "industriel": false
+      },
+      "reculs": {
+        "voie_principale_m": 0,
+        "voie_alignement": true,
+        "voie_alternative_m": 3,
+        "voie_note": "Alignement ou retrait min 3m. Rue Dr R. Vergés : servitude galerie — RdC à 3m retrait, étages à l'alignement, hauteur libre RdC min 3.5m, piliers tous 4m min.",
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_note": "Implantation sur 1 ou 2 limites latérales ou en retrait min 3m.",
+        "sep_fond_m": 3,
+        "sep_fond_note": "Implantation en limite possible si h ≤ 4m, puis gabarit 100% sur 3m de profondeur.",
+        "inter_batiments_m": 4
+      },
+      "hauteurs": {
+        "he_max_m": 15,
+        "hf_max_m": 19,
+        "annexe_hf_max_m": 3.5,
+        "zones_speciales": []
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 70,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 15
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60
+      },
+      "stationnement": {
+        "logement_social": "1 place / logement",
+        "logement_standard": "2 places / logement",
+        "visiteur_par_10lots": 0.5,
+        "commerce_bureau": "50% SDP en stationnement",
+        "activite_industrielle": "30% SDP en stationnement",
+        "hotel_par_2chambres": 1,
+        "residence_agees_par_3logements": 1,
+        "enseignement_par_classe": 1.5,
+        "erp_par_10personnes": 2,
+        "deux_roues_hab_par_logement": 1,
+        "deux_roues_activite_par_100m2": 1,
+        "arbre_par_2places": true
+      },
+      "logement_aide": {
+        "sdp_seuil_m2": 2000,
+        "pct_aide": 30
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10,
+        "cloture_voie_hauteur_max_m": 2,
+        "cloture_type": "grille/grillage sur bahut 0.30-0.60m OU grillage + haie OU mur maçonnerie max 1.50m",
+        "cloture_mur_plein_interdit_au_dessus_soutenement_3m": true,
+        "mur_soutenement_max_m": 3,
+        "mur_soutenement_renouvele_tous_les_2m": true,
+        "ebc": false,
+        "performance_energetique": "Conception bioclimatique, bande 3m protégée ensoleillement"
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": [],
+        "source_articles": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+      }
+    },
+
+    "UA1": {
+      "label": "Centre historique de Saint-Louis",
+      "type": "U",
+      "sous_type": "centre_historique",
+      "ref": "UA",
+      "ref_note": "Mêmes règles que UA sauf exceptions ci-dessous",
+      "differences_ua": {
+        "emprise_sol_max_pct": null,
+        "emprise_note": "Non réglementée en UA1",
+        "permeable_min_pct": null,
+        "permeable_note": "Non réglementée en UA1"
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "UB": {
+      "label": "Bois de Nèfles Cocos — quartier stratégique dense",
+      "type": "U",
+      "sous_type": "résidentielle_dense",
+      "loi_littoral": false,
+      "usages": {
+        "habitation": true, "commerce": true, "bureau": true,
+        "activite": true, "entrepot": false, "hotel": true,
+        "camping": false, "agricole": false, "industriel": false
+      },
+      "reculs": {
+        "voie_principale_m": 0,
+        "voie_alignement": true,
+        "voie_alternative_m": 3,
+        "voie_note": "Alignement ou retrait min 3m",
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_fond_m": 3,
+        "sep_fond_note": "Limite possible si h ≤ 4m, puis gabarit 100% sur 3m",
+        "inter_batiments_m": 4
+      },
+      "hauteurs": {
+        "he_max_m": 12,
+        "hf_max_m": 17,
+        "annexe_hf_max_m": 3.5
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 70,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 20
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60
+      },
+      "stationnement": {
+        "logement_social": "1 place / logement",
+        "logement_standard": "2 places / logement",
+        "visiteur_par_10lots": 0.5,
+        "commerce_bureau": "50% SDP",
+        "hotel_par_2chambres": 1,
+        "enseignement_par_classe": 1.5,
+        "erp_par_10personnes": 2
+      },
+      "logement_aide": {
+        "sdp_seuil_m2": 2000,
+        "pct_aide": 30
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10,
+        "cloture_voie_hauteur_max_m": 2,
+        "mur_soutenement_max_m": 3
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "UC": {
+      "label": "Tissu urbain aggloméré de la Rivière — mixité résidentielle",
+      "type": "U",
+      "sous_type": "résidentielle_mixte",
+      "loi_littoral": false,
+      "usages": {
+        "habitation": true, "commerce": true, "bureau": true,
+        "activite": true, "entrepot": false, "hotel": true,
+        "camping": false, "agricole": false, "industriel": false
+      },
+      "reculs": {
+        "voie_principale_m": 4,
+        "voie_alignement": false,
+        "voie_note": "Retrait min 4m",
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_fond_m": 3,
+        "sep_fond_note": "Limite possible si h ≤ 4m, puis gabarit 100% sur 3m",
+        "inter_batiments_m": 4
+      },
+      "hauteurs": {
+        "he_max_m": 7,
+        "hf_max_m": 11,
+        "annexe_hf_max_m": 3.5,
+        "zones_speciales": [
+          {
+            "note": "Opérations > 2000m² SDP : 40% max peut atteindre hé 9m, hf 13m"
+          }
+        ]
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 60,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 25
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60
+      },
+      "stationnement": {
+        "logement_social": "1 place / logement",
+        "logement_standard": "2 places / logement",
+        "visiteur_par_10lots": 0.5,
+        "commerce_bureau": "50% SDP",
+        "hotel_par_2chambres": 1
+      },
+      "logement_aide": {
+        "sdp_seuil_m2": 2000,
+        "pct_aide": 30
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10,
+        "cloture_voie_hauteur_max_m": 2,
+        "mur_soutenement_max_m": 3
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "UC1": {
+      "label": "Emprises foncières habitat collectif dense — La Rivière",
+      "type": "U",
+      "sous_type": "résidentielle_dense",
+      "ref": "UC",
+      "ref_note": "Mêmes règles que UC sauf hauteurs",
+      "hauteurs": {
+        "he_max_m": 9,
+        "hf_max_m": 13,
+        "zones_speciales": [
+          { "note": "Opérations > 2000m² SDP : 40% max peut atteindre hé 12m, hf 16m" }
+        ]
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "UC2": {
+      "label": "Quartier du Ruisseau — densités moindres",
+      "type": "U",
+      "sous_type": "résidentielle_intermédiaire",
+      "ref": "UC",
+      "ref_note": "Mêmes règles que UC sauf hauteurs",
+      "hauteurs": {
+        "he_max_m": 6,
+        "hf_max_m": 10
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "UD": {
+      "label": "Tissu urbain rural — résidentiel peu dense",
+      "type": "U",
+      "sous_type": "résidentielle_diffuse",
+      "loi_littoral": false,
+      "usages": {
+        "habitation": true, "commerce": true, "bureau": true,
+        "activite": true, "entrepot": false, "hotel": true,
+        "camping": false, "agricole": false, "industriel": false
+      },
+      "reculs": {
+        "voie_principale_m": 4,
+        "voie_alignement": false,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_fond_m": 3,
+        "inter_batiments_m": 4
+      },
+      "hauteurs": {
+        "he_max_m": 6,
+        "hf_max_m": 10,
+        "annexe_hf_max_m": 3.5
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 50,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 30
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60
+      },
+      "stationnement": {
+        "logement_social": "1 place / logement",
+        "logement_standard": "2 places / logement",
+        "visiteur_par_10lots": 0.5,
+        "commerce_bureau": "50% SDP",
+        "hotel_par_2chambres": 1
+      },
+      "logement_aide": {
+        "sdp_seuil_m2": 2000,
+        "pct_aide": 30
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10,
+        "cloture_voie_hauteur_max_m": 2,
+        "mur_soutenement_max_m": 3
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "UD1": {
+      "label": "Village de Cilaos — tissu bâti ancien",
+      "type": "U",
+      "sous_type": "village_historique",
+      "ref": "UD",
+      "ref_note": "Mêmes règles que UD — contraintes patrimoniales renforcées",
+      "_meta": { "confidence": 0.8, "ambiguites": ["Vérifier règles spécifiques UD1 dans document graphique"] }
+    },
+
+    "UE": {
+      "label": "Zone d'activités économiques",
+      "type": "U",
+      "sous_type": "activites",
+      "loi_littoral": false,
+      "usages": {
+        "habitation": false, "commerce": true, "bureau": true,
+        "activite": true, "entrepot": true, "hotel": false,
+        "camping": false, "agricole": false, "industriel": true
+      },
+      "reculs": {
+        "voie_principale_m": 5,
+        "voie_alignement": false,
+        "voie_note": "Retrait ≥ H/2 avec min 5m. RN1 : recul 25m depuis axe.",
+        "voie_rn1_axe_m": 25,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_fond_m": 3,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 12,
+        "hf_max_m": 15,
+        "hf_terrasse_vegetalisee_m": 15,
+        "annexe_hf_max_m": 3.5
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 70,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 15
+      },
+      "toiture": {
+        "versants_obligatoire": false,
+        "terrasse_vegetalisee_autorisee": true
+      },
+      "stationnement": {
+        "commerce_bureau": "50% SDP",
+        "activite_industrielle": "30% SDP",
+        "hotel_par_2chambres": 1,
+        "erp_par_10personnes": 2
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10,
+        "cloture_voie_hauteur_max_m": 2,
+        "mur_soutenement_max_m": 3
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "US": {
+      "label": "Zone d'activités sportives et de loisirs",
+      "type": "U",
+      "sous_type": "sport_loisirs",
+      "usages": {
+        "habitation": false, "commerce": false, "bureau": false,
+        "activite": false, "sport": true, "loisirs": true
+      },
+      "reculs": {
+        "voie_principale_m": 5,
+        "voie_note": "Retrait ≥ H/2 avec min 5m. RN1 : recul 25m depuis axe.",
+        "voie_rn1_axe_m": 25,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_fond_m": 3,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 12,
+        "hf_max_m": 15,
+        "annexe_hf_max_m": 3.5
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 70,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 15
+      },
+      "toiture": {
+        "versants_obligatoire": false,
+        "terrasse_vegetalisee_autorisee": true
+      },
+      "stationnement": {
+        "erp_par_10personnes": 2
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10,
+        "mur_soutenement_max_m": 3
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "UZ": {
+      "label": "ZAC — zone d'aménagement concerté",
+      "type": "U",
+      "sous_type": "zac",
+      "usages": {
+        "habitation": true, "commerce": true, "bureau": true,
+        "activite": true, "entrepot": false, "hotel": true
+      },
+      "reculs": {
+        "voie_principale_m": null,
+        "voie_note": "Bande non aedificandi 35m depuis axe RD26. Hors cette bande : libre.",
+        "voie_rn_axe_m": 35,
+        "sep_lat_m": null,
+        "sep_lat_note": "Collectifs : retrait ≥ 1/3 hé, min 3m. Individuels si terrain < 12m : sur limite autorisé.",
+        "sep_fond_m": null,
+        "sep_fond_note": "Retrait min 1m",
+        "inter_batiments_m": null
+      },
+      "hauteurs": {
+        "he_max_m": null,
+        "hf_max_m": 42,
+        "hf_note": "42m max absolu. Collectifs : max 17m. Individuels : max 9m (3.2m si terrain < 12m dans marge). Tertiaires : max 12m.",
+        "hauteur_collectif_max_m": 17,
+        "hauteur_individuel_max_m": 9,
+        "hauteur_tertiaire_max_m": 12,
+        "annexe_hf_max_m": 3.5,
+        "harmonisation_note": "Différence max 1 niveau ou 3m avec construction existante adjacente sur 9m de largeur"
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 60,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 25
+      },
+      "toiture": {
+        "versants_obligatoire": false
+      },
+      "stationnement": {
+        "logement_social": "1 place / logement",
+        "logement_standard": "2 places / logement",
+        "commerce_bureau": "50% SDP",
+        "hotel_par_2chambres": 1
+      },
+      "logement_aide": {
+        "sdp_seuil_m2": 2000,
+        "pct_aide": 30
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10,
+        "cloture_voie_hauteur_max_m": 2,
+        "mur_soutenement_max_m": 3
+      },
+      "_meta": {
+        "confidence": 0.9,
+        "ambiguites": ["Hauteur max 42m semble très élevée — vérifier si c'est le gabarit enveloppe ZAC"],
+        "source_articles": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+      }
+    },
+
+    "AUindicee": {
+      "label": "Zones à urbaniser prioritaires (SAR)",
+      "type": "AU",
+      "ref": "zone U correspondante",
+      "ref_note": "Règles identiques à la zone U de même bassin (UA à UD). 1AU = prioritaire, 2AU = après 1AU entreprises.",
+      "conditions": ["Infrastructures suffisantes", "Opération d'ensemble"],
+      "_meta": { "confidence": 0.9, "ambiguites": [] }
+    },
+
+    "AUst": {
+      "label": "Zones à urbaniser — études préalables requises",
+      "type": "AU",
+      "sous_type": "strict",
+      "ref_note": "Ouverture conditionnée à modification PLU. Seuls travaux sur existant autorisés.",
+      "construction_neuve_interdite": true,
+      "extension_max_m2": 30,
+      "hauteur_max_m": 6,
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 3,
+        "sep_fond_m": 3
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "A": {
+      "label": "Zone agricole",
+      "type": "A",
+      "sous_type": "agricole",
+      "usages": {
+        "habitation": false, "commerce": false, "bureau": false,
+        "activite_agricole": true, "equipement_collectif": true
+      },
+      "reculs": {
+        "voie_principale_m": 10,
+        "voie_note": "Recul min 10m. RN1 : 25m depuis axe.",
+        "voie_rn1_axe_m": 25,
+        "sep_lat_m": 5,
+        "sep_fond_m": 5,
+        "inter_batiments_m": 4
+      },
+      "hauteurs": {
+        "he_max_m": 4,
+        "hf_max_m": 7,
+        "annexe_hf_max_m": 3.5,
+        "batiment_agricole_note": "Hauteur non réglementée pour bâtiments agricoles"
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "habitation_max_m2": 150,
+        "annexe_max_m2": 30,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": null
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60
+      },
+      "stationnement": {
+        "logement_standard": "2 places / logement"
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10,
+        "ebc": true,
+        "mur_soutenement_max_m": 3
+      },
+      "_meta": { "confidence": 0.9, "ambiguites": ["Vérifier emprise habitation — valeurs lues dans texte A art.9"] }
+    },
+
+    "N": {
+      "label": "Zone naturelle et forestière",
+      "type": "N",
+      "sous_type": "naturelle",
+      "usages": {
+        "habitation": false, "activite_agricole": true,
+        "loisirs_legers": true, "equipement_collectif": true
+      },
+      "reculs": {
+        "voie_principale_m": 10,
+        "voie_rn1_axe_m": 25,
+        "sep_lat_m": 5,
+        "sep_fond_m": 5,
+        "inter_batiments_m": 4
+      },
+      "hauteurs": {
+        "he_max_m": 4,
+        "hf_max_m": 7,
+        "annexe_hf_max_m": 3.5
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": null
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10,
+        "ebc": true
+      },
+      "_meta": { "confidence": 0.9, "ambiguites": [] }
+    }
+  },
+
+  "regles_communes": {
+    "ravine_recul_m": 10,
+    "note_ravine": "Décret n°48-633 du 31 mars 1948. Interdiction 10m depuis bord des ravines.",
+    "voie_emprise_min_m": 3.5,
+    "voie_impasse_retournement_m": 50,
+    "reseaux_souterrain": true,
+    "eau_potable_obligatoire": true,
+    "assainissement_collectif_ou_individuel": true,
+    "cloture_voie_hauteur_max_m": 2,
+    "cloture_types": "grille/grillage sur bahut 0.30-0.60m OU grillage + haie OU mur maçonnerie max 1.50m",
+    "cloture_mur_plein_interdit_au_dessus_soutenement_3m": true,
+    "mur_soutenement_max_m": 3,
+    "mur_soutenement_renouvele_tous_les_2m": true,
+    "mur_soutenement_vegetation_obligatoire": true,
+    "transparence_hydraulique_clotures": true,
+    "zone_risque_inondation_moyen_surelevation_m": 1,
+    "zone_risque_eleve_construction_interdite": true,
+    "logement_aide_seuil_m2": 2000,
+    "logement_aide_pct": 30,
+    "reconstruction_identique_possible": true,
+    "performance_energetique_bande_ombrage_m": 3,
+    "rtaa_dom": "2016"
+  }
+}

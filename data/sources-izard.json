@@ -1,0 +1,371 @@
+{
+  "version": "1.0",
+  "note": "Corpus Jean-Louis Izard (ENSA Marseille) — Construire avec le climat réunionnais + Microclimat urbain. Sources fondatrices TERLAB. Fichiers PDF dans .docs/terlab-v2/",
+
+  "auteur": {
+    "nom": "Jean-Louis Izard",
+    "affiliation": "ENSA Marseille-Luminy · Laboratoire ABC",
+    "email": "izard@marseille.archi.fr",
+    "domaine": "Architecture bioclimatique tropicale",
+    "note": "Référence fondatrice pour l'enseignement bioclimatique à La Réunion. Co-auteur des recommandations ECODOM."
+  },
+
+  "documents": [
+    {
+      "id": "izard-climat-bas-1",
+      "titre": "Construire avec le climat réunionnais — Partie 1.1 : Le résidentiel dans les Bas",
+      "fichier": ".docs/terlab-v2/izard-climat-reunion-1-bas-diagnostic.pdf",
+      "pages": 17,
+      "contenu": [
+        "Zones climatiques de La Réunion (3 zones PERENE)",
+        "Diagramme bioclimatique de Givoni — été à Saint-Denis Gillot",
+        "Conditions thermo-hygrométriques : température + humidité + vitesse d'air",
+        "Vitesses d'air requises pour restaurer le confort (Aynsley)",
+        "Effusivité thermique des matériaux (verre, béton, bois, isolants)",
+        "Rapport Ai/Ae : influence de la ventilation sur l'amortissement thermique",
+        "Inertie thermique par absorption : rôle de la masse dans les Bas"
+      ],
+      "figures_cles": [
+        "Fig.1 — Zones climatiques île de La Réunion (Atlas climatique)",
+        "Fig.2 — Zones PERENE (3 zones)",
+        "Fig.3 — Diagramme bioclimatique janvier Saint-Denis Gillot",
+        "Fig.6 — Vitesses d'air requises pour confort (Aynsley)",
+        "Fig.7 — Effusivité thermique des matériaux",
+        "Fig.8 — Rapport Ai/Ae amplitudes thermiques vs ventilation"
+      ],
+      "donnees_extractibles": {
+        "vitesse_confort_1ms": "−4°C de température ressentie",
+        "effusivite_beton": ">1000 J/(m²·K·s^0.5)",
+        "effusivite_bois": "<500 J/(m²·K·s^0.5)",
+        "zones_perene": {"zone1": "<400m (Bas)", "zone2": "400-800m (Hauts)", "zone3": ">800m (Altitude)"}
+      },
+      "phases_terlab": ["p01", "p04", "p07"],
+      "mat_utils_link": "Section D — Wind.comfortSpeed(), Wind.profileLog()"
+    },
+    {
+      "id": "izard-climat-bas-2",
+      "titre": "Construire avec le climat réunionnais — Partie 1.2 : Mi-saison et hiver dans les Bas",
+      "fichier": ".docs/terlab-v2/izard-climat-reunion-2-bas-mi-saison.pdf",
+      "pages": 4,
+      "contenu": [
+        "Diagrammes bioclimatiques avril, octobre et juillet à Saint-Denis Gillot",
+        "Nécessité de ventilation même en mi-saison (avril sortie saison des pluies)",
+        "Températures de rosée en janvier — risques de condensation"
+      ],
+      "figures_cles": [
+        "Fig.12 — Diagramme bioclimatique avril (mi-saison)",
+        "Fig.13 — Diagramme bioclimatique octobre",
+        "Fig.14 — Diagramme bioclimatique juillet (hiver)",
+        "Fig.15 — Températures de rosée janvier"
+      ],
+      "phases_terlab": ["p04", "p07", "p10"]
+    },
+    {
+      "id": "izard-climat-bas-3",
+      "titre": "Construire avec le climat réunionnais — Partie 1.3 : Protection solaire",
+      "fichier": ".docs/terlab-v2/izard-climat-reunion-3-protection-solaire.pdf",
+      "pages": 7,
+      "contenu": [
+        "Trois types de rayonnement solaire (direct, diffus, réfléchi)",
+        "Deux modes de transmission (directe vitrage, indirecte opaque)",
+        "Diagramme solaire latitude 21°S",
+        "Tableau des hauteurs solaires à midi aux solstices et équinoxes",
+        "Solutions par type de paroi (opaque, vitrage, toiture)"
+      ],
+      "figures_cles": [
+        "Fig.16 — Diagramme solaire latitude 21°S avec zone d'été"
+      ],
+      "donnees_extractibles": {
+        "hauteur_soleil_solstice_ete": "87.5° (quasi zénithal)",
+        "hauteur_soleil_equinoxe": "69°",
+        "hauteur_soleil_solstice_hiver": "45.5°",
+        "latitude_reunion": "21°S"
+      },
+      "phases_terlab": ["p04", "p07"],
+      "mat_utils_link": "Section D — solarHeight(), solarAzimuth()"
+    },
+    {
+      "id": "izard-climat-bas-4",
+      "titre": "Construire avec le climat réunionnais — Partie 1.4 : Masques architecturaux",
+      "fichier": ".docs/terlab-v2/izard-climat-reunion-4-masques-architecturaux.pdf",
+      "pages": 6,
+      "contenu": [
+        "Performance des auvents et débords de toit (angles 45°, 60°, 75°)",
+        "Écrans à lames horizontales — espacement vs angle d'occultation",
+        "Zones d'occultation totale par orientation (N, S, E, O, NE, SO, SE, NO)",
+        "Règle : 60° suffisant en façade Nord, 75° en façade Sud",
+        "Référence Jacques Dreyfus — écrans à lames préférés aux auvents massifs"
+      ],
+      "figures_cles": [
+        "Fig.17 — Coupes auvents 45°/60°/75° et écrans à lames",
+        "Fig.18 — Occultation masques horizontaux façades N et S",
+        "Fig.19 — Occultation façades E et O",
+        "Fig.20 — Occultation façades NE et SO",
+        "Fig.21 — Occultation façades SE et NO"
+      ],
+      "donnees_extractibles": {
+        "angle_optimal_nord": "60° (occultation totale 21 août — 21 avril)",
+        "angle_optimal_sud": "75° suffisant jan-fév, 60° pour couverture complète",
+        "angle_optimal_est_ouest": "75° nécessaire (soleil rasant)"
+      },
+      "phases_terlab": ["p04", "p07"],
+      "mat_utils_link": "Section D — overhangAngle(), solarMask()"
+    },
+    {
+      "id": "izard-climat-bas-5",
+      "titre": "Construire avec le climat réunionnais — Partie 1.5 : Varangues",
+      "fichier": ".docs/terlab-v2/izard-climat-reunion-5-varangues.pdf",
+      "pages": 8,
+      "contenu": [
+        "Typologie varangues : encastrée vs accolée",
+        "Performance ombrage plancher (75% minimum requis)",
+        "Diagrammes solaires avec zones d'ombrage 75% par type de varangue",
+        "Varangue encastrée : autoprotection latérale par pièces adjacentes",
+        "Varangue accolée : ouvertures 3 côtés → ombrage partiel",
+        "Solution Calsat : structure fixe opaque + mobile devant ouvertures",
+        "Référence vernaculaire : cas créole, architecture coloniale"
+      ],
+      "figures_cles": [
+        "Fig.22 — Varangue encastrée (images CAUE 974)",
+        "Fig.23 — Varangue accolée Saint-Denis",
+        "Fig.25 — Zones solaires ombrage 75% varangue encastrée",
+        "Fig.26 — Zones solaires ombrage 75% varangue accolée",
+        "Fig.27 — Solution Calsat protection façades"
+      ],
+      "phases_terlab": ["p07", "p10", "p13"]
+    },
+    {
+      "id": "izard-altitude-1",
+      "titre": "Construire avec le climat réunionnais — Partie 2.1 : Construction en altitude (>800m)",
+      "fichier": ".docs/terlab-v2/izard-climat-reunion-6-altitude-humidite.pdf",
+      "pages": 8,
+      "contenu": [
+        "Problèmes spécifiques d'humidité en altitude",
+        "Production domestique vapeur d'eau : 10-15 L/jour/famille",
+        "Diagramme psychrométrique (air humide) — lecture complète",
+        "Supplément d'humidité spécifique vs taux de renouvellement d'air",
+        "Condensations sur parois froides mal isolées",
+        "Conjonction 3 risques : air humide ext. + gradient thermique + ventilation contrôlée",
+        "Matériaux pare-vapeur : classes E1 à E4, épaisseur équivalente de diffusion"
+      ],
+      "figures_cles": [
+        "Fig.53 — Conditions hygrothermiques Plaine des Cafres juillet",
+        "Fig.54 — Conditions hygrothermiques Plaine des Cafres janvier",
+        "Tab.5 — Supplément humidité vs ventilation vs production vapeur"
+      ],
+      "donnees_extractibles": {
+        "production_vapeur_famille": "10-15 L/jour",
+        "temperature_min_hiver_altitude": "6°C nuit (Plaine des Cafres)",
+        "humidite_relative_hiver": "89%",
+        "temperature_radiante_ciel_hiver": "−17°C"
+      },
+      "phases_terlab": ["p01", "p04", "p07", "p10"]
+    },
+    {
+      "id": "izard-altitude-2",
+      "titre": "Construire avec le climat réunionnais — Partie 2.1 (suite) : Fenêtres et expositions en altitude",
+      "fichier": ".docs/terlab-v2/izard-climat-reunion-7-altitude-fenetres-expositions.pdf",
+      "pages": 17,
+      "contenu": [
+        "Condensations sur vitrages — double vitrage indispensable en altitude",
+        "Ponts thermiques menuiseries métalliques — rupture de pont nécessaire",
+        "Menuiserie bois : pertinente mais gestion eau de condensation",
+        "Dissymétrie ensoleillement matin/après-midi en altitude",
+        "Masques topographiques : profils de relief (Roche Écrite, Cimendef)",
+        "Rayonnement nocturne vers le ciel : T_radiante = −17°C",
+        "Étymologie varangue : scandinave → colonial → tamoul (taj véram)",
+        "Températures de rosée et consignes intérieures (17.5°C vs 22.5°C)"
+      ],
+      "figures_cles": [
+        "Fig.55 — Rayonnement global Plaine des Cafres juillet (dissymétrie)",
+        "Fig.56 — Durée insolation matin/après-midi Petite France",
+        "Fig.57 — Rayonnement global horaire Plaine des Cafres 2005",
+        "Fig.59 — Profil relief Grand Ilet (Roche Écrite, Cimendef)"
+      ],
+      "phases_terlab": ["p01", "p04", "p07", "p10"]
+    },
+    {
+      "id": "izard-hauts",
+      "titre": "Construire avec le climat réunionnais — Partie 2.2 : Construire dans les Hauts (400-800m)",
+      "fichier": ".docs/terlab-v2/izard-climat-reunion-8-hauts-400-800m.pdf",
+      "pages": 3,
+      "contenu": [
+        "Zone PERENE 3 (400-800m) — 112 000 habitants",
+        "Station de référence : Le Tampon (786m)",
+        "Diagrammes bioclimatiques été, mi-saison, hiver au Tampon",
+        "Été : neutralité requise, apports solaires à éviter",
+        "Mi-saison : ventilation pour assainir air humide",
+        "Hiver : chauffage solaire passif utile"
+      ],
+      "figures_cles": [
+        "Fig.61 — Diagramme bioclimatique janvier au Tampon",
+        "Fig.62 — Diagrammes avril et octobre au Tampon",
+        "Fig.63 — Diagramme juillet au Tampon"
+      ],
+      "donnees_extractibles": {
+        "population_zone_hauts": "112 000 habitants",
+        "altitude_tampon": "786m",
+        "humidite_specifique_ete": "13 g/kg air sec"
+      },
+      "phases_terlab": ["p01", "p04", "p07"]
+    },
+    {
+      "id": "izard-hauts-solaire",
+      "titre": "Construire avec le climat réunionnais — Partie 2.2 (suite) : Expositions solaires dans les Hauts",
+      "fichier": ".docs/terlab-v2/izard-climat-reunion-9-hauts-solaire-pathologies.pdf",
+      "pages": 7,
+      "contenu": [
+        "Pathologies vitrages zénithaux (vérandas, fenêtres de toit)",
+        "Vitrages verticaux E et O : besoin de climatisation si non protégés",
+        "Rayonnement direct plan horizontal : 1024 W/m² max à 12h",
+        "Énergie cumulée : 8 kWh/m²/jour par ciel clair",
+        "Masques topographiques ravine Langevin (Grand Galet) : −2h matin, −2h soir",
+        "Dalles couverture non isolées : pathologie majeure dans les Hauts",
+        "Conclusions pour les Hauts : isolation + captage solaire hiver"
+      ],
+      "figures_cles": [
+        "Fig.64 — Puissances rayonnement direct plan horizontal lat. 21°S",
+        "Fig.65 — Rayonnement global climatique Tampon 2005",
+        "Fig.65b — Profil masques ravine Langevin Grand Galet"
+      ],
+      "donnees_extractibles": {
+        "rayonnement_max_horizontal": "1024 W/m²",
+        "energie_journaliere_max": "8 kWh/m²/jour"
+      },
+      "phases_terlab": ["p01", "p04", "p07", "p10"]
+    },
+    {
+      "id": "izard-zac-beausejour",
+      "titre": "ZAC Beauséjour — Démarche environnementale « Habiter aujourd'hui la ville grandeur nature de demain »",
+      "fichier": ".docs/terlab-v2/zac-beausejour-demarche-environnementale.pdf",
+      "auteur_secondaire": "CBo Territoria / enviroBAT-Réunion",
+      "pages": 26,
+      "contenu": [
+        "ZAC Beauséjour Sainte-Marie : 80 ha, 2 000 logements",
+        "Démarche éco-quartier : qualité environnementale concours",
+        "22 ha espaces publics",
+        "60 parcelles viabilisées + 130 privés + 345 sociaux (2010)",
+        "Formation qualité environnementale architecturale et urbaine Réunion"
+      ],
+      "phases_terlab": ["p04", "p05", "p07", "p09"]
+    },
+    {
+      "id": "izard-microclimat-urbain-1",
+      "titre": "Microclimat Urbain 1 — Effets microclimatiques urbains (version Réunion)",
+      "fichier": ".docs/terlab-v2/izard-microclimat-urbain-1-ilot-chaleur.pdf",
+      "pages": 37,
+      "contenu": [
+        "Effet d'îlot de chaleur urbain (ICU)",
+        "Mesures Paris-ville vs banlieue sur 30 ans",
+        "Taux de croissance ICU dans diverses villes du monde",
+        "Historique élévation température Los Angeles depuis 1880",
+        "Paramètres climatiques urbains vs périphérie (Europe Nord)",
+        "Moyens de contrôle des effets microclimatiques"
+      ],
+      "figures_cles": [
+        "Schéma ICU classique ville-périphérie",
+        "Graphe croissance ICU mondiale",
+        "Tableau paramètres climatiques urbain vs périphérie"
+      ],
+      "phases_terlab": ["p05", "p07", "p08"],
+      "mat_utils_link": "Section D — ROUGHNESS, ZG, ALPHA (profils de vent urbains)"
+    },
+    {
+      "id": "izard-microclimat-urbain-2",
+      "titre": "Microclimat Urbain 2 — Aéraulique et effets radiatifs des formes urbaines (version Réunion)",
+      "fichier": ".docs/terlab-v2/izard-microclimat-urbain-2-aeraulique-formes.pdf",
+      "pages": 36,
+      "contenu": [
+        "Effets aérauliques des formes urbaines (soufflerie)",
+        "Effets radiatifs et thermiques",
+        "Typologie H/L : Dégagé (H<0.25L), Intermédiaire, Canyon (H>2L)",
+        "Ensoleillement des places et rues selon rapport H/L",
+        "Facteurs du confort thermique dans un espace urbain",
+        "Canyon urbain : peu de vent, peu de lumière, stabilité thermique"
+      ],
+      "figures_cles": [
+        "Schéma typologie H/L (dégagé, canyon)",
+        "Visualisation écoulement vent en soufflerie",
+        "Ensoleillement Place Maison Carrée Nîmes",
+        "Effets canyon rue des Patins Nîmes"
+      ],
+      "donnees_extractibles": {
+        "ratio_degage": "H < 0.25 L",
+        "ratio_canyon": "H > 2 L",
+        "regle": "3 formes de base expliquent la majorité des effets urbains"
+      },
+      "phases_terlab": ["p05", "p07"],
+      "mat_utils_link": "Section D — Wind.pressureCoeff(), les constantes ROUGHNESS et profils loi puissance"
+    }
+  ],
+
+  "branchements_terlab": {
+    "note": "Liens entre les documents Izard et les composants/phases TERLAB",
+
+    "terlab_mat_utils": {
+      "fichier": "utils/terlab-mat-utils.js (à copier depuis .docs/terlab-v2/terlab-mat-utils.js)",
+      "sections_izard": {
+        "D_Wind": {
+          "description": "Physique aéraulique basée sur Izard/CSTB/RTAA DOM",
+          "fonctions": [
+            "Wind.profileLog(U10, z, z0) — profil vent en loi log (rugosité Izard)",
+            "Wind.profilePow(U10, z, alpha) — profil vent en loi puissance",
+            "Wind.pressureCoeff(angle) — coefficient pression façade (Izard Microclimat 2)",
+            "Wind.comfortSpeed(T, RH) — vitesse requise pour confort (Aynsley via Izard Partie 1.1)",
+            "Wind.ventRate(S_ouv, U, Cp) — débit ventilation traversante RTAA DOM"
+          ],
+          "constantes_izard": [
+            "REUNION_ALIZES — directions dominantes (Izard + Atlas climatique)",
+            "ROUGHNESS — rugosités z0 par type terrain (Izard Microclimat 2)",
+            "ALPHA — exposants profil puissance (Izard Microclimat 2)",
+            "V_REF_CYCLONE — 36 m/s RTAA DOM",
+            "AERO_COLORS — conventions couleurs Izard/CSTB"
+          ]
+        }
+      }
+    },
+
+    "atlas_aeraulique": {
+      "fichier": ".docs/terlab-v2/atlas-aeraulique-terlab.html",
+      "description": "Atlas visuel SVG complet des phénomènes aérauliques (30+ schémas animés)",
+      "source_theorique": "Izard Microclimat Urbain 1 & 2 + Construire avec le climat réunionnais"
+    },
+
+    "phases": {
+      "p01_topographie": {
+        "documents": ["izard-climat-bas-1", "izard-altitude-2", "izard-hauts"],
+        "usage": "Profil altimétrique → zone PERENE automatique. Masques topographiques (ravines, remparts) impactent ensoleillement. Dissymétrie matin/après-midi en altitude."
+      },
+      "p04_plu_rtaa": {
+        "documents": ["izard-climat-bas-1", "izard-climat-bas-3", "izard-climat-bas-4", "izard-altitude-1", "izard-hauts"],
+        "usage": "Zones PERENE 1/2/3 = base de la RTAA DOM. Angles de protection solaire par orientation (60° N, 75° S). Porosités ventilation. Spécificités altitude (isolation, condensation)."
+      },
+      "p05_voisinage": {
+        "documents": ["izard-microclimat-urbain-1", "izard-microclimat-urbain-2", "izard-zac-beausejour"],
+        "usage": "Rapport H/L des rues → typologie canyon/dégagé. Îlot de chaleur urbain. Rugosité urbaine pour profil de vent. Effets aérauliques du tissu bâti existant."
+      },
+      "p07_esquisse": {
+        "documents": ["izard-climat-bas-1", "izard-climat-bas-4", "izard-climat-bas-5", "izard-microclimat-urbain-2"],
+        "usage": "Dimensionnement débords/auvents (angle occultation). Varangues (encastrée vs accolée). Orientation bâtiment vs diagramme solaire. Ventilation traversante. Forme de sillage."
+      },
+      "p09_carbone": {
+        "documents": ["izard-zac-beausejour"],
+        "usage": "Démarche éco-quartier comme référence. Matériaux locaux vs importés dans le bilan carbone."
+      },
+      "p10_entretien": {
+        "documents": ["izard-altitude-1", "izard-altitude-2", "izard-hauts-solaire"],
+        "usage": "Condensation et pathologies en altitude. Dalles non isolées = pathologie majeure. Ponts thermiques. Pare-vapeur."
+      }
+    }
+  },
+
+  "references_croisees": {
+    "ecodom": "Recommandations ECODOM — complémentaire Izard (dimensionnement systèmes énergétiques)",
+    "perene": "Outil PERENE — zones climatiques utilisées par Izard et la RTAA DOM",
+    "atlas_climatique_reunion": "Atlas climatique de La Réunion (Météo-France) — source des données Izard",
+    "aynsley": "R.M. Aynsley — vitesses d'air pour confort thermique (référencé par Izard)",
+    "dreyfus": "Jacques Dreyfus — 'Le confort dans l'habitat en pays tropical' (écrans à lames)",
+    "calsat": "Henri-Jean Calsat — 'Architecture française d'outre-mer' (protection façades)",
+    "izard_ouvrage": "Jean-Louis Izard — 'Architecture tropicale' (CTBAT, déjà dans references-biblio.json)"
+  }
+}

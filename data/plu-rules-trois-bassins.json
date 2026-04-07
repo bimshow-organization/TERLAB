@@ -1,0 +1,248 @@
+{
+  "meta": {
+    "version": "2026-04",
+    "region": "La Réunion",
+    "generated": "2026-04-07",
+    "commune": "Les Trois-Bassins",
+    "insee": "97423",
+    "intercommunalite": "TCO",
+    "plu_type": "PLU",
+    "plu_date_approbation": "2022-06-02",
+    "source": "Règlement PLU Trois-Bassins — GPU DU_97423 — 97423_reglement_20220602.pdf"
+  },
+
+  "zones": {
+
+    "Ua": {
+      "label": "Centre-bourg",
+      "type": "U",
+      "sous_type": "centre_urbain",
+      "reculs": {
+        "voie_principale_m": 4,
+        "voie_alignement": false,
+        "voie_note": "Retrait min 4m. Alignement possible pour commerces RdC. RD recul 17m axe. Ravines DPF 10m, autres 5m.",
+        "voie_rd_axe_m": 17,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_note": "Sur limites latérales autorisé. Hab > 10m profondeur : patio 3m min. Autre > 20m : patio 5m. Retrait min 3m.",
+        "sep_fond_m": 3,
+        "inter_batiments_m": null,
+        "piscine_retrait_m": 1.9
+      },
+      "hauteurs": {
+        "he_max_m": 10,
+        "hf_max_m": 14,
+        "annexe_hf_max_m": 3.5,
+        "he_limite_sep_bande_3m_tolerance_m": 3,
+        "bonus_vide_sanitaire_400m_alt_m": 0.8,
+        "bonus_risque_inondation_m": 1
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 60,
+        "emprise_assainissement_collectif_pct": 80,
+        "annexe_emprise_max_pct": 10,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 20,
+        "permeable_equipements_publics_pct": 10,
+        "aires_jeux_seuil_lots": 9,
+        "aires_jeux_min_pct": 5
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 30,
+        "pente_max_pct": 100
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "Uaa": {
+      "label": "Centre-bourg dense — secteur majoration hauteur",
+      "type": "U",
+      "sous_type": "centre_urbain_dense",
+      "ref": "Ua",
+      "ref_note": "Règles Ua sauf hauteurs majorées",
+      "hauteurs": {
+        "he_max_m": 12,
+        "hf_max_m": 16
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "Ub": {
+      "label": "Zone résidentielle intermédiaire",
+      "type": "U",
+      "sous_type": "résidentielle_intermédiaire",
+      "reculs": {
+        "voie_principale_m": 4,
+        "voie_rd_axe_m": 17,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_fond_m": 3,
+        "piscine_retrait_m": 1.9
+      },
+      "hauteurs": {
+        "he_max_m": 8,
+        "hf_max_m": 12,
+        "annexe_hf_max_m": 3.5,
+        "bonus_vide_sanitaire_400m_alt_m": 0.8
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 50,
+        "emprise_assainissement_collectif_pct": 70,
+        "annexe_emprise_max_pct": 10
+      },
+      "permeabilite": {
+        "permeable_min_pct": 30,
+        "permeable_equipements_publics_pct": 20,
+        "aires_jeux_seuil_lots": 9,
+        "aires_jeux_min_pct": 5
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 30,
+        "pente_max_pct": 100
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "Uc": {
+      "label": "Zone résidentielle diffuse — hauts",
+      "type": "U",
+      "sous_type": "résidentielle_diffuse",
+      "reculs": {
+        "voie_principale_m": 4,
+        "voie_rd_axe_m": 17,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_fond_m": 3,
+        "piscine_retrait_m": 1.9
+      },
+      "hauteurs": {
+        "he_max_m": 5.5,
+        "hf_max_m": 8.5,
+        "annexe_hf_max_m": 3.5,
+        "bonus_service_public_pct": 20,
+        "bonus_vide_sanitaire_400m_alt_m": 0.8
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 40,
+        "emprise_assainissement_collectif_pct": 60,
+        "annexe_emprise_max_pct": 10
+      },
+      "permeabilite": {
+        "permeable_min_pct": 40,
+        "permeable_equipements_publics_pct": 30,
+        "aires_jeux_seuil_lots": 9,
+        "aires_jeux_min_pct": 10
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 30,
+        "pente_max_pct": 100
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "Ue": {
+      "label": "Zone d'activités économiques",
+      "type": "U",
+      "sous_type": "activites",
+      "usages": {
+        "habitation": false, "commerce": true, "bureau": true,
+        "activite": true, "entrepot": true
+      },
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": null,
+        "sep_lat_note": "D = H/2 avec min 4m",
+        "sep_fond_m": 4
+      },
+      "hauteurs": {
+        "he_max_m": 10,
+        "hf_max_m": 14,
+        "annexe_hf_max_m": 3.5
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 60
+      },
+      "permeabilite": {
+        "permeable_min_pct": 25
+      },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "AUindicee": {
+      "label": "Zones à urbaniser",
+      "type": "AU",
+      "ref": "zone U correspondante",
+      "ref_note": "Se reporter au règlement de la zone U indiquée en indice + OAP.",
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "A": {
+      "label": "Zone agricole",
+      "type": "A",
+      "reculs": {
+        "voie_principale_m": null,
+        "voie_note": "Non explicitement réglementé dans art.6 A",
+        "sep_lat_m": 5,
+        "sep_fond_m": 5
+      },
+      "hauteurs": {
+        "he_max_m": 5.5,
+        "hf_max_m": 8.5,
+        "annexe_hf_max_m": 3.5,
+        "note": "Étage justifié par impératif fonctionnel uniquement"
+      },
+      "emprise": { "emprise_sol_max_pct": null },
+      "permeabilite": { "permeable_min_pct": 60 },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    },
+
+    "N": {
+      "label": "Zone naturelle et forestière",
+      "type": "N",
+      "reculs": {
+        "voie_principale_m": 10,
+        "voie_note": "Retrait min 10m. RN1a 75m axe, RN1 100m axe. Ravines DPF 10m.",
+        "voie_rn1a_axe_m": 75,
+        "voie_rn1_axe_m": 100,
+        "sep_lat_m": 5,
+        "sep_fond_m": 5
+      },
+      "hauteurs": {
+        "he_max_m": 4,
+        "hf_max_m": 7,
+        "annexe_hf_max_m": 3.5
+      },
+      "emprise": {
+        "emprise_nto_max_pct": 25
+      },
+      "permeabilite": { "permeable_min_pct": null },
+      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    }
+  },
+
+  "regles_communes": {
+    "ravine_recul_dpf_m": 10,
+    "ravine_recul_autres_m": 5,
+    "voie_rd_recul_axe_m": 17,
+    "voie_emprise_min_m": 3.5,
+    "voie_impasse_retournement_m": 50,
+    "reseaux_souterrain": true,
+    "cloture_voie_hauteur_max_m": 2,
+    "mur_soutenement_max_m": 3,
+    "annexe_hf_max_m": 3.5,
+    "piscine_retrait_min_m": 1.9,
+    "bonus_vide_sanitaire_400m_alt_m": 0.8,
+    "bonus_risque_inondation_moyen_m": 1,
+    "logement_aide_seuil_m2": 2500,
+    "logement_aide_pct": 25,
+    "rtaa_dom": "2016"
+  }
+}

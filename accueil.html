@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="ivory">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<meta name="description" content="TERLAB — Accueil · Gestion des projets terrain · ENSA La Réunion"/>
+<title>TERLAB · Accueil · ENSA La Réunion</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:ital,wght@0,400;0,500;0,600;1,400&family=Inconsolata:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+
+<!-- TERLAB CSS -->
+<link rel="stylesheet" href="assets/terlab-shell.css"/>
+<link rel="stylesheet" href="assets/terlab-v2-additions.css"/>
+
+<style>
+/* ── Accueil-specific styles ─────────────────────────────── */
+html, body { overflow: auto; }
+
+.accueil-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+  background: var(--bg);
+}
+
+.accueil-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+.accueil-logo {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+}
+.accueil-title {
+  font-family: var(--font-serif);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.08em;
+}
+.accueil-sub {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.accueil-ensa {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--faint);
+  margin-top: 8px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+/* ── Formulaire étudiant ─────────────────────────────────── */
+.accueil-form {
+  width: 100%;
+  max-width: 520px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 32px;
+}
+.accueil-form-title {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 16px;
+}
+.accueil-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.accueil-field label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text2);
+  min-width: 80px;
+  text-align: right;
+}
+.accueil-field input,
+.accueil-field select {
+  flex: 1;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.accueil-field input:focus,
+.accueil-field select:focus {
+  border-color: var(--accent);
+}
+.accueil-field input::placeholder {
+  color: var(--faint);
+}
+
+/* ── Grille projets ──────────────────────────────────────── */
+.accueil-projects {
+  width: 100%;
+  max-width: 720px;
+}
+.accueil-projects-title {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 16px;
+}
+.accueil-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.project-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+}
+.project-card:hover {
+  border-color: var(--accent);
+  box-shadow: var(--sh);
+}
+.project-card-new {
+  border-style: dashed;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  color: var(--muted);
+}
+.project-card-new:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.pc-new-icon {
+  font-size: 1.8rem;
+  margin-bottom: 8px;
+}
+.pc-new-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.pc-loc {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.pc-parcelle {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.pc-progress-bar {
+  width: 100%;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.pc-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+.pc-meta {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--faint);
+}
+.pc-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.pc-btn {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  background: var(--card);
+  color: var(--text2);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.2s, color 0.2s;
+}
+.pc-btn:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+.pc-btn-danger:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+/* ── Barre basse ─────────────────────────────────────────── */
+.accueil-footer {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.accueil-footer-btn {
+  padding: 8px 16px;
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  background: var(--card);
+  color: var(--text2);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.accueil-footer-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.accueil-empty {
+  text-align: center;
+  padding: 24px;
+  color: var(--faint);
+  font-style: italic;
+  font-family: var(--font-body);
+  grid-column: 1 / -1;
+}
+</style>
+</head>
+<body>
+
+<div class="accueil-app">
+
+  <!-- En-tête -->
+  <header class="accueil-header">
+    <svg class="accueil-logo" viewBox="0 0 60 60" fill="none" aria-hidden="true">
+      <path d="M30 5L6 18v24L30 55l24-13V18z" stroke="#9a7820" stroke-width="2" stroke-linejoin="round" opacity=".8"/>
+      <path d="M30 5v50M6 18l24 13 24-13" stroke="#9a7820" stroke-width="1.2" opacity=".3"/>
+      <circle cx="30" cy="30" r="5" fill="#9a7820" opacity=".9"/>
+    </svg>
+    <h1 class="accueil-title">TERLAB</h1>
+    <p class="accueil-sub">Laboratoire d'analyse de terrain</p>
+    <p class="accueil-ensa">ENSA La Réunion · Île de La Réunion</p>
+  </header>
+
+  <!-- Formulaire étudiant -->
+  <section class="accueil-form" id="accueil-form">
+    <div class="accueil-form-title">Identification</div>
+    <div class="accueil-field">
+      <label for="input-prenom">Prénom</label>
+      <input type="text" id="input-prenom" placeholder="Votre prénom" autocomplete="given-name" maxlength="40"/>
+    </div>
+    <div class="accueil-field">
+      <label for="input-annee">Année</label>
+      <select id="input-annee">
+        <option value="M1" selected>Master 1 Architecture</option>
+        <option value="M2">Master 2 Architecture</option>
+        <option value="L3">Licence 3</option>
+        <option value="autre">Autre</option>
+      </select>
+    </div>
+    <div class="accueil-field">
+      <label for="input-groupe">Groupe</label>
+      <select id="input-groupe">
+        <option value="" selected>—</option>
+        <option value="A">Groupe A</option>
+        <option value="B">Groupe B</option>
+        <option value="C">Groupe C</option>
+        <option value="D">Groupe D</option>
+      </select>
+    </div>
+  </section>
+
+  <!-- Projets existants -->
+  <section class="accueil-projects">
+    <div class="accueil-projects-title">Mes projets terrains</div>
+    <div class="accueil-grid" id="accueil-grid">
+      <!-- Rempli dynamiquement -->
+    </div>
+  </section>
+
+  <!-- Actions basses -->
+  <footer class="accueil-footer">
+    <button class="accueil-footer-btn" id="btn-import" title="Importer un fichier .terlab">
+      Importer session .terlab
+    </button>
+    <button class="accueil-footer-btn" id="btn-demo" title="Lancer en mode démonstration sans sauvegarder">
+      Mode démonstration
+    </button>
+  </footer>
+
+  <!-- Input file caché pour import -->
+  <input type="file" id="file-import" accept=".terlab,.json" hidden/>
+
+</div>
+
+<script type="module">
+import TerlabStorage from './components/terlab-storage.js';
+
+// ── État ────────────────────────────────────────────────────
+const PREFS_KEY = 'terlab_accueil_prefs';
+
+function loadPrefs() {
+  try {
+    return JSON.parse(localStorage.getItem(PREFS_KEY)) ?? {};
+  } catch { return {}; }
+}
+
+function savePrefs() {
+  const prefs = {
+    etudiant: document.getElementById('input-prenom').value.trim(),
+    annee: document.getElementById('input-annee').value,
+    groupe: document.getElementById('input-groupe').value
+  };
+  localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
+  return prefs;
+}
+
+// ── Rendu grille ────────────────────────────────────────────
+function render() {
+  const grid = document.getElementById('accueil-grid');
+  const sessions = TerlabStorage.listSessions();
+
+  let html = '';
+
+  // Carte "Nouveau terrain"
+  html += `
+    <div class="project-card project-card-new" id="card-new" tabindex="0" role="button" aria-label="Créer un nouveau projet terrain">
+      <div class="pc-new-icon">+</div>
+      <div class="pc-new-label">Nouveau terrain</div>
+    </div>`;
+
+  // Sessions existantes
+  for (const s of sessions) {
+    const commune = s.terrain?.commune || 'Sans commune';
+    const parcelle = s.terrain?.parcelle || s.terrain?.section || '';
+    const pct = s.completion ?? TerlabStorage._computeCompletion(s);
+    const col = pct < 30 ? 'var(--danger)' : pct < 60 ? 'var(--warning)' : 'var(--success)';
+    const ago = timeAgo(s.updatedAt);
+
+    html += `
+    <div class="project-card" data-id="${s.id}" tabindex="0" role="button" aria-label="Ouvrir ${commune} ${parcelle}">
+      <div class="pc-loc">${commune}</div>
+      <div class="pc-parcelle">${parcelle || 'Parcelle non définie'}</div>
+      <div class="pc-progress-bar"><div class="pc-progress-fill" style="width:${pct}%;background:${col}"></div></div>
+      <div class="pc-meta">
+        <span>${pct}% complété</span>
+        <span>${ago}</span>
+      </div>
+      <div class="pc-actions">
+        <button class="pc-btn pc-btn-open" data-id="${s.id}">Continuer</button>
+        <button class="pc-btn pc-btn-export" data-id="${s.id}" title="Exporter .terlab">Export</button>
+        <button class="pc-btn pc-btn-danger pc-btn-delete" data-id="${s.id}" title="Supprimer">✕</button>
+      </div>
+    </div>`;
+  }
+
+  if (sessions.length === 0) {
+    html += `<div class="accueil-empty">Aucun projet terrain. Créez-en un pour commencer.</div>`;
+  }
+
+  grid.innerHTML = html;
+  attachEvents();
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'À l\'instant';
+  if (mins < 60) return `Il y a ${mins} min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `Il y a ${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'Hier';
+  if (days < 7) return `Il y a ${days}j`;
+  return new Date(dateStr).toLocaleDateString('fr-FR');
+}
+
+// ── Événements ──────────────────────────────────────────────
+function attachEvents() {
+  // Nouveau terrain
+  document.getElementById('card-new')?.addEventListener('click', createNew);
+
+  // Ouvrir session
+  document.querySelectorAll('.pc-btn-open').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openSession(btn.dataset.id);
+    });
+  });
+
+  // Clic sur la carte entière
+  document.querySelectorAll('.project-card[data-id]').forEach(card => {
+    card.addEventListener('click', () => openSession(card.dataset.id));
+  });
+
+  // Export
+  document.querySelectorAll('.pc-btn-export').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      TerlabStorage.export(btn.dataset.id);
+    });
+  });
+
+  // Supprimer
+  document.querySelectorAll('.pc-btn-delete').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (confirm('Supprimer ce projet terrain ? Cette action est irréversible.')) {
+        TerlabStorage.deleteSession(btn.dataset.id);
+        render();
+      }
+    });
+  });
+}
+
+function createNew() {
+  const prefs = savePrefs();
+  if (!prefs.etudiant) {
+    document.getElementById('input-prenom').focus();
+    document.getElementById('input-prenom').style.borderColor = 'var(--warning)';
+    setTimeout(() => {
+      document.getElementById('input-prenom').style.borderColor = '';
+    }, 2000);
+    return;
+  }
+  const sess = TerlabStorage.createSession(prefs);
+  openSession(sess.id);
+}
+
+function openSession(id) {
+  savePrefs();
+  window.location.href = `index.html?session=${id}`;
+}
+
+// ── Import .terlab ──────────────────────────────────────────
+document.getElementById('btn-import')?.addEventListener('click', () => {
+  document.getElementById('file-import').click();
+});
+
+document.getElementById('file-import')?.addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  try {
+    const sess = await TerlabStorage.import(file);
+    openSession(sess.id);
+  } catch (err) {
+    alert('Erreur d\'import : ' + err.message);
+  }
+});
+
+// ── Mode démo ───────────────────────────────────────────────
+document.getElementById('btn-demo')?.addEventListener('click', () => {
+  window.location.href = 'index.html?demo=1';
+});
+
+// ── Init ────────────────────────────────────────────────────
+const prefs = loadPrefs();
+if (prefs.etudiant) document.getElementById('input-prenom').value = prefs.etudiant;
+if (prefs.annee)    document.getElementById('input-annee').value = prefs.annee;
+if (prefs.groupe)   document.getElementById('input-groupe').value = prefs.groupe;
+
+// Auto-save prefs on change
+['input-prenom', 'input-annee', 'input-groupe'].forEach(id => {
+  document.getElementById(id)?.addEventListener('change', savePrefs);
+  document.getElementById(id)?.addEventListener('input', savePrefs);
+});
+
+render();
+</script>
+
+</body>
+</html>

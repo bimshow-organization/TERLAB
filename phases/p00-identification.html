@@ -1,0 +1,995 @@
+<!-- TERLAB · Phase 0 v2 · Identification du terrain · ENSA La Réunion -->
+<!-- Thème : dark · Bloquante · Fix session · Import PDF géomètre · RiskPlayer -->
+
+<div class="left-panel" id="left-panel-p00">
+
+  <div class="lp-head anim-slide-up">
+    <div class="phase-label">Phase 0 · Obligatoire</div>
+    <h1 class="phase-title">📍 <em>Identification</em> du terrain</h1>
+    <p class="phase-desc">Localiser, cadastrer, ancrer. Sans référence cadastrale exacte, toutes les analyses suivantes peuvent être erronées. C'est la fondation de tout le travail.</p>
+  </div>
+
+  <!-- Scénarios démo — compact inline -->
+  <div class="form-section anim-slide-up" style="padding-top:6px;padding-bottom:6px">
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap">
+      <span class="fs-head" style="margin:0;white-space:nowrap;font-size:8px">Démo</span>
+      <button class="demo-inline-p00" onclick="P00.loadDemo('ville')" title="Saint-Denis · 845 m² · UA">🏙 Ville</button>
+      <button class="demo-inline-p00" onclick="P00.loadDemo('village')" title="Saint-Joseph · 1240 m² · UB">🏘 Village</button>
+      <button class="demo-inline-p00" onclick="P00.loadDemo('isole')" title="Plaine des Cafres · 3500 m² · N">🏔 Isolé</button>
+    </div>
+  </div>
+
+  <!-- Modes de recherche -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Mode de localisation</div>
+    <div class="search-mode-tabs" role="tablist">
+      <button class="mode-tab active" data-mode="address"  onclick="P00.setMode('address')"  role="tab" aria-selected="true">📍 Adresse</button>
+      <button class="mode-tab"        data-mode="cadastre" onclick="P00.setMode('cadastre')" role="tab" aria-selected="false">📄 Cadastre</button>
+      <button class="mode-tab"        data-mode="gps"      onclick="P00.setMode('gps')"      role="tab" aria-selected="false">🛰 GPS</button>
+    </div>
+
+    <!-- Adresse -->
+    <div id="mode-address" class="mode-panel">
+      <div class="input-with-btn" style="margin-top:2px">
+        <input type="text" id="input-address" class="field-input field-input-sm"
+               placeholder="12 Rue des Filaos, 97480 Saint-Joseph"
+               data-session-key="adresse"
+               onkeydown="if(event.key==='Enter') P00.search()"
+               aria-label="Adresse du terrain"/>
+        <button class="search-btn" onclick="P00.search()" id="btn-search-addr"
+                aria-label="Rechercher cette adresse" style="padding:5px 8px">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.4"/><path d="M9.5 9.5L12 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Cadastre -->
+    <div id="mode-cadastre" class="mode-panel hidden">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="field-row">
+          <label class="field-label" for="input-section">Section</label>
+          <input type="text" id="input-section" class="field-input" placeholder="AR"
+                 maxlength="4" style="text-transform:uppercase"
+                 data-session-key="section" oninput="this.value=this.value.toUpperCase()"/>
+        </div>
+        <div class="field-row">
+          <label class="field-label" for="input-parcelle-num">Numéro</label>
+          <input type="text" id="input-parcelle-num" class="field-input" placeholder="0142"
+                 data-session-key="parcelle"/>
+        </div>
+      </div>
+      <div class="field-row">
+        <label class="field-label" for="input-commune">Commune</label>
+        <select id="input-commune" class="field-select" data-session-key="commune">
+          <option value="">-- Sélectionner --</option>
+          <option>Saint-Denis</option><option>Sainte-Marie</option><option>Sainte-Suzanne</option>
+          <option>Saint-André</option><option>Saint-Benoît</option><option>Salazie</option>
+          <option>Sainte-Rose</option><option>Saint-Philippe</option><option>Saint-Joseph</option>
+          <option>Petite-Île</option><option>Saint-Pierre</option><option>Le Tampon</option>
+          <option>Entre-Deux</option><option>Saint-Louis</option><option>Étang-Salé</option>
+          <option>Saint-Leu</option><option>Trois-Bassins</option><option>Saint-Paul</option>
+          <option>La Possession</option><option>Le Port</option><option>Cilaos</option>
+          <option>Bras-Panon</option>
+        </select>
+      </div>
+      <button class="search-btn wide" onclick="P00.searchCadastre()" id="btn-search-cad" style="width:100%;margin-top:4px">
+        🔍 Rechercher la parcelle
+      </button>
+    </div>
+
+    <!-- GPS -->
+    <div id="mode-gps" class="mode-panel hidden">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="field-row">
+          <label class="field-label" for="input-lat">Latitude</label>
+          <input type="number" id="input-lat" class="field-input" placeholder="-21.1234"
+                 step="0.000001" data-session-key="lat"/>
+        </div>
+        <div class="field-row">
+          <label class="field-label" for="input-lng">Longitude</label>
+          <input type="number" id="input-lng" class="field-input" placeholder="55.4567"
+                 step="0.000001" data-session-key="lng"/>
+        </div>
+      </div>
+      <button class="search-btn wide" onclick="P00.searchGPS()" style="width:100%;margin-top:4px">
+        📍 Localiser
+      </button>
+    </div>
+
+    <!-- Sélection multiple — inline sous les modes -->
+    <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
+      <button class="multi-select-inline" onclick="P00.startMultiSelect()" id="btn-multi-start">
+        + Sélection multiple (max 5)
+      </button>
+      <div id="terlab-multiselect-panel" hidden style="margin-top:6px">
+        <div style="font-size:10px;color:var(--accent);margin:4px 0">
+          <span id="terlab-sel-count">0/5</span> parcelles sélectionnées
+        </div>
+        <div id="terlab-sel-list"></div>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button class="search-btn" onclick="P00.completeMultiSelect()" style="flex:1;justify-content:center;font-size:10px;padding:4px 6px">✓ Fusionner</button>
+          <button class="search-btn" onclick="P00.cancelMultiSelect()" style="flex:1;justify-content:center;opacity:.6;font-size:10px;padding:4px 6px">Annuler</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Données détectées -->
+  <div class="form-section anim-slide-up" id="result-section" style="display:none">
+    <div class="fs-head">Données détectées <span id="result-loading" style="display:none">⏳</span></div>
+
+    <!-- Banner parcelle sauvegardée -->
+    <div class="parcelle-saved-banner" id="parcelle-saved" aria-live="polite">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" fill="var(--success)" opacity=".2"/><path d="M4 7l2 2 4-4" stroke="var(--success)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>Parcelle enregistrée : </span>
+      <span class="psb-section" id="psb-ref">—</span>
+      <span class="psb-detail" id="psb-detail">—</span>
+    </div>
+
+    <div class="detected-grid">
+      <div class="det-cell"><span class="det-label">Commune</span><span class="det-val" id="det-commune" data-session-key="commune">—</span></div>
+      <div class="det-cell"><span class="det-label">INSEE</span><span class="det-val" id="det-insee" data-session-key="code_insee">—</span></div>
+      <div class="det-cell"><span class="det-label">Section</span><span class="det-val" id="det-section" data-session-key="section">—</span></div>
+      <div class="det-cell"><span class="det-label">Parcelle</span><span class="det-val" id="det-parcelle-val" data-session-key="parcelle">—</span></div>
+      <div class="det-cell"><span class="det-label">Contenance</span><span class="det-val" id="det-contenance" data-session-key="contenance_m2">—</span></div>
+      <div class="det-cell"><span class="det-label">Intercommunalité</span><span class="det-val" id="det-interco" data-session-key="intercommunalite">—</span></div>
+      <div class="det-cell"><span class="det-label">Altitude NGR (≈)</span><span class="det-val" id="det-altitude" data-session-key="altitude_ngr">—</span></div>
+      <div class="det-cell"><span class="det-label">Coordonnées</span><span class="det-val" id="det-coords">—</span></div>
+    </div>
+  </div>
+
+  <!-- Panel de validation enrichissement auto -->
+  <div class="form-section anim-slide-up" id="enrichment-panel" style="display:none">
+    <div class="fs-head">Analyse automatique du site <span id="enrich-loading" class="enrich-spinner" style="display:none">⏳</span></div>
+    <p class="field-note" style="margin-bottom:10px">Données détectées automatiquement. Cliquez sur une valeur pour la modifier.</p>
+
+    <div class="enrich-group">
+      <div class="enrich-group-title">Topographie</div>
+      <div class="enrich-row">
+        <span class="enrich-label">Zone climatique</span>
+        <span class="enrich-input enrich-readonly" id="enrich-zone-clim" data-enrich-key="zone_climatique">—</span>
+        <span class="enrich-badge" id="badge-zone-clim">auto</span>
+      </div>
+      <div class="enrich-row">
+        <span class="enrich-label">Pente estimée</span>
+        <input type="number" class="enrich-input" id="enrich-pente" step="0.1" min="0" max="100" data-enrich-key="pente_moy_pct" placeholder="%" />
+        <span class="enrich-badge" id="badge-pente">auto</span>
+      </div>
+      <div class="enrich-row">
+        <span class="enrich-label">Zone RTAA</span>
+        <select class="enrich-input" id="enrich-rtaa" data-enrich-key="zone_rtaa">
+          <option value="">—</option>
+          <option value="1">Zone 1 (littoral)</option>
+          <option value="2">Zone 2 (mi-pentes)</option>
+          <option value="3">Zone 3 (altitude)</option>
+        </select>
+        <span class="enrich-badge" id="badge-rtaa">auto</span>
+      </div>
+    </div>
+
+    <div class="enrich-group">
+      <div class="enrich-group-title">Réglementation</div>
+      <div class="enrich-row">
+        <span class="enrich-label">PPR</span>
+        <input type="text" class="enrich-input" id="enrich-ppr" data-enrich-key="ppr_zone" placeholder="Zone PPR" readonly />
+        <span class="enrich-badge" id="badge-ppr">—</span>
+      </div>
+      <div class="enrich-row">
+        <span class="enrich-label">PLU</span>
+        <input type="text" class="enrich-input" id="enrich-plu" data-enrich-key="plu_zone" placeholder="Zone PLU" readonly />
+        <span class="enrich-badge" id="badge-plu">—</span>
+      </div>
+    </div>
+
+    <div class="enrich-group">
+      <div class="enrich-group-title">Géologie</div>
+      <div class="enrich-row">
+        <span class="enrich-label">Formation</span>
+        <input type="text" class="enrich-input" id="enrich-geo" data-enrich-key="type_geologique" placeholder="Formation géologique" readonly />
+        <span class="enrich-badge" id="badge-geo">—</span>
+      </div>
+      <div class="enrich-row">
+        <span class="enrich-label">Perméabilité</span>
+        <input type="text" class="enrich-input" id="enrich-perm" data-enrich-key="permeabilite" placeholder="—" readonly />
+        <span class="enrich-badge" id="badge-perm">—</span>
+      </div>
+    </div>
+
+    <div class="enrich-group">
+      <div class="enrich-group-title">Site</div>
+      <div class="enrich-row">
+        <span class="enrich-label">Altitude NGR</span>
+        <input type="number" class="enrich-input" id="enrich-altitude" step="1" data-enrich-key="altitude_ngr" placeholder="m" />
+        <span class="enrich-badge" id="badge-altitude">auto</span>
+      </div>
+      <div class="enrich-row">
+        <span class="enrich-label">Bâtiments voisins</span>
+        <span class="enrich-input enrich-readonly" id="enrich-batiments">—</span>
+        <span class="enrich-badge" id="badge-batiments">—</span>
+      </div>
+    </div>
+
+    <div class="enrich-actions">
+      <button class="search-btn wide" id="btn-validate-enrich" onclick="P00.validateEnrichment()" style="width:100%">
+        ✓ Valider et continuer
+      </button>
+    </div>
+  </div>
+
+  <!-- Validation explicite du terrain sélectionné -->
+  <div class="form-section anim-slide-up" id="terrain-confirm-section" style="display:none">
+    <div class="fs-head">Confirmation du terrain</div>
+    <p class="field-note" style="margin-bottom:8px">
+      Vérifiez la/les parcelle(s) surlignée(s) sur la carte, puis validez votre sélection.
+    </p>
+    <div id="terrain-confirm-summary" style="font-size:12px;color:var(--text);margin-bottom:10px;padding:8px;background:var(--bg-alt,rgba(255,255,255,.04));border-radius:6px;border:1px solid var(--border)">
+      Aucune parcelle sélectionnée.
+    </div>
+    <button class="search-btn wide" id="btn-confirm-terrain"
+            onclick="P00.confirmTerrain()" style="width:100%;font-weight:600;background:var(--success);color:#fff;border:none;padding:10px 0;border-radius:6px;cursor:pointer">
+      Valider la sélection du terrain
+    </button>
+    <div id="terrain-confirmed-badge" style="display:none;margin-top:8px;padding:6px 10px;background:rgba(34,197,94,.12);border:1px solid var(--success);border-radius:6px;font-size:11px;color:var(--success);text-align:center">
+      Terrain validé
+    </div>
+  </div>
+
+  <!-- Import PDF géomètre-expert -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Plan géomètre-expert (optionnel)</div>
+    <p class="field-note" style="margin-bottom:8px">Si un géomètre a déjà travaillé sur ce terrain, importez son plan pour pré-remplir automatiquement les données cadastrales.</p>
+    <div class="pdf-import-zone" id="pdf-import-zone" title="Glissez un PDF ici ou cliquez">
+      <input type="file" id="pdf-geometre-input" accept=".pdf"
+             onchange="P00.importGeometrePDF(this.files[0])"
+             aria-label="Importer le plan du géomètre"/>
+      <div class="pdf-import-icon">📐</div>
+      <div class="pdf-import-label">Glissez le plan PDF ou cliquez</div>
+      <div class="pdf-import-note">Formats : PDF · DXF (OCR texte) · PNG plan scan</div>
+    </div>
+    <div class="pdf-import-result" id="pdf-import-result" role="status" aria-live="polite">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" fill="var(--success)" opacity=".2"/><path d="M4 7l2 2 4-4" stroke="var(--success)" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span class="pir-name" id="pdf-filename">—</span>
+      <span style="font-family:var(--font-mono);font-size:9px;color:var(--faint)" id="pdf-result-note">—</span>
+    </div>
+    <div class="stub-warning" id="pdf-stub-note" style="display:none">
+      ⚠️ STUB — Extraction OCR du PDF non encore implémentée. Le fichier est stocké en session mais les données doivent être saisies manuellement.
+    </div>
+  </div>
+
+  <!-- Contact mairie -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Contact service urbanisme</div>
+    <input type="text" id="input-contact" class="field-input"
+           placeholder="Ex : M. Dupont — 02 62 XX XX XX"
+           data-session-key="contact_mairie"/>
+    <p class="field-note">Utile pour vérification PLU (Phase 4) et reculs applicables.</p>
+  </div>
+
+  <!-- Risk player -->
+  <div style="padding:4px 13px 8px;border-bottom:1px solid var(--border)" id="risk-player-container">
+    <!-- Injecté par le script -->
+  </div>
+
+  <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
+    <button class="source-btn" onclick="TerlabSources.open(0)">→ Sources &amp; références cadastre</button>
+  </div>
+
+  <!-- Validation -->
+  <div class="val-block">
+    <div class="val-title">Validation de la phase 0</div>
+    <div class="check-item blocking" role="checkbox" aria-checked="false" tabindex="0">
+      <div class="check-box"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6 8 1" stroke="var(--success)" stroke-width="1.5" stroke-linecap="round" class="check-svg" style="display:none"/></svg></div>
+      <span>Commune et intercommunalité confirmées</span>
+    </div>
+    <div class="check-item blocking" role="checkbox" aria-checked="false" tabindex="0">
+      <div class="check-box"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6 8 1" stroke="var(--success)" stroke-width="1.5" stroke-linecap="round" class="check-svg" style="display:none"/></svg></div>
+      <span>Références cadastrales section/numéro vérifiées</span>
+    </div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0">
+      <div class="check-box"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6 8 1" stroke="var(--success)" stroke-width="1.5" stroke-linecap="round" class="check-svg" style="display:none"/></svg></div>
+      <span>Contact mairie urbanisme noté</span>
+    </div>
+    <div class="val-progress" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"><div class="val-bar"></div></div>
+    <div class="val-footer"><span>Phase obligatoire — 2 validations bloquantes</span><span class="val-pct">0/3</span></div>
+    <button class="next-btn enabled">Phase 1 — Topographie &amp; Microclimat →</button>
+  </div>
+
+</div><!-- /left-panel -->
+
+<!-- CARTE -->
+<div class="map-area" id="map-wrapper" style="position:relative">
+  <div id="map" style="width:100%;height:100%"></div>
+  <div id="map-stub-banner" style="display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(245,158,11,.9);color:#0c0a00;padding:5px 14px;border-radius:4px;font-family:monospace;font-size:10px;pointer-events:none"></div>
+
+  <!-- Label parcelle sélectionnée -->
+  <div class="terrain-marker-label" id="terrain-label" style="display:none">
+    <span id="terrain-label-text">—</span>
+  </div>
+
+  <!-- Toggle cadastre -->
+  <button class="map-ctl-btn" id="btn-cadastre-toggle"
+          style="position:absolute;top:8px;left:8px;z-index:10"
+          onclick="P00.toggleCadastre()">
+    🗂 Cadastre
+  </button>
+
+  <!-- Coordonnées curseur -->
+  <div id="map-coords" style="position:absolute;bottom:30px;left:8px;z-index:5;background:rgba(8,10,13,.7);border:1px solid var(--border);border-radius:3px;padding:3px 8px;font-family:monospace;font-size:8px;color:var(--faint);pointer-events:none" aria-live="polite">—</div>
+</div>
+
+<!-- COLONNE DROITE -->
+<div class="right-panel">
+  <div class="rp-section">
+    <div class="rp-head">Acteurs & ressources</div>
+    <div id="actors-zone" class="stagger anim-fade-in"></div>
+  </div>
+  <div class="rp-section">
+    <div class="rp-head">Risques de la phase</div>
+    <div id="risks-zone"></div>
+  </div>
+  <div class="rp-section">
+    <div class="rp-head">Note pédagogique</div>
+    <div class="ped-note">
+      <strong>Pourquoi cette phase est-elle bloquante ?</strong><br/>
+      La référence cadastrale conditionne toutes les données géographiques : altitude, PPRN, PLU, biodiversité.
+      Une erreur de parcelle propage des erreurs dans les 12 phases suivantes.
+      <br/><br/>
+      <strong>NGR ≠ NGF</strong> — À La Réunion, toutes les cotes sont en NGR (Nivellement Général de La Réunion).
+      Différence : +0.48m environ. Erreur fréquente des prestataires métropolitains.
+    </div>
+  </div>
+  <div class="rp-section">
+    <div class="rp-head">Données &amp; confidentialité</div>
+    <div class="risk-card" data-level="bigdata">
+      <div class="risk-label">🔒 RGPD — Métadonnées exports</div>
+      <div class="risk-text">Les exports PDF, DXF et GLB contiennent des métadonnées de localisation GPS. Purger avant diffusion externe avec ExifTool (PDF) ou ODA File Converter (DXF).</div>
+    </div>
+  </div>
+</div>
+
+<style>
+.search-mode-tabs { display:flex; gap:4px; margin-bottom:10px; flex-wrap:wrap; }
+.mode-tab { padding:5px 11px; font-family:var(--font-mono); font-size:9px; letter-spacing:.06em; border-radius:var(--r-sm); border:1px solid var(--border2); background:var(--card); color:var(--muted); cursor:pointer; transition:all var(--tx-fast); }
+.mode-tab.active { background:var(--accent2); border-color:var(--accent); color:var(--accent); }
+.mode-panel.hidden { display:none; }
+.input-with-btn { display:flex; gap:6px; }
+.input-with-btn .field-input { flex:1; }
+.search-btn { padding:7px 12px; background:var(--accent2); border:1px solid rgba(154,120,32,.3); border-radius:var(--r-sm); color:var(--accent); cursor:pointer; transition:all var(--tx-fast); display:flex; align-items:center; gap:5px; font-family:var(--font-mono); font-size:10px; }
+.search-btn.wide { justify-content:center; width:100%; }
+.search-btn:hover { background:rgba(154,120,32,.2); }
+.search-btn:disabled { opacity:.4; pointer-events:none; }
+.detected-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+.det-cell { background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); padding:6px 9px; }
+.det-label { font-family:var(--font-mono); font-size:8px; color:var(--faint); letter-spacing:.1em; text-transform:uppercase; display:block; margin-bottom:2px; }
+.det-val { font-size:12px; color:var(--text); font-weight:500; display:block; }
+.map-ctl-btn { padding:5px 10px; background:var(--surface); border:1px solid var(--border2); border-radius:var(--r-sm); font-family:var(--font-mono); font-size:9px; color:var(--muted); cursor:pointer; transition:all var(--tx-fast); }
+.map-ctl-btn.active, .map-ctl-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent2); }
+.demo-inline-p00 { padding:3px 8px; font-family:var(--font-mono); font-size:9px; color:var(--muted); background:var(--card); border:1px solid var(--border2); border-radius:var(--r-sm); cursor:pointer; transition:all var(--tx-fast); white-space:nowrap; }
+.demo-inline-p00:hover { border-color:var(--accent); color:var(--accent); background:var(--accent2); }
+.demo-inline-p00.active { border-color:var(--accent); color:var(--accent); background:var(--accent2); }
+.field-input-sm { font-size:11px !important; padding:6px 8px !important; }
+.multi-select-inline { width:100%; padding:4px 8px; font-family:var(--font-mono); font-size:9px; color:var(--muted); background:transparent; border:1px dashed var(--border2); border-radius:var(--r-sm); cursor:pointer; transition:all var(--tx-fast); text-align:center; letter-spacing:.03em; }
+.multi-select-inline:hover { border-color:var(--accent); color:var(--accent); border-style:solid; }
+
+/* Enrichment panel */
+.enrich-group { margin-bottom:12px; }
+.enrich-group-title { font-family:var(--font-mono); font-size:8px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; padding-bottom:3px; border-bottom:1px solid var(--border); }
+.enrich-row { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.enrich-label { font-size:11px; color:var(--text2); min-width:100px; flex-shrink:0; }
+.enrich-input { flex:1; background:var(--card); border:1px solid var(--border2); border-radius:var(--r-sm); color:var(--text); font-family:var(--font-body); font-size:12px; padding:5px 8px; outline:none; transition:border-color .2s; }
+.enrich-input:focus { border-color:var(--accent); }
+.enrich-input[readonly] { opacity:.8; cursor:default; }
+.enrich-readonly { display:inline-block; font-size:11px; color:var(--text2); }
+.enrich-badge { font-family:var(--font-mono); font-size:7.5px; letter-spacing:.06em; padding:2px 5px; border-radius:3px; background:var(--accent2); color:var(--accent); white-space:nowrap; flex-shrink:0; }
+.enrich-badge.warn { background:var(--warning2); color:var(--warning); }
+.enrich-badge.err  { background:var(--danger2); color:var(--danger); }
+.enrich-badge.ok   { background:var(--success2); color:var(--success); }
+.enrich-actions { margin-top:10px; }
+.enrich-spinner { animation:spin 1s linear infinite; display:inline-block; }
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
+
+<script type="module">
+// ─── TERLAB Phase 0 v2 ─────────────────────────────────────────────────────
+// Fix critique : ce script est exécuté via createElement depuis index.js v2
+// Les imports relatifs fonctionnent car le script est ajouté au head avec
+// la bonne base URL (racine terlab/)
+
+// Tous les modules sont exposés sur window par index.js
+const SessionManager      = window.SessionManager;
+const MapViewer           = window.TerlabMap;
+const RiskPlayer          = window.RiskPlayer;
+const TerrainAnalysis     = window.TerrainAnalysis;
+const PPRService          = window.PPRService;
+const PLUService          = window.PLUService;
+const BRGMService         = window.BRGMService;
+const IGNElevationService = window.IGNElevationService;
+const BuildingsService    = window.BuildingsService;
+
+// Mapping INSEE → intercommunalité
+const INTERCO_MAP = {
+  '97411':'CINOR','97423':'CINOR','97418':'CINOR','97440':'CINOR','97432':'CINOR',
+  '97408':'CIREST','97403':'CIREST','97402':'CIREST','97427':'CIREST',
+  '97416':'CASUD','97425':'CASUD','97413':'CASUD','97422':'CASUD','97419':'CASUD',
+  '97420':'TCO','97415':'TCO','97424':'TCO','97417':'TCO','97436':'TCO'
+};
+
+const ParcelSelector = window.ParcelSelector;
+
+const DemoLoader = window.DemoLoader ?? { load: async () => null };
+
+const P00 = {
+  _cadastreOn: true,
+
+  // ─── Démos ──────────────────────────────────────────────────────
+  async loadDemo(id) {
+    document.querySelectorAll('.demo-inline-p00').forEach(b => b.classList.remove('active'));
+    event?.target?.closest('.demo-inline-p00')?.classList.add('active');
+    window.TerlabToast?.show(`Chargement scénario "${id}"…`, 'info', 0);
+    // Use the topbar demo-chip system
+    const topChip = document.querySelector(`.demo-chip[data-demo="${id}"]`);
+    if (topChip) {
+      topChip.click();
+    } else {
+      // Fallback : load directly
+      await DemoLoader.load(id);
+      window.location.hash = '#p00';
+      window.location.reload();
+    }
+  },
+
+  // ─── Multi-parcelle ─────────────────────────────────────────────
+  startMultiSelect() {
+    if (!ParcelSelector) { window.TerlabToast?.show('Module ParcelSelector non chargé', 'error'); return; }
+    ParcelSelector.start(P00._onMergeComplete.bind(P00));
+  },
+  completeMultiSelect() { ParcelSelector?.complete(); },
+  cancelMultiSelect()   { ParcelSelector?.cancel(); },
+  _onMergeComplete(geometry, surfTotale) {
+    document.getElementById('det-contenance').textContent = `${surfTotale.toLocaleString()} m²`;
+    window.TerlabToast?.show(`Terrain fusionné : ${surfTotale.toLocaleString()} m²`, 'success');
+    // Afficher le panneau de confirmation avec le résumé multi-parcelles
+    this._showTerrainConfirm(null);
+    // Re-lancer l'enrichissement sur la géométrie fusionnée
+    const terrain = SessionManager.getTerrain();
+    if (terrain?.lat && terrain?.lng) this.runEnrichment();
+  },
+
+  setMode(mode) {
+    document.querySelectorAll('.mode-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.mode === mode);
+      t.setAttribute('aria-selected', t.dataset.mode === mode ? 'true' : 'false');
+    });
+    document.querySelectorAll('.mode-panel').forEach(p => p.classList.add('hidden'));
+    document.getElementById(`mode-${mode}`)?.classList.remove('hidden');
+  },
+
+  // ─── Géocodage adresse ──────────────────────────────────────────
+  async search() {
+    const q = document.getElementById('input-address')?.value?.trim();
+    if (!q) { window.TerlabToast?.show('Saisir une adresse', 'warning'); return; }
+
+    this._setLoading(true);
+    try {
+      // Géocodage IGN
+      let lng, lat;
+      const geoUrl = `https://data.geopf.fr/geocodage/search?q=${encodeURIComponent(q + ' La Réunion')}&limit=1`;
+      const geoData = await fetch(geoUrl, { signal: AbortSignal.timeout(8000) }).then(r => r.json()).catch(() => null);
+
+      if (geoData?.features?.length) {
+        [lng, lat] = geoData.features[0].geometry.coordinates;
+      } else {
+        // Fallback Nominatim
+        const nomUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q + ' La Réunion')}&format=json&limit=1`;
+        const nomData = await fetch(nomUrl, { headers:{'Accept-Language':'fr'}, signal: AbortSignal.timeout(6000) }).then(r => r.json()).catch(() => null);
+        if (!nomData?.length) { window.TerlabToast?.show('Adresse introuvable', 'warning'); this._setLoading(false); return; }
+        lng = parseFloat(nomData[0].lon);
+        lat = parseFloat(nomData[0].lat);
+      }
+
+      MapViewer.flyTo(lng, lat, 18);
+      window.TerlabToast?.show('Adresse localisée — recherche de la parcelle…', 'info', 3000);
+      await this._searchParcelleAt(lng, lat);
+    } catch (e) {
+      window.TerlabToast?.show(`Erreur : ${e.message}`, 'error');
+    } finally {
+      this._setLoading(false);
+    }
+  },
+
+  // ─── Recherche cadastrale ────────────────────────────────────────
+  async searchCadastre() {
+    const section = document.getElementById('input-section')?.value?.toUpperCase().trim();
+    const numero  = document.getElementById('input-parcelle-num')?.value?.trim().padStart(4, '0');
+    const commune = document.getElementById('input-commune')?.value;
+    if (!section || !numero || !commune) {
+      window.TerlabToast?.show('Section, numéro et commune requis', 'warning'); return;
+    }
+    this._setLoading(true);
+
+    try {
+      // Récupérer INSEE
+      const geoUrl = `https://data.geopf.fr/geocodage/search?q=${encodeURIComponent(commune + ' La Réunion')}&type=municipality&limit=1`;
+      const geoData = await fetch(geoUrl, { signal: AbortSignal.timeout(6000) }).then(r => r.json()).catch(() => null);
+      const insee   = geoData?.features?.[0]?.properties?.citycode ?? '';
+
+      const wfsUrl = `https://data.geopf.fr/wfs/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature`
+        + `&TYPENAMES=CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle`
+        + `&OUTPUTFORMAT=application/json&SRSNAME=EPSG:4326`
+        + `&CQL_FILTER=commune='${insee}' AND section='${section}' AND numero='${numero}'`;
+
+      const data = await fetch(wfsUrl, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+      if (!data.features?.length) {
+        window.TerlabToast?.show('Parcelle introuvable — vérifiez section et numéro', 'warning');
+        this._setLoading(false); return;
+      }
+      this._fillFromFeature(data.features[0]);
+    } catch (e) {
+      window.TerlabToast?.show(`WFS IGN : ${e.message}`, 'error');
+    } finally {
+      this._setLoading(false);
+    }
+  },
+
+  searchGPS() {
+    const lat = parseFloat(document.getElementById('input-lat')?.value);
+    const lng = parseFloat(document.getElementById('input-lng')?.value);
+    if (isNaN(lat) || isNaN(lng)) { window.TerlabToast?.show('Coordonnées invalides', 'warning'); return; }
+    MapViewer.flyTo(lng, lat, 18);
+    this._searchParcelleAt(lng, lat);
+  },
+
+  // ─── Recherche parcelle WFS à un point ─────────────────────────
+  async _searchParcelleAt(lng, lat) {
+    const bbox    = `${lng-.0005},${lat-.0005},${lng+.0005},${lat+.0005}`;
+    const wfsUrl  = `https://data.geopf.fr/wfs/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature`
+      + `&TYPENAMES=CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle`
+      + `&OUTPUTFORMAT=application/json&SRSNAME=EPSG:4326`
+      + `&BBOX=${bbox},EPSG:4326`;
+
+    const data = await fetch(wfsUrl, { signal: AbortSignal.timeout(10000) }).then(r => r.json());
+    if (!data.features?.length) {
+      window.TerlabToast?.show('Aucune parcelle IGN à cet emplacement', 'warning'); return;
+    }
+    // Trouver la parcelle contenant le point
+    const point   = turf.point([lng, lat]);
+    const feature = data.features.find(f => { try { return turf.booleanPointInPolygon(point, f); } catch { return false; } })
+      ?? data.features[0];
+    this._fillFromFeature(feature);
+  },
+
+  // ─── Remplir les champs depuis la feature GeoJSON ───────────────
+  _fillFromFeature(feature) {
+    const p        = feature.properties;
+    const commune  = p.nom_com ?? p.commune_abs ?? p.commune ?? '—';
+    const insee    = p.commune ?? '';
+    const section  = p.section ?? '—';
+    const numero   = p.numero  ?? '—';
+    const contenance = p.contenance ?? '';
+    const interco  = INTERCO_MAP[insee] ?? 'Non déterminé';
+
+    // Calculer le centroïde
+    let lat, lng;
+    try {
+      const centroid = turf.centroid(feature);
+      [lng, lat] = centroid.geometry.coordinates;
+    } catch {
+      lat = null; lng = null;
+    }
+
+    // Altitude approximative depuis Mapbox DEM
+    let altitude = null;
+    const map = MapViewer.getMap();
+    if (map && lng && lat) {
+      const elev = map.queryTerrainElevation?.([lng, lat]);
+      if (elev != null) altitude = Math.round(elev);
+    }
+
+    // Remplir l'UI
+    document.getElementById('det-commune').textContent    = commune;
+    document.getElementById('det-insee').textContent      = insee;
+    document.getElementById('det-section').textContent    = section;
+    document.getElementById('det-parcelle-val').textContent = numero;
+    document.getElementById('det-contenance').textContent = contenance ? `${contenance} m²` : '—';
+    document.getElementById('det-interco').textContent    = interco;
+    document.getElementById('det-altitude').textContent   = altitude != null ? `${altitude} m NGR (≈)` : '—';
+    document.getElementById('det-coords').textContent     = lat && lng ? `${lat.toFixed(5)}, ${lng.toFixed(5)}` : '—';
+
+    document.getElementById('result-section').style.display = 'block';
+
+    // ─── SAVE EN SESSION (FIX CRITIQUE v2) ─────────────────────
+    const terrainData = {
+      commune, code_insee: insee, section, parcelle: numero,
+      contenance_m2: contenance || undefined,
+      intercommunalite: interco,
+      lat:  lat  ?? undefined,
+      lng:  lng  ?? undefined,
+      altitude_ngr: altitude ?? undefined,
+      parcelle_geojson: feature.geometry // Stocker la géométrie pour la carte
+    };
+    Object.keys(terrainData).forEach(k => { if (terrainData[k] === undefined) delete terrainData[k]; });
+    SessionManager.saveTerrain(terrainData);
+
+    // ─── CONFIRMER SAVE ─────────────────────────────────────────
+    const banner = document.getElementById('parcelle-saved');
+    document.getElementById('psb-ref').textContent    = `${section} ${numero}`;
+    document.getElementById('psb-detail').textContent = `${commune} · ${contenance ? contenance + 'm²' : ''}`;
+    banner.classList.add('visible');
+    setTimeout(() => banner.classList.remove('visible'), 4000);
+
+    // ─── AFFICHER SUR LA CARTE ──────────────────────────────────
+    this._highlightParcelleOnMap(feature, commune, section, numero);
+
+    window.TerlabToast?.show(`Parcelle ${section} ${numero} enregistrée ✓`, 'success');
+
+    // Lancer l'enrichissement automatique
+    this.runEnrichment();
+
+    // Mettre à jour le label sur la carte
+    const label = document.getElementById('terrain-label');
+    const labelText = document.getElementById('terrain-label-text');
+    if (label && labelText) {
+      labelText.textContent = `${section} ${numero} — ${commune}`;
+      label.style.display = 'block';
+    }
+  },
+
+  _highlightParcelleOnMap(feature, commune, section, numero) {
+    const map = MapViewer.getMap();
+    if (!map) return;
+
+    // Mettre à jour la source parcelle
+    const src = map.getSource('parcelle-selected');
+    if (src) {
+      src.setData({ type: 'FeatureCollection', features: [feature] });
+    }
+
+    // FitBounds
+    try {
+      const bbox = turf.bbox(feature);
+      map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 80, duration: 1000 });
+    } catch {}
+
+    // Popup
+    try {
+      const centroid = turf.centroid(feature);
+      new mapboxgl.Popup({ closeButton: false, className: 'terlab-popup', offset: 15 })
+        .setLngLat(centroid.geometry.coordinates)
+        .setHTML(`
+          <div class="terlab-popup-title">Parcelle sélectionnée</div>
+          <div class="terlab-popup-row"><span>Commune</span><span class="terlab-popup-val">${commune}</span></div>
+          <div class="terlab-popup-row"><span>Référence</span><span class="terlab-popup-val">${section} ${numero}</span></div>
+          <div class="terlab-popup-row"><span>Source</span><span class="terlab-popup-val">IGN PCI</span></div>
+        `)
+        .addTo(map);
+    } catch {}
+  },
+
+  toggleCadastre() {
+    const map = MapViewer.getMap();
+    if (!map) return;
+    this._cadastreOn = !this._cadastreOn;
+    try { map.setLayoutProperty('cadastre', 'visibility', this._cadastreOn ? 'visible' : 'none'); } catch {}
+    document.getElementById('btn-cadastre-toggle')?.classList.toggle('active', this._cadastreOn);
+  },
+
+  // ─── Import PDF géomètre ────────────────────────────────────────
+  async importGeometrePDF(file) {
+    if (!file) return;
+    const resultEl = document.getElementById('pdf-import-result');
+    const stubNote = document.getElementById('pdf-stub-note');
+    document.getElementById('pdf-filename').textContent = file.name;
+    document.getElementById('pdf-result-note').textContent = `${(file.size/1024).toFixed(0)} Ko — en cours…`;
+    resultEl.classList.add('visible');
+
+    // ⚠️ STUB — OCR PDF non implémenté
+    // En production : utiliser pdf.js pour extraire le texte puis parser section/parcelle/coords
+    await new Promise(r => setTimeout(r, 800)); // Simule le traitement
+
+    document.getElementById('pdf-result-note').textContent = 'Stocké. Saisie manuelle requise.';
+    stubNote.style.display = 'block';
+
+    // Stocker le nom du fichier en session
+    SessionManager.saveTerrain({ geometre_pdf: file.name });
+    window.TerlabToast?.show(`Plan "${file.name}" importé (données à vérifier)`, 'info', 5000);
+  },
+
+  _setLoading(loading) {
+    const el = document.getElementById('result-loading');
+    if (el) el.style.display = loading ? 'inline' : 'none';
+    ['btn-search-addr','btn-search-cad'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) btn.disabled = loading;
+    });
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // CASCADE D'ENRICHISSEMENT AUTO
+  // ═══════════════════════════════════════════════════════════════
+  async runEnrichment() {
+    const terrain = SessionManager.getTerrain();
+    if (!terrain.lat || !terrain.lng) return;
+
+    const panel   = document.getElementById('enrichment-panel');
+    const spinner = document.getElementById('enrich-loading');
+    panel.style.display = 'block';
+    spinner.style.display = 'inline';
+
+    window.TerlabToast?.show('Analyse automatique du site…', 'info', 0);
+
+    const lat = parseFloat(terrain.lat);
+    const lng = parseFloat(terrain.lng);
+    const alt = parseFloat(terrain.altitude_ngr) || null;
+    const geojson = terrain.parcelle_geojson;
+
+    const results = await Promise.allSettled([
+      // 0. Zone climatique + pente + RTAA
+      (async () => {
+        const zone = TerrainAnalysis.deduireZoneClimatique(alt);
+        const rtaa = TerrainAnalysis.getZoneRTAA(alt);
+        let pente = null, penteMethod = 'fallback';
+        if (geojson) {
+          try {
+            const slopeResult = await TerrainAnalysis.calculateSlopeFromParcelle(geojson, alt);
+            pente = slopeResult?.slope;
+            penteMethod = slopeResult?.method ?? 'ign_api';
+          } catch { /* fallback */ }
+        }
+        return { zone_climatique: zone, zone_rtaa: rtaa, pente_moy_pct: pente, pente_method: penteMethod };
+      })(),
+
+      // 1. PPR PEIGEO AGORAH
+      PPRService.queryPoint(lat, lng).catch(() => ({ source: 'error', features: [] })),
+
+      // 2. PLU API Carto IGN
+      PLUService.queryZoneUrba(lat, lng).catch(() => ({ features: [] })),
+
+      // 3. Géologie BRGM
+      (async () => {
+        if (BRGMService.queryWMS) return BRGMService.queryWMS(lat, lng);
+        if (BRGMService.inferFromAltitude) return BRGMService.inferFromAltitude(alt, lat, lng);
+        return null;
+      })().catch(() => null),
+
+      // 4. Altitude IGN précise
+      IGNElevationService.getElevations([{ lng, lat }]).catch(() => []),
+
+      // 5. Bâtiments voisins OSM
+      BuildingsService.fetchBuildings(lat, lng, 200).catch(() => []),
+    ]);
+
+    // ── Assembler les résultats ──────────────────────────────────
+    const topo    = results[0].status === 'fulfilled' ? results[0].value : {};
+    const ppr     = results[1].status === 'fulfilled' ? results[1].value : {};
+    const plu     = results[2].status === 'fulfilled' ? results[2].value : {};
+    const geo     = results[3].status === 'fulfilled' ? results[3].value : null;
+    const alti    = results[4].status === 'fulfilled' ? results[4].value : [];
+    const batim   = results[5].status === 'fulfilled' ? results[5].value : [];
+
+    // PPR zone extraction
+    let pprZone = null, pprLabel = null;
+    if (ppr.features?.length) {
+      const props = ppr.features[0].properties ?? {};
+      pprZone  = props.zone ?? props.alea ?? props.ZONE ?? null;
+      pprLabel = props.libelle ?? props.nom ?? props.LIBELLE ?? pprZone;
+    }
+
+    // PLU zone extraction
+    let pluZone = null;
+    if (plu.features?.length) {
+      const props = plu.features[0].properties ?? {};
+      pluZone = props.libelle ?? props.typezone ?? props.LIBELLE ?? null;
+    }
+
+    // Géologie
+    const geoLabel = geo?.label ?? geo?.name ?? null;
+    const geoPerm  = geo?.permeability ?? null;
+
+    // Altitude affinée
+    const preciseAlt = alti?.[0]?.z ?? alti?.[0]?.altitude ?? alt;
+
+    // Bâtiments
+    const batCount = Array.isArray(batim) ? batim.length : (batim?.features?.length ?? 0);
+
+    // ── Remplir le panel ─────────────────────────────────────────
+    const zoneClimLabels = { littoral_nord_est: 'Littoral Nord-Est', littoral_ouest_sec: 'Littoral Ouest (sec)', littoral_sud_ouest: 'Littoral Sud-Ouest', mipentes: 'Mi-pentes (400–800 m)', hauts_cirques: 'Hauts / Cirques (> 1000 m)' };
+    this._setEnrichField('enrich-zone-clim', zoneClimLabels[topo.zone_climatique] ?? topo.zone_climatique ?? '—', 'badge-zone-clim', 'auto');
+    this._setEnrichField('enrich-pente', topo.pente_moy_pct?.toFixed?.(1) ?? '', 'badge-pente', topo.pente_method === 'ign_api' ? 'IGN' : 'estimation');
+    this._setEnrichField('enrich-rtaa', topo.zone_rtaa, 'badge-rtaa', 'auto');
+    this._setEnrichField('enrich-ppr', pprLabel ?? 'Non détecté', 'badge-ppr', ppr.source === 'peigeo_wms' ? 'AGORAH' : (ppr.source ?? '—'));
+    this._setEnrichField('enrich-plu', pluZone ?? 'Non détecté', 'badge-plu', plu.features?.length ? 'IGN API' : '—');
+    this._setEnrichField('enrich-geo', geoLabel ?? 'Non détecté', 'badge-geo', geo ? 'BRGM' : '—');
+    this._setEnrichField('enrich-perm', geoPerm ?? '—', 'badge-perm', geo ? 'BRGM' : '—');
+    this._setEnrichField('enrich-altitude', preciseAlt ?? '', 'badge-altitude', alti?.length ? 'IGN' : 'Mapbox');
+
+    const batEl = document.getElementById('enrich-batiments');
+    if (batEl) batEl.textContent = batCount > 0 ? `${batCount} bâtiment${batCount > 1 ? 's' : ''} détecté${batCount > 1 ? 's' : ''}` : 'Aucun';
+    this._setBadge('badge-batiments', batCount > 0 ? 'OSM' : '—');
+
+    // Stocker en session provisoirement
+    this._enrichedData = {
+      zone_climatique: topo.zone_climatique,
+      zone_rtaa: topo.zone_rtaa,
+      pente_moy_pct: topo.pente_moy_pct,
+      pente_method: topo.pente_method,
+      ppr_zone: pprZone,
+      ppr_label: pprLabel,
+      plu_zone: pluZone,
+      type_geologique: geoLabel,
+      permeabilite: geoPerm,
+      altitude_ngr: preciseAlt,
+      batiments_voisins_count: batCount,
+    };
+
+    spinner.style.display = 'none';
+    window.TerlabToast?.show('Site analysé — vérifiez et validez les données', 'success', 4000);
+  },
+
+  _enrichedData: null,
+
+  _setEnrichField(inputId, value, badgeId, source) {
+    const el = document.getElementById(inputId);
+    if (!el) return;
+    if (el.tagName === 'SELECT') {
+      if (value) el.value = value;
+    } else if (el.tagName === 'INPUT') {
+      el.value = value ?? '';
+    } else {
+      el.textContent = value ?? '—';
+    }
+    this._setBadge(badgeId, source);
+  },
+
+  _setBadge(badgeId, source) {
+    const badge = document.getElementById(badgeId);
+    if (!badge) return;
+    badge.textContent = source ?? '—';
+    badge.className = 'enrich-badge';
+    if (source === '—' || source === 'error') badge.classList.add('err');
+    else if (source === 'estimation' || source === 'fallback') badge.classList.add('warn');
+    else badge.classList.add('ok');
+  },
+
+  // ── Validation par l'étudiant ─────────────────────────────────
+  validateEnrichment() {
+    // Lire les valeurs éventuellement modifiées par l'étudiant
+    const data = {};
+    document.querySelectorAll('[data-enrich-key]').forEach(el => {
+      const key = el.dataset.enrichKey;
+      const val = el.value ?? el.textContent?.trim();
+      if (val && val !== '—' && val !== 'Non détecté') data[key] = val;
+    });
+
+    // Fusionner avec les données enrichies non-UI
+    if (this._enrichedData) {
+      if (this._enrichedData.ppr_label) data.ppr_label = this._enrichedData.ppr_label;
+      if (this._enrichedData.pente_method) data.pente_method = this._enrichedData.pente_method;
+      if (this._enrichedData.batiments_voisins_count) data.batiments_voisins_count = this._enrichedData.batiments_voisins_count;
+    }
+
+    SessionManager.saveTerrain(data);
+    window.TerlabToast?.show('Données validées et enregistrées ✓', 'success');
+
+    // Émettre événement pour les phases suivantes
+    window.dispatchEvent(new CustomEvent('terlab:p00-validated', { detail: data }));
+  },
+
+  // ── Confirmation explicite du terrain ────────────────────────────
+  _showTerrainConfirm(feature) {
+    const section = document.getElementById('terrain-confirm-section');
+    if (section) section.style.display = '';
+
+    const summary = document.getElementById('terrain-confirm-summary');
+    if (!summary) return;
+
+    const terrain = SessionManager?.getTerrain?.() ?? {};
+    const multiples = terrain.parcelles_multiples;
+
+    if (multiples?.length > 1) {
+      const refs = multiples.map(p => `${p.section ?? ''}${p.numero ?? ''}`);
+      const surf = multiples.reduce((s, p) => s + (p.contenance_m2 ?? p.contenance ?? 0), 0);
+      summary.innerHTML = `<strong>${multiples.length} parcelles :</strong> ${refs.join(' + ')}<br>Surface totale : ${surf.toLocaleString()} m²`;
+    } else {
+      const props = feature?.properties ?? terrain;
+      const ref = `${props.section ?? terrain.section ?? ''}${props.numero ?? terrain.parcelle ?? ''}`;
+      const commune = props.commune ?? props.nom_com ?? terrain.commune ?? '';
+      const surf = props.contenance ? parseFloat(props.contenance) : (terrain.contenance_m2 ?? 0);
+      summary.innerHTML = `<strong>Parcelle ${ref}</strong> — ${commune}<br>Surface : ${surf.toLocaleString()} m²`;
+    }
+
+    // Reset validation state
+    document.getElementById('terrain-confirmed-badge').style.display = 'none';
+    document.getElementById('btn-confirm-terrain').style.display = '';
+  },
+
+  confirmTerrain() {
+    const terrain = SessionManager?.getTerrain?.() ?? {};
+    if (!terrain.parcelle && !terrain.section) {
+      window.TerlabToast?.show('Aucune parcelle détectée — sélectionnez d\'abord un terrain', 'warning');
+      return;
+    }
+
+    SessionManager.saveTerrain({ terrain_confirmed: true });
+
+    document.getElementById('btn-confirm-terrain').style.display = 'none';
+    document.getElementById('terrain-confirmed-badge').style.display = '';
+    window.TerlabToast?.show('Terrain confirmé — vous pouvez continuer', 'success');
+
+    window.dispatchEvent(new CustomEvent('terlab:terrain-confirmed', {
+      detail: terrain
+    }));
+  }
+};
+
+// ─── Écouter les événements carte ─────────────────────────────────
+window.addEventListener('terlab:parcelle-found', e => {
+  if (e.detail?.properties) {
+    P00._fillFromFeature(e.detail);
+    // Afficher le panneau de confirmation (sauf si multi-sélection gère son propre flux)
+    if (!window.ParcelSelector?.isActive?.()) {
+      P00._showTerrainConfirm(e.detail);
+    }
+  }
+});
+
+// ─── Coordonnées curseur ───────────────────────────────────────────
+const map = MapViewer.getMap();
+if (map) {
+  map.on('mousemove', e => {
+    const el = document.getElementById('map-coords');
+    if (el) el.textContent = `${e.lngLat.lat.toFixed(5)}, ${e.lngLat.lng.toFixed(5)}`;
+  });
+}
+
+// ─── Drag & drop PDF ──────────────────────────────────────────────
+const dropZone = document.getElementById('pdf-import-zone');
+if (dropZone) {
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) P00.importGeometrePDF(file);
+  });
+}
+
+// ─── Injecter le bouton RiskPlayer ────────────────────────────────
+const risksForPhase = (window.TERLAB_RISK?.risques ?? []).filter(r => r.phase === 0 || r.phase === '0');
+const rpcContainer  = document.getElementById('risk-player-container');
+if (rpcContainer && risksForPhase.length) {
+  rpcContainer.innerHTML = RiskPlayer.buildOpenBtn(0, risksForPhase.length);
+}
+
+// ─── Hydratation initiale depuis session ──────────────────────────
+const terrain = SessionManager.getTerrain();
+if (terrain?.commune) {
+  document.getElementById('result-section').style.display = 'block';
+  // Pré-remplir les détectés
+  const mappings = {
+    'det-commune':     terrain.commune,
+    'det-insee':       terrain.code_insee,
+    'det-section':     terrain.section,
+    'det-parcelle-val':terrain.parcelle,
+    'det-contenance':  terrain.contenance_m2 ? `${terrain.contenance_m2} m²` : null,
+    'det-interco':     terrain.intercommunalite,
+    'det-altitude':    terrain.altitude_ngr ? `${terrain.altitude_ngr} m NGR (≈)` : null,
+    'det-coords':      terrain.lat && terrain.lng ? `${parseFloat(terrain.lat).toFixed(5)}, ${parseFloat(terrain.lng).toFixed(5)}` : null
+  };
+  for (const [id, val] of Object.entries(mappings)) {
+    if (val) { const el = document.getElementById(id); if (el) el.textContent = val; }
+  }
+
+  // Afficher le label terrain
+  const label = document.getElementById('terrain-label');
+  const labelText = document.getElementById('terrain-label-text');
+  if (label && labelText && terrain.section && terrain.parcelle) {
+    labelText.textContent = `${terrain.section} ${terrain.parcelle} — ${terrain.commune}`;
+    label.style.display = 'block';
+  }
+}
+
+// ─── Exposer globalement (requis pour onclick= HTML) ──────────────
+window.P00 = P00;
+window.RiskPlayer = RiskPlayer; // Pour onclick= dans le bouton player
+</script>

@@ -1,0 +1,426 @@
+{
+  "version": "1.0",
+  "description": "Zones climatiques mondiales similaires aux 3 étages de La Réunion. Utilisé dans la Phase World (p13) pour le globe Mapbox.",
+  "source_scientifique": "Beck et al. 2018 — Köppen-Geiger 1km classification maps",
+  "etages_reunion": {
+    "Aw": {
+      "koppen": "Aw",
+      "label": "Tropical savane — côte et basses pentes",
+      "description": "Deux saisons marquées (saison des pluies / saison sèche). Températures hautes toute l'année. Cyclones en été austral.",
+      "exemples_reunion": ["Saint-Paul", "Le Port", "Saint-Louis", "Saint-Pierre bas", "Saint-Denis bas"],
+      "altitude_m": "0–400",
+      "temp_moy_c": 26,
+      "temp_min_c": 20,
+      "temp_max_c": 32,
+      "precip_annuelle_mm": 700,
+      "saison_seche": true,
+      "risque_cyclone": "élevé",
+      "confort_passif": "Ventilation traversante, protections solaires, toitures légères, débords larges",
+      "couleur_carte": "#A5C88A"
+    },
+    "Am": {
+      "koppen": "Am",
+      "label": "Tropical mousson — côte au vent",
+      "description": "Précipitations abondantes toute l'année avec pic en saison cyclonique. Côte est et nord-est de La Réunion.",
+      "exemples_reunion": ["Saint-Benoît", "Sainte-Rose", "Saint-André est"],
+      "altitude_m": "0–400",
+      "temp_moy_c": 25,
+      "precip_annuelle_mm": 4000,
+      "risque_cyclone": "élevé",
+      "confort_passif": "Toitures et façades résistantes à la pluie horizontale, drainages, surélévation",
+      "couleur_carte": "#6BAA4E"
+    },
+    "Cf": {
+      "koppen": "Cf",
+      "label": "Subtropical humide — mi-pentes",
+      "description": "Températures douces, précipitations bien réparties, absence de saison sèche marquée. Zone de confort intermédiaire.",
+      "exemples_reunion": ["Saint-Denis hauts", "Saint-Pierre mi-pentes", "Saint-Leu hauts", "La Montagne"],
+      "altitude_m": "400–900",
+      "temp_moy_c": 22,
+      "temp_min_c": 16,
+      "temp_max_c": 28,
+      "precip_annuelle_mm": 1800,
+      "risque_cyclone": "modéré",
+      "confort_passif": "Ventilation naturelle encore efficace, isolation thermique légère recommandée la nuit",
+      "couleur_carte": "#C5E68A"
+    },
+    "Cwb": {
+      "koppen": "Cwb",
+      "label": "Océanique d'altitude — hauts et cirques",
+      "description": "Températures fraîches, amplitude thermique quotidienne importante (jusqu'à 19°C), gel nocturne possible en hiver austral. Brouillard fréquent.",
+      "exemples_reunion": ["Plaine des Cafres", "Plaine des Palmistes", "Cilaos", "Hell-Bourg", "Plaine des Chicots"],
+      "altitude_m": "1000–2600",
+      "temp_moy_c": 14,
+      "temp_min_c": 3,
+      "temp_max_c": 22,
+      "precip_annuelle_mm": 2400,
+      "gel_nocturne": true,
+      "risque_cyclone": "fort en altitude (vents amplifiés)",
+      "confort_passif": "Isolation thermique renforcée, ruptures de pont thermique, chauffage appoint (biomasse, PAC), protection vent",
+      "note_rtaa": "Zone RTAA 3 — règles spécifiques. Isolation obligatoire, pas de restriction climatisation.",
+      "couleur_carte": "#DAEAEA"
+    }
+  },
+  "zones_similaires": [
+    {
+      "id": "reunion-ref",
+      "nom": "La Réunion — Référence TERLAB",
+      "pays": "France (DOM)",
+      "continent": "Océan Indien",
+      "koppen": ["Aw", "Am", "Cf", "Cwb"],
+      "lat": -21.11,
+      "lng": 55.54,
+      "altitude_max_m": 3071,
+      "etage_principal": "tous",
+      "architectures_ref": ["Case créole traditionnelle", "Architecture contemporaine RTAA", "Habitat social SIDR/SODEGIS"],
+      "partenariat_ensa": true,
+      "marker_color": "#FF6B4A",
+      "marker_size": "large",
+      "note": "Site de référence TERLAB — île de La Réunion. 3 étages climatiques sur 70km."
+    },
+    {
+      "id": "hawaii-kona-aw",
+      "nom": "Hawaï — Côte Kona (Big Island)",
+      "pays": "États-Unis",
+      "continent": "Océan Pacifique",
+      "koppen": "Aw",
+      "lat": 19.64,
+      "lng": -155.99,
+      "etage_principal": "Aw",
+      "architectures_ref": [
+        "Architecture vernaculaire hawaïenne — halau, lauhala",
+        "Tropical modernism — Case Study Houses tropicaux",
+        "Green Building Hawaii — LEED tropical"
+      ],
+      "partenariat_ensa": false,
+      "marker_color": "#A5C88A",
+      "note": "Climat quasi-identique à la côte sous le vent de La Réunion. Référence pour architecture tropicale passive."
+    },
+    {
+      "id": "bali-aw",
+      "nom": "Bali — Ubud / Seminyak",
+      "pays": "Indonésie",
+      "continent": "Asie du Sud-Est",
+      "koppen": "Am",
+      "lat": -8.41,
+      "lng": 115.19,
+      "etage_principal": "Am",
+      "architectures_ref": [
+        "Architecture balinaise traditionnelle — pura, bale, compound",
+        "Sustainable tropical architecture — Rio Helmi, IBUKU bamboo",
+        "Vernaculaire tropical — toiture à forte pente, cours ouvertes"
+      ],
+      "partenariat_ensa": false,
+      "marker_color": "#6BAA4E",
+      "note": "Références majeures pour conception passive tropicale humide. Toitures à forte pente, cours interieures, matériaux naturels."
+    },
+    {
+      "id": "martinique-aw",
+      "nom": "Martinique — Fort-de-France",
+      "pays": "France (DOM)",
+      "continent": "Caraïbes",
+      "koppen": "Aw",
+      "lat": 14.61,
+      "lng": -61.07,
+      "etage_principal": "Aw",
+      "architectures_ref": [
+        "Architecture créole antillaise — case à galerie, chattel house",
+        "Architecture contemporaine DOM-Antilles",
+        "Comparatif RTG (Guadeloupe) vs RTAA Réunion"
+      ],
+      "partenariat_ensa": true,
+      "marker_color": "#A5C88A",
+      "note": "DOM français. RTAA DOM commune mais variantes régionales. Même contexte institutionnel ENSA La Réunion/CAUE. Échanges académiques possibles."
+    },
+    {
+      "id": "guadeloupe-aw",
+      "nom": "Guadeloupe — Pointe-à-Pitre",
+      "pays": "France (DOM)",
+      "continent": "Caraïbes",
+      "koppen": "Aw",
+      "lat": 16.24,
+      "lng": -61.53,
+      "etage_principal": "Aw",
+      "architectures_ref": [
+        "Architecture créole guadeloupéenne",
+        "RTG — Réglementation Thermique Guadeloupe (variante DOM)",
+        "Risque sismique fort (zone 4) — spécificité constructive"
+      ],
+      "partenariat_ensa": true,
+      "marker_color": "#A5C88A",
+      "note": "DOM français. Sismicité élevée (zone 4 vs zone 2 Réunion). Comparatif constructif intéressant."
+    },
+    {
+      "id": "mayotte-aw",
+      "nom": "Mayotte — Mamoudzou",
+      "pays": "France (DOM)",
+      "continent": "Océan Indien",
+      "koppen": "Aw",
+      "lat": -12.78,
+      "lng": 45.23,
+      "etage_principal": "Aw",
+      "architectures_ref": [
+        "Architecture malgacho-comorienne traditionnelle — bangwe",
+        "Habitat social DOM Mayotte — enjeux densité et précarité",
+        "Construction en zone cyclonique Océan Indien"
+      ],
+      "partenariat_ensa": true,
+      "marker_color": "#A5C88A",
+      "note": "DOM français voisin Réunion. Même RTAA DOM. Zone Océan Indien. Partenariats ENSA actifs. Défis logement social importants."
+    },
+    {
+      "id": "maurice-aw",
+      "nom": "Île Maurice — Port-Louis",
+      "pays": "Maurice",
+      "continent": "Océan Indien",
+      "koppen": "Aw",
+      "lat": -20.17,
+      "lng": 57.50,
+      "etage_principal": "Aw",
+      "architectures_ref": [
+        "Architecture coloniale mauricienne — case créole, vakoa",
+        "Architecture contemporaine Grand Baie / smart city",
+        "Habitat social et économique Maurice"
+      ],
+      "partenariat_ensa": true,
+      "marker_color": "#A5C88A",
+      "note": "Voisin géographique direct, même zone climatique Aw côtière. Partenariats ENSA actifs. Comparatif créole Réunion/Maurice."
+    },
+    {
+      "id": "maldives-aw",
+      "nom": "Maldives — Malé",
+      "pays": "Maldives",
+      "continent": "Océan Indien",
+      "koppen": "Aw",
+      "lat": 4.17,
+      "lng": 73.51,
+      "etage_principal": "Aw",
+      "architectures_ref": [
+        "Architecture sur pilotis — adaptation montée des eaux",
+        "Construction insulaire résiliente extrême",
+        "Architecture contemporaine maldivienne — tourisme durable"
+      ],
+      "partenariat_ensa": false,
+      "marker_color": "#A5C88A",
+      "note": "Référence extrême pour l'adaptation au risque de submersion. Altitude max 2.4m — territoire le plus menacé par la montée des eaux."
+    },
+    {
+      "id": "kandy-cf",
+      "nom": "Kandy — Sri Lanka (Hauts)",
+      "pays": "Sri Lanka",
+      "continent": "Asie du Sud",
+      "koppen": "Cf",
+      "lat": 7.29,
+      "lng": 80.63,
+      "etage_principal": "Cf",
+      "architectures_ref": [
+        "Architecture cinghalaise d'altitude — walauwa, kandyan",
+        "Architecture coloniale britannique tropicale",
+        "Sustainable vernacular — terra cotta, pierres locales, ventilation naturelle altitude"
+      ],
+      "partenariat_ensa": false,
+      "marker_color": "#C5E68A",
+      "note": "Altitude et climat comparables aux mi-pentes réunionnaises. Tradition constructive altitude tropicale riche."
+    },
+    {
+      "id": "kigali-cwb",
+      "nom": "Kigali — Rwanda",
+      "pays": "Rwanda",
+      "continent": "Afrique de l'Est",
+      "koppen": "Cwb",
+      "lat": -1.94,
+      "lng": 30.06,
+      "etage_principal": "Cwb",
+      "architectures_ref": [
+        "Architecture vernaculaire rwandaise — intore, imizi",
+        "Rwanda Green Building Council — durabilité tropicale altitude",
+        "Urbanisme social — nouvelles cités Kigali",
+        "Architecture contemporaine Afrique de l'Est — David Adjaye, Diébédo Francis Kéré"
+      ],
+      "partenariat_ensa": true,
+      "marker_color": "#DAEAEA",
+      "note": "1550m altitude. Températures comparables Plaine des Cafres (min 14°C, max 25°C). Partenariat académique potentiel fort."
+    },
+    {
+      "id": "medellin-cwb",
+      "nom": "Medellín — Colombie",
+      "pays": "Colombie",
+      "continent": "Amérique du Sud",
+      "koppen": "Cfb",
+      "lat": 6.24,
+      "lng": -75.57,
+      "etage_principal": "Cwb",
+      "architectures_ref": [
+        "Urbanisme social Medellín — câble-téléphérique, escaliers électriques",
+        "Architecture bioclimatique tropicale d'altitude",
+        "Barrios intégración — architecture participative",
+        "Giancarlo Mazzanti — architecture publique tropicale"
+      ],
+      "partenariat_ensa": false,
+      "marker_color": "#DAEAEA",
+      "note": "1495m altitude. 'Printemps éternel' (19-28°C). Référence mondiale urbanisme social innovant en contexte tropical montagneux."
+    },
+    {
+      "id": "quito-cwb",
+      "nom": "Quito — Équateur",
+      "pays": "Équateur",
+      "continent": "Amérique du Sud",
+      "koppen": "Cwb",
+      "lat": -0.23,
+      "lng": -78.52,
+      "etage_principal": "Cwb",
+      "architectures_ref": [
+        "Architecture coloniale hispano-équatorienne d'altitude",
+        "Patrimoine UNESCO centre historique Quito",
+        "Architecture contemporaine équatoriale altitude — Handel Guayasamin"
+      ],
+      "partenariat_ensa": false,
+      "marker_color": "#DAEAEA",
+      "note": "2850m altitude. Amplitude thermique modérée. Référence pour la gestion architecturale du froid nocturne en zone tropicale."
+    },
+    {
+      "id": "addis-abeba-cwb",
+      "nom": "Addis-Abeba — Éthiopie",
+      "pays": "Éthiopie",
+      "continent": "Afrique de l'Est",
+      "koppen": "Cwb",
+      "lat": 9.01,
+      "lng": 38.75,
+      "etage_principal": "Cwb",
+      "architectures_ref": [
+        "Architecture vernaculaire éthiopienne de plateau — tukul, teff",
+        "Architecture contemporaine Afrique de l'Est",
+        "Ethiopian Institute of Architecture — EIAAB"
+      ],
+      "partenariat_ensa": false,
+      "marker_color": "#DAEAEA",
+      "note": "2355m altitude. Min 7°C, max 25°C. Amplitude thermique similaire Plaine des Cafres. Isolation nocturne requise."
+    },
+    {
+      "id": "lesotho-maseru-cwb",
+      "nom": "Maseru — Lesotho",
+      "pays": "Lesotho",
+      "continent": "Afrique Australe",
+      "koppen": "Cwb",
+      "lat": -29.31,
+      "lng": 27.47,
+      "etage_principal": "Cwb",
+      "architectures_ref": [
+        "Architecture basotho traditionnelle — rondavel pierres volcanique",
+        "Construction en zone montagnarde tropicale — Drakensberg"
+      ],
+      "partenariat_ensa": false,
+      "marker_color": "#DAEAEA",
+      "note": "1530m. Zone montagneuse extrême. Référence construction en pierre volcanique locale — comparatif basalte Réunion."
+    },
+    {
+      "id": "la-paz-cwb",
+      "nom": "La Paz — Bolivie",
+      "pays": "Bolivie",
+      "continent": "Amérique du Sud",
+      "koppen": "Cwb",
+      "lat": -16.49,
+      "lng": -68.14,
+      "etage_principal": "Cwb",
+      "architectures_ref": [
+        "Architecture bolivienne d'altitude — adobe, rondins",
+        "Téléphérique urbain Mi Teleférico — mobilité altitude",
+        "Freddy Mamani Silvestre — architecture nouveau andin"
+      ],
+      "partenariat_ensa": false,
+      "marker_color": "#DAEAEA",
+      "note": "3625m — altitude extrême. Amplitude thermique forte. Référence matériaux locaux altitude. Échanges culturels Océanie-Andes."
+    },
+    {
+      "id": "dakar-aw-seche",
+      "nom": "Dakar — Sénégal",
+      "pays": "Sénégal",
+      "continent": "Afrique de l'Ouest",
+      "koppen": "Aw",
+      "lat": 14.72,
+      "lng": -17.47,
+      "etage_principal": "Aw",
+      "architectures_ref": [
+        "Architecture soudano-sahélienne — Léopold Sédar Senghor",
+        "Architecture coloniale française Afrique occidentale",
+        "Architecture contemporaine Dakar — développement durable tropical"
+      ],
+      "partenariat_ensa": false,
+      "marker_color": "#A5C88A",
+      "note": "Tropical sec (saison sèche longue). Comparatif côte sous le vent Réunion (Saint-Paul, Le Port). Protection solaire poussée."
+    },
+    {
+      "id": "abidjan-am",
+      "nom": "Abidjan — Côte d'Ivoire",
+      "pays": "Côte d'Ivoire",
+      "continent": "Afrique de l'Ouest",
+      "koppen": "Am",
+      "lat": 5.35,
+      "lng": -4.01,
+      "etage_principal": "Am",
+      "architectures_ref": [
+        "Architecture coloniale française Afrique tropicale — 'brise-soleil' Le Corbusier influence",
+        "Architecture contemporaine Abidjan",
+        "Habitat dense tropical — ventilation en immeuble équatorial"
+      ],
+      "partenariat_ensa": false,
+      "marker_color": "#6BAA4E",
+      "note": "Référence architecture coloniale tropicale française. Brise-soleil, halls ventilés, ventilation traversante en immeuble."
+    },
+    {
+      "id": "colombo-am",
+      "nom": "Colombo — Sri Lanka (Côte)",
+      "pays": "Sri Lanka",
+      "continent": "Asie du Sud",
+      "koppen": "Am",
+      "lat": 6.93,
+      "lng": 79.85,
+      "etage_principal": "Am",
+      "architectures_ref": [
+        "Architecture coloniale néerlandaise et britannique tropicale",
+        "Tropical modernism Sri Lanka — Geoffrey Bawa",
+        "Architecture contemporaine Colombo — ventilation naturelle"
+      ],
+      "partenariat_ensa": false,
+      "marker_color": "#6BAA4E",
+      "note": "Geoffrey Bawa — référence mondiale architecture tropicale moderne. Cours, galeries, brises-vents intégrés."
+    },
+    {
+      "id": "singapore-am",
+      "nom": "Singapour",
+      "pays": "Singapour",
+      "continent": "Asie du Sud-Est",
+      "koppen": "Af",
+      "lat": 1.35,
+      "lng": 103.82,
+      "etage_principal": "Am",
+      "architectures_ref": [
+        "Architecture bioclimatique dense — Ken Yeang (bioclimatic design)",
+        "Gardens by the Bay — architecture tropicale innovante",
+        "Editt Tower — bioclimatic skyscraper",
+        "Housing Development Board — logement social tropical dense"
+      ],
+      "partenariat_ensa": false,
+      "marker_color": "#6BAA4E",
+      "note": "Référence mondiale architecture tropicale dense et durable. Ken Yeang — bioclimatic design. Applicable aux hautes densités réunionnaises (Saint-Denis)."
+    },
+    {
+      "id": "darwin-aw",
+      "nom": "Darwin — Australie",
+      "pays": "Australie",
+      "continent": "Océanie",
+      "koppen": "Aw",
+      "lat": -12.46,
+      "lng": 130.84,
+      "etage_principal": "Aw",
+      "architectures_ref": [
+        "Architecture tropicale australienne — tropical modernism NT",
+        "Glenn Murcutt — architecture vernaculaire tropicale contemporaine",
+        "Cyclone Tracy (1974) — normes construction post-cyclone australiennes"
+      ],
+      "partenariat_ensa": false,
+      "marker_color": "#A5C88A",
+      "note": "Cyclone Tracy 1974 a entièrement reconfiguré les normes de construction cyclonique australiennes. Référence précieuse pour RTAA cyclone Réunion."
+    }
+  ]
+}

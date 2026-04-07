@@ -1,0 +1,48 @@
+{
+  "generated": "2026-04-07T14:53:33.258243",
+  "settings": {
+    "dpi": 150,
+    "format": "jpg",
+    "min_score": 2
+  },
+  "communes": [
+    {
+      "insee": "97416",
+      "commune": "Le Port",
+      "pdf": "97416_reglement_20240625.pdf",
+      "total_pages": 227,
+      "schemas_classified": 3,
+      "par_categorie": {
+        "implantation": 1,
+        "stationnement": 1,
+        "cbs_biotope": 1
+      },
+      "pages": [
+        {
+          "page": 30,
+          "categorie": "implantation",
+          "score": 10,
+          "titre_detecte": "3.2 - règlement hauteur sur limite séparative hauteur sur limite séparative",
+          "article_detecte": "",
+          "image_path": "97416_le-port\\implantation\\p0030_implantation_s10.jpg"
+        },
+        {
+          "page": 125,
+          "categorie": "stationnement",
+          "score": 7,
+          "titre_detecte": "3.2 - règlement dès lors que la norme de stationnement est exprimée par tranche, la place de stationnement est comptabil",
+          "article_detecte": "article uf6",
+          "image_path": "97416_le-port\\stationnement\\p0125_stationnement_s7.jpg"
+        },
+        {
+          "page": 227,
+          "categorie": "cbs_biotope",
+          "score": 17,
+          "titre_detecte": "3.2 - règlement vérification de la surface minimale de pleine terre : *un minimum de surface plantée de pleine terre est",
+          "article_detecte": "",
+          "image_path": "97416_le-port\\cbs_biotope\\p0227_cbs_biotope_s17.jpg"
+        }
+      ]
+    }
+  ]
+}

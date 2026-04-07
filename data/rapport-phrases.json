@@ -1,0 +1,200 @@
+{
+  "version": "2026-04",
+  "description": "Phrases types pour commentaire contextuel du rapport PDF TERLAB. Chaque phrase a des conditions d'affichage et des variables interpolées depuis la session.",
+  "interpolation": "Les variables entre {accolades} sont remplacées par les données session. Ex: {commune}, {surface_m2}, {pente_pct}.",
+
+  "identification": {
+    "situation": [
+      { "cond": { "surface_m2_gte": 10000 }, "text": "Le terrain d'une contenance de {surface_m2} m² ({surface_ha} ha) est situé sur la commune de {commune}, à une altitude de {altitude} m NGR." },
+      { "cond": { "surface_m2_lt": 10000 }, "text": "La parcelle {section}/{parcelle} d'une contenance de {surface_m2} m² est située sur la commune de {commune}, à {altitude} m d'altitude." },
+      { "cond": { "surface_m2_lt": 500 }, "text": "Le terrain de {surface_m2} m² constitue une petite unité foncière. Sa faible contenance limitera les possibilités de programmation et nécessitera une optimisation fine de l'emprise." }
+    ],
+    "acces": [
+      { "cond": { "always": true }, "text": "L'accès au terrain s'effectue depuis {adresse}. La desserte viaire existante devra être vérifiée au regard des exigences de sécurité incendie (SDIS 974)." }
+    ]
+  },
+
+  "topographie": {
+    "pente": [
+      { "cond": { "pente_pct_lt": 5 }, "text": "Le terrain présente une pente faible (< 5%), favorable à l'implantation de bâtiments sans terrassement majeur. Les fondations superficielles sont a priori envisageables." },
+      { "cond": { "pente_pct_gte": 5, "pente_pct_lt": 15 }, "text": "La déclivité du terrain est de l'ordre de {pente_pct}%. Cette pente modérée nécessitera une adaptation des niveaux et la gestion des eaux de ruissellement par des dispositifs appropriés." },
+      { "cond": { "pente_pct_gte": 15, "pente_pct_lt": 25 }, "text": "Le terrain accuse une pente significative de {pente_pct}%, imposant une conception en gradins et des terrassements importants. La hauteur des murs de soutènement est réglementée (2,50 m max apparent, 3 m si pente ≥ 20%)." },
+      { "cond": { "pente_pct_gte": 25 }, "text": "La forte pente ({pente_pct}%) constitue une contrainte majeure pour la constructibilité. Les surcoûts de terrassement, d'assainissement et de fondations spéciales seront significatifs. Une étude géotechnique G2 est indispensable." }
+    ],
+    "orientation": [
+      { "cond": { "exposition": "nord" }, "text": "L'orientation nord du terrain est favorable sur le plan bioclimatique : ensoleillement modéré, apports solaires contrôlables par des protections simples (débords de toiture)." },
+      { "cond": { "exposition": "sud" }, "text": "L'exposition sud bénéficie d'un ensoleillement limité en hiver austral. Les apports solaires directs restent modérés, ce qui est confortable en climat tropical." },
+      { "cond": { "exposition": "ouest" }, "text": "L'exposition ouest entraîne un ensoleillement rasant en fin de journée, source de surchauffe. Des protections solaires renforcées (varangues profondes, brise-soleil verticaux) seront nécessaires sur la facade ouest." },
+      { "cond": { "exposition": "est" }, "text": "L'exposition est soumet la facade principale au soleil matinal. Si le terrain est en position sous le vent, les brises thermiques ouest-est peuvent être captées pour la ventilation naturelle." }
+    ],
+    "altitude": [
+      { "cond": { "altitude_lt": 200 }, "text": "À {altitude} m d'altitude, le terrain se situe dans les bas de l'île, en zone climatique PERENE chaude. Le confort thermique repose essentiellement sur la ventilation naturelle et la protection solaire." },
+      { "cond": { "altitude_gte": 200, "altitude_lt": 600 }, "text": "À {altitude} m d'altitude, le terrain se situe dans les mi-pentes, bénéficiant de températures légèrement tempérées. La ventilation naturelle reste le principal levier de confort." },
+      { "cond": { "altitude_gte": 600 }, "text": "À {altitude} m d'altitude, le terrain se situe dans les hauts. L'amplitude thermique jour/nuit peut atteindre 15°C. L'isolation thermique et l'inertie du bâti deviennent déterminantes." }
+    ],
+    "donnee_manquante": [
+      { "cond": { "missing": "pente_pct" }, "text": "La pente du terrain n'a pas été relevée. Un levé topographique (géomètre-expert ou drone photogrammétrique) est nécessaire pour dimensionner les terrassements et vérifier les contraintes de hauteur incluant déblais/remblais." },
+      { "cond": { "missing": "altitude_ngr" }, "text": "L'altitude NGR n'est pas renseignée. Cette donnée est indispensable pour déterminer la zone RTAA DOM, la zone climatique PERENE et le risque de submersion." }
+    ]
+  },
+
+  "risques": {
+    "pprn": [
+      { "cond": { "zone_pprn": "R1" }, "text": "Le terrain est classé en zone R1 (aléa fort inconstructible) par le PPR approuvé. Aucune construction nouvelle n'est autorisée. Seuls les travaux de mise en sécurité et d'entretien courant sont possibles." },
+      { "cond": { "zone_pprn": "R2" }, "text": "Le terrain est classé en zone R2 (inconstructible). La constructibilité est interdite sauf exceptions très encadrées (équipements publics d'intérêt général sous conditions)." },
+      { "cond": { "zone_pprn": "B2u" }, "text": "Le terrain est en zone B2u (constructible sous conditions). Les prescriptions du PPR s'appliquent : pas de sous-sol, pas de stationnement souterrain. Une expertise hydraulique peut être nécessaire pour optimiser la constructibilité." },
+      { "cond": { "zone_pprn": "B2" }, "text": "Le terrain est en zone B2 (constructible avec prescriptions). Les aménagements devront intégrer les mesures de réduction de la vulnérabilité définies au règlement du PPR." },
+      { "cond": { "zone_pprn": "W" }, "text": "Le terrain est situé hors zone réglementée du PPR. Aucune prescription particulière au titre des risques naturels ne s'applique, ce qui constitue un atout pour le projet." },
+      { "cond": { "missing": "zone_pprn" }, "text": "Le zonage PPR n'a pas été vérifié. Cette vérification est obligatoire avant tout dépôt de permis. Consulter le service urbanisme de la commune ou le site Géorisques." }
+    ],
+    "ravine": [
+      { "cond": { "has_ravine": true }, "text": "La présence d'une ravine ({nom_ravine}) impacte la constructibilité du terrain. Une bande inconstructible de 10 à 20 m de part et d'autre du lit doit être respectée. Le SCoT prescrit une bande enherbée ou boisée de 3,5 à 10 m le long des ravines." },
+      { "cond": { "has_ravine": true, "pente_pct_gte": 15 }, "text": "La combinaison d'une ravine et d'une forte pente ({pente_pct}%) crée un risque d'érosion régressive. Une étude hydraulique spécifique est fortement recommandée pour dimensionner les ouvrages de protection." }
+    ],
+    "cyclone": [
+      { "cond": { "always": true }, "text": "La Réunion est soumise au risque cyclonique (saison : novembre à avril). Les constructions doivent résister à des vents de 234 km/h en rafales (Eurocode 1 — zone 4). Les toitures sont particulièrement exposées." }
+    ]
+  },
+
+  "plu": {
+    "zone": [
+      { "cond": { "zone_plu_type": "U" }, "text": "Le terrain est situé en zone urbaine ({zone_plu}). Les constructions y sont autorisées dans le respect du règlement de zone." },
+      { "cond": { "zone_plu_type": "AU" }, "text": "Le terrain est classé en zone à urbaniser ({zone_plu}). L'ouverture à l'urbanisation est conditionnée à la réalisation d'une opération d'aménagement d'ensemble ou à l'équipement progressif de la zone." },
+      { "cond": { "zone_plu_type": "A" }, "text": "Le terrain est en zone agricole ({zone_plu}). La constructibilité y est quasi nulle : seul le logement de l'exploitant peut être autorisé. Un changement de destination nécessite une révision du PLU." },
+      { "cond": { "zone_plu_type": "N" }, "text": "Le terrain est en zone naturelle ({zone_plu}). La constructibilité est interdite sauf exceptions limitées (STECAL). Ce classement s'oppose à tout projet de construction courante." }
+    ],
+    "reculs": [
+      { "cond": { "recul_voie_m_gte": 5 }, "text": "Le recul imposé de {recul_voie_m} m par rapport à la voie consomme une part significative de la parcelle. Sur un terrain de faible largeur, cela peut réduire considérablement l'emprise constructible." },
+      { "cond": { "recul_voie_m": 0 }, "text": "L'implantation à l'alignement est autorisée (voire obligatoire), ce qui permet d'optimiser l'emprise constructible et de créer un front bâti urbain." }
+    ],
+    "hauteur": [
+      { "cond": { "hauteur_max_m_lte": 7 }, "text": "La hauteur maximale de {hauteur_max_m} m limite les constructions à R+1 (+ combles éventuels). Cette contrainte de gabarit orientera vers de l'habitat individuel ou du petit collectif." },
+      { "cond": { "hauteur_max_m_gte": 7, "hauteur_max_m_lte": 10 }, "text": "La hauteur maximale de {hauteur_max_m} m autorise des constructions jusqu'en R+2, compatibles avec du collectif de densité moyenne." },
+      { "cond": { "hauteur_max_m_gte": 10 }, "text": "La hauteur maximale de {hauteur_max_m} m permet des constructions en R+3 ou plus, adaptées à un programme collectif dense répondant aux objectifs de densification du SCoT." },
+      { "cond": { "pente_pct_gte": 10 }, "text": "Sur un terrain en pente ({pente_pct}%), la hauteur de {hauteur_max_m} m se mesure au droit de chaque facade, incluant les déblais et remblais par rapport au terrain naturel. Cette contrainte est particulièrement pénalisante et peut réduire le gabarit réel à R+1 en partie haute." }
+    ],
+    "stationnement": [
+      { "cond": { "programme": "collectif_aide" }, "text": "Le stationnement pour les logements aidés est fixé à 1 place par logement, avec 1 place visiteur par tranche de 10 logements. Cette exigence réduite par rapport au logement libre permet d'optimiser l'emprise au sol." },
+      { "cond": { "programme": "collectif_libre" }, "text": "Le stationnement pour les logements libres est fixé à 2 places par logement, avec 1 place visiteur par tranche de 5 logements. Le dimensionnement des aires de stationnement peut représenter jusqu'à 30% de l'emprise totale." },
+      { "cond": { "programme": "individuel" }, "text": "Chaque lot individuel devra comporter au minimum 2 places de stationnement. Une aire de stationnement de 2 places maximum peut être autorisée dans la bande de recul." }
+    ],
+    "permeable": [
+      { "cond": { "permeable_min_pct_gte": 40 }, "text": "L'obligation de {permeable_min_pct}% de surface perméable impose de limiter l'imperméabilisation et de recourir à des solutions de gestion intégrée des eaux pluviales (noues, chaussées réservoirs, jardins de pluie)." },
+      { "cond": { "permeable_min_pct_gte": 40, "surface_m2_lt": 2000 }, "text": "Sur une parcelle de seulement {surface_m2} m², l'exigence de {permeable_min_pct}% d'espaces perméables laisse une emprise constructible très limitée. L'optimisation de chaque mètre carré sera déterminante." }
+    ],
+    "donnee_manquante": [
+      { "cond": { "missing": "zone_plu" }, "text": "La zone PLU n'a pas été identifiée. Consulter le règlement graphique sur le Géoportail de l'Urbanisme ou auprès du service urbanisme de la commune." },
+      { "cond": { "missing": "recul_voie_principale_m" }, "text": "Les reculs réglementaires ne sont pas renseignés. Sans cette donnée, l'enveloppe constructible ne peut pas être calculée. Se reporter aux articles 6 et 7 du règlement de zone." },
+      { "cond": { "missing": "hauteur_max_m" }, "text": "La hauteur maximale autorisée n'est pas précisée. Vérifier l'article 10 du règlement de zone PLU." }
+    ]
+  },
+
+  "scot": {
+    "armature": [
+      { "cond": { "scot_rang": 1 }, "text": "Le terrain est situé dans le coeur d'agglomération (rang 1 de l'armature urbaine du SCoT). Ce positionnement impose une densité minimale de 50 logements par hectare et une priorité à l'intensification urbaine." },
+      { "cond": { "scot_rang": 2 }, "text": "Le terrain se situe dans un pôle secondaire (rang 2). La densité minimale est de 50 logements par hectare. Le SCoT y prescrit un développement résidentiel significatif avec mixité des produits logement." },
+      { "cond": { "scot_rang": 3 }, "text": "Le terrain est dans une ville relais (rang 3). La densité minimale est de 30 logements par hectare, compatible avec du collectif de type R+1 à R+2." },
+      { "cond": { "scot_rang": 4 }, "text": "Le terrain est dans un bourg de proximité (rang 4). Les densités attendues sont de 20 à 30 logements par hectare, compatibles avec un mixte individuel groupé / petit collectif." },
+      { "cond": { "scot_rang": 5 }, "text": "Le terrain est en territoire rural habité (rang 5). Les densités de 10 à 20 logements par hectare autorisent un habitat majoritairement individuel." },
+      { "cond": { "missing": "scot_rang" }, "text": "Le rang dans l'armature urbaine du SCoT n'a pas été identifié. Cette information est nécessaire pour déterminer les objectifs de densité applicables au projet." }
+    ],
+    "densite": [
+      { "cond": { "densite_projet_lt_scot": true }, "text": "La densité projetée de {densite_projet} lgts/ha est inférieure au minimum SCoT de {scot_densite_min} lgts/ha. Le projet devra être densifié pour atteindre la conformité, soit en augmentant le nombre de logements, soit en réduisant la surface de l'opération prise en compte." },
+      { "cond": { "densite_projet_gte_scot": true }, "text": "La densité projetée de {densite_projet} lgts/ha respecte le minimum de {scot_densite_min} lgts/ha prescrit par le SCoT. Le projet est conforme sur ce critère." },
+      { "cond": { "densite_projet_lt_scot": true, "has_ravine": true }, "text": "La faible densité s'explique en partie par la présence de zones inconstructibles (ravine, PPR). Le SCoT précise que les surfaces d'infrastructures environnementales (bassins, lagunage) et la zone rouge PPR ne rentrent pas dans le calcul de la densité." }
+    ],
+    "logement_aide": [
+      { "cond": { "pct_aides_lt_scot": true }, "text": "La part de logements aidés ({pct_aides_projet}%) est inférieure à l'objectif SCoT de {scot_pct_aides}%. Le rééquilibrage peut passer par l'ajout de produits LLTS ou LLS." },
+      { "cond": { "pct_aides_gte_scot": true }, "text": "La part de logements aidés ({pct_aides_projet}%) est conforme à l'objectif SCoT ({scot_pct_aides}%)." }
+    ]
+  },
+
+  "programme": {
+    "type_operation": [
+      { "cond": { "programme": "collectif_aide", "surface_m2_gte": 5000 }, "text": "L'opération de logements collectifs sociaux sur {surface_ha} ha devra intégrer un minimum de 30% de logements aidés (seuil PLU pour SDP > 1 800 m² ou terrain > 6 000 m²). La ventilation typologique privilégiera les T2 et T3, conformément aux besoins démographiques du territoire." },
+      { "cond": { "programme": "collectif_libre" }, "text": "Le programme de logements collectifs en accession libre devra néanmoins respecter les quotas de logements aidés du PLU et du SCoT. La mixité des produits (accession aidée PTZ/PSLA + libre) est recommandée." },
+      { "cond": { "programme": "individuel" }, "text": "Le lotissement individuel devra atteindre la densité minimale fixée par le SCoT. Sur ce type de produit, la densité est naturellement faible (15-25 lgts/ha) ; un complément en maisons de ville ou petit collectif peut être nécessaire." },
+      { "cond": { "programme": "tertiaire" }, "text": "Le projet tertiaire n'est pas soumis aux prescriptions de densité résidentielle du SCoT. La compatibilité avec le zonage PLU (zone U à dominante d'activité) devra être vérifiée." },
+      { "cond": { "programme": "mixte" }, "text": "Le programme mixte (logements + activités) permet d'animer le rez-de-chaussée tout en contribuant aux objectifs de densité résidentielle du SCoT." }
+    ],
+    "typologie": [
+      { "cond": { "scot_rang_lte": 2 }, "text": "Dans un pôle de rang {scot_rang}, la programmation typologique privilégiera les petites typologies (T1-T2 : 45-50%) pour répondre aux besoins des ménages de petite taille (célibataires, jeunes couples, personnes âgées) identifiés par le PLH." },
+      { "cond": { "scot_rang_gte": 3 }, "text": "En ville relais ou bourg de proximité, la programmation peut intégrer davantage de grands logements (T3-T4 : 50-55%) pour accueillir des familles, en cohérence avec le caractère résidentiel du quartier." }
+    ],
+    "capacite": [
+      { "cond": { "surface_m2_lt": 2000 }, "text": "Sur un terrain de {surface_m2} m², la capacité d'accueil est limitée à {capacite_estimee} logements environ. Un projet de maison individuelle ou de petit collectif (4 à 8 logements) est le plus adapté." },
+      { "cond": { "surface_m2_gte": 2000, "surface_m2_lt": 10000 }, "text": "Le terrain de {surface_m2} m² peut accueillir un programme de {capacite_estimee} logements, sous réserve des contraintes de recul, de perméabilité et de stationnement." },
+      { "cond": { "surface_m2_gte": 10000 }, "text": "Avec une contenance de {surface_ha} ha, le terrain permet une opération d'aménagement structurante. Un permis d'aménager sera nécessaire. Le programme pourra être phasé en plusieurs tranches opérationnelles." }
+    ]
+  },
+
+  "bioclimatique": {
+    "ventilation": [
+      { "cond": { "zone_rtaa": "1" }, "text": "En zone RTAA 1 (< 400 m, sous le vent), la ventilation traversante est le principal levier de confort. La largeur des bâtiments ne devra pas excéder 10 m pour garantir un flux d'air efficace. Les ouvertures du séjour devront représenter au moins 22% de la surface de facade." },
+      { "cond": { "zone_rtaa": "2" }, "text": "En zone RTAA 2 (mi-pentes), la ventilation naturelle reste essentielle avec une porosité de facade de 18% minimum pour le séjour. La largeur des bâtiments peut aller jusqu'à 12 m." },
+      { "cond": { "zone_rtaa": "3" }, "text": "En zone RTAA 3 (hauts), l'isolation thermique prime sur la ventilation. L'amplitude thermique importante (jusqu'à 19°C) impose une conception privilégiant l'inertie et la protection contre le froid nocturne." }
+    ],
+    "orientation": [
+      { "cond": { "cote_vent": "sous_le_vent" }, "text": "Le terrain est situé sous le vent (côte ouest). Les brises thermiques dominantes sont orientées O/E. L'axe long des bâtiments sera disposé perpendiculairement à ces brises pour maximiser la ventilation traversante." },
+      { "cond": { "cote_vent": "au_vent" }, "text": "Le terrain est situé au vent (côte est). Les alizés dominants sont orientés E/SE. Les facades exposées au vent devront être protégées de la pluie battante tout en permettant la ventilation." }
+    ],
+    "protection_solaire": [
+      { "cond": { "always": true }, "text": "À La Réunion (21°S), le soleil culmine au sud en été austral et au nord en hiver. Les facades est et ouest reçoivent le plus de rayonnement direct et nécessitent des protections renforcées : varangues profondes (2-3 m), brise-soleil, végétation." }
+    ],
+    "toiture": [
+      { "cond": { "always": true }, "text": "La toiture est responsable de 70% des apports de chaleur dans le bâtiment. Les fenêtres horizontales en toiture sont interdites en RTAA DOM. La surventilation du comble (faîtière ventilée, chatières) est impérative." }
+    ]
+  },
+
+  "environnement": {
+    "faune_flore": [
+      { "cond": { "especes_protegees": true }, "text": "La présence d'espèces protégées sur le site nécessitera potentiellement une demande de dérogation au titre de l'article L.411-2 du code de l'environnement. Un échange préalable avec la DEAL (service biodiversité) est recommandé." },
+      { "cond": { "zone_parc_national_lt_1000": true }, "text": "La proximité du Parc National de La Réunion (< 1 km) impose une vigilance particulière sur l'impact paysager et écologique du projet. Les continuités écologiques (trame verte et bleue) devront être préservées." }
+    ],
+    "eaux_pluviales": [
+      { "cond": { "always": true }, "text": "La gestion intégrée des eaux pluviales (GIEP) est prescrite par le SCoT : infiltration à la source, stockage temporaire, limitation de l'imperméabilisation. Les techniques alternatives (noues, fossés, chaussées réservoir) seront privilégiées." }
+    ],
+    "eclairage": [
+      { "cond": { "petrel_survol": true }, "text": "Le site est situé dans un corridor de survol avéré du pétrel noir de Bourbon (Pseudobulweria aterrima). L'éclairage nocturne devra respecter la charte Nature & Nuit : luminaires orientés vers le sol, température de couleur limitée, éclairage adapté aux usages strictement nécessaires." }
+    ]
+  },
+
+  "synthese": {
+    "atouts": [
+      { "cond": { "zone_plu_type": "U" }, "text": "Terrain en zone urbaine constructible" },
+      { "cond": { "zone_pprn": "W" }, "text": "Hors zone de risques naturels réglementée" },
+      { "cond": { "pente_pct_lt": 10 }, "text": "Pente modérée facilitant l'aménagement" },
+      { "cond": { "altitude_lt": 400 }, "text": "Situation en zone basse, favorable au confort par ventilation" },
+      { "cond": { "has_vue_mer": true }, "text": "Ouvertures visuelles sur l'océan, qualité paysagère" },
+      { "cond": { "surface_m2_gte": 5000 }, "text": "Surface foncière permettant une opération structurante" }
+    ],
+    "contraintes": [
+      { "cond": { "pente_pct_gte": 15 }, "text": "Forte pente imposant des terrassements conséquents et des surcoûts structurels" },
+      { "cond": { "zone_pprn_in": ["R1","R2","B2u"] }, "text": "Risques naturels identifiés réduisant la constructibilité" },
+      { "cond": { "has_ravine": true }, "text": "Présence d'une ravine créant une zone inconstructible" },
+      { "cond": { "zone_plu_type": "AU" }, "text": "Zone à urbaniser conditionnée à un aménagement d'ensemble" },
+      { "cond": { "missing": "acces_voie" }, "text": "Absence de desserte directe depuis la voirie publique" },
+      { "cond": { "surface_m2_lt": 2000, "scot_rang_lte": 2 }, "text": "Petite parcelle en zone de forte densité attendue — difficulté à atteindre les objectifs SCoT" },
+      { "cond": { "densite_projet_lt_scot": true }, "text": "Densité projetée inférieure aux prescriptions du SCoT" }
+    ],
+    "recommandations": [
+      { "cond": { "missing": "etude_geotech" }, "text": "Réaliser une étude géotechnique G2 avant tout engagement de conception." },
+      { "cond": { "missing": "etude_hydraulique", "has_ravine": true }, "text": "Commander une expertise hydraulique pour optimiser la constructibilité en bordure de ravine." },
+      { "cond": { "plu_en_revision": true }, "text": "Le PLU est en cours de révision. Vérifier la compatibilité du projet avec le futur règlement auprès du service urbanisme." },
+      { "cond": { "zone_plu_type": "AU" }, "text": "Engager une concertation avec les services de la commune pour cadrer les conditions d'ouverture à l'urbanisation." },
+      { "cond": { "scot_rang_lte": 2, "programme": "individuel" }, "text": "Le produit individuel est peu compatible avec la densité de 50 lgts/ha attendue en rang 1-2. Privilégier du collectif R+2 ou des maisons de ville en bande." }
+    ]
+  },
+
+  "operationnel": {
+    "procedures": [
+      { "cond": { "surface_m2_gte": 2500 }, "text": "L'opération nécessitera un permis d'aménager (PA) compte tenu de la surface. Le délai d'instruction est de 3 mois, pouvant être rallongé en cas d'évaluation environnementale (8 à 12 mois)." },
+      { "cond": { "nb_logements_gte": 20 }, "text": "Au-delà de 20 logements, une évaluation environnementale au cas par cas sera soumise à l'avis de l'autorité environnementale (MRAe). Le dossier devra comporter une étude d'impact si celle-ci est prescrite." },
+      { "cond": { "especes_protegees": true }, "text": "Si la présence d'espèces protégées est confirmée, une demande de dérogation (CNPN) devra être jointe au dossier de permis. Délai : 6 à 12 mois." }
+    ],
+    "phasage": [
+      { "cond": { "surface_m2_gte": 10000 }, "text": "Une opération de cette envergure ({surface_ha} ha) peut être avantageusement phasée en 2 à 3 tranches. Le phasage permet de lisser l'investissement et d'adapter la programmation à l'évolution du marché." },
+      { "cond": { "surface_m2_lt": 5000 }, "text": "La taille modeste de l'opération permet une réalisation en une seule tranche, simplifiant la conduite de projet et réduisant les délais." }
+    ]
+  }
+}
