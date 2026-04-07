@@ -530,9 +530,7 @@ const ExportEngine = {
   /** Page 1 — Couverture + Fiche d'identité du terrain */
   _page1(pdf, session, terrain, mapImg) {
     const L = this._L, C = this._C;
-    const TOTAL = 7;
-
-    this._drawPageHeader(pdf, 'Fiche d\'identité du terrain', 'Phase 0 — Identification', 1, TOTAL);
+    this._drawPageHeader(pdf, 'Fiche d\'identité du terrain', 'Phase 0 — Identification', 1, this._totalPages ?? 8);
     this._drawPageFooter(pdf, session);
 
     const yStart = L.BODY_TOP + 2;
@@ -611,7 +609,7 @@ const ExportEngine = {
   /** Page 2 — Topographie & Géologie (Phases 1 + 2) */
   _page2(pdf, session, terrain) {
     const L = this._L, C = this._C;
-    this._drawPageHeader(pdf, 'Site — Topographie & Géologie', 'Phases 1 + 2', 2, 7);
+    this._drawPageHeader(pdf, 'Site — Topographie & Géologie', 'Phases 1 + 2', 2, this._totalPages ?? 8);
     this._drawPageFooter(pdf, session);
 
     const p1 = session?.getPhase?.(1)?.data ?? {};
@@ -829,7 +827,7 @@ const ExportEngine = {
   /** Page 3 — Risques & Réglementation PLU (Phases 3 + 4) */
   _page3(pdf, session, terrain) {
     const L = this._L, C = this._C;
-    this._drawPageHeader(pdf, 'Risques naturels & Réglementation', 'Phases 3 + 4', 3, 7);
+    this._drawPageHeader(pdf, 'Risques naturels & Réglementation', 'Phases 3 + 4', 3, this._totalPages ?? 8);
     this._drawPageFooter(pdf, session);
 
     const p3 = session?.getPhase?.(3)?.data ?? {};
@@ -998,7 +996,7 @@ const ExportEngine = {
   /** Page 4 — Voisinage & Biodiversité (Phases 5 + 6) */
   _page4(pdf, session, terrain) {
     const L = this._L, C = this._C;
-    this._drawPageHeader(pdf, 'Contexte — Voisinage & Biodiversité', 'Phases 5 + 6', 4, 7);
+    this._drawPageHeader(pdf, 'Contexte — Voisinage & Biodiversité', 'Phases 5 + 6', 4, this._totalPages ?? 8);
     this._drawPageFooter(pdf, session);
 
     const p6 = session?.getPhase?.(6)?.data ?? {};
@@ -1140,7 +1138,7 @@ const ExportEngine = {
   /** Page 5 — Esquisse & Chantier (Phases 7 + 8) */
   _page5(pdf, session, terrain) {
     const L = this._L, C = this._C;
-    this._drawPageHeader(pdf, 'Projet — Esquisse & Chantier', 'Phases 7 + 8', 5, 7);
+    this._drawPageHeader(pdf, 'Projet — Esquisse & Chantier', 'Phases 7 + 8', 5, this._totalPages ?? 8);
     this._drawPageFooter(pdf, session);
 
     const p7 = session?.getPhase?.(7)?.data ?? {};
@@ -1357,7 +1355,7 @@ const ExportEngine = {
   /** Page 6 — Synthèse & Durabilité (Phases 9+10+11+12) */
   _page6(pdf, session, terrain) {
     const L = this._L, C = this._C;
-    this._drawPageHeader(pdf, 'Synthèse & Durabilité', 'Phases 9 — 12', 6, 7);
+    this._drawPageHeader(pdf, 'Synthèse & Durabilité', 'Phases 9 — 12', 6, this._totalPages ?? 8);
     this._drawPageFooter(pdf, session);
 
     const p9  = session?.getPhase?.(9)?.data ?? {};
@@ -1678,7 +1676,7 @@ const ExportEngine = {
   /** Page 7 — Audit documentaire et points de vigilance */
   _pageAudit(pdf, session, terrain) {
     const L = this._L, C = this._C;
-    this._drawPageHeader(pdf, 'Audit documentaire & Vigilance', 'Toutes phases', 7, 7);
+    this._drawPageHeader(pdf, 'Audit documentaire & Vigilance', 'Toutes phases', 7, this._totalPages ?? 8);
     this._drawPageFooter(pdf, session);
 
     const audit = this._buildAuditReport(session);
@@ -2082,6 +2080,364 @@ const ExportEngine = {
   // ═══════════════════════════════════════════════════════════════
   //  PDF — ORCHESTRATEUR
   // ═══════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════
+  //  MOTEUR DE PHRASES CONTEXTUELLES — rapport-phrases.json
+  // ═══════════════════════════════════════════════════════════════
+
+  _phrasesCache: null,
+
+  async _loadPhrases() {
+    if (this._phrasesCache) return this._phrasesCache;
+    try {
+      const resp = await fetch('../data/rapport-phrases.json', { signal: AbortSignal.timeout(3000) });
+      if (!resp.ok) return null;
+      this._phrasesCache = await resp.json();
+      return this._phrasesCache;
+    } catch { return null; }
+  },
+
+  /**
+   * Construit le contexte d'évaluation depuis la session.
+   * Toutes les variables disponibles pour les conditions et l'interpolation.
+   */
+  _buildPhraseContext(session, terrain) {
+    const p3  = session?.getPhase?.(3)?.data ?? {};
+    const p4  = session?.getPhase?.(4)?.data ?? {};
+    const p6  = session?.getPhase?.(6)?.data ?? {};
+    const p7  = session?.getPhase?.(7)?.data ?? {};
+
+    const surface = parseFloat(terrain.contenance_m2 ?? terrain.surface_m2 ?? 0);
+    const alt     = parseFloat(terrain.altitude_ngr ?? 0);
+    const pente   = parseFloat(terrain.pente_pct ?? terrain.pente_estimee_pct ?? 0);
+    const hauteur = parseFloat(p4.hauteur_max_m ?? terrain.hauteur_max_m ?? 0);
+    const recul   = parseFloat(p4.recul_voie_principale_m ?? 0);
+    const permeable = parseFloat(p4.permeable_min_pct ?? terrain.permeable_min_pct ?? 0);
+    const scotRang  = parseInt(terrain.scot_rang ?? 0) || 0;
+    const scotDMin  = parseFloat(terrain.scot_densite_min ?? 0);
+    const scotPctAides = parseFloat(terrain.scot_pct_aides ?? 0);
+    const nbLogements  = parseInt(p7.nb_logements ?? terrain.nb_logements ?? 0) || 0;
+    const nbAides      = parseInt(p7.nb_logements_aides ?? 0) || 0;
+    const densiteProjet = surface > 0 && nbLogements > 0 ? Math.round(nbLogements / (surface / 10000)) : 0;
+
+    return {
+      // Valeurs brutes pour interpolation
+      commune:       terrain.commune ?? '—',
+      adresse:       terrain.adresse ?? '—',
+      section:       terrain.section ?? '—',
+      parcelle:      terrain.parcelle ?? '—',
+      surface_m2:    surface,
+      surface_ha:    (surface / 10000).toFixed(2),
+      altitude:      alt,
+      pente_pct:     pente,
+      exposition:    (terrain.exposition ?? terrain.orientation_terrain ?? '').toLowerCase(),
+      zone_plu:      p4.zone_plu ?? terrain.zone_plu ?? '',
+      zone_plu_type: ((p4.zone_plu ?? terrain.zone_plu_type ?? '').match(/^(AU|U|A|N)/i)?.[1] ?? '').toUpperCase(),
+      zone_pprn:     p3.zone_pprn ?? terrain.zone_pprn ?? '',
+      zone_rtaa:     terrain.zone_rtaa ?? '',
+      cote_vent:     terrain.cote_vent ?? terrain.zone_pluvio ?? '',
+      hauteur_max_m: hauteur,
+      recul_voie_m:  recul,
+      permeable_min_pct: permeable,
+      nom_ravine:    terrain.nom_ravine ?? p3.nom_ravine ?? '',
+      has_ravine:    !!(terrain.nom_ravine || p3.nom_ravine || p3.has_ravine),
+      has_vue_mer:   !!(terrain.vue_mer || terrain.has_vue_mer),
+      especes_protegees: !!(p6.especes_protegees || p6.derogation_cnpn),
+      petrel_survol: !!(p6.petrel_survol || p6.corridor_petrel),
+      plu_en_revision: !!(terrain.plu_en_revision || p4.plu_en_revision),
+      scot_rang:     scotRang,
+      scot_densite_min: scotDMin,
+      scot_pct_aides: scotPctAides,
+      scot_capacite_min: parseInt(terrain.scot_capacite_min ?? 0) || 0,
+      scot_rang_label: terrain.scot_rang_label ?? '',
+      nb_logements:  nbLogements,
+      nb_logements_aides: nbAides,
+      densite_projet: densiteProjet,
+      pct_aides_projet: nbLogements > 0 && nbAides > 0 ? Math.round(nbAides / nbLogements * 100) : 0,
+      programme:     terrain.programme ?? p7.programme ?? '',
+      capacite_estimee: scotDMin > 0 && surface > 0 ? Math.ceil(surface / 10000 * scotDMin) : '?',
+
+      // Conditions calculées
+      densite_projet_lt_scot:  scotDMin > 0 && densiteProjet > 0 && densiteProjet < scotDMin,
+      densite_projet_gte_scot: scotDMin > 0 && densiteProjet > 0 && densiteProjet >= scotDMin,
+      pct_aides_lt_scot:  scotPctAides > 0 && nbAides > 0 && (nbAides / nbLogements * 100) < scotPctAides,
+      pct_aides_gte_scot: scotPctAides > 0 && nbAides > 0 && (nbAides / nbLogements * 100) >= scotPctAides,
+    };
+  },
+
+  /**
+   * Évalue si une condition est satisfaite par le contexte.
+   */
+  _evalCond(cond, ctx) {
+    for (const [key, val] of Object.entries(cond)) {
+      if (key === 'always' && val === true) continue;
+
+      // missing: la donnée est absente
+      if (key === 'missing') {
+        const v = ctx[val];
+        if (v !== undefined && v !== null && v !== '' && v !== 0 && v !== false) return false;
+        continue;
+      }
+
+      // Suffixes de comparaison
+      const m = key.match(/^(.+?)_(gte|gt|lte|lt|eq|in)$/);
+      if (m) {
+        const field = m[1], op = m[2];
+        const fieldVal = parseFloat(ctx[field] ?? 0);
+        if (op === 'gte' && !(fieldVal >= val)) return false;
+        if (op === 'gt'  && !(fieldVal > val))  return false;
+        if (op === 'lte' && !(fieldVal <= val)) return false;
+        if (op === 'lt'  && !(fieldVal < val))  return false;
+        if (op === 'eq'  && ctx[field] != val)   return false;
+        if (op === 'in'  && Array.isArray(val) && !val.includes(ctx[field])) return false;
+        continue;
+      }
+
+      // Valeur directe (booléen, nombre ou string)
+      if (typeof val === 'boolean') {
+        if (!!ctx[key] !== val) return false;
+      } else if (typeof val === 'number') {
+        if (Number(ctx[key]) !== val) return false;
+      } else if (typeof val === 'string') {
+        const ctxVal = String(ctx[key] ?? '').toLowerCase();
+        const condVal = val.toLowerCase();
+        // Exact match for short values (zone types), startsWith for longer strings
+        if (condVal.length <= 3) {
+          if (ctxVal !== condVal) return false;
+        } else {
+          if (ctxVal !== condVal && !ctxVal.startsWith(condVal)) return false;
+        }
+      }
+    }
+    return true;
+  },
+
+  /**
+   * Interpole les {variables} dans un texte.
+   */
+  _interpolate(text, ctx) {
+    return text.replace(/\{(\w+)\}/g, (_, key) => {
+      const v = ctx[key];
+      if (v === undefined || v === null || v === '') return '—';
+      return String(v);
+    });
+  },
+
+  /**
+   * Collecte toutes les phrases applicables pour une section donnée.
+   * @returns {Array<{subsection, text}>}
+   */
+  _collectPhrases(phrases, sectionKey, ctx) {
+    const section = phrases[sectionKey];
+    if (!section) return [];
+    const result = [];
+    for (const [subKey, items] of Object.entries(section)) {
+      if (!Array.isArray(items)) continue;
+      for (const item of items) {
+        if (this._evalCond(item.cond, ctx)) {
+          result.push({
+            subsection: subKey,
+            text: this._interpolate(item.text, ctx),
+          });
+        }
+      }
+    }
+    return result;
+  },
+
+  /**
+   * Construit l'analyse complète : commentaires par section,
+   * atouts, contraintes, recommandations, données manquantes.
+   */
+  _buildAnalysis(phrases, ctx) {
+    const sections = [
+      { key: 'identification', title: 'Identification du terrain' },
+      { key: 'topographie',    title: 'Topographie & Microclimat' },
+      { key: 'risques',        title: 'Risques naturels' },
+      { key: 'plu',            title: 'Réglementation PLU' },
+      { key: 'scot',           title: 'SCoT intercommunal' },
+      { key: 'programme',      title: 'Programme & Capacité' },
+      { key: 'bioclimatique',  title: 'Bioclimatisme & RTAA DOM' },
+      { key: 'environnement',  title: 'Environnement' },
+      { key: 'operationnel',   title: 'Approche opérationnelle' },
+    ];
+
+    const commentary = [];
+    for (const s of sections) {
+      const items = this._collectPhrases(phrases, s.key, ctx);
+      if (items.length) {
+        // Séparer données manquantes du reste
+        const missing = items.filter(i => i.subsection === 'donnee_manquante');
+        const content = items.filter(i => i.subsection !== 'donnee_manquante');
+        commentary.push({ ...s, content, missing });
+      }
+    }
+
+    const atouts        = this._collectPhrases(phrases, 'synthese', ctx).filter(i => i.subsection === 'atouts');
+    const contraintes   = this._collectPhrases(phrases, 'synthese', ctx).filter(i => i.subsection === 'contraintes');
+    const recommandations = this._collectPhrases(phrases, 'synthese', ctx).filter(i => i.subsection === 'recommandations');
+
+    // Données manquantes globales
+    const allMissing = commentary.flatMap(c => c.missing);
+
+    return { commentary, atouts, contraintes, recommandations, allMissing };
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  //  PDF — PAGE 8 : ANALYSE & CONCLUSIONS
+  // ═══════════════════════════════════════════════════════════════
+
+  _pageAnalyse(pdf, session, terrain, analysis) {
+    const L = this._L, C = this._C;
+    this._drawPageHeader(pdf, 'Analyse & Conclusions', 'Synthèse TERLAB', 8, 8);
+    this._drawPageFooter(pdf, session);
+
+    const yStart = L.BODY_TOP + 2;
+
+    // ── COLONNE GAUCHE : commentaire contextuel ──
+    const xL = L.COL2_X1, wL = L.COL2_W;
+    let yL = yStart;
+
+    for (const section of analysis.commentary) {
+      if (yL > L.BODY_BOT - 20) break;
+
+      yL = this._drawSectionLabel(pdf, xL, yL, section.title, wL);
+
+      for (const item of section.content) {
+        if (yL > L.BODY_BOT - 12) break;
+        pdf.setFont('times', 'normal');
+        pdf.setFontSize(7.5);
+        pdf.setTextColor(...C.ink);
+        const lines = pdf.splitTextToSize(item.text, wL - 4);
+        const needed = lines.length * 3.5;
+        if (yL + needed > L.BODY_BOT - 8) break;
+        pdf.text(lines, xL + 2, yL);
+        yL += needed + 2;
+      }
+
+      // Données manquantes pour cette section
+      if (section.missing.length > 0) {
+        for (const m of section.missing) {
+          if (yL > L.BODY_BOT - 10) break;
+          pdf.setFont('times', 'italic');
+          pdf.setFontSize(7);
+          pdf.setTextColor(...C.warning);
+          const mLines = pdf.splitTextToSize('⚠ ' + m.text, wL - 8);
+          pdf.text(mLines.slice(0, 2), xL + 4, yL);
+          yL += mLines.length * 3.5 + 1;
+        }
+      }
+
+      yL += 3;
+    }
+
+    // ── COLONNE DROITE : atouts / contraintes / recommandations / manquants ──
+    const xR = L.COL2_X2, wR = L.COL2_W;
+    let yR = yStart;
+
+    // ATOUTS
+    if (analysis.atouts.length) {
+      yR = this._drawSectionLabel(pdf, xR, yR, 'Atouts du terrain', wR);
+      const atoutsCard = this._drawCard(pdf, xR, yR, wR,
+        Math.min(analysis.atouts.length * 6 + 6, 60), { accent: C.success });
+      let ay = atoutsCard.y;
+      for (const a of analysis.atouts) {
+        if (ay > atoutsCard.y + atoutsCard.h - 3) break;
+        pdf.setFont('times', 'normal');
+        pdf.setFontSize(7);
+        pdf.setTextColor(...C.success);
+        pdf.text('+ ' + a.text, atoutsCard.x, ay);
+        ay += 5.5;
+      }
+      yR += Math.min(analysis.atouts.length * 6 + 6, 60) + 6;
+    }
+
+    // CONTRAINTES
+    if (analysis.contraintes.length) {
+      yR = this._drawSectionLabel(pdf, xR, yR, 'Contraintes identifiées', wR);
+      const contrCard = this._drawCard(pdf, xR, yR, wR,
+        Math.min(analysis.contraintes.length * 6 + 6, 60), { accent: C.danger });
+      let cy = contrCard.y;
+      for (const c of analysis.contraintes) {
+        if (cy > contrCard.y + contrCard.h - 3) break;
+        pdf.setFont('times', 'normal');
+        pdf.setFontSize(7);
+        pdf.setTextColor(...C.danger);
+        pdf.text('− ' + c.text, contrCard.x, cy);
+        cy += 5.5;
+      }
+      yR += Math.min(analysis.contraintes.length * 6 + 6, 60) + 6;
+    }
+
+    // RECOMMANDATIONS
+    if (analysis.recommandations.length) {
+      yR = this._drawSectionLabel(pdf, xR, yR, 'Recommandations', wR);
+      const recoCard = this._drawCard(pdf, xR, yR, wR,
+        Math.min(analysis.recommandations.length * 10 + 6, 70), { accent: C.accent });
+      let ry = recoCard.y;
+      for (const r of analysis.recommandations) {
+        if (ry > recoCard.y + recoCard.h - 3) break;
+        pdf.setFont('times', 'normal');
+        pdf.setFontSize(7);
+        pdf.setTextColor(...C.ink);
+        const rLines = pdf.splitTextToSize('→ ' + r.text, recoCard.w - 2);
+        pdf.text(rLines.slice(0, 2), recoCard.x, ry);
+        ry += rLines.length * 3.5 + 2;
+      }
+      yR += Math.min(analysis.recommandations.length * 10 + 6, 70) + 6;
+    }
+
+    // DONNÉES MANQUANTES
+    if (analysis.allMissing.length) {
+      yR = this._drawSectionLabel(pdf, xR, yR, `Données manquantes (${analysis.allMissing.length})`, wR);
+      let my = yR;
+      for (const m of analysis.allMissing) {
+        if (my > L.BODY_BOT - 8) break;
+        let bx = xR;
+        bx = this._drawBadge(pdf, bx, my, m.subsection ?? '?', 'warning');
+        pdf.setFont('times', 'italic');
+        pdf.setFontSize(6.5);
+        pdf.setTextColor(...C.text2);
+        const mText = m.text.length > 70 ? m.text.slice(0, 67) + '...' : m.text;
+        pdf.text(mText, bx + 2, my);
+        my += 7;
+      }
+    }
+
+    // ── POTENTIEL : barre en bas de page ──
+    const yBottom = L.BODY_BOT - 15;
+    if (yBottom > Math.max(yL, yR) + 5) {
+      pdf.setDrawColor(...C.accent);
+      pdf.setLineWidth(0.4);
+      pdf.line(L.M, yBottom - 4, L.W - L.M, yBottom - 4);
+
+      let yP = yBottom;
+      yP = this._drawSectionLabel(pdf, L.M, yP, 'Potentiel estimé', L.W - L.M * 2);
+
+      const ctx = this._buildPhraseContext(session, terrain);
+
+      const items = [
+        ['Rang SCoT',        ctx.scot_rang ? `Rang ${ctx.scot_rang} — ${ctx.scot_rang_label}` : '—'],
+        ['Densité min SCoT', ctx.scot_densite_min ? `${ctx.scot_densite_min} lgts/ha` : '—'],
+        ['Surface opération', ctx.surface_m2 ? `${ctx.surface_m2} m² (${ctx.surface_ha} ha)` : '—'],
+        ['Capacité min SCoT', ctx.scot_capacite_min ? `${ctx.scot_capacite_min} logements` : '—'],
+        ['Pente',             ctx.pente_pct ? `${ctx.pente_pct}%` : '—'],
+        ['Zone PLU',          ctx.zone_plu || '—'],
+        ['Zone PPR',          ctx.zone_pprn || '—'],
+        ['Zone RTAA',         ctx.zone_rtaa ? `Zone ${ctx.zone_rtaa}` : '—'],
+      ];
+
+      // 2 rangées de 4 KV côte à côte
+      const kvW = (L.W - L.M * 2) / 4 - 2;
+      for (let i = 0; i < items.length; i++) {
+        const col = i % 4;
+        const row = Math.floor(i / 4);
+        const kx = L.M + col * (kvW + 2.5);
+        const ky = yP + row * 6;
+        this._drawKV(pdf, kx, ky, items[i][0], items[i][1], { labelW: 32, fontSize: 7, lineH: 5 });
+      }
+    }
+  },
+
   async generatePDF() {
     const session = window.SessionManager;
     const terrain = session?.getTerrain?.() ?? {};
@@ -2102,9 +2458,15 @@ const ExportEngine = {
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({ orientation: 'landscape', format: 'a3', unit: 'mm' });
 
-      // Charger polices Unicode (Liberation Mono/Serif) pour le francais
-      this._setProgress(8, 'Chargement polices Unicode…');
-      await this._loadUnicodeFont(pdf);
+      // Charger polices Unicode + phrases contextuelles en parallèle
+      this._setProgress(8, 'Chargement polices & phrases…');
+      const [, phrases] = await Promise.all([
+        this._loadUnicodeFont(pdf),
+        this._loadPhrases(),
+      ]);
+      const phraseCtx  = this._buildPhraseContext(session, terrain);
+      const analysis   = phrases ? this._buildAnalysis(phrases, phraseCtx) : null;
+      this._totalPages = analysis ? 8 : 7;
 
       // Page 1 — Fiche identité
       this._setProgress(15, 'Page 1 — Fiche d\'identité…');
@@ -2136,9 +2498,16 @@ const ExportEngine = {
       this._page6(pdf, session, terrain);
 
       // Page 7 — Audit & Vigilance
-      this._setProgress(90, 'Page 7 — Audit & Vigilance…');
+      this._setProgress(88, 'Page 7 — Audit & Vigilance…');
       pdf.addPage();
       this._pageAudit(pdf, session, terrain);
+
+      // Page 8 — Analyse & Conclusions (si phrases chargées)
+      if (analysis) {
+        this._setProgress(93, 'Page 8 — Analyse & Conclusions…');
+        pdf.addPage();
+        this._pageAnalyse(pdf, session, terrain, analysis);
+      }
 
       // Sauvegarde
       this._setProgress(95, 'Sauvegarde…');
