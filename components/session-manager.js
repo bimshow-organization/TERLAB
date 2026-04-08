@@ -90,8 +90,13 @@ const SessionManager = {
     if (!window.TERLAB_DB) return; // Firebase non disponible (stub config)
 
     try {
+      // Exclure les snapshots carte (trop lourds pour Firebase)
+      const data = JSON.parse(JSON.stringify(this._data));
+      if (data.terrain) {
+        Object.keys(data.terrain).forEach(k => { if (k.startsWith('snap_')) delete data.terrain[k]; });
+      }
       const dbRef = window.TERLAB_FB_REF(window.TERLAB_DB, `sessions/${this._sessionId}`);
-      await window.TERLAB_FB_SET(dbRef, this._data);
+      await window.TERLAB_FB_SET(dbRef, data);
       this._dirty = false;
       console.info('[Session] Synced Firebase');
     } catch (e) {
@@ -103,6 +108,30 @@ const SessionManager = {
     this._syncTimer = setInterval(() => this.syncFirebase(), SYNC_INTERVAL);
   },
 
+  // ── DOT-NOTATION ACCESS (inspiré GIEPProjectData) ──────────────
+  // Permet d'accéder/muter n'importe quel champ via un chemin :
+  //   SessionManager.getField('terrain.altitude_ngr')
+  //   SessionManager.setField('phases.7.data.gabarit_l_m', 12)
+
+  getField(path) {
+    if (!path || !this._data) return undefined;
+    return path.split('.').reduce((obj, key) => obj?.[key], this._data);
+  },
+
+  setField(path, value) {
+    if (!path || !this._data) return;
+    const keys = path.split('.');
+    let obj = this._data;
+    for (let i = 0; i < keys.length - 1; i++) {
+      const k = keys[i];
+      if (obj[k] == null || typeof obj[k] !== 'object') obj[k] = {};
+      obj = obj[k];
+    }
+    obj[keys[keys.length - 1]] = value;
+    this._saveLocal();
+    this._notifyChange('field', { path, value });
+  },
+
   // ── TERRAIN ───────────────────────────────────────────────────
   getTerrain() { return this._data?.terrain ?? {}; },
 
@@ -111,7 +140,7 @@ const SessionManager = {
     if (!this._data.terrain) this._data.terrain = {};
     this._data.terrain = { ...this._data.terrain, ...fields };
     this._saveLocal();
-    this._notifyChange('terrain');
+    this._notifyChange('terrain', fields);
   },
 
   // ── PHASES ────────────────────────────────────────────────────
@@ -124,6 +153,7 @@ const SessionManager = {
     if (!this._data.phases) this._data.phases = {};
     // Merge data si phase existante (évite d'écraser les champs précédents)
     const existing = this._data.phases[id];
+    const prevValidations = existing?.validations;
     this._data.phases[id] = {
       completed,
       validations: validations ?? existing?.validations ?? [],
@@ -131,7 +161,11 @@ const SessionManager = {
       savedAt: new Date().toISOString()
     };
     this._saveLocal();
-    this._notifyChange('phase', id);
+    this._notifyChange('phase', { id, data, completed });
+    // Event validation séparé si les validations ont changé
+    if (validations && JSON.stringify(validations) !== JSON.stringify(prevValidations)) {
+      this._notifyChange('validation', { id, validations, completed });
+    }
   },
 
   getPhaseProgress() {
@@ -238,10 +272,28 @@ const SessionManager = {
   },
 
   // ── NOTIFICATIONS INTERNES ────────────────────────────────────
+  // Émet le catch-all terlab:session-changed + un event granulaire typé.
+  // Les phases écoutent le granulaire, TerlabStorage écoute le catch-all.
   _notifyChange(type, payload) {
+    // Catch-all (rétrocompatible)
     window.dispatchEvent(new CustomEvent('terlab:session-changed', {
       detail: { type, payload }
     }));
+    // Events granulaires
+    const eventMap = {
+      terrain:    'terlab:terrain-updated',
+      phase:      'terlab:phase-updated',
+      validation: 'terlab:validation-changed',
+      enveloppe:  'terlab:enveloppe-updated',
+      rtaa:       'terlab:rtaa-updated',
+      field:      'terlab:field-updated',
+      reset:      'terlab:session-reset',
+      loaded:     'terlab:session-loaded',
+    };
+    const eventName = eventMap[type];
+    if (eventName) {
+      window.dispatchEvent(new CustomEvent(eventName, { detail: payload }));
+    }
   },
 
   // ── LOAD FROM OBJECT (TerlabStorage multi-sessions) ────────────

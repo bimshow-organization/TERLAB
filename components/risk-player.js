@@ -14,7 +14,7 @@ const RiskPlayer = {
   _niveauConfig: {
     danger:  { color: '#ef4444', bg: 'rgba(239,68,68,.12)',  icon: '🔴', label: 'CRITIQUE',  conseq_icon: '⚠️' },
     warning: { color: '#f59e0b', bg: 'rgba(245,158,11,.10)', icon: '⚠',  label: 'ATTENTION', conseq_icon: '⚡' },
-    info:    { color: '#9a7820', bg: 'rgba(154,120,32,.10)',  icon: 'ℹ',  label: 'INFO',      conseq_icon: '💡' },
+    info:    { color: '#E8811A', bg: 'rgba(154,120,32,.10)',  icon: 'ℹ',  label: 'INFO',      conseq_icon: '💡' },
     bigdata: { color: '#a78bfa', bg: 'rgba(167,139,250,.10)',icon: '🔒', label: 'DONNÉES',   conseq_icon: '🔒' }
   },
 
@@ -180,17 +180,17 @@ const RiskPlayer = {
     if (!map || !terrain?.lat) return;
 
     const niv = risk.niveau ?? 'info';
-    const colors = { danger:'#ef4444', warning:'#f59e0b', info:'#9a7820', bigdata:'#a78bfa' };
+    const colors = { danger:'#ef4444', warning:'#f59e0b', info:'#E8811A', bigdata:'#a78bfa' };
 
     // Flash du marker terrain
     try {
       const src = map.getSource('parcelle-selected');
       if (src) {
         // Faire pulser la bordure de la parcelle
-        map.setPaintProperty('parcelle-outline', 'line-color', colors[niv] ?? '#9a7820');
+        map.setPaintProperty('parcelle-outline', 'line-color', colors[niv] ?? '#E8811A');
         map.setPaintProperty('parcelle-outline', 'line-width', 4);
         setTimeout(() => {
-          map.setPaintProperty('parcelle-outline', 'line-color', '#9a7820');
+          map.setPaintProperty('parcelle-outline', 'line-color', '#E8811A');
           map.setPaintProperty('parcelle-outline', 'line-width', 2);
         }, 1200);
       }
@@ -261,7 +261,7 @@ const RiskPlayer = {
     // Restaurer la carte
     const map = window.TerlabMap?.getMap();
     try {
-      map?.setPaintProperty('parcelle-outline', 'line-color', '#9a7820');
+      map?.setPaintProperty('parcelle-outline', 'line-color', '#E8811A');
       map?.setPaintProperty('parcelle-outline', 'line-width', 2);
     } catch {}
   },

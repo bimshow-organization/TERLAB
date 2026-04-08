@@ -4,6 +4,7 @@
 import PPRService from '../services/ppr-service.js';
 import BRGMService from '../services/brgm-service.js';
 import GeoStatusBar from './geo-status-bar.js';
+import { resilientJSON } from '../utils/resilient-fetch.js';
 
 const MapViewer = {
 
@@ -20,7 +21,7 @@ const MapViewer = {
   DEFAULT_ZOOM:   10,
 
   // ── INIT ──────────────────────────────────────────────────────
-  async init({ containerId = 'map', token, mode, pitch = 0, bearing = 0, zoom }) {
+  async init({ containerId = 'map', token, mode, pitch = 0, bearing = 0, zoom, center }) {
     this._token = token ?? this._token;
     if (!this._token) { this._renderNoMap(containerId); return; }
 
@@ -41,7 +42,7 @@ const MapViewer = {
     this._map = new mapboxgl.Map({
       container: containerId,
       style,
-      center:    this.DEFAULT_CENTER,
+      center:    center ?? this.DEFAULT_CENTER,
       zoom:      zoom ?? this.DEFAULT_ZOOM,
       pitch,
       bearing,
@@ -81,8 +82,42 @@ const MapViewer = {
       this._startGlobeRotation();
     }
 
+    // Auto-capture snapshot couche thématique après chargement des tuiles
+    this._autoCaptureLayerSnap(mode);
+
     console.info(`[Map] Init mode="${mode}" pitch=${pitch} bearing=${bearing}`);
     return this._map;
+  },
+
+  /** Capture un snapshot de la carte une fois les tuiles chargées, stocké en session */
+  _autoCaptureLayerSnap(mode) {
+    const LAYER_SNAP_MODES = {
+      'pprn+simulation-eau':   'snap_ppr',
+      'plu+reculs':            'snap_plu',
+      'satellite+cadastre':    'snap_cadastre',
+      'brgm+pprn-mouvements':  'snap_brgm',
+      'nature-ign+znieff':     'snap_nature',
+      'terrain3d+ravines':     'snap_terrain3d',
+      'buildings3d+icpe':      'snap_bati3d',
+    };
+    const snapKey = LAYER_SNAP_MODES[mode];
+    if (!snapKey) return;
+
+    const m = this._map;
+    const doCapture = () => {
+      // JPEG compressé pour limiter la taille en session (~60-100 Ko au lieu de ~300-500 Ko PNG)
+      const dataURL = this._map?.getCanvas()?.toDataURL('image/jpeg', 0.7) ?? null;
+      if (dataURL) {
+        window.SessionManager?.saveTerrain?.({ [snapKey]: dataURL });
+        console.log(`[Map] Snapshot couche "${snapKey}" sauvegardé (${Math.round(dataURL.length / 1024)} Ko)`);
+      }
+    };
+    // Attendre idle (toutes tuiles chargées) puis capturer
+    if (m.areTilesLoaded()) {
+      setTimeout(doCapture, 500);
+    } else {
+      m.once('idle', () => setTimeout(doCapture, 300));
+    }
   },
 
   setToken(token) { this._token = token; },
@@ -127,8 +162,9 @@ const MapViewer = {
     if (!m || m.getSource('parcelle-selected')) return;
 
     m.addSource('parcelle-selected', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    m.addLayer({ id: 'parcelle-fill', type: 'fill', source: 'parcelle-selected', paint: { 'fill-color': '#9a7820', 'fill-opacity': 0.15 } });
-    m.addLayer({ id: 'parcelle-outline', type: 'line', source: 'parcelle-selected', paint: { 'line-color': '#9a7820', 'line-width': 2.5 } });
+    m.addLayer({ id: 'parcelle-fill', type: 'fill', source: 'parcelle-selected', paint: { 'fill-color': '#E8811A', 'fill-opacity': 0.18 } });
+    m.addLayer({ id: 'parcelle-casing', type: 'line', source: 'parcelle-selected', paint: { 'line-color': '#000000', 'line-width': 5, 'line-opacity': 0.5 } });
+    m.addLayer({ id: 'parcelle-outline', type: 'line', source: 'parcelle-selected', paint: { 'line-color': '#E8811A', 'line-width': 3 } });
 
     // Restaurer la géométrie depuis la session
     const terrain = window.SessionManager?.getTerrain?.() ?? {};
@@ -150,7 +186,7 @@ const MapViewer = {
       tiles: ['https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=CADASTRALPARCELS.PARCELLAIRE_EXPRESS&STYLE=PCI%20vecteur&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png'],
       tileSize: 256,
       minzoom: 14,
-      maxzoom: 20,
+      maxzoom: 19,
       attribution: '© IGN Géoplateforme'
     });
     m.addLayer({ id: 'cadastre', type: 'raster', source: 'cadastre-wmts', minzoom: 14, paint: { 'raster-opacity': 0.7, 'raster-saturation': -1 } });
@@ -276,19 +312,51 @@ const MapViewer = {
       layout: { visibility: 'none' }
     });
 
-    // Détection erreur tuiles BRGM 50k → bascule vers 100k
-    let brgmFailed = false;
+    // Détection erreur tuiles BRGM 50k → bascule vers 100k → fallback image locale
+    let brgmFailed = false, brgm100kFailed = false;
     m.on('error', (e) => {
-      if (brgmFailed) return;
       const src = e.sourceId ?? e.source?.id;
-      if (src === 'brgm-geol') {
+      if (src === 'brgm-geol' && !brgmFailed) {
         brgmFailed = true;
         console.warn('[Map] Tuiles BRGM 50k indisponibles — fallback 100k');
         m.setPaintProperty('brgm-geol-layer', 'raster-opacity', 0);
         m.setLayoutProperty('brgm-geol-100k-layer', 'visibility', 'visible');
         m.setPaintProperty('brgm-geol-100k-layer', 'raster-opacity', 0.65);
       }
+      if (src === 'brgm-geol-100k' && !brgm100kFailed) {
+        brgm100kFailed = true;
+        console.warn('[Map] Tuiles BRGM 100k indisponibles — fallback image locale');
+        m.setPaintProperty('brgm-geol-100k-layer', 'raster-opacity', 0);
+        this._addGeolFallbackImage(m);
+      }
     });
+  },
+
+  /** Fallback carte géologique : image PNG statique géoréférencée */
+  _addGeolFallbackImage(m) {
+    // Bounds de l'île de La Réunion (carte géologique BRGM scannée)
+    const bounds = [
+      [55.205, -21.395],  // SW [lng, lat]
+      [55.845, -21.395],  // SE
+      [55.845, -20.855],  // NE
+      [55.205, -20.855],  // NW
+    ];
+    try {
+      m.addSource('brgm-fallback', {
+        type: 'image',
+        url: 'data/carte-geologique-reunion.png',
+        coordinates: bounds
+      });
+      m.addLayer({
+        id: 'brgm-fallback-layer',
+        type: 'raster',
+        source: 'brgm-fallback',
+        paint: { 'raster-opacity': 0.55 }
+      });
+      this._showStubBanner('Carte géologique locale (BRGM offline) — précision limitée');
+    } catch (e) {
+      console.warn('[Map] Fallback image géol. indisponible:', e.message);
+    }
   },
 
   // ── PPRN + SIMULATION EAU (Phase 3) ──────────────────────────
@@ -360,7 +428,7 @@ const MapViewer = {
       m.addSource('cadastre-wmts', {
         type: 'raster',
         tiles: ['https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=CADASTRALPARCELS.PARCELLAIRE_EXPRESS&STYLE=PCI%20vecteur&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png'],
-        tileSize: 256, minzoom: 14, maxzoom: 20,
+        tileSize: 256, minzoom: 14, maxzoom: 19,
         attribution: '© IGN Géoplateforme'
       });
       m.addLayer({ id: 'cadastre', type: 'raster', source: 'cadastre-wmts', minzoom: 14, paint: { 'raster-opacity': 0.7, 'raster-saturation': -1 } });
@@ -400,8 +468,8 @@ const MapViewer = {
 
     // Couche parcelle + reculs depuis session
     m.addSource('parcelle-p4', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    m.addLayer({ id: 'parcelle-p4-fill', type: 'fill', source: 'parcelle-p4', paint: { 'fill-color': '#9a7820', 'fill-opacity': 0.1 } });
-    m.addLayer({ id: 'parcelle-p4-line', type: 'line', source: 'parcelle-p4', paint: { 'line-color': '#9a7820', 'line-width': 2 } });
+    m.addLayer({ id: 'parcelle-p4-fill', type: 'fill', source: 'parcelle-p4', paint: { 'fill-color': '#E8811A', 'fill-opacity': 0.1 } });
+    m.addLayer({ id: 'parcelle-p4-line', type: 'line', source: 'parcelle-p4', paint: { 'line-color': '#E8811A', 'line-width': 2 } });
 
     m.addSource('reculs-p4', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     m.addLayer({ id: 'reculs-p4-fill', type: 'fill', source: 'reculs-p4', paint: { 'fill-color': '#a78bfa', 'fill-opacity': 0.15 } });
@@ -722,7 +790,7 @@ const MapViewer = {
           data:  alts,
           fill:  true,
           backgroundColor: 'rgba(154,120,32,0.1)',
-          borderColor:     '#9a7820',
+          borderColor:     '#E8811A',
           borderWidth:     1.5,
           pointRadius:     0,
           tension:         0.3
@@ -765,13 +833,13 @@ const MapViewer = {
         id: 'parcelle-fill',
         type: 'fill',
         source: srcId,
-        paint: { 'fill-color': '#9a7820', 'fill-opacity': 0.08 }
+        paint: { 'fill-color': '#E8811A', 'fill-opacity': 0.08 }
       });
       this._map.addLayer({
         id: 'parcelle-outline',
         type: 'line',
         source: srcId,
-        paint: { 'line-color': '#9a7820', 'line-width': 2.5, 'line-opacity': 0.85 }
+        paint: { 'line-color': '#E8811A', 'line-width': 2.5, 'line-opacity': 0.85 }
       });
     }
   },
@@ -787,7 +855,7 @@ const MapViewer = {
           controls: { line_string: true, trash: true },
           styles: [
             { id: 'gl-draw-line', type: 'line', filter: ['==', '$type', 'LineString'],
-              paint: { 'line-color': '#9a7820', 'line-width': 2 } }
+              paint: { 'line-color': '#E8811A', 'line-width': 2 } }
           ]
         });
         this._map.addControl(this._draw);
@@ -808,13 +876,17 @@ const MapViewer = {
   },
 
   // ── RECHERCHE PARCELLE (API IGN WFS) ─────────────────────────
+  _WFS_BASE: 'https://data.geopf.fr/wfs/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature'
+    + '&TYPENAMES=CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle'
+    + '&OUTPUTFORMAT=application/json&SRSNAME=EPSG:4326',
+
   async searchParcelleAt(lng, lat) {
     const bbox = `${lng-0.0005},${lat-0.0005},${lng+0.0005},${lat+0.0005}`;
-    const url  = `https://data.geopf.fr/wfs/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature&TYPENAMES=CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle&OUTPUTFORMAT=application/json&SRSNAME=EPSG:4326&BBOX=${bbox},EPSG:4326`;
+    const url  = `${this._WFS_BASE}&BBOX=${bbox},EPSG:4326`;
 
     try {
-      const data = await fetch(url).then(r => r.json());
-      if (!data.features?.length) {
+      const data = await resilientJSON(url, { timeoutMs: 10000, retries: 2 });
+      if (!data?.features?.length) {
         window.TerlabToast?.show('Aucune parcelle trouvée à cet emplacement', 'warning');
         return null;
       }
@@ -825,6 +897,10 @@ const MapViewer = {
         try { return turf.booleanPointInPolygon(point, f); }
         catch { return false; }
       }) ?? data.features[0];
+
+      // Toujours sauvegarder section/numéro cadastral en session
+      // (même hors phase 0 / hors mode cadastre)
+      this._persistCadastralInfo(feature, lng, lat);
 
       // En multi-sélection, ne PAS highlight ni émettre parcelle-found
       // (le click handler dispatch terlab:parcelle-click, ParcelSelector gère le reste)
@@ -843,6 +919,31 @@ const MapViewer = {
     }
   },
 
+  // ── RECHERCHE PARCELLE PAR RÉFÉRENCE (section + numéro) ─────
+  async searchParcelleByRef(commune, section, numero) {
+    const cql = `commune='${commune}' AND section='${section}' AND numero='${numero}'`;
+    const url  = `${this._WFS_BASE}&CQL_FILTER=${encodeURIComponent(cql)}&COUNT=1`;
+
+    try {
+      const data = await resilientJSON(url, { timeoutMs: 10000, retries: 2 });
+      if (!data?.features?.length) {
+        window.TerlabToast?.show(`Parcelle ${section} ${numero} introuvable (commune ${commune})`, 'warning');
+        return null;
+      }
+
+      const feature = data.features[0];
+      this._persistCadastralInfo(feature, null, null);
+      this._highlightParcelle(feature);
+      window.dispatchEvent(new CustomEvent('terlab:parcelle-found', { detail: feature }));
+
+      return feature;
+    } catch (e) {
+      console.warn('[Map] Recherche parcelle par ref:', e.message);
+      window.TerlabToast?.show('Erreur recherche cadastrale — vérifiez la connexion', 'error');
+      return null;
+    }
+  },
+
   _highlightParcelle(feature) {
     if (!this._map) return;
     const src = this._map.getSource('parcelle-selected');
@@ -853,6 +954,45 @@ const MapViewer = {
     // Centrer sur la parcelle
     const bbox = turf.bbox(feature);
     this._map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 60, duration: 800 });
+  },
+
+  /** Sauvegarde section/numéro cadastral en session quelle que soit la phase active */
+  _persistCadastralInfo(feature, lng, lat) {
+    const SM = window.SessionManager;
+    if (!SM?.saveTerrain) return;
+    const p = feature.properties ?? {};
+    const commune    = p.nom_com ?? p.commune_abs ?? p.commune ?? '';
+    const insee      = p.commune ?? '';
+    const section    = p.section ?? '';
+    const numero     = p.numero ?? '';
+    const contenance = p.contenance ? parseFloat(p.contenance) : undefined;
+
+    // Centroïde si pas de coords fournies
+    let cLat = lat, cLng = lng;
+    if ((cLat == null || cLng == null) && feature.geometry) {
+      try {
+        const c = turf.centroid(feature);
+        [cLng, cLat] = c.geometry.coordinates;
+      } catch { /* keep null */ }
+    }
+
+    // Altitude approx depuis DEM Mapbox
+    let altitude;
+    if (this._map && cLng != null && cLat != null) {
+      const elev = this._map.queryTerrainElevation?.([cLng, cLat]);
+      if (elev != null) altitude = Math.round(elev);
+    }
+
+    const update = {
+      commune, code_insee: insee, section, parcelle: numero,
+      lat: cLat, lng: cLng,
+      parcelle_geojson: feature.geometry,
+    };
+    if (contenance)  update.contenance_m2 = contenance;
+    if (altitude != null) update.altitude_ngr = altitude;
+
+    SM.saveTerrain(update);
+    console.log(`[Map] Cadastre persisté : ${section} ${numero} — ${commune} (${insee})`);
   },
 
   // ── SIMULATION INONDATION (Phase 3) — Bathtub DEM ────────────
@@ -1028,11 +1168,41 @@ const MapViewer = {
     }
 
     // Construire le GeoJSON
+    // Pré-calcul des bornes pour les modes altitude et hauteur
+    let altMin = Infinity, altMax = -Infinity, groundMin = Infinity;
+    if (mode === 'altitude' || mode === 'height') {
+      for (const p of renderPts) {
+        if (p[2] < altMin) altMin = p[2];
+        if (p[2] > altMax) altMax = p[2];
+        if ((p.length >= 7 ? p[6] : 2) === 2 && p[2] < groundMin) groundMin = p[2];
+      }
+      if (groundMin === Infinity) groundMin = altMin;
+    }
+    const altRange = Math.max(altMax - altMin, 0.1);
+    const heightMax = Math.max(altMax - groundMin, 0.1);
+
     const features = renderPts.map(p => {
       const cls = p.length >= 7 ? p[6] : 2;
-      const color = mode === 'rgb' && p.length >= 6
-        ? `rgb(${p[3]},${p[4]},${p[5]})`
-        : (CLASS_COLORS[cls] ?? DEFAULT_COLOR);
+      let color;
+      if (mode === 'rgb' && p.length >= 6 && (p[3] || p[4] || p[5])) {
+        color = `rgb(${p[3]},${p[4]},${p[5]})`;
+      } else if (mode === 'altitude') {
+        // Divergent bleu → blanc → rouge
+        const t = (p[2] - altMin) / altRange;
+        color = this._lerpColorRamp(t, [
+          [0, '#2166ac'], [0.25, '#67a9cf'], [0.5, '#f7f7f7'],
+          [0.75, '#ef8a62'], [1, '#b2182b']
+        ]);
+      } else if (mode === 'height') {
+        // Séquentiel jaune → vert → vert foncé (hauteur / sol)
+        const h = Math.max(0, p[2] - groundMin);
+        const t = Math.min(1, h / heightMax);
+        color = this._lerpColorRamp(t, [
+          [0, '#f7fcb9'], [0.33, '#addd8e'], [0.66, '#31a354'], [1, '#003418']
+        ]);
+      } else {
+        color = CLASS_COLORS[cls] ?? DEFAULT_COLOR;
+      }
 
       return {
         type: 'Feature',
@@ -1080,23 +1250,42 @@ const MapViewer = {
     }
   },
 
-  // Changer le mode d'affichage des points LiDAR (classification / rgb)
+  // Changer le mode d'affichage des points LiDAR (classification / rgb / altitude / height)
   setLidarMode(mode) {
     if (!this._map) return;
     const src = this._map.getSource('lidar-points');
     if (!src) return;
-    // On doit recalculer les couleurs → stockées dans _lidarRawPoints
     if (this._lidarRawPoints) {
       this.showLidarPoints(this._lidarRawPoints, mode);
     }
   },
 
-  // Stocker les points bruts pour pouvoir changer de mode
   setLidarRawPoints(points) {
     this._lidarRawPoints = points;
   },
 
-  // Basculer la visibilité du layer LiDAR
+  setLidarPointSize(size) {
+    if (!this._map?.getLayer('lidar-points-layer')) return;
+    const s = parseFloat(size) || 3;
+    this._map.setPaintProperty('lidar-points-layer', 'circle-radius',
+      ['interpolate', ['linear'], ['zoom'], 14, s * 0.5, 17, s, 19, s * 1.8]
+    );
+  },
+
+  /** Interpolation sur une rampe de couleurs [[t, hex], ...] */
+  _lerpColorRamp(t, ramp) {
+    t = Math.max(0, Math.min(1, t));
+    let i = 0;
+    while (i < ramp.length - 1 && ramp[i + 1][0] < t) i++;
+    if (i >= ramp.length - 1) return ramp[ramp.length - 1][1];
+    const [t0, c0] = ramp[i], [t1, c1] = ramp[i + 1];
+    const f = (t - t0) / (t1 - t0 || 1);
+    const r0 = parseInt(c0.slice(1, 3), 16), g0 = parseInt(c0.slice(3, 5), 16), b0 = parseInt(c0.slice(5, 7), 16);
+    const r1 = parseInt(c1.slice(1, 3), 16), g1 = parseInt(c1.slice(3, 5), 16), b1 = parseInt(c1.slice(5, 7), 16);
+    const r = Math.round(r0 + (r1 - r0) * f), g = Math.round(g0 + (g1 - g0) * f), b = Math.round(b0 + (b1 - b0) * f);
+    return `rgb(${r},${g},${b})`;
+  },
+
   toggleLidarLayer(visible) {
     if (!this._map) return;
     try {
@@ -1236,13 +1425,13 @@ const MapViewer = {
         controls: { point: true, line_string: true, polygon: true, trash: true },
         styles: [
           { id: 'gl-draw-polygon-fill', type: 'fill', filter: ['==', '$type', 'Polygon'],
-            paint: { 'fill-color': '#9a7820', 'fill-opacity': 0.15 } },
+            paint: { 'fill-color': '#E8811A', 'fill-opacity': 0.15 } },
           { id: 'gl-draw-polygon-stroke', type: 'line', filter: ['==', '$type', 'Polygon'],
-            paint: { 'line-color': '#9a7820', 'line-width': 2, 'line-dasharray': [2, 2] } },
+            paint: { 'line-color': '#E8811A', 'line-width': 2, 'line-dasharray': [2, 2] } },
           { id: 'gl-draw-line', type: 'line', filter: ['==', '$type', 'LineString'],
-            paint: { 'line-color': '#9a7820', 'line-width': 2 } },
+            paint: { 'line-color': '#E8811A', 'line-width': 2 } },
           { id: 'gl-draw-point', type: 'circle', filter: ['==', '$type', 'Point'],
-            paint: { 'circle-color': '#9a7820', 'circle-radius': 6, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } },
+            paint: { 'circle-color': '#E8811A', 'circle-radius': 6, 'circle-stroke-color': '#fff', 'circle-stroke-width': 2 } },
         ]
       });
       this._map.addControl(this._draw);
@@ -1269,6 +1458,149 @@ const MapViewer = {
     }
     if (this._map && this._onDrawCreate) {
       this._map.off('draw.create', this._onDrawCreate);
+    }
+  },
+
+  // ── TERRAIN LIBRE — dessin polygone + détection parcelles ─────
+  activateTerrainLibre() {
+    this.enableProjectDraw('draw_polygon');
+    window.TerlabToast?.show('Dessinez un polygone fermé sur la carte (double-clic pour terminer)', 'info', 5000);
+
+    // Remplacer le handler draw.create pour le mode terrain libre
+    this._map.off('draw.create', this._onDrawCreate);
+    this._onDrawCreate = async (e) => {
+      const feature = e.features?.[0];
+      if (!feature || feature.geometry?.type !== 'Polygon') return;
+      this._draw.deleteAll();
+
+      // Afficher le polygone dessiné
+      this._highlightTerrainLibre(feature.geometry);
+
+      // Détecter les parcelles cadastrales
+      window.TerlabToast?.show('Détection des parcelles…', 'info', 3000);
+      const result = await this.detectParcelsInPolygon(feature.geometry);
+
+      window.dispatchEvent(new CustomEvent('terlab:terrain-libre-complete', {
+        detail: { polygon: feature.geometry, parcels: result }
+      }));
+    };
+    this._map.on('draw.create', this._onDrawCreate);
+  },
+
+  deactivateTerrainLibre() {
+    this.disableProjectDraw();
+    // Nettoyer les couches terrain-libre
+    const m = this._map;
+    if (!m) return;
+    try { if (m.getLayer('terrain-libre-fill'))    m.removeLayer('terrain-libre-fill'); } catch {}
+    try { if (m.getLayer('terrain-libre-outline'))  m.removeLayer('terrain-libre-outline'); } catch {}
+    try { if (m.getLayer('terrain-libre-parcels-full'))    m.removeLayer('terrain-libre-parcels-full'); } catch {}
+    try { if (m.getLayer('terrain-libre-parcels-partial')) m.removeLayer('terrain-libre-parcels-partial'); } catch {}
+    try { if (m.getSource('terrain-libre'))         m.removeSource('terrain-libre'); } catch {}
+    try { if (m.getSource('terrain-libre-parcels')) m.removeSource('terrain-libre-parcels'); } catch {}
+  },
+
+  _highlightTerrainLibre(geometry) {
+    const m = this._map;
+    if (!m) return;
+    const data = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry }] };
+
+    if (m.getSource('terrain-libre')) {
+      m.getSource('terrain-libre').setData(data);
+    } else {
+      m.addSource('terrain-libre', { type: 'geojson', data });
+      m.addLayer({ id: 'terrain-libre-fill', type: 'fill', source: 'terrain-libre',
+        paint: { 'fill-color': '#00d4ff', 'fill-opacity': 0.12 } });
+      m.addLayer({ id: 'terrain-libre-outline', type: 'line', source: 'terrain-libre',
+        paint: { 'line-color': '#00d4ff', 'line-width': 2, 'line-dasharray': [4, 2] } });
+    }
+  },
+
+  // ── DÉTECTION PARCELLES DANS UN POLYGONE (WFS INTERSECTS) ─────
+  async detectParcelsInPolygon(polygon) {
+    // Construire le WKT du polygone pour le filtre CQL
+    const ring = polygon.coordinates[0];
+    const wkt = 'POLYGON((' + ring.map(c => `${c[0]} ${c[1]}`).join(',') + '))';
+    const cql = `INTERSECTS(geom,${wkt})`;
+
+    const url = `${this._WFS_BASE}&CQL_FILTER=${encodeURIComponent(cql)}&COUNT=50`;
+
+    try {
+      const data = await resilientJSON(url, { timeoutMs: 15000, retries: 2 });
+      if (!data?.features?.length) return { full: [], partial: [], all: [] };
+
+      const drawnFeature = { type: 'Feature', geometry: polygon };
+      const drawnArea = turf.area(drawnFeature);
+
+      const full = [], partial = [];
+
+      for (const f of data.features) {
+        try {
+          const parcelFeature = { type: 'Feature', geometry: f.geometry, properties: f.properties };
+          const parcelArea = turf.area(parcelFeature);
+
+          // Calculer l'intersection
+          const inter = turf.intersect(drawnFeature, parcelFeature);
+          if (!inter) { partial.push(this._toParcelInfo(f, 0)); continue; }
+
+          const interArea = turf.area(inter);
+          const coverage = parcelArea > 0 ? interArea / parcelArea : 0;
+
+          const info = this._toParcelInfo(f, coverage);
+
+          // > 90% couvert → entière, sinon partielle
+          if (coverage > 0.9) full.push(info);
+          else partial.push(info);
+        } catch {
+          partial.push(this._toParcelInfo(f, 0));
+        }
+      }
+
+      // Afficher sur la carte
+      this._showDetectedParcels(full, partial);
+
+      return { full, partial, all: [...full, ...partial], drawnArea: Math.round(drawnArea) };
+
+    } catch (e) {
+      console.warn('[Map] detectParcelsInPolygon:', e.message);
+      return { full: [], partial: [], all: [], error: e.message };
+    }
+  },
+
+  _toParcelInfo(feature, coverage) {
+    const p = feature.properties ?? {};
+    return {
+      commune:       p.commune ?? p.nom_com ?? '',
+      commune_nom:   p.nom_com ?? '',
+      section:       p.section ?? '',
+      numero:        p.numero ?? '',
+      reference:     `${p.commune ?? ''}${p.section ?? ''}${p.numero ?? ''}`,
+      contenance_m2: p.contenance ? parseFloat(p.contenance) : 0,
+      geometry:      feature.geometry,
+      coverage:      Math.round(coverage * 100),   // % de la parcelle dans le polygone
+    };
+  },
+
+  _showDetectedParcels(full, partial) {
+    const m = this._map;
+    if (!m) return;
+
+    const features = [
+      ...full.map(p => ({ type: 'Feature', geometry: p.geometry, properties: { type: 'full', ref: p.reference } })),
+      ...partial.map(p => ({ type: 'Feature', geometry: p.geometry, properties: { type: 'partial', ref: p.reference } })),
+    ];
+    const fc = { type: 'FeatureCollection', features };
+
+    if (m.getSource('terrain-libre-parcels')) {
+      m.getSource('terrain-libre-parcels').setData(fc);
+    } else {
+      m.addSource('terrain-libre-parcels', { type: 'geojson', data: fc });
+      m.addLayer({ id: 'terrain-libre-parcels-full', type: 'fill', source: 'terrain-libre-parcels',
+        filter: ['==', ['get', 'type'], 'full'],
+        paint: { 'fill-color': '#51cf66', 'fill-opacity': 0.25 } });
+      m.addLayer({ id: 'terrain-libre-parcels-partial', type: 'fill', source: 'terrain-libre-parcels',
+        filter: ['==', ['get', 'type'], 'partial'],
+        paint: { 'fill-color': '#ffc53a', 'fill-opacity': 0.25 } });
     }
   },
 

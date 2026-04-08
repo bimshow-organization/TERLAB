@@ -5,6 +5,7 @@
 import SlopesService from '../services/slopes-service.js';
 import SunCalcService from '../services/sun-calc-service.js';
 import GeoStatusBar from './geo-status-bar.js';
+import GLBExporter from '../utils/glb-exporter.js';
 
 const Terrain3D = {
 
@@ -58,7 +59,7 @@ const Terrain3D = {
     if (!THREE) return console.error('[Terrain3D] Three.js non chargé');
 
     // Renderer
-    this._renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    this._renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, preserveDrawingBuffer: true });
     this._renderer.setPixelRatio(window.devicePixelRatio);
     this._renderer.shadowMap.enabled = true;
     this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -755,24 +756,11 @@ const Terrain3D = {
 
   // ─── EXPORT ───────────────────────────────────────────────────
   async exportGLB() {
-    const THREE = window.THREE;
-    const obj   = this._terrainGroup ?? this._topMesh;
+    const obj = this._terrainGroup ?? this._topMesh;
     if (!obj) return window.TerlabToast?.show('Pas de terrain \u00e0 exporter', 'warning');
-
     try {
-      const { GLTFExporter } = await import(
-        'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/exporters/GLTFExporter.js'
-      );
-      const exp = new GLTFExporter();
       const ref = this._session?.terrain?.parcelle ?? 'terrain';
-      exp.parse(obj, glb => {
-        const a = document.createElement('a');
-        a.href     = URL.createObjectURL(new Blob([glb], { type: 'model/gltf-binary' }));
-        a.download = `TERLAB_terrain_${ref}.glb`;
-        a.click();
-        URL.revokeObjectURL(a.href);
-        window.TerlabToast?.show('GLB export\u00e9', 'success', 2000);
-      }, { binary: true });
+      await GLBExporter.download(obj, `TERLAB_terrain_${ref}`);
     } catch (e) {
       window.TerlabToast?.show('Export GLB non disponible', 'warning');
     }

@@ -30,6 +30,20 @@ const EsquisseCanvas = {
   _boundDrag:    null,
   _boundDragEnd: null,
 
+  // ── PLAN MASSE ENGINE (v5) ──────────────────────────────────────
+  _buildingAABB: null,       // { x, y, w, l } en mètres locaux — AABB du bâtiment
+  _editMode:     'aabb',     // 'aabb' (rectangle 8-handles) | 'polygon' (sommets libres)
+  _engineMetrics: null,      // résultat PlanMasseEngine.metrics()
+  _engineTerrain: null,      // terrain struct pour l'engine (cache)
+  _prog: { type: 'maison', nvMax: 2, profMax: 15, parkMode: 'ext', parkSS: false, maxUnits: 20 },
+  _parkSide: 'est',
+
+  // ── VEGETATION BPF ─────────────────────────────────────────────
+  _vegetationPlants: [],     // résultat BpfBridge.generate()
+  _vegetationAmenities: [],  // amenities placées (piscine, kiosque, etc.)
+  _vegetationStats:  null,
+  _vegetationVisible: true,
+
   // ── INIT ───────────────────────────────────────────────────────
   async init(svgId, sessionData) {
     this._session  = sessionData ?? {};
@@ -103,6 +117,9 @@ const EsquisseCanvas = {
         p.polygonGeo = this._localToGeo(p.polygon);
       });
       this._renderScorePanel();
+      if (this._proposals.length > 0) {
+        this._renderGardenHint(this._proposals[0]);
+      }
       this._fullRedraw();
     };
 
@@ -121,6 +138,7 @@ const EsquisseCanvas = {
       await _generateAndRender();
       this._injectDefs();
       this._drawBackground();
+      this._drawPPRNZones();
       this._drawContext();
       this._drawParcel();
       this._drawReculs();
@@ -156,6 +174,7 @@ const EsquisseCanvas = {
       this._drawBackground();
     }
 
+    this._drawPPRNZones();
     this._drawContext();
     this._drawParcel();
     this._drawReculs();
@@ -314,7 +333,7 @@ const EsquisseCanvas = {
       ...map.queryRenderedFeatures(bbox, { layers: ['building-extrusion', 'buildings'] }),
     ];
 
-    const mapVoisins = buildingFeatures
+    const allBuildings = buildingFeatures
       .filter(f => f.geometry?.type === 'Polygon' || f.geometry?.type === 'MultiPolygon')
       .map(f => {
         const coords = f.geometry.type === 'Polygon'
@@ -325,8 +344,18 @@ const EsquisseCanvas = {
           hauteur: f.properties?.height ?? f.properties?.render_height ?? null,
           usage:   f.properties?.type ?? 'batiment',
         };
-      })
-      .filter(v => !this._polygonsOverlap(v.pts, this._parcelGeo));
+      });
+
+    // Séparer voisins (hors parcelle) et bâtiments existants (sur parcelle)
+    const mapVoisins = [];
+    const mapBatiParcelle = [];
+    for (const b of allBuildings) {
+      if (this._polygonsOverlap(b.pts, this._parcelGeo)) {
+        mapBatiParcelle.push(b);
+      } else {
+        mapVoisins.push(b);
+      }
+    }
 
     // Routes
     const roadLayers = ['road-simple', 'road-primary', 'road-secondary',
@@ -349,6 +378,23 @@ const EsquisseCanvas = {
     if (mapStreets.length > 0) {
       this._streetsGeo = mapStreets;
     }
+    // Bâtiments existants SUR la parcelle (Mapbox → session si pas déjà renseigné)
+    if (mapBatiParcelle.length > 0) {
+      const existing = this._session?.phases?.[5]?.data?.batiments_parcelle
+        ?? this._session?.terrain?.batiments_parcelle ?? [];
+      if (existing.length === 0) {
+        // Injecter les footprints Mapbox comme bâtiments existants
+        const batiData = mapBatiParcelle.map(b => ({
+          geojson: { type: 'Polygon', coordinates: [b.pts] },
+          hauteur: b.hauteur,
+          usage: b.usage,
+          source: 'mapbox',
+        }));
+        // Stocker dans la session terrain pour que _drawContext() les affiche
+        if (!this._session.terrain) this._session.terrain = {};
+        this._session.terrain.batiments_parcelle = batiData;
+      }
+    }
   },
 
   // ── COUCHE CADASTRALE IGN ──────────────────────────────────────
@@ -370,7 +416,7 @@ const EsquisseCanvas = {
         ],
         tileSize: 256,
         minzoom: 14,
-        maxzoom: 20,
+        maxzoom: 19,
         attribution: '&copy; IGN Geoplateforme — Plan cadastral',
       });
 
@@ -518,6 +564,92 @@ const EsquisseCanvas = {
     return inside;
   },
 
+  // ── DESSIN ZONES PPRN ──────────────────────────────────────────
+  // Overlay semi-transparent des zones PPRN détectées par PPRSamplingService
+  // Rouge = inconstructible (hachures croisées), Bleu = conditions, Jaune = vigilance
+  _drawPPRNZones() {
+    const scan = this._session?.terrain?.pprn_scan;
+    const zonesData = this._session?.terrain?.pprn_zones_detected;
+    if (!zonesData || !Object.keys(zonesData).length) return;
+
+    const g = this._el('g', { id: 'pprn-layer', opacity: 0.65 });
+
+    // Convertir les points de la grille du scan en polygones visuels
+    const centroid = this._centroidGeo(this._parcelGeo);
+    const LNG_M = 111320 * Math.cos(centroid[1] * Math.PI / 180);
+    const LAT_M = 111320;
+
+    for (const [zone, data] of Object.entries(zonesData)) {
+      if (!data.pts?.length || data.pts.length < 3) continue;
+
+      // Convex hull des points détectés → polygone WGS84
+      const geoPts = data.pts.map(p => [p.lng, p.lat]);
+      const hull = this._convexHullGeo(geoPts);
+      if (hull.length < 3) continue;
+
+      // Projeter en pixels SVG
+      const svgPts = this._map ? this._projectAll(hull) : this._localToSvg(
+        hull.map(([lng, lat]) => ({
+          x:  (lng - centroid[0]) * LNG_M,
+          y: -(lat - centroid[1]) * LAT_M,
+        }))
+      );
+
+      // Clipper visuellement à la parcelle
+      const isR = zone.startsWith('R');
+      const isB = zone.startsWith('B');
+      const color = data.color ?? (isR ? '#ef4444' : isB ? '#3b82f6' : '#fbbf24');
+      const hatchId = isR ? 'hatch-pprn-r' : isB ? 'hatch-pprn-b' : 'hatch-pprn-j';
+
+      // Fond semi-transparent
+      this._el('polygon', {
+        points: this._polyPoints(svgPts),
+        fill: color, opacity: isR ? 0.2 : 0.12,
+        stroke: color, 'stroke-width': isR ? 2 : 1.5,
+        'stroke-dasharray': isR ? 'none' : '6 3',
+      }, `pprn-fill-${zone}`, g);
+
+      // Hachures
+      this._el('polygon', {
+        points: this._polyPoints(svgPts),
+        fill: `url(#${hatchId})`, opacity: 0.7,
+        stroke: 'none',
+      }, `pprn-hatch-${zone}`, g);
+
+      // Label zone
+      const c = this._centroidPx(svgPts);
+      if (isR) {
+        // Label INCONSTRUCTIBLE en rouge gras
+        this._label(c.x, c.y - 8, 'INCONSTRUCTIBLE', { size: 11, color: '#dc2626', bold: true, anchor: 'middle' }, null, g);
+        this._label(c.x, c.y + 6, `PPRN ${zone} (${data.area_pct ?? '?'}%)`, { size: 9, color: '#dc2626', anchor: 'middle' }, null, g);
+      } else {
+        this._label(c.x, c.y - 4, `PPRN ${zone}`, { size: 10, color, bold: true, anchor: 'middle' }, null, g);
+        this._label(c.x, c.y + 10, `${data.area_pct ?? '?'}% parcelle`, { size: 8, color, anchor: 'middle' }, null, g);
+      }
+    }
+  },
+
+  // Convex hull pour coordonnées [lng,lat]
+  _convexHullGeo(pts) {
+    if (pts.length < 3) return pts;
+    const sorted = [...pts].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+    const lower = [];
+    for (const p of sorted) {
+      while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
+      lower.push(p);
+    }
+    const upper = [];
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      const p = sorted[i];
+      while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
+      upper.push(p);
+    }
+    lower.pop();
+    upper.pop();
+    return lower.concat(upper);
+  },
+
   // ── DESSIN CONTEXTE ────────────────────────────────────────────
   _drawContext() {
     const g = this._el('g', { id: 'ctx-layer' });
@@ -573,23 +705,34 @@ const EsquisseCanvas = {
     const existingBuildings = this._session?.phases?.[5]?.data?.batiments_parcelle
       ?? this._session?.terrain?.batiments_parcelle ?? [];
     existingBuildings.forEach((b, i) => {
-      let localPts;
-      if (b.geojson) {
-        localPts = this._geojsonToLocal(b.geojson);
-      } else if (b.pts) {
-        localPts = b.pts;
-      } else return;
-      if (localPts.length < 3) return;
-      const svgPts = this._localToSvg(localPts);
+      let svgPts;
+      if (this._map && b.geojson) {
+        // Mode Mapbox : projeter directement les coords GeoJSON (pas de round-trip local)
+        const ring = b.geojson.type === 'Polygon' ? b.geojson.coordinates[0]
+          : b.geojson.type === 'MultiPolygon' ? b.geojson.coordinates[0][0] : null;
+        if (!ring || ring.length < 3) return;
+        svgPts = this._projectAll(ring);
+      } else {
+        let localPts;
+        if (b.geojson) {
+          localPts = this._geojsonToLocal(b.geojson);
+        } else if (b.pts) {
+          localPts = b.pts;
+        } else return;
+        if (localPts.length < 3) return;
+        svgPts = this._localToSvg(localPts);
+      }
+      if (!svgPts || svgPts.length < 3) return;
       this._el('polygon', {
         points: this._polyPoints(svgPts),
-        fill: 'rgba(100,116,139,0.25)', stroke: '#475569', 'stroke-width': 1.5,
+        fill: 'rgba(100,116,139,0.3)', stroke: '#475569', 'stroke-width': 1.8,
         'stroke-dasharray': '4 2',
       }, `bati-existant-${i}`, g);
       const c = this._centroidPx(svgPts);
-      this._label(c.x, c.y, 'Bati existant', { size: 10, color: '#475569', bold: true }, null, g);
+      this._label(c.x, c.y, b.usage === 'batiment' ? 'Existant' : (b.usage ?? 'Existant'),
+        { size: 9, color: '#475569', bold: true }, null, g);
       if (b.hauteur) {
-        this._label(c.x, c.y + 12, `H~${b.hauteur}m`, { size: 9, color: '#64748b' }, null, g);
+        this._label(c.x, c.y + 11, `H~${b.hauteur}m`, { size: 8, color: '#64748b' }, null, g);
       }
     });
 
@@ -735,9 +878,9 @@ const EsquisseCanvas = {
   _drawReculs() {
     const p4 = this._session?.phases?.[4]?.data ?? {};
     const reculs = {
-      voie:    parseFloat(p4.recul_voie_m ?? p4.recul_voie_principale_m ?? p4.recul_avant_m ?? 3) || 3,
+      voie:    parseFloat(p4.recul_voie_principale_m ?? p4.recul_voie_m ?? p4.recul_avant_m ?? 3) || 3,
       fond:    parseFloat(p4.recul_fond_m ?? 3) || 3,
-      lateral: parseFloat(p4.recul_lat_m ?? p4.recul_limite_sep_m ?? 0) || 0,
+      lateral: parseFloat(p4.recul_limite_sep_m ?? p4.recul_lat_m ?? 3) || 3,
     };
 
     const constructibleLocal = this._offsetPolygonFixed(this._parcelLocal, reculs);
@@ -867,9 +1010,9 @@ const EsquisseCanvas = {
         continue;
       }
 
-      // Normale interieure en espace Y-inverse pour polygon CW : (+dy/len, -dx/len)
-      const nx =  dy / len;
-      const ny = -dx / len;
+      // Normale interieure en espace Y-inverse pour polygon CW : (-dy/len, +dx/len)
+      const nx = -dy / len;
+      const ny =  dx / len;
 
       const edgeRecul = this._getEdgeRecul(cw[i], cw[j], reculs);
 
@@ -1038,72 +1181,602 @@ const EsquisseCanvas = {
     if (!prop) return;
     this._selected = idx;
 
-    const pts = prop.polygonGeo?.length
-      ? (this._map ? this._projectAll(prop.polygonGeo) : this._localToSvg(prop.polygon))
-      : this._localToSvg(prop.polygon);
     const g = this._el('g', { class: 'proposal-group', id: 'active-proposal' });
 
-    // Corps de l'enveloppe
-    this._el('polygon', {
-      points: this._polyPoints(pts),
-      fill: 'rgba(154, 120, 32, 0.12)',
-      stroke: '#9a7820', 'stroke-width': 2, 'stroke-linejoin': 'round',
-    }, null, g);
-
-    // Hauteur
-    this._drawHeightIndicator(pts, prop, g);
-
-    // Aretes editables
-    for (let i = 0; i < pts.length; i++) {
-      const j = (i + 1) % pts.length;
-      this._el('line', {
-        x1: pts[i].x, y1: pts[i].y, x2: pts[j].x, y2: pts[j].y,
-        stroke: 'rgba(154,120,32,0.15)', 'stroke-width': 12,
-        'stroke-linecap': 'round',
-        cursor: 'grab', class: 'edit-edge',
-        'data-edge': i, 'data-proposal': idx,
-      }, `edge-${idx}-${i}`, g);
+    // ── Initialiser AABB depuis la proposition si pas encore fait ──
+    if (!this._buildingAABB && prop.polygon?.length >= 3) {
+      const bb = this._bboxLocal(prop.polygon);
+      this._buildingAABB = {
+        x: bb.minX, y: bb.minY,
+        w: bb.maxX - bb.minX, l: bb.maxY - bb.minY,
+      };
     }
 
-    // Noeuds editables
-    pts.forEach((pt, i) => {
-      this._el('circle', {
-        cx: pt.x, cy: pt.y, r: 14,
-        fill: 'transparent', stroke: 'none',
-        cursor: 'move', class: 'edit-node-hit',
-        'data-node': i, 'data-proposal': idx,
+    // ── Calculer les métriques engine ──
+    this._updateEngineMetrics();
+
+    const bat = this._buildingAABB;
+    const m = this._engineMetrics;
+    const batCol = (m?.inEnv !== false) ? '#c0943a' : '#EF4444'; // rouge si hors enveloppe
+
+    if (this._editMode === 'aabb' && bat) {
+      // ══ MODE AABB — Rectangle + 8 handles (style v5) ══════════
+
+      // Projeter les 4 coins du rectangle
+      const corners = [
+        { x: bat.x, y: bat.y },
+        { x: bat.x + bat.w, y: bat.y },
+        { x: bat.x + bat.w, y: bat.y + bat.l },
+        { x: bat.x, y: bat.y + bat.l },
+      ];
+      const svgCorners = this._map
+        ? this._projectAll(this._localToGeo(corners))
+        : corners.map(c => this._localToSvgPt(c));
+
+      const sx = Math.min(...svgCorners.map(c => c.x));
+      const sy = Math.min(...svgCorners.map(c => c.y));
+      const sw = Math.max(...svgCorners.map(c => c.x)) - sx;
+      const sh = Math.max(...svgCorners.map(c => c.y)) - sy;
+
+      // Ombre
+      this._el('rect', {
+        x: sx + 3, y: sy + 3, width: sw, height: sh, rx: 2,
+        fill: `rgba(0,0,0,0.08)`, stroke: 'none', 'pointer-events': 'none',
       }, null, g);
-      this._el('circle', {
-        cx: pt.x, cy: pt.y, r: 7,
-        fill: '#9a7820', stroke: '#fff', 'stroke-width': 2.5,
-        cursor: 'move', class: 'edit-node',
-        'data-node': i, 'data-proposal': idx,
-        'pointer-events': 'none',
-      }, `node-${idx}-${i}`, g);
-    });
 
-    // Cotations internes
-    this._drawProposalDims(pts, prop, g);
+      // Corps du bâtiment (draggable)
+      this._el('rect', {
+        x: sx, y: sy, width: sw, height: sh, rx: 2,
+        fill: `rgba(${this._hexRgb(batCol)},0.22)`,
+        stroke: batCol, 'stroke-width': 2.5,
+        cursor: 'move', 'data-type': 'building-body', 'data-proposal': idx,
+      }, 'bat-body', g);
 
-    // Label famille + surface
-    const c = this._centroidPx(pts);
-    this._label(c.x, c.y - 8, prop.family, { size: 9, color: '#9a7820', bold: true }, null, g);
-    this._label(c.x, c.y + 8, `${prop.surface.toFixed(0)} m\u00B2 · H+${prop.scoreData?.hauteur_egout ?? '--'}m`,
-      { size: 8, color: '#6b5c3e' }, null, g);
+      // Bande façade voie (1.5m)
+      const bandH = this._mToPx(1.5);
+      if (bandH > 2) {
+        this._el('rect', {
+          x: sx, y: sy + sh - bandH, width: sw, height: bandH, rx: 0,
+          fill: 'rgba(245,222,179,0.5)', stroke: batCol, 'stroke-width': 1,
+          'stroke-dasharray': '5,3', 'pointer-events': 'none',
+        }, null, g);
+      }
+
+      // Labels centraux
+      const cx = sx + sw / 2, cy = sy + sh / 2;
+      const nvEff = m?.nvEff ?? 1;
+      const nvLbl = ['', 'R+0', 'R+1', 'R+2', 'R+3', 'R+4'][nvEff] ?? `R+${nvEff - 1}`;
+      const mainLbl = this._prog.type === 'maison' ? 'Maison' : `${m?.nbLgts ?? '?'} lgts`;
+      this._label(cx, cy - 10, mainLbl, { size: 13, color: batCol, bold: true }, null, g);
+      this._label(cx, cy + 5, `${bat.w.toFixed(1)}×${bat.l.toFixed(1)}m`, { size: 9, color: batCol }, null, g);
+      this._label(cx, cy + 18, `${nvLbl} — h≤${(nvEff * 3).toFixed(0)}m`, { size: 8, color: batCol }, null, g);
+
+      // ── 8 HANDLES ──────────────────────────────────────────────
+      const handles = [
+        ['sw', sx,        sy + sh,    'sw-resize', 'c'],
+        ['s',  sx + sw/2, sy + sh,    's-resize',  'd'],
+        ['se', sx + sw,   sy + sh,    'se-resize', 'c'],
+        ['e',  sx + sw,   sy + sh/2,  'e-resize',  'd'],
+        ['ne', sx + sw,   sy,         'ne-resize', 'c'],
+        ['n',  sx + sw/2, sy,         'n-resize',  'd'],
+        ['nw', sx,        sy,         'nw-resize', 'c'],
+        ['w',  sx,        sy + sh/2,  'w-resize',  'd'],
+      ];
+      for (const [hid, hx, hy, cursor, shape] of handles) {
+        if (shape === 'c') {
+          this._el('circle', {
+            cx: hx, cy: hy, r: 5.5,
+            fill: '#fff', stroke: batCol, 'stroke-width': 2,
+            cursor, class: 'edit-handle', 'data-handle': hid, 'data-proposal': idx,
+          }, null, g);
+        } else {
+          // Losange (carré tourné 45°)
+          this._el('rect', {
+            x: hx - 4.5, y: hy - 4.5, width: 9, height: 9,
+            fill: '#fff', stroke: batCol, 'stroke-width': 1.5,
+            cursor, class: 'edit-handle', 'data-handle': hid, 'data-proposal': idx,
+            transform: `rotate(45,${hx},${hy})`,
+          }, null, g);
+        }
+      }
+
+      // Cotations
+      this._drawDimLinesV5(bat, g);
+
+      // Multi-bâtiment (subdivision blocs)
+      if (m?.nbBlocs > 1) {
+        this._renderBlocs(bat, m, batCol, g);
+      }
+
+      // Parking
+      this._renderParking(bat, m, batCol, g);
+
+    } else {
+      // ══ MODE POLYGON — Ancien rendu (sommets libres) ══════════
+      const pts = prop.polygonGeo?.length
+        ? (this._map ? this._projectAll(prop.polygonGeo) : this._localToSvg(prop.polygon))
+        : this._localToSvg(prop.polygon);
+
+      this._el('polygon', {
+        points: this._polyPoints(pts),
+        fill: 'rgba(154, 120, 32, 0.12)',
+        stroke: '#9a7820', 'stroke-width': 2, 'stroke-linejoin': 'round',
+      }, null, g);
+
+      this._drawHeightIndicator(pts, prop, g);
+
+      for (let i = 0; i < pts.length; i++) {
+        const j = (i + 1) % pts.length;
+        this._el('line', {
+          x1: pts[i].x, y1: pts[i].y, x2: pts[j].x, y2: pts[j].y,
+          stroke: 'rgba(154,120,32,0.15)', 'stroke-width': 12,
+          'stroke-linecap': 'round',
+          cursor: 'grab', class: 'edit-edge',
+          'data-edge': i, 'data-proposal': idx,
+        }, `edge-${idx}-${i}`, g);
+      }
+
+      pts.forEach((pt, i) => {
+        this._el('circle', {
+          cx: pt.x, cy: pt.y, r: 14,
+          fill: 'transparent', stroke: 'none',
+          cursor: 'move', class: 'edit-node-hit',
+          'data-node': i, 'data-proposal': idx,
+        }, null, g);
+        this._el('circle', {
+          cx: pt.x, cy: pt.y, r: 7,
+          fill: '#9a7820', stroke: '#fff', 'stroke-width': 2.5,
+          cursor: 'move', class: 'edit-node',
+          'data-node': i, 'data-proposal': idx,
+          'pointer-events': 'none',
+        }, `node-${idx}-${i}`, g);
+      });
+
+      this._drawProposalDims(pts, prop, g);
+
+      const c = this._centroidPx(pts);
+      this._label(c.x, c.y - 8, prop.family, { size: 9, color: '#9a7820', bold: true }, null, g);
+      this._label(c.x, c.y + 8, `${prop.surface.toFixed(0)} m\u00B2`, { size: 8, color: '#6b5c3e' }, null, g);
+    }
+
+    // ── Éléments communs (les deux modes) ────────────────────────
 
     // Badge score
-    this._drawScoreBadge(pts, prop, g);
+    const pts2 = this._localToSvg(prop.polygon);
+    this._drawScoreBadge(pts2, prop, g);
 
     // Indicateur vue
     if (prop.scoreData?.vueScore > 0.6) {
-      this._drawViewIndicator(pts, prop, g);
+      this._drawViewIndicator(pts2, prop, g);
     }
 
     // Coloration RTAA des facades
     this._renderRTAAFacades(prop.polygon, g);
 
+    // Aménagement + Végétation automatique BPF
+    if (this._vegetationVisible) {
+      if (this._vegetationAmenities.length > 0) this._drawAmenities(g);
+      if (this._vegetationPlants.length > 0) this._drawVegetation(g);
+    }
+
     // Jardins recommandes BPF
     this._renderGardenHint(prop);
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // VEGETATION BPF — rendu SVG style parcelles-v2
+  // ══════════════════════════════════════════════════════════════════════════
+
+  async generateVegetation() {
+    if (!window.BpfBridge) return;
+    const prop = this._proposals[this._selected];
+    const buildingPoly = prop?.polygon ?? [];
+    const result = await window.BpfBridge.generate(
+      this._session, this._parcelLocal, this._edgeTypes, buildingPoly
+    );
+    if (result.error) {
+      window.TerlabToast?.show(result.error, 'warning', 5000);
+      return;
+    }
+    this._vegetationPlants    = result.plants ?? [];
+    this._vegetationAmenities = result.amenities ?? [];
+    this._vegetationStats     = result.stats ?? null;
+    this._vegetationVisible   = true;
+    this._fullRedraw();
+    this._renderVegetationStats();
+    window.dispatchEvent(new CustomEvent('terlab:vegetation-generated', {
+      detail: { plants: this._vegetationPlants, amenities: this._vegetationAmenities, stats: this._vegetationStats }
+    }));
+  },
+
+  toggleVegetation(visible) {
+    this._vegetationVisible = visible ?? !this._vegetationVisible;
+    this._fullRedraw();
+  },
+
+  // ── Noise FBM (même algo que parcelles-v2) ──────────────────────
+  _fbm(x, octaves) {
+    let v = 0, a = 0.5;
+    for (let i = 0; i < octaves; i++) {
+      v += a * (Math.sin(x * 3.17 + i * 7.13) * 0.5 + 0.5);
+      x *= 2.03; a *= 0.5;
+    }
+    return v;
+  },
+
+  // ── AMENITIES SVG — style parcelles-v2 ────────────────────────
+  _drawAmenities(parentG) {
+    const g = this._el('g', { class: 'amenity-layer', opacity: '0.9' }, 'amenity-layer', parentG);
+
+    for (const am of this._vegetationAmenities) {
+      const pt = this._map
+        ? (() => {
+            const geo = this._localToGeo([{ x: am.x, y: am.y }]);
+            return geo.length ? this._project(geo[0]) : null;
+          })()
+        : this._localToSvgPt({ x: am.x, y: am.y });
+      if (!pt) continue;
+
+      const cx = pt.x, cy = pt.y;
+      // Taille en pixels
+      let scale;
+      if (this._map) {
+        const geo0 = this._localToGeo([{ x: am.x, y: am.y }, { x: am.x + 1, y: am.y }]);
+        if (geo0.length >= 2) {
+          const p0 = this._map.project(geo0[0]);
+          const p1 = this._map.project(geo0[1]);
+          scale = Math.sqrt((p1.x - p0.x) ** 2 + (p1.y - p0.y) ** 2);
+        } else { scale = 3; }
+      } else {
+        scale = this.SCALE || 5;
+      }
+
+      const pw = am.w * scale, ph = am.h * scale;
+      const hw = pw / 2, hh = ph / 2;
+
+      switch (am.svgSymbol) {
+        case 'piscine':
+          // Ombre
+          this._el('rect', {
+            x: cx - hw + 2, y: cy - hh + 2, width: pw, height: ph, rx: 3,
+            fill: 'rgba(0,0,0,0.12)', stroke: 'none',
+          }, null, g);
+          // Eau
+          this._el('rect', {
+            x: cx - hw, y: cy - hh, width: pw, height: ph, rx: 3,
+            fill: 'rgba(80,170,220,0.45)', stroke: 'rgba(40,120,180,0.6)', 'stroke-width': 1.5,
+          }, null, g);
+          // Reflets
+          for (let i = 0; i < 3; i++) {
+            const lx = cx - hw * 0.5 + i * pw * 0.25;
+            this._el('line', {
+              x1: lx, y1: cy - hh * 0.3, x2: lx + pw * 0.1, y2: cy + hh * 0.3,
+              stroke: 'rgba(255,255,255,0.3)', 'stroke-width': 1,
+            }, null, g);
+          }
+          if (pw > 20) this._label(cx, cy + 3, 'Piscine', { size: 7, color: 'rgba(20,80,140,0.8)' }, null, g);
+          break;
+
+        case 'bassin':
+          this._el('circle', {
+            cx: cx + 1.5, cy: cy + 1.5, r: Math.max(hw, hh),
+            fill: 'rgba(0,0,0,0.1)', stroke: 'none',
+          }, null, g);
+          this._el('circle', {
+            cx, cy, r: Math.max(hw, hh),
+            fill: 'rgba(70,150,200,0.4)', stroke: 'rgba(40,100,150,0.5)', 'stroke-width': 1,
+          }, null, g);
+          if (pw > 12) this._label(cx, cy + Math.max(hw, hh) + 8, 'Bassin', { size: 7, color: 'rgba(30,100,150,0.8)' }, null, g);
+          break;
+
+        case 'kiosque':
+          // Toit hexagonal simplifié
+          this._el('rect', {
+            x: cx - hw + 1.5, y: cy - hh + 1.5, width: pw, height: ph,
+            fill: 'rgba(0,0,0,0.1)', stroke: 'none',
+          }, null, g);
+          this._el('rect', {
+            x: cx - hw, y: cy - hh, width: pw, height: ph,
+            fill: 'rgba(160,120,60,0.35)', stroke: 'rgba(120,85,35,0.6)', 'stroke-width': 1.2,
+          }, null, g);
+          // Poteaux d'angle
+          const kr = Math.max(1, scale * 0.15);
+          [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(([dx,dy]) => {
+            this._el('circle', {
+              cx: cx + dx * hw * 0.8, cy: cy + dy * hh * 0.8, r: kr,
+              fill: 'rgba(100,70,30,0.7)', stroke: 'none',
+            }, null, g);
+          });
+          if (pw > 15) this._label(cx, cy + 3, 'Kiosque', { size: 7, color: 'rgba(100,70,30,0.8)' }, null, g);
+          break;
+
+        case 'pergola':
+          // Structure ajourée
+          this._el('rect', {
+            x: cx - hw, y: cy - hh, width: pw, height: ph,
+            fill: 'rgba(140,100,50,0.2)', stroke: 'rgba(120,85,35,0.5)', 'stroke-width': 1,
+            'stroke-dasharray': '4,2',
+          }, null, g);
+          // Lattes
+          const nLattes = Math.max(2, Math.floor(pw / 6));
+          for (let i = 0; i <= nLattes; i++) {
+            const lx = cx - hw + i * pw / nLattes;
+            this._el('line', {
+              x1: lx, y1: cy - hh, x2: lx, y2: cy + hh,
+              stroke: 'rgba(120,85,35,0.35)', 'stroke-width': 0.8,
+            }, null, g);
+          }
+          if (pw > 15) this._label(cx, cy + 3, 'Pergola', { size: 7, color: 'rgba(100,70,30,0.7)' }, null, g);
+          break;
+
+        case 'cuisine_ext':
+          this._el('rect', {
+            x: cx - hw, y: cy - hh, width: pw, height: ph, rx: 2,
+            fill: 'rgba(180,100,50,0.3)', stroke: 'rgba(140,70,30,0.5)', 'stroke-width': 1,
+          }, null, g);
+          // Comptoir
+          this._el('rect', {
+            x: cx - hw * 0.7, y: cy - hh * 0.3, width: pw * 0.7, height: ph * 0.3, rx: 1,
+            fill: 'rgba(100,100,100,0.3)', stroke: 'rgba(80,80,80,0.4)', 'stroke-width': 0.6,
+          }, null, g);
+          if (pw > 12) this._label(cx, cy + hh + 8, 'Cuisine ext.', { size: 6, color: 'rgba(140,70,30,0.8)' }, null, g);
+          break;
+
+        case 'tisanerie':
+          // Carré de plantes médicinales
+          this._el('rect', {
+            x: cx - hw, y: cy - hh, width: pw, height: ph,
+            fill: 'rgba(60,120,40,0.25)', stroke: 'rgba(50,100,30,0.5)', 'stroke-width': 1,
+          }, null, g);
+          // Divisions internes (4 carrés)
+          this._el('line', { x1: cx, y1: cy - hh, x2: cx, y2: cy + hh, stroke: 'rgba(50,100,30,0.3)', 'stroke-width': 0.6 }, null, g);
+          this._el('line', { x1: cx - hw, y1: cy, x2: cx + hw, y2: cy, stroke: 'rgba(50,100,30,0.3)', 'stroke-width': 0.6 }, null, g);
+          if (pw > 12) this._label(cx, cy + hh + 8, 'Tisanerie', { size: 6, color: 'rgba(50,100,30,0.8)' }, null, g);
+          break;
+
+        case 'potager':
+          // Planches de culture
+          this._el('rect', {
+            x: cx - hw, y: cy - hh, width: pw, height: ph,
+            fill: 'rgba(100,70,40,0.2)', stroke: 'rgba(80,55,25,0.5)', 'stroke-width': 1,
+          }, null, g);
+          // Rangées de plantation
+          const nRows = Math.max(2, Math.floor(ph / 5));
+          for (let i = 1; i < nRows; i++) {
+            const ry = cy - hh + i * ph / nRows;
+            this._el('line', {
+              x1: cx - hw * 0.85, y1: ry, x2: cx + hw * 0.85, y2: ry,
+              stroke: 'rgba(60,120,40,0.4)', 'stroke-width': 1.5, 'stroke-linecap': 'round',
+            }, null, g);
+          }
+          if (pw > 12) this._label(cx, cy + hh + 8, 'Potager', { size: 6, color: 'rgba(80,55,25,0.8)' }, null, g);
+          break;
+
+        case 'terrasse':
+          this._el('rect', {
+            x: cx - hw, y: cy - hh, width: pw, height: ph, rx: 1,
+            fill: 'rgba(180,170,150,0.3)', stroke: 'rgba(140,130,110,0.5)', 'stroke-width': 1,
+          }, null, g);
+          // Lames de terrasse
+          const nLames = Math.max(3, Math.floor(pw / 4));
+          for (let i = 0; i <= nLames; i++) {
+            const lx = cx - hw + i * pw / nLames;
+            this._el('line', {
+              x1: lx, y1: cy - hh + 1, x2: lx, y2: cy + hh - 1,
+              stroke: 'rgba(140,130,110,0.25)', 'stroke-width': 0.5,
+            }, null, g);
+          }
+          if (pw > 15) this._label(cx, cy + 3, 'Terrasse', { size: 7, color: 'rgba(100,90,70,0.7)' }, null, g);
+          break;
+
+        default:
+          this._el('rect', {
+            x: cx - hw, y: cy - hh, width: pw, height: ph, rx: 2,
+            fill: 'rgba(150,150,150,0.2)', stroke: 'rgba(120,120,120,0.4)', 'stroke-width': 1,
+          }, null, g);
+          if (pw > 12) this._label(cx, cy + 3, am.label, { size: 7, color: '#666' }, null, g);
+      }
+    }
+  },
+
+  _drawVegetation(parentG) {
+    const g = this._el('g', { class: 'vegetation-layer', opacity: '0.85' }, 'veg-layer', parentG);
+
+    for (const plant of this._vegetationPlants) {
+      // Projeter position locale → pixel SVG
+      const pt = this._map
+        ? (() => {
+            // local → geo → pixel
+            const geo = this._localToGeo([{ x: plant.x, y: plant.y }]);
+            if (!geo.length) return null;
+            return this._project(geo[0]);
+          })()
+        : this._localToSvgPt({ x: plant.x, y: plant.y });
+
+      if (!pt) continue;
+
+      const cx = pt.x, cy = pt.y;
+      // Rayon en pixels — adapter au zoom Mapbox
+      let rPx;
+      if (this._map) {
+        // Calculer l'échelle locale m→px
+        const geo0 = this._localToGeo([{ x: plant.x, y: plant.y }, { x: plant.x + 1, y: plant.y }]);
+        if (geo0.length >= 2) {
+          const p0 = this._map.project(geo0[0]);
+          const p1 = this._map.project(geo0[1]);
+          const mPerPx = Math.sqrt((p1.x - p0.x) ** 2 + (p1.y - p0.y) ** 2);
+          rPx = (plant.canopyRadius ?? 2) * mPerPx;
+        } else {
+          rPx = 12;
+        }
+      } else {
+        rPx = (plant.canopyRadius ?? 2) * (this.SCALE || 5);
+      }
+
+      // Seuil min/max pour lisibilité
+      rPx = Math.max(4, Math.min(60, rPx));
+
+      const seed = (plant.x * 127.1 + plant.y * 311.7) % 100;
+      this._drawPlantSVG(g, cx, cy, rPx, plant, seed);
+    }
+  },
+
+  _drawPlantSVG(g, cx, cy, r, plant, seed) {
+    const sym = plant.svgSymbol ?? 'broadleaf';
+
+    // Couleurs par espèce / strate
+    let fc, sc;
+    switch (plant.speciesKey) {
+      case 'flamboyant':
+        fc = 'rgba(180,52,26,0.58)'; sc = 'rgba(144,26,8,0.46)'; break;
+      case 'mango':
+        fc = 'rgba(20,80,28,0.65)'; sc = 'rgba(8,58,16,0.52)'; break;
+      case 'bougainvillea':
+        fc = 'rgba(180,50,120,0.55)'; sc = 'rgba(140,30,90,0.45)'; break;
+      case 'terminalia_catappa':
+        fc = 'rgba(36,88,44,0.6)'; sc = 'rgba(18,66,26,0.46)'; break;
+      default:
+        if (sym === 'palm')
+          { fc = 'rgba(50,104,36,0.6)'; sc = 'rgba(26,78,18,0.48)'; }
+        else if (sym === 'conifer' || sym === 'bamboo')
+          { fc = 'rgba(56,108,42,0.53)'; sc = 'rgba(34,84,26,0.43)'; }
+        else if (sym === 'shrub_flower' || sym === 'broadleaf_flower')
+          { fc = 'rgba(42,102,42,0.58)'; sc = 'rgba(20,76,20,0.46)'; }
+        else if (sym === 'tropical_shrub')
+          { fc = 'rgba(42,100,50,0.55)'; sc = 'rgba(22,74,30,0.44)'; }
+        else if (sym === 'grass')
+          { fc = 'rgba(70,120,50,0.5)'; sc = 'rgba(44,88,30,0.4)'; }
+        else
+          { fc = 'rgba(42,102,42,0.58)'; sc = 'rgba(20,76,20,0.46)'; }
+    }
+
+    // Ombre portée
+    this._el('circle', {
+      cx: cx + r * 0.14, cy: cy + r * 0.14, r: r * 0.9,
+      fill: 'rgba(0,0,0,0.16)', stroke: 'none',
+    }, null, g);
+
+    if (sym === 'palm') {
+      // ── PALMIER — courbes depuis le tronc ──
+      for (let i = 0; i < 7; i++) {
+        const a = i * Math.PI * 2 / 7 + seed * 0.3;
+        this._el('path', {
+          d: `M${cx},${cy} Q${cx + Math.sin(a) * r * 0.5},${cy - Math.cos(a) * r * 0.5} ${cx + Math.sin(a) * r},${cy - Math.cos(a) * r}`,
+          fill: 'none', stroke: fc, 'stroke-width': String(r * 0.18), 'stroke-linecap': 'round',
+        }, null, g);
+      }
+    } else if (sym === 'conifer') {
+      // ── CONIFERE — triangles empilés ──
+      for (let i = 0; i < 5; i++) {
+        const t = i / 5;
+        const ty = cy - r * 0.2 - t * r * 1.4;
+        const w = r * (0.9 - t * 0.7) + this._fbm(i + seed, 2) * r * 0.1;
+        this._el('polygon', {
+          points: `${cx - w},${ty + r * 0.3} ${cx},${ty} ${cx + w},${ty + r * 0.3}`,
+          fill: fc, stroke: sc, 'stroke-width': '0.6', 'stroke-linejoin': 'round',
+        }, null, g);
+      }
+    } else if (sym === 'bamboo') {
+      // ── BAMBOU — tiges verticales ──
+      for (let i = 0; i < 5; i++) {
+        const ox = cx + (i - 2) * r * 0.35 + this._fbm(i + seed, 2) * r * 0.15;
+        const ht = r * 1.4 + this._fbm(i + 4, 2) * r * 0.5;
+        this._el('path', {
+          d: `M${ox},${cy + r * 0.3} C${ox - 1},${cy - ht * 0.4} ${ox + this._fbm(i, 2) * 3},${cy - ht * 0.7} ${ox + this._fbm(i + 1, 2) * 4},${cy - ht}`,
+          fill: 'none', stroke: fc, 'stroke-width': '2', 'stroke-linecap': 'round',
+        }, null, g);
+      }
+    } else {
+      // ── FEUILLU — polygone irrégulier (FBM noise) ──
+      const N = 16;
+      const pts = [];
+      for (let i = 0; i < N; i++) {
+        const a = i * Math.PI * 2 / N;
+        const rr = r * (0.78 + this._fbm(i * 0.6 + seed, 3) * 0.24);
+        pts.push(`${(cx + Math.sin(a) * rr).toFixed(1)},${(cy - Math.cos(a) * rr).toFixed(1)}`);
+      }
+      this._el('polygon', {
+        points: pts.join(' '),
+        fill: fc, stroke: sc, 'stroke-width': '0.6', 'stroke-linejoin': 'round',
+      }, null, g);
+    }
+
+    // Tronc central
+    if (r > 6) {
+      this._el('circle', {
+        cx, cy, r: Math.max(1.2, r * 0.12),
+        fill: 'rgba(76,52,18,0.65)', stroke: 'none',
+      }, null, g);
+    }
+
+    // Pastilles fleurs (flamboyant)
+    if (plant.speciesKey === 'flamboyant') {
+      for (let i = 0; i < 4; i++) {
+        const a = i * 1.1 + seed;
+        this._el('circle', {
+          cx: cx + Math.sin(a) * r * 0.52, cy: cy - Math.cos(a) * r * 0.52, r: 1.8,
+          fill: 'rgba(218,68,28,0.7)', stroke: 'none',
+        }, null, g);
+      }
+    }
+
+    // Pastilles bougainvillier
+    if (plant.speciesKey === 'bougainvillea') {
+      for (let i = 0; i < 4; i++) {
+        const a = i * 1.3 + seed;
+        this._el('circle', {
+          cx: cx + Math.sin(a) * r * 0.45, cy: cy - Math.cos(a) * r * 0.45, r: 1.5,
+          fill: 'rgba(200,50,140,0.7)', stroke: 'none',
+        }, null, g);
+      }
+    }
+
+    // Label espèce (seulement si assez grand)
+    if (r > 14) {
+      this._label(cx, cy + r + 8, plant.label, { size: 7, color: '#3d6b2e', anchor: 'middle' }, null, g);
+    }
+
+    // Badge protégé
+    if (plant.status === 'protege' && r > 10) {
+      this._el('circle', {
+        cx: cx + r * 0.7, cy: cy - r * 0.7, r: 4,
+        fill: '#22c55e', stroke: '#fff', 'stroke-width': '1',
+      }, null, g);
+      this._label(cx + r * 0.7, cy - r * 0.7 + 3, 'P', { size: 6, color: '#fff', bold: true, anchor: 'middle' }, null, g);
+    }
+  },
+
+  _renderVegetationStats() {
+    const el = document.getElementById('p07-vegetation-stats') ?? document.getElementById('p11-vegetation-stats');
+    if (!el || !this._vegetationStats) return;
+    const s = this._vegetationStats;
+    const pr = s.plantationRules;
+    el.innerHTML = `
+      <div class="veg-stat-row"><span>🌳 Arbres</span><strong>${pr?.trees ?? '?'}</strong></div>
+      <div class="veg-stat-row"><span>🌴 Palmiers</span><strong>${pr?.palms ?? '?'}</strong></div>
+      <div class="veg-stat-row"><span>🌿 Espèces</span><strong>${s.speciesCount}</strong></div>
+      <div class="veg-stat-row"><span>☂️ Couvert canopée</span><strong>${s.canopyPct}%</strong></div>
+      <div class="veg-stat-row"><span>🏡 Jardin</span><strong>${s.gardenArea} m²</strong></div>
+      ${s.protectedCount ? `<div class="veg-stat-row"><span>🛡 Protégées</span><strong>${s.protectedCount}</strong></div>` : ''}
+      ${s.totalAmenities ? `
+        <div class="veg-stat-row" style="margin-top:4px;border-top:1px solid rgba(255,255,255,0.1);padding-top:4px">
+          <span>🏗 Aménagements</span><strong>${s.totalAmenities}</strong>
+        </div>
+        <div class="veg-stat-strate">
+          ${s.amenityList.map(a => `<span class="veg-badge" style="background:rgba(160,120,60,0.15);color:#a0783c">${a}</span>`).join('')}
+        </div>
+      ` : ''}
+      <div class="veg-stat-strate">
+        ${Object.entries(s.byStrate).map(([k, v]) => `<span class="veg-badge veg-badge-${k}">${k}: ${v}</span>`).join('')}
+      </div>
+      ${pr ? `
+        <div style="margin-top:6px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.08)">
+          <div style="font-size:9px;color:var(--faint);margin-bottom:3px">Conformité — ${pr.commune}</div>
+          ${pr.ok.map(o => `<div style="font-size:9px;color:#4a9a4a">✓ ${o}</div>`).join('')}
+          ${pr.warnings.map(w => `<div style="font-size:9px;color:#e87c3e">⚠ ${w}</div>`).join('')}
+        </div>
+      ` : ''}
+    `;
   },
 
   _renderRTAAFacades(polygon, g) {
@@ -1215,6 +1888,374 @@ const EsquisseCanvas = {
   },
 
   // ── FLECHE NORD ────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  // PLAN MASSE ENGINE HELPERS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  _hexRgb(hex) {
+    const h = hex.replace('#', '');
+    return `${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)}`;
+  },
+
+  // Convertir mètres → pixels (selon le mode Mapbox ou standalone)
+  _mToPx(meters) {
+    if (this._map && this._parcelGeo.length > 0) {
+      const geo0 = this._localToGeo([{ x: 0, y: 0 }, { x: meters, y: 0 }]);
+      if (geo0.length >= 2) {
+        const p0 = this._map.project(geo0[0]);
+        const p1 = this._map.project(geo0[1]);
+        return Math.abs(p1.x - p0.x);
+      }
+    }
+    return meters * (this.SCALE || 5);
+  },
+
+  // Mettre à jour les métriques engine depuis l'état courant
+  _updateEngineMetrics() {
+    const engine = window.PlanMasseEngine;
+    if (!engine || !this._buildingAABB || !this._parcelLocal?.length) {
+      this._engineMetrics = null;
+      return;
+    }
+    // Construire le terrain struct si pas en cache
+    if (!this._engineTerrain) {
+      // Injecter les données locales dans la session temporairement
+      const session = { ...this._session };
+      session._parcelLocal = this._parcelLocal;
+      session._edgeTypes = this._edgeTypes;
+      this._engineTerrain = engine.terrainFromSession(session);
+    }
+    const scenario = this._getScenario();
+    const state = {
+      bat: this._buildingAABB,
+      prog: this._prog,
+      parkSide: this._parkSide,
+      terrain: this._engineTerrain,
+      scenario,
+    };
+    this._engineMetrics = engine.metrics(state);
+
+    // Dispatcher l'événement pour que P07 mette à jour son UI
+    window.dispatchEvent(new CustomEvent('terlab:metrics-updated', {
+      detail: { metrics: this._engineMetrics, bat: this._buildingAABB }
+    }));
+  },
+
+  _getScenario() {
+    // Scénario par défaut basé sur le type
+    if (this._prog.type === 'maison') {
+      return { eff: 0.88, aide: 0, nv: 1, color: '#059669' };
+    }
+    return { eff: 0.82, aide: 0.60, nv: 3, color: '#2563EB' };
+  },
+
+  // Synchroniser le polygone proposition depuis l'AABB (pour compat avec l'ancien système)
+  _syncPolygonFromAABB(prop) {
+    const b = this._buildingAABB;
+    if (!b || !prop) return;
+    // Recréer un polygone rectangle
+    prop.polygon = [
+      { x: b.x, y: b.y },
+      { x: b.x + b.w, y: b.y },
+      { x: b.x + b.w, y: b.y + b.l },
+      { x: b.x, y: b.y + b.l },
+    ];
+    prop.polygonGeo = this._localToGeo(prop.polygon);
+    prop.surface = b.w * b.l;
+    // Invalidate engine terrain cache (position changed)
+    // Les métriques seront recalculées au prochain _renderProposal
+  },
+
+  // ── Multi-bâtiment : subdiviser en blocs ────────────────────
+  _renderBlocs(bat, m, batCol, g) {
+    const engine = window.PlanMasseEngine;
+    if (!engine) return;
+    const blocs = engine.getBlocRects(bat, m);
+    if (blocs.length <= 1) return;
+
+    // Dessiner chaque bloc séparément (par-dessus le rectangle principal)
+    blocs.forEach((bl, bi) => {
+      const corners = [
+        { x: bl.x, y: bl.y }, { x: bl.x + bl.w, y: bl.y },
+        { x: bl.x + bl.w, y: bl.y + bl.l }, { x: bl.x, y: bl.y + bl.l },
+      ];
+      const svgC = this._map
+        ? this._projectAll(this._localToGeo(corners))
+        : corners.map(c => this._localToSvgPt(c));
+      const sx = Math.min(...svgC.map(c => c.x));
+      const sy = Math.min(...svgC.map(c => c.y));
+      const sw = Math.max(...svgC.map(c => c.x)) - sx;
+      const sh = Math.max(...svgC.map(c => c.y)) - sy;
+
+      // Rectangle bloc
+      this._el('rect', {
+        x: sx, y: sy, width: sw, height: sh, rx: 1,
+        fill: `rgba(${this._hexRgb(batCol)},0.15)`,
+        stroke: batCol, 'stroke-width': 1.5, 'stroke-dasharray': '6,3',
+        'pointer-events': 'none',
+      }, null, g);
+      // Label bloc
+      this._label(sx + sw / 2, sy + sh / 2 + 3, `B${bi + 1}`, { size: 10, color: batCol, bold: true }, null, g);
+
+      // Gap inter-blocs
+      if (bi < blocs.length - 1) {
+        const next = blocs[bi + 1];
+        // Milieu du gap
+        const gapMid = { x: (bl.x + bl.w + next.x) / 2, y: bl.y + bl.l / 2 };
+        const gapSvg = this._map
+          ? this._project(this._localToGeo([gapMid])[0])
+          : this._localToSvgPt(gapMid);
+        this._label(gapSvg.x, gapSvg.y + 3, `${m.gapMin.toFixed(0)}m`, { size: 7, color: '#6B7280' }, null, g);
+      }
+    });
+  },
+
+  // ── Parking visualization ──────────────────────────────────
+  _renderParking(bat, m, batCol, g) {
+    const engine = window.PlanMasseEngine;
+    if (!engine || !this._engineTerrain) return;
+
+    // Parking extérieur
+    const pkRect = engine.getParkRect(bat, m, this._parkSide, this._engineTerrain);
+    if (pkRect) {
+      const corners = [
+        { x: pkRect.x, y: pkRect.y }, { x: pkRect.x + pkRect.w, y: pkRect.y },
+        { x: pkRect.x + pkRect.w, y: pkRect.y + pkRect.h }, { x: pkRect.x, y: pkRect.y + pkRect.h },
+      ];
+      const svgC = this._map
+        ? this._projectAll(this._localToGeo(corners))
+        : corners.map(c => this._localToSvgPt(c));
+      const sx = Math.min(...svgC.map(c => c.x));
+      const sy = Math.min(...svgC.map(c => c.y));
+      const sw = Math.max(...svgC.map(c => c.x)) - sx;
+      const sh = Math.max(...svgC.map(c => c.y)) - sy;
+
+      // Hachures parking (pattern)
+      if (!this._svg.querySelector('#ph-parking')) {
+        const defs = this._svg.querySelector('defs') ?? this._el('defs');
+        const pat = this._el('pattern', {
+          id: 'ph-parking', patternUnits: 'userSpaceOnUse', width: 7, height: 7,
+          patternTransform: 'rotate(45)',
+        }, null, defs);
+        this._el('line', { x1: 0, y1: 0, x2: 0, y2: 7, stroke: '#94A3B8', 'stroke-width': 1.3 }, null, pat);
+      }
+
+      this._el('rect', {
+        x: sx, y: sy, width: sw, height: sh,
+        fill: 'url(#ph-parking)', stroke: '#94A3B8', 'stroke-width': 1.2,
+        'stroke-dasharray': '4,3', opacity: 0.9, 'pointer-events': 'none',
+      }, null, g);
+
+      const pkLbl = `${m.parkRequired} PK${pkRect.niveaux > 1 ? ` (×${pkRect.niveaux})` : ''}`;
+      this._label(sx + sw / 2, sy + sh / 2 - 4, pkLbl, { size: 9, color: '#64748B' }, null, g);
+      this._label(sx + sw / 2, sy + sh / 2 + 8, `${m.empPark} m²`, { size: 8, color: '#94A3B8' }, null, g);
+    }
+
+    // Parking sous-sol (label seulement)
+    if (m.parkSS > 0) {
+      const belowBat = { x: bat.x + bat.w / 2, y: bat.y - 1 };
+      const svgP = this._map
+        ? this._project(this._localToGeo([belowBat])[0])
+        : this._localToSvgPt(belowBat);
+      this._label(svgP.x, svgP.y, `↓ ${m.parkSS} PK ss-sol`, { size: 9, color: '#6B7280' }, null, g);
+    }
+  },
+
+  // Cotations v5 style — lignes d'appel avec ticks
+  _drawDimLinesV5(bat, g) {
+    if (!bat) return;
+    const engine = window.PlanMasseEngine;
+    const env = this._engineTerrain ? engine?.computeEnv(this._engineTerrain) : null;
+
+    // Largeur bâtiment (bas)
+    this._dimLine(bat.x, bat.y, bat.x + bat.w, bat.y, `${bat.w.toFixed(1)} m`, -2.2, 'h', '#374151', g);
+    // Profondeur bâtiment (droite)
+    this._dimLine(bat.x + bat.w, bat.y, bat.x + bat.w, bat.y + bat.l, `${bat.l.toFixed(1)} m`, 2.8, 'v', '#374151', g);
+
+    // Distance au bord enveloppe (si connue)
+    if (env) {
+      if (bat.y > env.y + 0.4) {
+        this._dimLine(bat.x + bat.w * 0.12, env.y, bat.x + bat.w * 0.12, bat.y,
+          `${(bat.y - env.y).toFixed(1)}m`, -1.2, 'v', '#9CA3AF', g);
+      }
+      if (bat.x > env.x + 0.4) {
+        this._dimLine(env.x, bat.y + bat.l * 0.5, bat.x, bat.y + bat.l * 0.5,
+          `${(bat.x - env.x).toFixed(1)}m`, -0.8, 'h', '#9CA3AF', g);
+      }
+    }
+  },
+
+  // Dimension line v5 — avec lignes d'appel et ticks
+  _dimLine(wx1, wy1, wx2, wy2, lbl, offM, dir, col, parentG) {
+    const dg = this._el('g', { class: 'dim-line', opacity: '0.85' }, null, parentG);
+    const ts = 5; // tick size
+
+    if (dir === 'h') {
+      const p1 = this._localToSvg([{ x: wx1, y: wy1 }])[0];
+      const p2 = this._localToSvg([{ x: wx2, y: wy2 }])[0];
+      const pOff = this._localToSvg([{ x: wx1, y: wy1 + offM }])[0];
+      const dy = pOff.y;
+      // Extension lines
+      this._el('line', { x1: p1.x, y1: p1.y, x2: p1.x, y2: dy, stroke: col, 'stroke-width': 0.7, opacity: 0.5 }, null, dg);
+      this._el('line', { x1: p2.x, y1: p2.y, x2: p2.x, y2: dy, stroke: col, 'stroke-width': 0.7, opacity: 0.5 }, null, dg);
+      // Main line
+      this._el('line', { x1: p1.x, y1: dy, x2: p2.x, y2: dy, stroke: col, 'stroke-width': 1 }, null, dg);
+      // Ticks
+      this._el('line', { x1: p1.x, y1: dy - ts, x2: p1.x, y2: dy + ts, stroke: col, 'stroke-width': 1.5 }, null, dg);
+      this._el('line', { x1: p2.x, y1: dy - ts, x2: p2.x, y2: dy + ts, stroke: col, 'stroke-width': 1.5 }, null, dg);
+      // Label
+      this._label((p1.x + p2.x) / 2, dy - 6, lbl, { size: 9, color: col, bold: true }, null, dg);
+    } else {
+      const p1 = this._localToSvg([{ x: wx1, y: wy1 }])[0];
+      const p2 = this._localToSvg([{ x: wx2, y: wy2 }])[0];
+      const pOff = this._localToSvg([{ x: wx1 + offM, y: wy1 }])[0];
+      const dx = pOff.x;
+      // Extension lines
+      this._el('line', { x1: p1.x, y1: p1.y, x2: dx, y2: p1.y, stroke: col, 'stroke-width': 0.7, opacity: 0.5 }, null, dg);
+      this._el('line', { x1: p2.x, y1: p2.y, x2: dx, y2: p2.y, stroke: col, 'stroke-width': 0.7, opacity: 0.5 }, null, dg);
+      // Main line
+      this._el('line', { x1: dx, y1: p1.y, x2: dx, y2: p2.y, stroke: col, 'stroke-width': 1 }, null, dg);
+      // Ticks
+      this._el('line', { x1: dx - ts, y1: p1.y, x2: dx + ts, y2: p1.y, stroke: col, 'stroke-width': 1.5 }, null, dg);
+      this._el('line', { x1: dx - ts, y1: p2.y, x2: dx + ts, y2: p2.y, stroke: col, 'stroke-width': 1.5 }, null, dg);
+      // Label
+      const side = offM > 0 ? dx + 8 : dx - 8;
+      const anch = offM > 0 ? 'start' : 'end';
+      this._label(side, (p1.y + p2.y) / 2 + 4, lbl, { size: 9, color: col, bold: true, anchor: anch }, null, dg);
+    }
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // VUE COUPE N-S — section longitudinale (rendu dans SVG séparé)
+  // Porté depuis terlab-plan-editor-v5.html renderCoupe()
+  // ══════════════════════════════════════════════════════════════════════════
+  renderCoupe(targetSvgId) {
+    const svgEl = document.getElementById(targetSvgId ?? 'coupe-svg');
+    if (!svgEl) return '';
+
+    const bat = this._buildingAABB;
+    const m = this._engineMetrics;
+    const t = this._engineTerrain;
+    if (!bat || !m || !t) { svgEl.innerHTML = ''; return ''; }
+
+    const W = 820, H = 400;
+    svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svgEl.setAttribute('width', '100%');
+
+    const plu = t.plu;
+    const heMax = plu.heMax ?? 9;
+    const hBat = m.nvEff * 3;
+    const col = m.sc?.color ?? '#2563EB';
+
+    const r = t.reculs;
+    const sceneW = (r.voie ?? 3) + bat.l + (r.fond ?? 3) + 6;
+    const sceneH = heMax + 4;
+
+    const ML = 70, MR = 50, MT = 40, MB = 60;
+    const drawW = W - ML - MR, drawH = H - MT - MB;
+    const SC = Math.min(drawW / sceneW, drawH / sceneH, 25);
+
+    const groundY = MT + drawH - 10;
+    const originX = ML + 20;
+    const xVoie = originX;
+    const xBatS = xVoie + (r.voie ?? 3) * SC;
+    const xBatN = xBatS + bat.l * SC;
+    const xFond = xBatN + (r.fond ?? 3) * SC;
+
+    function ra(hex, a) {
+      const rr = parseInt(hex.slice(1, 3), 16), gg = parseInt(hex.slice(3, 5), 16), bb = parseInt(hex.slice(5, 7), 16);
+      return `rgba(${rr},${gg},${bb},${a})`;
+    }
+
+    const parts = [];
+
+    // Fond ciel + sol
+    parts.push(`<defs><linearGradient id="sky-c" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#EBF5FF"/><stop offset="100%" stop-color="#F7F4EE"/></linearGradient></defs>`);
+    parts.push(`<rect width="${W}" height="${H}" fill="url(#sky-c)"/>`);
+    parts.push(`<rect x="0" y="${groundY}" width="${W}" height="${H - groundY}" fill="#E8E4DC"/>`);
+
+    // Titre
+    parts.push(`<text x="${W / 2}" y="22" text-anchor="middle" font-size="12" font-weight="700" fill="#374151">COUPE N-S</text>`);
+    parts.push(`<text x="${W / 2}" y="34" text-anchor="middle" font-size="9" fill="#9CA3AF">${plu.zone ?? 'U'} | RTAA Z${plu.rtaaZone ?? 1} | heMax ${heMax}m</text>`);
+
+    // Sol
+    parts.push(`<line x1="${xVoie - 30}" y1="${groundY}" x2="${xFond + 30}" y2="${groundY}" stroke="#8A7F78" stroke-width="2.5"/>`);
+
+    // Voie
+    parts.push(`<rect x="${xVoie - 35}" y="${groundY}" width="35" height="12" fill="#D1D5DB" rx="2"/>`);
+    parts.push(`<text x="${xVoie - 17}" y="${groundY + 9}" text-anchor="middle" font-size="8" fill="#6B7280">Voie</text>`);
+
+    // Recul voie
+    parts.push(`<rect x="${xVoie}" y="${MT}" width="${(r.voie ?? 3) * SC}" height="${groundY - MT}" fill="rgba(239,68,68,.05)" stroke="rgba(239,68,68,.2)" stroke-width="0.5"/>`);
+    parts.push(`<text x="${xVoie + (r.voie ?? 3) * SC / 2}" y="${groundY - 5}" text-anchor="middle" font-size="8" fill="#EF4444">← ${r.voie ?? 3}m →</text>`);
+
+    // Recul fond
+    parts.push(`<rect x="${xBatN}" y="${MT}" width="${(r.fond ?? 3) * SC}" height="${groundY - MT}" fill="rgba(34,197,94,.05)" stroke="rgba(34,197,94,.2)" stroke-width="0.5"/>`);
+    parts.push(`<text x="${xBatN + (r.fond ?? 3) * SC / 2}" y="${groundY - 5}" text-anchor="middle" font-size="8" fill="#22C55E">← ${r.fond ?? 3}m →</text>`);
+
+    // heMax PLU
+    const heMaxY = groundY - heMax * SC;
+    parts.push(`<line x1="${xVoie - 10}" y1="${heMaxY}" x2="${xFond + 15}" y2="${heMaxY}" stroke="#EF4444" stroke-width="1.5" stroke-dasharray="8,4"/>`);
+    parts.push(`<text x="${xFond + 18}" y="${heMaxY + 4}" font-size="9" fill="#EF4444" font-weight="600">h max ${heMax}m</text>`);
+
+    // Grille niveaux
+    for (let f = 0; f <= Math.ceil(heMax / 3); f++) {
+      const fy = groundY - f * 3 * SC;
+      if (fy >= MT) {
+        parts.push(`<line x1="${xVoie - 5}" y1="${fy}" x2="${xFond + 5}" y2="${fy}" stroke="#E0E0E0" stroke-width="0.5"/>`);
+        parts.push(`<text x="${xVoie - 8}" y="${fy + 3}" text-anchor="end" font-size="8" fill="#C0C0C0">${(f * 3).toFixed(0)}m</text>`);
+      }
+    }
+
+    // Bâtiment
+    const batH2 = hBat * SC;
+    const batTopY = groundY - batH2;
+    const batW2 = bat.l * SC;
+    parts.push(`<rect x="${xBatS}" y="${batTopY}" width="${batW2}" height="${batH2}" fill="${ra(col, .18)}" stroke="${col}" stroke-width="2" rx="1"/>`);
+
+    // Niveaux + varangue
+    for (let f = 0; f < m.nvEff; f++) {
+      const fBot = groundY - f * 3 * SC;
+      const fTop = groundY - (f + 1) * 3 * SC;
+      const fMid = (fBot + fTop) / 2;
+      const lbl = f === 0 ? (this._prog.parkMode === 'rdc' ? 'PK/RdC' : 'RdC') : `R+${f}`;
+
+      if (f % 2 === 0) parts.push(`<rect x="${xBatS}" y="${fTop}" width="${batW2}" height="${fBot - fTop}" fill="${ra(col, .08)}"/>`);
+      if (f > 0) parts.push(`<line x1="${xBatS}" y1="${fBot}" x2="${xBatS + batW2}" y2="${fBot}" stroke="${col}" stroke-width="0.8" opacity=".5"/>`);
+      parts.push(`<text x="${xBatS + batW2 / 2}" y="${fMid + 5}" text-anchor="middle" font-size="14" font-weight="700" fill="${col}" opacity=".9">${lbl}</text>`);
+      parts.push(`<text x="${xBatS + batW2 / 2}" y="${fMid + 17}" text-anchor="middle" font-size="8" fill="${col}" opacity=".6">${(f * 3).toFixed(0)}—${((f + 1) * 3).toFixed(0)}m</text>`);
+
+      // Varangue
+      const vaW = Math.min(2.5 * SC, 25);
+      const vaH = (3 * SC) * 0.85;
+      const vaY = fBot - vaH;
+      parts.push(`<rect x="${xBatS - vaW}" y="${vaY}" width="${vaW}" height="${vaH}" fill="${ra('#F5DEB3', .8)}" stroke="${col}" stroke-width="0.8" stroke-dasharray="3,2" rx="1"/>`);
+      if (f === 0) parts.push(`<text x="${xBatS - vaW / 2}" y="${vaY - 2}" text-anchor="middle" font-size="7" fill="${col}">vara.</text>`);
+    }
+
+    // Toit
+    const roofH = Math.min(25, batW2 * 0.2);
+    parts.push(`<polygon points="${xBatS},${batTopY} ${xBatS + batW2 / 2},${batTopY - roofH} ${xBatS + batW2},${batTopY}" fill="${ra(col, .1)}" stroke="${col}" stroke-width="1.5"/>`);
+
+    // Dim hauteur (droite)
+    const dimX = xBatS + batW2 + 25;
+    parts.push(`<line x1="${dimX}" y1="${batTopY}" x2="${dimX}" y2="${groundY}" stroke="#374151" stroke-width="1"/>`);
+    parts.push(`<line x1="${dimX - 5}" y1="${batTopY}" x2="${dimX + 5}" y2="${batTopY}" stroke="#374151" stroke-width="1.5"/>`);
+    parts.push(`<line x1="${dimX - 5}" y1="${groundY}" x2="${dimX + 5}" y2="${groundY}" stroke="#374151" stroke-width="1.5"/>`);
+    parts.push(`<text x="${dimX + 8}" y="${(batTopY + groundY) / 2 + 4}" font-size="10" fill="#374151" font-weight="600">${hBat}m</text>`);
+
+    // Dim profondeur (bas)
+    const dimY = groundY + 25;
+    parts.push(`<line x1="${xBatS}" y1="${dimY}" x2="${xBatN}" y2="${dimY}" stroke="#374151" stroke-width="1"/>`);
+    parts.push(`<line x1="${xBatS}" y1="${dimY - 5}" x2="${xBatS}" y2="${dimY + 5}" stroke="#374151" stroke-width="1.5"/>`);
+    parts.push(`<line x1="${xBatN}" y1="${dimY - 5}" x2="${xBatN}" y2="${dimY + 5}" stroke="#374151" stroke-width="1.5"/>`);
+    parts.push(`<text x="${(xBatS + xBatN) / 2}" y="${dimY + 12}" text-anchor="middle" font-size="10" fill="#374151" font-weight="600">${bat.l.toFixed(1)} m (N-S)</text>`);
+
+    const svg = parts.join('');
+    svgEl.innerHTML = svg;
+    return svg;
+  },
+
   _drawNorthArrow() {
     let W, x;
     if (this._map) {
@@ -1296,6 +2337,9 @@ const EsquisseCanvas = {
       { label: 'Jardin',      val: sd.gardenScore,      color: '#2dc89a' },
       { label: 'RTAA',        val: sd.rtaaScore ?? 0,   color: '#ef4444' },
     ];
+    if (sd.scotDensMin > 0) {
+      items.push({ label: `SCoT ≥${sd.lgtsMinScot}lgts`, val: sd.densiteScotScore, color: '#a855f7' });
+    }
     return items.map(it => `
       <div class="p11-score-row">
         <span>${it.label}</span>
@@ -1308,7 +2352,7 @@ const EsquisseCanvas = {
   },
 
   _renderGardenHint(prop) {
-    const hint = document.getElementById('p11-garden-hint');
+    const hint = document.getElementById('p07-garden-hint') ?? document.getElementById('p11-garden-hint');
     if (!hint || !window.BpfGardenAdvisor) return;
     const advice = window.BpfGardenAdvisor.suggest(
       this._session?.terrain?.zone_climatique,
@@ -1324,9 +2368,40 @@ const EsquisseCanvas = {
 
   // ── EVENEMENTS ─────────────────────────────────────────────────
   _bindEvents() {
-    // Drag des noeuds
+    // Drag des noeuds, handles, et body
     this._svg.addEventListener('mousedown', e => {
       const rect = this._canvas?.getBoundingClientRect() ?? { left: 0, top: 0 };
+
+      // ── AABB body drag (move bâtiment) ─────────────────────────
+      if (e.target.dataset?.type === 'building-body') {
+        this._dragging = {
+          type: 'body',
+          propIdx: parseInt(e.target.dataset.proposal),
+          startX: e.clientX, startY: e.clientY,
+          prevX: e.clientX - rect.left, prevY: e.clientY - rect.top,
+          bat0: { ...this._buildingAABB },
+        };
+        document.addEventListener('mousemove', this._boundDrag);
+        document.addEventListener('mouseup',   this._boundDragEnd);
+        e.preventDefault();
+        return;
+      }
+      // ── AABB handle drag (resize 8 directions) ─────────────────
+      if (e.target.classList.contains('edit-handle')) {
+        this._dragging = {
+          type: 'handle',
+          handle: e.target.dataset.handle,
+          propIdx: parseInt(e.target.dataset.proposal),
+          startX: e.clientX, startY: e.clientY,
+          prevX: e.clientX - rect.left, prevY: e.clientY - rect.top,
+          bat0: { ...this._buildingAABB },
+        };
+        document.addEventListener('mousemove', this._boundDrag);
+        document.addEventListener('mouseup',   this._boundDragEnd);
+        e.preventDefault();
+        return;
+      }
+      // ── Polygon node drag ──────────────────────────────────────
       if (e.target.classList.contains('edit-node-hit') || e.target.classList.contains('edit-node')) {
         this._dragging = {
           type: 'node',
@@ -1339,6 +2414,7 @@ const EsquisseCanvas = {
         document.addEventListener('mouseup',   this._boundDragEnd);
         e.preventDefault();
       }
+      // ── Polygon edge drag ──────────────────────────────────────
       else if (e.target.classList.contains('edit-edge')) {
         this._dragging = {
           type: 'edge',
@@ -1423,6 +2499,67 @@ const EsquisseCanvas = {
       this._dragging.startY = e.clientY;
     }
 
+    const SNAP = 0.5;
+    const engine = window.PlanMasseEngine;
+
+    // ── AABB Body drag (translate) ────────────────────────────
+    if (type === 'body' && this._buildingAABB) {
+      const b = this._buildingAABB, b0 = this._dragging.bat0;
+      b.x = engine?.snap(b0.x + dxM) ?? Math.round((b0.x + dxM) / SNAP) * SNAP;
+      b.y = engine?.snap(b0.y + dyM) ?? Math.round((b0.y + dyM) / SNAP) * SNAP;
+      // Accumuler le delta cumulé
+      this._dragging.bat0 = { ...b0, x: b0.x + dxM, y: b0.y + dyM };
+      this._dragging.bat0.x = b.x; this._dragging.bat0.y = b.y;
+      // Clamp dans enveloppe
+      if (engine && this._engineTerrain) {
+        engine.clampBat(b, engine.computeEnv(this._engineTerrain));
+      }
+      // Sync polygon depuis AABB
+      this._syncPolygonFromAABB(prop);
+      this._renderProposal(propIdx);
+      this._renderScorePanel();
+      return;
+    }
+
+    // ── AABB Handle drag (resize 8 directions) ────────────────
+    if (type === 'handle' && this._buildingAABB) {
+      const b = this._buildingAABB, b0 = this._dragging.bat0, h = this._dragging.handle;
+      const snap = v => engine?.snap(v) ?? Math.round(v / SNAP) * SNAP;
+      const MIN_W = engine?.MIN_W ?? 4, MIN_L = engine?.MIN_L ?? 5;
+
+      // Ouest (sw, w, nw) : déplacer x, ajuster w
+      if (h === 'sw' || h === 'w' || h === 'nw') {
+        const nx = snap(b0.x + dxM);
+        const nw = b0.x + b0.w - nx;
+        if (nw >= MIN_W) { b.x = nx; b.w = nw; }
+      }
+      // Est (se, e, ne) : ajuster w
+      if (h === 'se' || h === 'e' || h === 'ne') {
+        const nw = snap(b0.w + dxM);
+        if (nw >= MIN_W) b.w = nw;
+      }
+      // Sud (sw, s, se) : déplacer y, ajuster l
+      if (h === 'sw' || h === 's' || h === 'se') {
+        const ny = snap(b0.y + dyM);
+        const nl = b0.y + b0.l - ny;
+        if (nl >= MIN_L) { b.y = ny; b.l = nl; }
+      }
+      // Nord (nw, n, ne) : ajuster l
+      if (h === 'nw' || h === 'n' || h === 'ne') {
+        const nl = snap(b0.l + dyM);
+        if (nl >= MIN_L) b.l = nl;
+      }
+
+      if (engine && this._engineTerrain) {
+        engine.clampBat(b, engine.computeEnv(this._engineTerrain));
+      }
+      this._syncPolygonFromAABB(prop);
+      this._renderProposal(propIdx);
+      this._renderScorePanel();
+      return;
+    }
+
+    // ── Polygon node drag ─────────────────────────────────────
     const GRID = 1;
     if (type === 'node') {
       const { nodeIdx } = this._dragging;
@@ -1444,7 +2581,6 @@ const EsquisseCanvas = {
 
     // Recalculer le score
     window.EnvelopeGenerator._scorePareto && (() => {
-      // Score inline simplifie (pas d'appel async pendant le drag)
       const sd = prop.scoreData;
       if (sd) {
         const parcelArea = parseFloat(this._session?.terrain?.contenance_m2 ?? 200);
@@ -1492,6 +2628,36 @@ const EsquisseCanvas = {
     });
     window.TerlabToast?.show('Esquisse sauvegardee', 'success', 2000);
     return svgData;
+  },
+
+  // Export SVG dual : plan + coupe (téléchargement fichiers)
+  exportSVGDual() {
+    // Plan
+    const planSvg = new XMLSerializer().serializeToString(this._svg);
+    this._downloadSVG(planSvg, 'terlab-plan-masse.svg', this._svg.getAttribute('width'), this._svg.getAttribute('height'));
+
+    // Coupe (rendre dans un SVG temporaire)
+    const tempSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    tempSvg.id = 'coupe-export-tmp';
+    tempSvg.style.display = 'none';
+    document.body.appendChild(tempSvg);
+    this.renderCoupe('coupe-export-tmp');
+    const coupeSvg = new XMLSerializer().serializeToString(tempSvg);
+    document.body.removeChild(tempSvg);
+    setTimeout(() => this._downloadSVG(coupeSvg, 'terlab-coupe-ns.svg', 820, 400), 500);
+
+    window.TerlabToast?.show('Plan + Coupe SVG exportes', 'success', 2000);
+  },
+
+  _downloadSVG(content, filename, w, h) {
+    const blob = new Blob([
+      `<?xml version="1.0" encoding="utf-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">\n<rect width="${w}" height="${h}" fill="white"/>\n${content}\n</svg>`
+    ], { type: 'image/svg+xml' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
   },
 
   _saveToSession() {
@@ -1581,6 +2747,16 @@ const EsquisseCanvas = {
     // Hachure bande voie
     const p4 = this._el('pattern', { id: 'hatch-voie', patternUnits: 'userSpaceOnUse', width: 6, height: 6 }, null, defs);
     this._el('line', { x1: 0, y1: 6, x2: 6, y2: 0, stroke: '#e87c3e', 'stroke-width': 0.6, opacity: 0.5 }, null, p4);
+    // Hachure PPRN inconstructible (rouge croisé)
+    const p5 = this._el('pattern', { id: 'hatch-pprn-r', patternUnits: 'userSpaceOnUse', width: 8, height: 8 }, null, defs);
+    this._el('line', { x1: 0, y1: 8, x2: 8, y2: 0, stroke: '#ef4444', 'stroke-width': 1.2, opacity: 0.7 }, null, p5);
+    this._el('line', { x1: 0, y1: 0, x2: 8, y2: 8, stroke: '#ef4444', 'stroke-width': 1.2, opacity: 0.7 }, null, p5);
+    // Hachure PPRN bleu (conditions)
+    const p6 = this._el('pattern', { id: 'hatch-pprn-b', patternUnits: 'userSpaceOnUse', width: 10, height: 10 }, null, defs);
+    this._el('line', { x1: 0, y1: 10, x2: 10, y2: 0, stroke: '#3b82f6', 'stroke-width': 0.8, opacity: 0.5 }, null, p6);
+    // Hachure PPRN jaune (vigilance)
+    const p7 = this._el('pattern', { id: 'hatch-pprn-j', patternUnits: 'userSpaceOnUse', width: 12, height: 12 }, null, defs);
+    this._el('line', { x1: 0, y1: 12, x2: 12, y2: 0, stroke: '#fbbf24', 'stroke-width': 0.6, opacity: 0.4 }, null, p7);
   },
 
   _autoFit() {

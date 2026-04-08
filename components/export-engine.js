@@ -29,8 +29,8 @@ const ExportEngine = {
   //  PDF — CONSTANTES LAYOUT
   // ═══════════════════════════════════════════════════════════════
   _L: {
-    W: 420, H: 297, M: 14, M_TOP: 18, M_BOT: 14,
-    GUTTER: 8,
+    W: 420, H: 297, M: 12, M_TOP: 16, M_BOT: 10,
+    GUTTER: 6,
     get COL2_W() { return (this.W - this.M * 2 - this.GUTTER) / 2; },
     get COL3_W() { return (this.W - this.M * 2 - this.GUTTER * 2) / 3; },
     get COL2_X1() { return this.M; },
@@ -38,8 +38,8 @@ const ExportEngine = {
     get COL3_X1() { return this.M; },
     get COL3_X2() { return this.M + this.COL3_W + this.GUTTER; },
     get COL3_X3() { return this.M + (this.COL3_W + this.GUTTER) * 2; },
-    get BODY_TOP() { return this.M_TOP + 18; },
-    get BODY_BOT() { return this.H - this.M_BOT - 8; },
+    get BODY_TOP() { return this.M_TOP + 14; },
+    get BODY_BOT() { return this.H - this.M_BOT - 4; },
     get BODY_H() { return this.BODY_BOT - this.BODY_TOP; },
   },
 
@@ -57,6 +57,8 @@ const ExportEngine = {
     lightBg:  [245, 247, 250],
     white:    [255, 255, 255],
     cardBg:   [250, 251, 253],
+    auto:     [0, 120, 200],     // bleu pour valeurs auto-enrichies
+    autoBg:   [235, 245, 255],   // fond léger pour lignes auto
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -74,81 +76,75 @@ const ExportEngine = {
     pdf.rect(L.M - 2, L.M_TOP - 4, L.W - (L.M - 2) * 2, L.H - L.M_TOP - L.M_BOT + 8);
   },
 
-  /** Bandeau titre en haut de page */
+  /** Bandeau titre compact — style architecte */
   _drawPageHeader(pdf, title, phaseLabel, pageNum, totalPages) {
     const L = this._L, C = this._C;
     this._drawPageBg(pdf);
 
-    // Filet accent sous le bandeau
+    // Filet accent
     pdf.setDrawColor(...C.accent);
-    pdf.setLineWidth(0.6);
-    pdf.line(L.M, L.M_TOP + 12, L.W - L.M, L.M_TOP + 12);
-
-    // Filet fin doublure
-    pdf.setDrawColor(...C.borderL);
-    pdf.setLineWidth(0.15);
-    pdf.line(L.M, L.M_TOP + 13, L.W - L.M, L.M_TOP + 13);
+    pdf.setLineWidth(0.5);
+    pdf.line(L.M, L.M_TOP + 10, L.W - L.M, L.M_TOP + 10);
 
     // Branding gauche
     pdf.setFont('courier', 'normal');
-    pdf.setFontSize(6.5);
+    pdf.setFontSize(5.5);
     pdf.setTextColor(...C.muted);
-    pdf.text('TERLAB · Laboratoire d\'analyse de terrain · ENSA La Réunion', L.M, L.M_TOP);
+    pdf.text('TERLAB · Analyse de terrain · ENSA La Réunion', L.M, L.M_TOP - 1);
 
-    // Phase label droite
+    // Phase label + page droite
     pdf.setFont('courier', 'bold');
-    pdf.setFontSize(6.5);
+    pdf.setFontSize(5.5);
     pdf.setTextColor(...C.accent);
-    pdf.text(phaseLabel, L.W - L.M, L.M_TOP, { align: 'right' });
+    pdf.text(`${phaseLabel}  ·  ${pageNum}/${totalPages}`, L.W - L.M, L.M_TOP - 1, { align: 'right' });
 
     // Titre principal
     pdf.setFont('times', 'bold');
-    pdf.setFontSize(16);
+    pdf.setFontSize(14);
     pdf.setTextColor(...C.ink);
-    pdf.text(title.toUpperCase(), L.M, L.M_TOP + 9);
-
-    // Numéro de page
-    pdf.setFont('courier', 'normal');
-    pdf.setFontSize(6);
-    pdf.setTextColor(...C.muted);
-    pdf.text(`${pageNum} / ${totalPages}`, L.W - L.M, L.M_TOP + 9, { align: 'right' });
+    pdf.text(title.toUpperCase(), L.M, L.M_TOP + 7.5);
   },
 
-  /** Pied de page : disclaimer + session */
+  /** Pied de page compact */
   _drawPageFooter(pdf, session) {
     const L = this._L, C = this._C;
-    const yF = L.H - L.M_BOT;
+    const yF = L.H - L.M_BOT + 2;
 
-    // Filet
     pdf.setDrawColor(...C.borderL);
-    pdf.setLineWidth(0.2);
-    pdf.line(L.M, yF - 2, L.W - L.M, yF - 2);
+    pdf.setLineWidth(0.1);
+    pdf.line(L.M, yF - 1, L.W - L.M, yF - 1);
 
     pdf.setFont('courier', 'normal');
-    pdf.setFontSize(5.5);
+    pdf.setFontSize(4.5);
     pdf.setTextColor(...C.muted);
     pdf.text(
-      'Document pédagogique TERLAB v1.0 — Non opposable aux documents réglementaires officiels (PPRN, PLU, CU, ERP). ENSA La Réunion.',
-      L.M, yF + 1
+      'TERLAB v1.0 — Document pédagogique non opposable (PPRN, PLU, CU, ERP). ENSA La Réunion.',
+      L.M, yF + 1.5
     );
     const uuid = session?.getOrCreateUUID?.()?.slice(-8) ?? '—';
     const date = new Date().toLocaleDateString('fr-FR');
-    pdf.text(`Session ${uuid}  ·  ${date}`, L.W - L.M, yF + 1, { align: 'right' });
+    pdf.text(`${uuid} · ${date}`, L.W - L.M, yF + 1.5, { align: 'right' });
   },
 
-  /** Étiquette de section : UPPERCASE courier + filet */
+  /** Étiquette de section : barre accent + UPPERCASE courier + filet */
   _drawSectionLabel(pdf, x, y, label, w) {
     const C = this._C;
+    // Barre accent verticale gauche
+    pdf.setDrawColor(...C.accent);
+    pdf.setLineWidth(0.8);
+    pdf.line(x - 1, y - 2.5, x - 1, y + 1);
+    // Texte
     pdf.setFont('courier', 'bold');
-    pdf.setFontSize(7);
+    pdf.setFontSize(6.5);
     pdf.setTextColor(...C.accent);
-    pdf.text(label.toUpperCase(), x, y);
+    pdf.text(label.toUpperCase(), x + 1, y);
+    // Filet horizontal
     if (w) {
       pdf.setDrawColor(...C.borderL);
-      pdf.setLineWidth(0.15);
-      pdf.line(x, y + 1.5, x + w, y + 1.5);
+      pdf.setLineWidth(0.1);
+      pdf.line(x, y + 1.2, x + w, y + 1.2);
     }
-    return y + 6;
+    return y + 4;
   },
 
   /** Sous-titre de section */
@@ -177,32 +173,31 @@ const ExportEngine = {
     const val = String(value ?? '—').slice(0, 80);
     pdf.text(val, x + labelW, y);
 
-    return y + (opts.lineH ?? 5.5);
+    return y + (opts.lineH ?? 4.8);
   },
 
-  /** Bloc clé-valeur avec fond alterné */
+  /** Bloc clé-valeur avec fond alterné — compact */
   _drawKVBlock(pdf, x, y, w, rows, opts = {}) {
     const C = this._C;
-    const lineH = opts.lineH ?? 6;
-    const labelW = opts.labelW ?? 48;
-    const fontSize = opts.fontSize ?? 8;
+    const lineH = opts.lineH ?? 5;
+    const labelW = opts.labelW ?? 46;
+    const fontSize = opts.fontSize ?? 7.5;
     let cy = y;
 
     for (let i = 0; i < rows.length; i++) {
       const [label, value] = rows[i];
       if (value === undefined || value === null) continue;
 
-      // Fond alterné
       if (i % 2 === 0) {
         pdf.setFillColor(...C.lightBg);
-        pdf.rect(x - 1, cy - 3.5, w + 2, lineH, 'F');
+        pdf.rect(x - 1, cy - 3, w + 2, lineH, 'F');
       }
       cy = this._drawKV(pdf, x, cy, label, value, { labelW, fontSize, lineH });
     }
-    return cy + 2;
+    return cy + 1;
   },
 
-  /** Carte/encadré avec bordure gauche accent */
+  /** Carte/encadré — style architecte : angle vif, accent gauche fin, filet haut */
   _drawCard(pdf, x, y, w, h, opts = {}) {
     const C = this._C;
     const accentColor = opts.accent ?? C.accent;
@@ -210,19 +205,24 @@ const ExportEngine = {
 
     // Fond
     pdf.setFillColor(...bg);
-    pdf.roundedRect(x, y, w, h, 1, 1, 'F');
+    pdf.roundedRect(x, y, w, h, 0.5, 0.5, 'F');
 
-    // Bordure
+    // Filet haut accent
+    pdf.setDrawColor(...accentColor);
+    pdf.setLineWidth(0.6);
+    pdf.line(x + 0.5, y, x + w - 0.5, y);
+
+    // Bordure fine
     pdf.setDrawColor(...C.borderL);
-    pdf.setLineWidth(0.2);
-    pdf.roundedRect(x, y, w, h, 1, 1);
+    pdf.setLineWidth(0.12);
+    pdf.roundedRect(x, y, w, h, 0.5, 0.5);
 
     // Accent gauche
     pdf.setDrawColor(...accentColor);
-    pdf.setLineWidth(1.5);
-    pdf.line(x, y + 1, x, y + h - 1);
+    pdf.setLineWidth(1);
+    pdf.line(x, y + 0.5, x, y + h - 0.5);
 
-    return { x: x + 4, y: y + 4, w: w - 8, h: h - 8 };
+    return { x: x + 3, y: y + 3, w: w - 6, h: h - 6 };
   },
 
   /** Badge de risque coloré */
@@ -524,6 +524,96 @@ const ExportEngine = {
   },
 
   // ═══════════════════════════════════════════════════════════════
+  //  PDF — AUTO-ENRICH HELPERS
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * Retourne les données de phase, fusionnées avec l'enrichissement auto.
+   * Les données session ont priorité sur l'auto-enrichissement.
+   */
+  _getPhaseData(session, phaseId) {
+    const sessionData = session?.getPhase?.(phaseId)?.data ?? {};
+    const autoData = this._enrichedPhases?.[phaseId] ?? {};
+    return { ...autoData, ...sessionData };
+  },
+
+  /**
+   * Formate une valeur pour le PDF : si auto-enrichie, retourne un objet marqué.
+   * @param {string} key - Nom du champ
+   * @param {*} value - Valeur affichée
+   * @param {string} fallback - Valeur si absent
+   * @returns {{ text: string, auto: boolean }}
+   */
+  _val(key, value, fallback = '—') {
+    if (value == null || value === '' || value === '—') return { text: fallback, auto: false };
+    const isAuto = this._autoFields?.has(key) ?? false;
+    return { text: String(value), auto: isAuto };
+  },
+
+  /**
+   * Dessine un bloc KV avec indicateurs AUTO pour les valeurs enrichies.
+   * Format identique à _drawKVBlock mais ajoute un badge bleu "AUTO" si auto.
+   * Chaque row = [label, valueOrObject]
+   *   - Si valueOrObject est un objet { text, auto }, utilise le marquage
+   *   - Si c'est une string, affiche normalement (rétro-compatible)
+   */
+  _drawKVBlockAuto(pdf, x, y, w, rows, opts) {
+    const C = this._C;
+    const labelW = opts?.labelW ?? 50;
+    const rowH = opts?.rowH ?? 5.5;
+
+    for (let i = 0; i < rows.length; i++) {
+      const [label, rawVal] = rows[i];
+      const isObj = rawVal && typeof rawVal === 'object' && 'text' in rawVal;
+      const text = isObj ? rawVal.text : (rawVal ?? '—');
+      const isAuto = isObj ? rawVal.auto : false;
+
+      // Fond alterné, teinté bleu si auto
+      if (i % 2 === 0) {
+        pdf.setFillColor(...(isAuto ? C.autoBg : C.lightBg));
+        pdf.rect(x, y - 3.5, w, rowH, 'F');
+      } else if (isAuto) {
+        pdf.setFillColor(...C.autoBg);
+        pdf.rect(x, y - 3.5, w, rowH, 'F');
+      }
+
+      // Label
+      pdf.setFont('courier', 'normal');
+      pdf.setFontSize(6.5);
+      pdf.setTextColor(...C.muted);
+      pdf.text(label, x + 1, y);
+
+      // Valeur — bleu italic si auto, noir normal sinon
+      if (isAuto) {
+        pdf.setFont('times', 'italic');
+        pdf.setFontSize(7.5);
+        pdf.setTextColor(...C.auto);
+      } else {
+        pdf.setFont('times', 'normal');
+        pdf.setFontSize(7.5);
+        pdf.setTextColor(...C.ink);
+      }
+      pdf.text(text, x + labelW, y);
+
+      // Badge "AUTO" discret
+      if (isAuto && text !== '—') {
+        const badgeX = x + labelW + pdf.getTextWidth(text) + 2;
+        if (badgeX + 12 < x + w) {
+          pdf.setFillColor(...C.auto);
+          pdf.roundedRect(badgeX, y - 2.8, 10, 3.5, 0.6, 0.6, 'F');
+          pdf.setFont('courier', 'bold');
+          pdf.setFontSize(4);
+          pdf.setTextColor(255, 255, 255);
+          pdf.text('AUTO', badgeX + 1, y - 0.3);
+        }
+      }
+
+      y += rowH;
+    }
+    return y;
+  },
+
+  // ═══════════════════════════════════════════════════════════════
   //  PDF — PAGES
   // ═══════════════════════════════════════════════════════════════
 
@@ -542,14 +632,15 @@ const ExportEngine = {
 
     y = this._drawSectionLabel(pdf, xL, y, 'Données cadastrales', wL);
 
-    y = this._drawKVBlock(pdf, xL, y, wL, [
-      ['Commune',              terrain.commune ?? '—'],
-      ['Code INSEE',           terrain.code_insee ?? '—'],
-      ['Section / Parcelle',   `${terrain.section ?? '—'} / ${terrain.parcelle ?? '—'}`],
-      ['Contenance',           terrain.contenance_m2 ? `${terrain.contenance_m2} m²` : '—'],
-      ['Intercommunalité',     terrain.intercommunalite ?? '—'],
-      ['Altitude NGR',         terrain.altitude_ngr != null ? `${terrain.altitude_ngr} m` : '—'],
-      ['Adresse',              terrain.adresse ?? '—'],
+    const V = (k, v, f) => this._val(k, v, f);
+    y = this._drawKVBlockAuto(pdf, xL, y, wL, [
+      ['Commune',              { text: terrain.commune ?? '—', auto: false }],
+      ['Code INSEE',           { text: terrain.code_insee ?? '—', auto: false }],
+      ['Section / Parcelle',   { text: `${terrain.section ?? '—'} / ${terrain.parcelle ?? '—'}`, auto: false }],
+      ['Contenance',           { text: terrain.contenance_m2 ? `${terrain.contenance_m2} m²` : '—', auto: false }],
+      ['Intercommunalité',     V('intercommunalite', terrain.intercommunalite)],
+      ['Altitude NGR',         V('altitude_ngr', terrain.altitude_ngr != null ? `${terrain.altitude_ngr} m` : null)],
+      ['Adresse',              { text: terrain.adresse ?? '—', auto: false }],
     ]);
 
     y += 4;
@@ -562,21 +653,43 @@ const ExportEngine = {
       ['Datum',     'WGS 84 — RGR 92'],
     ]);
 
-    y += 6;
+    y += 4;
+
+    // Résumé topographique (auto-enrichi)
+    y = this._drawSectionLabel(pdf, xL, y, 'Topographie & Climat', wL);
+    y = this._drawKVBlockAuto(pdf, xL, y, wL, [
+      ['Pente moyenne',      V('pente_moy_pct', terrain.pente_moy_pct != null ? `${terrain.pente_moy_pct} %` : null)],
+      ['Dénivelé',           V('denivele', terrain.denivele != null ? `${terrain.denivele} m` : null)],
+      ['Zone climatique',    V('zone_climatique', terrain.zone_climatique_nom ?? terrain.zone_climatique)],
+      ['Zone RTAA',          V('zone_rtaa', terrain.zone_rtaa != null ? `Zone ${terrain.zone_rtaa}` : null)],
+      ['Zone PLU',           V('zone_plu', terrain.zone_plu)],
+      ['Zone PPRN',          V('zone_pprn', terrain.zone_pprn)],
+    ]);
+
+    y += 4;
 
     // Carte de situation miniature (si pas de mapImg)
     if (!mapImg) {
-      const card = this._drawCard(pdf, xL, y, wL, 40, { accent: C.muted });
+      const card = this._drawCard(pdf, xL, y, wL, 30, { accent: C.muted });
       pdf.setFont('times', 'italic');
-      pdf.setFontSize(8);
+      pdf.setFontSize(7);
       pdf.setTextColor(...C.muted);
-      pdf.text('Carte de situation non disponible', card.x + card.w / 2, card.y + card.h / 2, { align: 'center' });
+      pdf.text('Carte non disponible', card.x + card.w / 2, card.y + card.h / 2, { align: 'center' });
+    }
+
+    // Snapshot cadastre (si dispo, en bas de la colonne gauche)
+    const snapCad = terrain.snap_cadastre ?? null;
+    if (snapCad && y + 55 < L.BODY_BOT) {
+      y = this._drawSectionLabel(pdf, xL, y, 'Cadastre IGN', wL);
+      const cadH = Math.min(L.BODY_BOT - y - 12, 60);
+      pdf.setDrawColor(...C.border); pdf.setLineWidth(0.15); pdf.rect(xL, y, wL, cadH);
+      try { pdf.addImage(snapCad, snapCad.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG', xL + 0.5, y + 0.5, wL - 1, cadH - 1); } catch {}
     }
 
     // ── COLONNE DROITE : carte ──
     const xR = L.COL2_X2;
     const wR = L.COL2_W;
-    const mapH = L.BODY_H - 20;
+    const mapH = L.BODY_H - 12;
 
     if (mapImg) {
       // Cadre carte
@@ -604,6 +717,17 @@ const ExportEngine = {
       pdf.setTextColor(...C.muted);
       pdf.text('CARTE DE SITUATION — Source : IGN / Mapbox', xR + wR / 2, yStart + mapH + 4, { align: 'center' });
     }
+
+    // ── Légende AUTO-ENRICHISSEMENT (si des champs auto existent) ──
+    if (this._autoFields?.size > 0) {
+      const ly = L.BODY_BOT - 4;
+      pdf.setFillColor(...C.auto);
+      pdf.roundedRect(xL, ly - 2, 10, 3.5, 0.6, 0.6, 'F');
+      pdf.setFont('courier', 'bold'); pdf.setFontSize(4); pdf.setTextColor(255,255,255);
+      pdf.text('AUTO', xL + 1, ly + 0.5);
+      pdf.setFont('times', 'italic'); pdf.setFontSize(6.5); pdf.setTextColor(...C.auto);
+      pdf.text(`${this._autoFields.size} champs pré-remplis automatiquement (APIs IGN / PEIGEO / BRGM) — à vérifier par l'étudiant`, xL + 13, ly + 0.5);
+    }
   },
 
   /** Page 2 — Topographie & Géologie (Phases 1 + 2) */
@@ -612,9 +736,10 @@ const ExportEngine = {
     this._drawPageHeader(pdf, 'Site — Topographie & Géologie', 'Phases 1 + 2', 2, this._totalPages ?? 8);
     this._drawPageFooter(pdf, session);
 
-    const p1 = session?.getPhase?.(1)?.data ?? {};
-    const p2 = session?.getPhase?.(2)?.data ?? {};
+    const p1 = this._getPhaseData(session, 1);
+    const p2 = this._getPhaseData(session, 2);
     const yStart = L.BODY_TOP + 2;
+    const V = (k, v, f) => this._val(k, v, f);
 
     // ── COLONNE GAUCHE : Topographie ──
     const xL = L.COL2_X1, wL = L.COL2_W;
@@ -622,19 +747,19 @@ const ExportEngine = {
 
     yL = this._drawSectionLabel(pdf, xL, yL, 'Topographie & Microclimat', wL);
 
-    yL = this._drawKVBlock(pdf, xL, yL, wL, [
-      ['Pente moyenne',       terrain.pente_moy_pct != null ? `${terrain.pente_moy_pct} %` : '—'],
-      ['Orientation',         terrain.orientation ?? terrain.orientation_terrain ?? '—'],
-      ['Alt. min DEM',        terrain.alt_min_dem != null ? `${terrain.alt_min_dem} m NGR` : '—'],
-      ['Alt. max DEM',        terrain.alt_max_dem != null ? `${terrain.alt_max_dem} m NGR` : '—'],
-      ['Dénivelé',            (terrain.denivele ?? terrain.denivele_m) != null ? `${terrain.denivele ?? Math.round(terrain.denivele_m)} m` : '—'],
-      ['Zone climatique',     terrain.zone_climatique ?? terrain.zone_climatique_nom ?? '—'],
-      ['Zone RTAA',           terrain.zone_rtaa ?? '—'],
-      ['Zone pluvio.',        terrain.zone_pluviometrique ?? terrain.zone_pluvio ?? '—'],
-      ['Station météo',       terrain.station_meteo ?? '—'],
+    yL = this._drawKVBlockAuto(pdf, xL, yL, wL, [
+      ['Pente moyenne',       V('pente_moy_pct', terrain.pente_moy_pct != null ? `${terrain.pente_moy_pct} %` : null)],
+      ['Orientation',         V('orientation_terrain', terrain.orientation ?? terrain.orientation_terrain)],
+      ['Alt. min DEM',        V('alt_min_dem', terrain.alt_min_dem != null ? `${terrain.alt_min_dem} m NGR` : null)],
+      ['Alt. max DEM',        V('alt_max_dem', terrain.alt_max_dem != null ? `${terrain.alt_max_dem} m NGR` : null)],
+      ['Dénivelé',            V('denivele', (terrain.denivele ?? terrain.denivele_m) != null ? `${terrain.denivele ?? Math.round(terrain.denivele_m)} m` : null)],
+      ['Zone climatique',     V('zone_climatique', terrain.zone_climatique ?? terrain.zone_climatique_nom)],
+      ['Zone RTAA',           V('zone_rtaa', terrain.zone_rtaa)],
+      ['Zone pluvio.',        V('zone_pluviometrique', terrain.zone_pluviometrique ?? terrain.zone_pluvio)],
+      ['Station météo',       V('station_meteo', terrain.station_meteo)],
     ]);
 
-    yL += 6;
+    yL += 4;
 
     // Ravine
     yL = this._drawSectionLabel(pdf, xL, yL, 'Hydrographie', wL);
@@ -643,7 +768,7 @@ const ExportEngine = {
       ['Distance',     terrain.distance_ravine_m != null ? `${terrain.distance_ravine_m} m` : '—'],
     ]);
 
-    yL += 6;
+    yL += 4;
 
     // Snap carte avec ligne de coupe transversale
     if (this._visuals?.profileMapSnap) {
@@ -762,20 +887,28 @@ const ExportEngine = {
       indetermine: 'Indéterminé',
     };
     const geoLabel = geoTypes[terrain.geologie_type] ?? terrain.geologie_type ?? '—';
+    const geoIsAuto = this._autoFields?.has('geologie_type') && geoLabel !== '—';
 
-    pdf.setFont('times', 'bold');
+    pdf.setFont('times', geoIsAuto ? 'italic' : 'bold');
     pdf.setFontSize(11);
-    pdf.setTextColor(...C.ink);
+    pdf.setTextColor(...(geoIsAuto ? C.auto : C.ink));
     pdf.text(geoLabel, xR, yR + 6);
+    if (geoIsAuto) {
+      const gx = xR + pdf.getTextWidth(geoLabel) + 3;
+      pdf.setFillColor(...C.auto);
+      pdf.roundedRect(gx, yR + 3, 10, 3.5, 0.6, 0.6, 'F');
+      pdf.setFont('courier', 'bold'); pdf.setFontSize(4); pdf.setTextColor(255,255,255);
+      pdf.text('AUTO', gx + 1, yR + 5.7);
+    }
     yR += 14;
 
-    yR = this._drawKVBlock(pdf, xR, yR, wR, [
-      ['Remblai',               { non: 'Non', possible: 'Possible', oui: 'Oui' }[terrain.remblai] ?? '—'],
-      ['Étude géotechnique',    { non: 'Non requise', g1: 'G1 requise', recommande: 'Recommandée' }[terrain.geotech] ?? '—'],
-      ['Captage < 100 m',      { non: 'Non', oui: 'Oui', inconnu: 'Inconnu' }[terrain.captage] ?? '—'],
+    yR = this._drawKVBlockAuto(pdf, xR, yR, wR, [
+      ['Remblai',               V('remblai', { non: 'Non', possible: 'Possible', oui: 'Oui' }[terrain.remblai])],
+      ['Étude géotechnique',    V('geotech', { non: 'Non requise', g1: 'G1 requise', recommande: 'Recommandée' }[terrain.geotech])],
+      ['Captage < 100 m',      V('captage', { non: 'Non', oui: 'Oui', inconnu: 'Inconnu' }[terrain.captage])],
     ]);
 
-    yR += 6;
+    yR += 4;
     yR = this._drawSectionLabel(pdf, xR, yR, 'Dispositions constructives', wR);
 
     yR = this._drawKVBlock(pdf, xR, yR, wR, [
@@ -784,7 +917,7 @@ const ExportEngine = {
       ['Fondations spéciales',  terrain.fondations_special ? 'Oui' : 'Non / —'],
     ]);
 
-    yR += 8;
+    yR += 4;
 
     // Schéma coupe géologique simplifié
     const geoCard = this._drawCard(pdf, xR, yR, wR, 70, { accent: C.warning });
@@ -822,6 +955,35 @@ const ExportEngine = {
 
     // Échelle verticale
     this._drawScaleBar(pdf, layerX, ly + 4, 5, 20);
+
+    // Snapshot carte terrain 3D (capturé automatiquement)
+    const terrainSnap = terrain.snap_terrain3d ?? this._visuals?.phaseSnaps?.[1] ?? null;
+    if (terrainSnap && ly + 60 < L.BODY_BOT) {
+      const snapY = ly + 12;
+      const snapH = Math.min(L.BODY_BOT - snapY - 4, 55);
+      if (snapH > 25) {
+        pdf.setFont('courier', 'bold'); pdf.setFontSize(6); pdf.setTextColor(...C.muted);
+        pdf.text('VUE 3D TERRAIN — DEM MAPBOX', xR + wR / 2, snapY - 2, { align: 'center' });
+        pdf.setDrawColor(...C.border); pdf.setLineWidth(0.2);
+        pdf.rect(xR, snapY, wR, snapH);
+        try { pdf.addImage(terrainSnap, terrainSnap.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG', xR + 0.5, snapY + 0.5, wR - 1, snapH - 1); }
+        catch { /* snapshot indisponible */ }
+      }
+    }
+
+    // Snapshot carte géologique BRGM (capturé automatiquement)
+    const brgmSnap = terrain.snap_brgm ?? this._visuals?.phaseSnaps?.[2] ?? null;
+    const brgmY = (terrainSnap ? (ly + 12 + Math.min(L.BODY_BOT - ly - 16, 55) + 6) : ly + 8);
+    if (brgmSnap && brgmY + 50 < L.BODY_BOT) {
+      const sH = Math.min(L.BODY_BOT - brgmY - 2, 55);
+      if (sH > 25) {
+        pdf.setFont('courier', 'bold'); pdf.setFontSize(6); pdf.setTextColor(...C.muted);
+        pdf.text('CARTE GÉOLOGIQUE — BRGM', xR + wR / 2, brgmY - 2, { align: 'center' });
+        pdf.setDrawColor(...C.border); pdf.setLineWidth(0.15);
+        pdf.rect(xR, brgmY, wR, sH);
+        try { pdf.addImage(brgmSnap, brgmSnap.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG', xR + 0.5, brgmY + 0.5, wR - 1, sH - 1); } catch {}
+      }
+    }
   },
 
   /** Page 3 — Risques & Réglementation PLU (Phases 3 + 4) */
@@ -830,8 +992,9 @@ const ExportEngine = {
     this._drawPageHeader(pdf, 'Risques naturels & Réglementation', 'Phases 3 + 4', 3, this._totalPages ?? 8);
     this._drawPageFooter(pdf, session);
 
-    const p3 = session?.getPhase?.(3)?.data ?? {};
-    const p4 = session?.getPhase?.(4)?.data ?? {};
+    const p3 = this._getPhaseData(session, 3);
+    const p4 = this._getPhaseData(session, 4);
+    const V = (k, v, f) => this._val(k, v, f);
     const yStart = L.BODY_TOP + 2;
 
     // ── COLONNE GAUCHE : Risques ──
@@ -855,10 +1018,11 @@ const ExportEngine = {
     };
 
     const zone = p3.zone_pprn ?? '—';
+    const zoneIsAuto = this._autoFields?.has('zone_pprn') && zone !== '—';
     if (zone !== '—') {
       const level = zoneColors[zone] ?? 'muted';
       const card = this._drawCard(pdf, xL, yL, wL, 18, { accent: C[level] ?? C.muted });
-      pdf.setFont('times', 'bold');
+      pdf.setFont('times', zoneIsAuto ? 'italic' : 'bold');
       pdf.setFontSize(14);
       pdf.setTextColor(...(C[level] ?? C.ink));
       pdf.text(`Zone ${zone}`, card.x, card.y + 5);
@@ -866,17 +1030,23 @@ const ExportEngine = {
       pdf.setFontSize(8);
       pdf.setTextColor(...C.text2);
       pdf.text(zoneDescriptions[zone] ?? '', card.x, card.y + 11);
+      if (zoneIsAuto) {
+        pdf.setFillColor(...C.auto);
+        pdf.roundedRect(card.x + card.w - 14, card.y + 1, 12, 4, 0.8, 0.8, 'F');
+        pdf.setFont('courier', 'bold'); pdf.setFontSize(4.5); pdf.setTextColor(255,255,255);
+        pdf.text('AUTO', card.x + card.w - 13, card.y + 3.8);
+      }
       yL += 22;
     }
 
     yL += 2;
-    yL = this._drawKVBlock(pdf, xL, yL, wL, [
-      ['Cote réf. NGR',    p3.cote_reference_ngr != null ? `${p3.cote_reference_ngr} m NGR` : '—'],
-      ['Simulation crue',  p3.simulateur_flood_m != null ? `+${p3.simulateur_flood_m} m` : '—'],
-      ['Zone vent RTAA',   p3.zone_rtaa_vent ?? '—'],
+    yL = this._drawKVBlockAuto(pdf, xL, yL, wL, [
+      ['Cote réf. NGR',    V('cote_reference_ngr', p3.cote_reference_ngr != null ? `${p3.cote_reference_ngr} m NGR` : null)],
+      ['Simulation crue',  V('simulateur_flood_m', p3.simulateur_flood_m != null ? `+${p3.simulateur_flood_m} m` : null)],
+      ['Zone vent RTAA',   V('zone_rtaa_vent', p3.zone_rtaa_vent)],
     ]);
 
-    yL += 6;
+    yL += 4;
     yL = this._drawSectionLabel(pdf, xL, yL, 'Sécurité incendie — SDIS 974', wL);
 
     const hydrantLevel = p3.hydrant_present === 'oui' ? 'success' : p3.hydrant_present === 'non' ? 'danger' : 'warning';
@@ -887,7 +1057,7 @@ const ExportEngine = {
       ['Accès SDIS',       { oui: 'Conforme ✓', non: 'Non conforme ✗', verif: 'À vérifier' }[p3.acces_sdis] ?? '—'],
     ]);
 
-    yL += 8;
+    yL += 4;
 
     // Carte de risque légende
     yL = this._drawSectionLabel(pdf, xL, yL, 'Légende PPRN', wL);
@@ -910,6 +1080,24 @@ const ExportEngine = {
       yL += 5;
     }
 
+    // Snapshot carte PPR (capturé automatiquement depuis Mapbox)
+    const pprSnap = terrain.snap_ppr ?? this._visuals?.phaseSnaps?.[3] ?? null;
+    if (pprSnap) {
+      yL += 4;
+      const snapH = Math.min(L.BODY_BOT - yL - 4, 70);
+      if (snapH > 30) {
+        yL = this._drawSectionLabel(pdf, xL, yL, 'Carte PPR — terrain', wL);
+        pdf.setDrawColor(...C.border);
+        pdf.setLineWidth(0.2);
+        pdf.rect(xL, yL, wL, snapH);
+        try {
+          pdf.addImage(pprSnap, pprSnap.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG', xL + 0.5, yL + 0.5, wL - 1, snapH - 1);
+        } catch (e) { console.warn('[PDF] PPR snap error:', e); }
+        pdf.setFont('courier', 'normal'); pdf.setFontSize(5); pdf.setTextColor(...C.muted);
+        pdf.text('Source : AGORAH PEIGEO — PPR approuvés La Réunion', xL + wL / 2, yL + snapH + 3, { align: 'center' });
+      }
+    }
+
     // ── COLONNE DROITE : PLU ──
     const xR = L.COL2_X2, wR = L.COL2_W;
     let yR = yStart;
@@ -918,6 +1106,7 @@ const ExportEngine = {
 
     // Zone PLU en gros
     const zonePlu = terrain.zone_plu ?? p4.zone_plu ?? '—';
+    const pluIsAuto = this._autoFields?.has('zone_plu') && zonePlu !== '—';
     if (zonePlu !== '—') {
       const pluColors = {
         UA: C.accent, UB: C.accent, UC: C.accent,
@@ -935,7 +1124,7 @@ const ExportEngine = {
       };
 
       const card = this._drawCard(pdf, xR, yR, wR, 14, { accent: pluColors[zonePlu] ?? C.accent });
-      pdf.setFont('times', 'bold');
+      pdf.setFont('times', pluIsAuto ? 'italic' : 'bold');
       pdf.setFontSize(13);
       pdf.setTextColor(...C.ink);
       pdf.text(`Zone ${zonePlu}`, card.x, card.y + 4);
@@ -943,29 +1132,35 @@ const ExportEngine = {
       pdf.setFontSize(8);
       pdf.setTextColor(...C.text2);
       pdf.text(pluDesc[zonePlu] ?? '', card.x + 40, card.y + 4);
+      if (pluIsAuto) {
+        pdf.setFillColor(...C.auto);
+        pdf.roundedRect(card.x + card.w - 14, card.y + 1, 12, 4, 0.8, 0.8, 'F');
+        pdf.setFont('courier', 'bold'); pdf.setFontSize(4.5); pdf.setTextColor(255,255,255);
+        pdf.text('AUTO', card.x + card.w - 13, card.y + 3.8);
+      }
       yR += 18;
     }
 
     yR += 2;
-    yR = this._drawKVBlock(pdf, xR, yR, wR, [
-      ['Hauteur max',       p4.hauteur_max_m ? `${p4.hauteur_max_m} m` : '—'],
-      ['Emprise sol max',   p4.emprise_sol_max_pct ? `${p4.emprise_sol_max_pct} %` : '—'],
-      ['ABF',               { non: 'Non', oui: 'Oui — Périmètre ABF', verif: 'À vérifier' }[p4.abf] ?? '—'],
-      ['OAP',               { non: 'Non', oui: 'Oui', inconnu: 'Inconnu' }[p4.oap] ?? '—'],
-      ['Servitude HT',      { non: 'Non', oui: 'Oui — Ligne HT' }[p4.sup_ht] ?? '—'],
+    yR = this._drawKVBlockAuto(pdf, xR, yR, wR, [
+      ['Hauteur max',       V('hauteur_max_m', p4.hauteur_max_m ? `${p4.hauteur_max_m} m` : null)],
+      ['Emprise sol max',   V('emprise_sol_max_pct', p4.emprise_sol_max_pct ? `${p4.emprise_sol_max_pct} %` : null)],
+      ['ABF',               V('abf', { non: 'Non', oui: 'Oui — Périmètre ABF', verif: 'À vérifier' }[p4.abf])],
+      ['OAP',               V('oap', { non: 'Non', oui: 'Oui', inconnu: 'Inconnu' }[p4.oap])],
+      ['Servitude HT',      V('sup_ht', { non: 'Non', oui: 'Oui — Ligne HT' }[p4.sup_ht])],
     ]);
 
-    yR += 6;
+    yR += 4;
 
     // ── Schéma des reculs coté ──
     yR = this._drawSectionLabel(pdf, xR, yR, 'Reculs réglementaires', wR);
 
     // Tableau des reculs
-    yR = this._drawKVBlock(pdf, xR, yR, wR, [
-      ['Voie principale',   p4.recul_voie_principale_m ? `${p4.recul_voie_principale_m} m` : '—'],
-      ['Voie secondaire',   p4.recul_voie_secondaire_m ? `${p4.recul_voie_secondaire_m} m` : '—'],
-      ['Limite séparative', p4.recul_limite_sep_m ? `${p4.recul_limite_sep_m} m` : '—'],
-      ['Fond de parcelle',  p4.recul_fond_m ? `${p4.recul_fond_m} m` : '—'],
+    yR = this._drawKVBlockAuto(pdf, xR, yR, wR, [
+      ['Voie principale',   V('recul_voie_principale_m', p4.recul_voie_principale_m ? `${p4.recul_voie_principale_m} m` : null)],
+      ['Voie secondaire',   V('recul_voie_secondaire_m', p4.recul_voie_secondaire_m ? `${p4.recul_voie_secondaire_m} m` : null)],
+      ['Limite séparative', V('recul_limite_sep_m', p4.recul_limite_sep_m ? `${p4.recul_limite_sep_m} m` : null)],
+      ['Fond de parcelle',  V('recul_fond_m', p4.recul_fond_m ? `${p4.recul_fond_m} m` : null)],
     ]);
 
     yR += 4;
@@ -1016,7 +1211,7 @@ const ExportEngine = {
       ['Hauteurs voisins', terrain.hauteurs_voisins ?? '—'],
     ]);
 
-    yL += 6;
+    yL += 4;
     yL = this._drawSectionLabel(pdf, xL, yL, 'Réseaux & VRD', wL);
 
     const reseauIcons = {
@@ -1040,7 +1235,7 @@ const ExportEngine = {
       ['Fibre / Internet', reseauIcons[terrain.fibre] ?? terrain.fibre ?? '—'],
     ]);
 
-    yL += 8;
+    yL += 4;
 
     // Tableau synthétique réseaux
     const card = this._drawCard(pdf, xL, yL, wL, 30, { accent: C.accent });
@@ -1090,7 +1285,7 @@ const ExportEngine = {
       ['Végétation',       p6.vegetation_coverage_pct != null ? `${p6.vegetation_coverage_pct} %` : '—'],
     ]);
 
-    yR += 6;
+    yR += 4;
 
     // Espèces
     yR = this._drawSectionLabel(pdf, xR, yR, 'Espèces remarquables', wR);
@@ -1113,7 +1308,7 @@ const ExportEngine = {
       for (const sp of p6.especes_protegees) {
         bx = this._drawBadge(pdf, bx, yR, especeNames[sp] ?? sp, 'warning');
       }
-      yR += 7;
+      yR += 4;
     }
 
     if (p6.especes_invasives?.length) {
@@ -1125,7 +1320,7 @@ const ExportEngine = {
       for (const sp of p6.especes_invasives) {
         bx = this._drawBadge(pdf, bx, yR, invasiveNames[sp] ?? sp, 'danger');
       }
-      yR += 7;
+      yR += 4;
     }
 
     yR += 4;
@@ -1133,6 +1328,28 @@ const ExportEngine = {
       ['Défrichement',     { non: 'Non requis', partiel: 'Partiel', autorisation: 'Autorisation requise' }[p6.defrichement] ?? '—'],
       ['Brise-vent naturel', { oui: 'Oui', non: 'Non' }[p6.brise_vent] ?? '—'],
     ]);
+
+    // Snapshots couches voisinage / nature (remplir l'espace restant)
+    const snapBati = terrain.snap_bati3d ?? this._visuals?.phaseSnaps?.[5] ?? null;
+    const snapNature = terrain.snap_nature ?? this._visuals?.phaseSnaps?.[6] ?? null;
+
+    // Colonne gauche : bâtiments 3D
+    if (snapBati && yL + 50 < L.BODY_BOT) {
+      yL += 8;
+      yL = this._drawSectionLabel(pdf, xL, yL, 'Carte — Bâtiments voisins 3D', wL);
+      const sH = Math.min(L.BODY_BOT - yL - 2, 70);
+      pdf.setDrawColor(...C.border); pdf.setLineWidth(0.15); pdf.rect(xL, yL, wL, sH);
+      try { pdf.addImage(snapBati, snapBati.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG', xL + 0.5, yL + 0.5, wL - 1, sH - 1); } catch {}
+    }
+
+    // Colonne droite : nature / ZNIEFF
+    if (snapNature && yR + 50 < L.BODY_BOT) {
+      yR += 4;
+      yR = this._drawSectionLabel(pdf, xR, yR, 'Carte — ZNIEFF & milieux naturels', wR);
+      const sH = Math.min(L.BODY_BOT - yR - 2, 70);
+      pdf.setDrawColor(...C.border); pdf.setLineWidth(0.15); pdf.rect(xR, yR, wR, sH);
+      try { pdf.addImage(snapNature, snapNature.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG', xR + 0.5, yR + 0.5, wR - 1, sH - 1); } catch {}
+    }
   },
 
   /** Page 5 — Esquisse & Chantier (Phases 7 + 8) */
@@ -1141,8 +1358,8 @@ const ExportEngine = {
     this._drawPageHeader(pdf, 'Projet — Esquisse & Chantier', 'Phases 7 + 8', 5, this._totalPages ?? 8);
     this._drawPageFooter(pdf, session);
 
-    const p7 = session?.getPhase?.(7)?.data ?? {};
-    const p8 = session?.getPhase?.(8)?.data ?? {};
+    const p7 = this._getPhaseData(session, 7);
+    const p8 = this._getPhaseData(session, 8);
     const yStart = L.BODY_TOP + 2;
 
     // ── COLONNE GAUCHE : Esquisse projet ──
@@ -1163,7 +1380,139 @@ const ExportEngine = {
       ['Toiture',          toitLabels[p7.type_toiture] ?? p7.type_toiture ?? '—'],
     ]);
 
-    yL += 6;
+    // ── PRÉ-ESQUISSE AUTOMATIQUE (si pas de snapshot 3D ni gabarit manuel) ──
+    const hasManualEsquisse = p7.gabarit_l_m || p7.surface_plancher_m2 || p7.glb_snapshot;
+    const pluRules = terrain._pluRules;
+    if (!hasManualEsquisse && pluRules && terrain.contenance_m2) {
+      yL += 4;
+      yL = this._drawSectionLabel(pdf, xL, yL, 'Pre-esquisse automatique PLU', wL);
+
+      const surface = parseFloat(terrain.contenance_m2);
+      const emprMax = pluRules.plu?.emprMax ?? 60;
+      const permMin = pluRules.plu?.permMin ?? 30;
+      const heMax   = pluRules.plu?.heMax ?? 9;
+      const rVoie   = pluRules.reculs?.voie ?? 3;
+      const rFond   = pluRules.reculs?.fond ?? 3;
+      const rLat    = pluRules.reculs?.lat ?? 1.5;
+
+      // ── Extraire le vrai polygone parcelle en mètres locaux ──
+      const parcelPoly = this._parcelGeojsonToLocalPoly(terrain);
+      const edgeTypes  = this._classifyParcelEdges(parcelPoly);
+
+      // Calculer l'enveloppe constructible par inset réel du polygone
+      const reculsPerEdge = edgeTypes.map(t => t === 'voie' ? rVoie : t === 'fond' ? rFond : rLat);
+      const envPoly = this._insetPoly(parcelPoly, reculsPerEdge);
+      const envArea = this._polyArea(envPoly);
+      const empriseReelle = Math.min(envArea, surface * emprMax / 100);
+      const sdpMax = empriseReelle * Math.floor(heMax / 3);
+
+      yL = this._drawKVBlockAuto(pdf, xL, yL, wL, [
+        ['Emprise max PLU',    { text: `${emprMax} %`, auto: true }],
+        ['Perméabilité min',   { text: `${permMin} %`, auto: true }],
+        ['Hauteur max',        { text: `${heMax} m`, auto: true }],
+        ['Reculs V/F/L',       { text: `${rVoie} / ${rFond} / ${rLat} m`, auto: true }],
+        ['Emprise constr. est.', { text: `~${Math.round(empriseReelle)} m²`, auto: true }],
+        ['SDP max estimée',    { text: `~${Math.round(sdpMax)} m²`, auto: true }],
+      ]);
+
+      yL += 4;
+
+      // Dessin schématique avec le vrai polygone parcelle
+      const schemaH = Math.min(L.BODY_BOT - yL - 10, 80);
+      if (schemaH > 40 && parcelPoly.length >= 3) {
+        const card = this._drawCard(pdf, xL, yL, wL, schemaH, { accent: C.auto });
+        let sy = card.y;
+        pdf.setFont('courier', 'bold'); pdf.setFontSize(5.5); pdf.setTextColor(...C.auto);
+        pdf.text('SCHEMA PRE-ESQUISSE — ENVELOPPE CONSTRUCTIBLE PLU', card.x, sy);
+        sy += 5;
+
+        // Bounding box du polygone
+        const xs = parcelPoly.map(p => p[0]), ys = parcelPoly.map(p => p[1]);
+        const bbx0 = Math.min(...xs), bbx1 = Math.max(...xs);
+        const bby0 = Math.min(...ys), bby1 = Math.max(...ys);
+        const bbW = bbx1 - bbx0 || 1, bbH = bby1 - bby0 || 1;
+
+        // Scale pour rentrer dans la card avec marge
+        const marginX = 16, marginY = 14;
+        const drawW = card.w - marginX * 2;
+        const drawH = schemaH - sy + card.y - 2 - marginY;
+        const sc = Math.min(drawW / bbW, drawH / bbH);
+        const offX = card.x + marginX + (drawW - bbW * sc) / 2 - bbx0 * sc;
+        const offY = sy + 2 + (drawH - bbH * sc) / 2 - bby0 * sc;
+        const tx = (wx) => offX + wx * sc;
+        const ty = (wy) => offY + wy * sc;
+
+        // Fond parcelle
+        pdf.setFillColor(245, 248, 252);
+        const pLines = parcelPoly.map(p => [tx(p[0]), ty(p[1])]);
+        this._drawPolygon(pdf, pLines, { fill: [245, 248, 252], stroke: C.border, lineWidth: 0.5 });
+
+        // Lignes de recul par arête (colorées par type)
+        const edgeColors = { voie: [220, 60, 60], fond: [40, 160, 80], lateral: [60, 120, 200] };
+        for (let i = 0; i < parcelPoly.length; i++) {
+          const j = (i + 1) % parcelPoly.length;
+          const [x1, y1] = parcelPoly[i], [x2, y2] = parcelPoly[j];
+          const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy);
+          if (len < 0.1) continue;
+          const nx = -dy / len, ny = dx / len;
+          const d = reculsPerEdge[i];
+          const ix1 = x1 + nx * d, iy1 = y1 + ny * d;
+          const ix2 = x2 + nx * d, iy2 = y2 + ny * d;
+          const col = edgeColors[edgeTypes[i]] ?? edgeColors.lateral;
+          pdf.setDrawColor(...col);
+          pdf.setLineWidth(0.3);
+          pdf.setLineDashPattern([1.5, 1], 0);
+          pdf.line(tx(ix1), ty(iy1), tx(ix2), ty(iy2));
+          pdf.setLineDashPattern([], 0);
+          // Label recul
+          const mx = (ix1 + ix2) / 2, my = (iy1 + iy2) / 2;
+          pdf.setFont('courier', 'normal'); pdf.setFontSize(4); pdf.setTextColor(...col);
+          pdf.text(`${d}m`, tx(mx), ty(my) - 1, { align: 'center' });
+        }
+
+        // Enveloppe constructible (polygone inset)
+        if (envPoly.length >= 3) {
+          const ePts = envPoly.map(p => [tx(p[0]), ty(p[1])]);
+          this._drawPolygon(pdf, ePts, { fill: [200, 230, 255], stroke: C.auto, lineWidth: 0.6, dash: [1.5, 1] });
+
+          // Label centroïde enveloppe
+          const cx = envPoly.reduce((s, p) => s + p[0], 0) / envPoly.length;
+          const cy = envPoly.reduce((s, p) => s + p[1], 0) / envPoly.length;
+          pdf.setFont('times', 'italic'); pdf.setFontSize(5.5); pdf.setTextColor(...C.auto);
+          pdf.text('Zone constructible', tx(cx), ty(cy), { align: 'center' });
+          pdf.text(`~${Math.round(empriseReelle)} m²`, tx(cx), ty(cy) + 4, { align: 'center' });
+        }
+
+        // Label voie sur l'arête voie
+        const voieIdx = edgeTypes.indexOf('voie');
+        if (voieIdx >= 0) {
+          const j = (voieIdx + 1) % parcelPoly.length;
+          const vmx = (parcelPoly[voieIdx][0] + parcelPoly[j][0]) / 2;
+          const vmy = (parcelPoly[voieIdx][1] + parcelPoly[j][1]) / 2;
+          // Décaler vers l'extérieur
+          const vdx = parcelPoly[j][0] - parcelPoly[voieIdx][0];
+          const vdy = parcelPoly[j][1] - parcelPoly[voieIdx][1];
+          const vlen = Math.hypot(vdx, vdy) || 1;
+          pdf.setFont('courier', 'bold'); pdf.setFontSize(4.5); pdf.setTextColor(...C.muted);
+          pdf.text('VOIE', tx(vmx - vdy / vlen * 2), ty(vmy + vdx / vlen * 2) - 1.5, { align: 'center' });
+        }
+
+        // Cotations largeur × profondeur
+        pdf.setFont('courier', 'normal'); pdf.setFontSize(4); pdf.setTextColor(...[150, 160, 170]);
+        pdf.text(`${bbW.toFixed(0)} m`, tx((bbx0 + bbx1) / 2), ty(bby1) + 4, { align: 'center' });
+        pdf.text(`${bbH.toFixed(0)} m`, tx(bbx1) + 4, ty((bby0 + bby1) / 2), { align: 'center', angle: 90 });
+
+        // Badge AUTO
+        pdf.setFillColor(...C.auto);
+        pdf.roundedRect(card.x + card.w - 14, card.y - 1, 12, 4, 0.8, 0.8, 'F');
+        pdf.setFont('courier', 'bold'); pdf.setFontSize(4.5); pdf.setTextColor(255,255,255);
+        pdf.text('AUTO', card.x + card.w - 13, card.y + 1.8);
+
+        yL = ty(bby1) + 10;
+      }
+    }
+
+    yL += 4;
 
     // Snapshot 3D — session (glb_snapshot) ou captures live (terrain3d, bimshow)
     const snapshot3d = p7.glb_snapshot ?? this._visuals?.terrain3d ?? this._visuals?.bimshow ?? null;
@@ -1271,7 +1620,7 @@ const ExportEngine = {
       if (bx === xR) {
         this._drawBadge(pdf, bx, yR, 'Aucun identifié', 'success');
       }
-      yR += 8;
+      yR += 4;
     }
 
     // GIEP
@@ -1286,9 +1635,9 @@ const ExportEngine = {
       let bx = xR;
       for (const m of p8.giep_mesures) {
         bx = this._drawBadge(pdf, bx, yR, mesureLabels[m] ?? m, 'success');
-        if (bx > xR + wR - 20) { yR += 7; bx = xR; }
+        if (bx > xR + wR - 20) { yR += 4; bx = xR; }
       }
-      yR += 8;
+      yR += 4;
     }
 
     // Score GIEP (si calculé dans la session via giep-score.js)
@@ -1698,7 +2047,7 @@ const ExportEngine = {
     pdf.setFontSize(12);
     pdf.setTextColor(...C.ink);
     pdf.text(pctLabel, xL, yL);
-    yL += 6;
+    yL += 4;
 
     // Barre de progression
     const barW = wL - 4;
@@ -1750,7 +2099,7 @@ const ExportEngine = {
     } else {
       yL = this._drawSectionLabel(pdf, xL, yL, 'Validations critiques', wL);
       this._drawBadge(pdf, xL, yL, 'Toutes les validations bloquantes sont cochees', 'success');
-      yL += 10;
+      yL += 6;
     }
 
     // ── Inventaire des risques ──
@@ -1815,7 +2164,7 @@ const ExportEngine = {
         this._drawBadge(pdf, xR + wR - 25, yR, 'NON DEMARRE', 'muted');
       }
 
-      yR += 6;
+      yR += 4;
 
       // Detail champs manquants (compact)
       if (phase.missing_fields.length > 0 && yR + phase.missing_fields.length * 4 < L.BODY_BOT) {
@@ -1862,12 +2211,131 @@ const ExportEngine = {
       yR = this._drawSectionLabel(pdf, xR, yR, 'Snapshots carte disponibles', wR);
       let bx = xR;
       for (const phase of audit.phases) {
-        if (bx + 18 > xR + wR) { yR += 7; bx = xR; }
+        if (bx + 18 > xR + wR) { yR += 4; bx = xR; }
         if (yR + 5 > L.BODY_BOT) break;
         const level = phase.hasMapSnap ? 'success' : 'muted';
         bx = this._drawBadge(pdf, bx, yR, `P${phase.id}`, level);
       }
     }
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  //  PDF — GEOMETRIE PARCELLE (pré-esquisse)
+  // ═══════════════════════════════════════════════════════════════
+
+  /** Extrait le polygone parcelle en coordonnées locales mètres [[x,y], ...] */
+  _parcelGeojsonToLocalPoly(terrain) {
+    const geojson = terrain.parcelle_geojson;
+    if (!geojson) {
+      // Fallback carré si pas de GeoJSON
+      const side = Math.sqrt(parseFloat(terrain.contenance_m2) || 400);
+      return [[0, 0], [side, 0], [side, side], [0, side]];
+    }
+    const coords = geojson.type === 'Polygon'
+      ? geojson.coordinates[0]
+      : geojson.coordinates?.[0]?.[0] ?? [];
+    if (coords.length < 3) {
+      const side = Math.sqrt(parseFloat(terrain.contenance_m2) || 400);
+      return [[0, 0], [side, 0], [side, side], [0, side]];
+    }
+    // Centroïde WGS84
+    const n = coords.length;
+    const clng = coords.reduce((s, c) => s + c[0], 0) / n;
+    const clat = coords.reduce((s, c) => s + c[1], 0) / n;
+    const LNG_M = 111320 * Math.cos(clat * Math.PI / 180);
+    const LAT_M = 111320;
+    // Convertir en mètres locaux (Y positif vers le haut pour convention plan)
+    const poly = coords.map(([lng, lat]) => [
+      (lng - clng) * LNG_M,
+      (lat - clat) * LAT_M,
+    ]);
+    // Supprimer le dernier point s'il est identique au premier (anneau fermé)
+    if (poly.length > 1 && Math.hypot(poly[0][0] - poly[poly.length - 1][0], poly[0][1] - poly[poly.length - 1][1]) < 0.01) {
+      poly.pop();
+    }
+    // Assurer le sens CCW (aire positive)
+    if (this._polyArea(poly) < 0) poly.reverse();
+    return poly;
+  },
+
+  /** Classifie les arêtes : 'voie', 'fond', 'lateral' (heuristique Y min = voie sud) */
+  _classifyParcelEdges(poly) {
+    const n = poly.length;
+    if (n < 3) return new Array(n).fill('lateral');
+    const types = new Array(n).fill('lateral');
+    // L'arête la plus au sud (Y min) avec longueur significative = voie
+    let bestIdx = 0, bestY = Infinity;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      const midY = (poly[i][1] + poly[j][1]) / 2;
+      const len = Math.hypot(poly[j][0] - poly[i][0], poly[j][1] - poly[i][1]);
+      if (midY < bestY && len > 2) { bestY = midY; bestIdx = i; }
+    }
+    types[bestIdx] = 'voie';
+    // Fond = arête opposée
+    const fondIdx = (bestIdx + Math.floor(n / 2)) % n;
+    types[fondIdx] = 'fond';
+    return types;
+  },
+
+  /** Inset un polygone par des reculs par arête (intersection des droites décalées) */
+  _insetPoly(poly, reculs) {
+    const n = poly.length;
+    const edges = [];
+    for (let i = 0; i < n; i++) {
+      const [x1, y1] = poly[i], [x2, y2] = poly[(i + 1) % n];
+      const d = reculs[i], dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy);
+      if (len < 0.01) { edges.push([x1, y1, x2, y2]); continue; }
+      const nx = -dy / len, ny = dx / len;
+      edges.push([x1 + nx * d, y1 + ny * d, x2 + nx * d, y2 + ny * d]);
+    }
+    return edges.map((_, i) => {
+      const [x1, y1, x2, y2] = edges[i];
+      const [x3, y3, x4, y4] = edges[(i + 1) % edges.length];
+      // Intersection de deux droites
+      const d1x = x2 - x1, d1y = y2 - y1;
+      const d2x = x4 - x3, d2y = y4 - y3;
+      const cross = d1x * d2y - d1y * d2x;
+      if (Math.abs(cross) < 1e-10) return [(x2 + x3) / 2, (y2 + y3) / 2];
+      const t = ((x3 - x1) * d2y - (y3 - y1) * d2x) / cross;
+      return [x1 + t * d1x, y1 + t * d1y];
+    });
+  },
+
+  /** Aire signée d'un polygone [[x,y], ...] */
+  _polyArea(pts) {
+    let s = 0;
+    for (let i = 0, n = pts.length; i < n; i++) {
+      const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % n];
+      s += x1 * y2 - x2 * y1;
+    }
+    return s / 2;
+  },
+
+  /** Dessine un polygone fermé dans jsPDF à partir de points [[px,py], ...] */
+  _drawPolygon(pdf, pts, { fill, stroke, lineWidth = 0.4, dash } = {}) {
+    if (pts.length < 3) return;
+    if (dash) pdf.setLineDashPattern(dash, 0);
+    // Remplissage par triangle fan depuis le centroïde
+    if (fill) {
+      pdf.setFillColor(...fill);
+      const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
+      const cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+      for (let i = 0; i < pts.length; i++) {
+        const j = (i + 1) % pts.length;
+        pdf.triangle(cx, cy, pts[i][0], pts[i][1], pts[j][0], pts[j][1], 'F');
+      }
+    }
+    // Contour
+    if (stroke) {
+      pdf.setDrawColor(...stroke);
+      pdf.setLineWidth(lineWidth);
+      for (let i = 0; i < pts.length; i++) {
+        const j = (i + 1) % pts.length;
+        pdf.line(pts[i][0], pts[i][1], pts[j][0], pts[j][1]);
+      }
+    }
+    if (dash) pdf.setLineDashPattern([], 0);
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -1909,10 +2377,218 @@ const ExportEngine = {
   },
 
   /** Capture tous les visuels disponibles avant génération PDF */
+  // ═══════════════════════════════════════════════════════════════
+  //  PDF — AUTO-ENRICHISSEMENT DEPUIS APIs
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * Enrichit automatiquement le terrain depuis les APIs disponibles.
+   * Retourne un objet { terrain, phases, autoFields } avec les données
+   * complétées et la liste des champs auto-remplis (pour indicateur visuel).
+   */
+  async _autoEnrich(session, terrain) {
+    const lat = parseFloat(terrain.lat);
+    const lng = parseFloat(terrain.lng);
+    if (!lat || !lng) return { terrain, phases: {}, autoFields: new Set() };
+
+    const alt = parseFloat(terrain.altitude_ngr) || null;
+    const geojson = terrain.parcelle_geojson ?? null;
+    const autoFields = new Set();
+    const enriched = { ...terrain };
+    const phases = {};
+
+    this._setProgress(6, 'Auto-enrichissement — requêtes APIs…');
+
+    // Lancer toutes les requêtes en parallèle
+    const results = await Promise.allSettled([
+      // 0. Zone climatique + pente + RTAA
+      (async () => {
+        const TA = window.TerrainAnalysis;
+        if (!TA) return null;
+        const zone = TA.deduireZoneClimatique?.(alt);
+        const rtaa = TA.getZoneRTAA?.(alt);
+        let pente = null;
+        if (geojson && TA.calculateSlopeFromParcelle) {
+          try {
+            const sr = await TA.calculateSlopeFromParcelle(geojson, alt);
+            pente = sr?.slope;
+          } catch { /* fallback */ }
+        }
+        return { zone_climatique: zone, zone_rtaa: rtaa, pente_moy_pct: pente };
+      })(),
+
+      // 1. PPR PEIGEO AGORAH
+      window.PPRService?.queryPoint?.(lat, lng)?.catch?.(() => null),
+
+      // 2. PLU API Carto IGN
+      window.PLUService?.queryZoneUrba?.(lat, lng)?.catch?.(() => null),
+
+      // 3. Géologie BRGM
+      (async () => {
+        const B = window.BRGMService;
+        if (!B) return null;
+        if (B.queryWMS) return B.queryWMS(lat, lng);
+        if (B.inferFromAltitude) return B.inferFromAltitude(alt, lat, lng);
+        return null;
+      })().catch(() => null),
+
+      // 4. Altitude IGN précise
+      window.IGNElevationService?.getElevations?.([{ lng, lat }])?.catch?.(() => []),
+
+      // 5. Bâtiments voisins OSM
+      window.BuildingsService?.fetchBuildings?.(lat, lng, 200)?.catch?.(() => []),
+    ]);
+
+    // ── Extraire les résultats ─────────────────────────────────────
+    const topo = results[0].status === 'fulfilled' ? results[0].value : null;
+    const ppr  = results[1].status === 'fulfilled' ? results[1].value : null;
+    const plu  = results[2].status === 'fulfilled' ? results[2].value : null;
+    const geo  = results[3].status === 'fulfilled' ? results[3].value : null;
+    const alti = results[4].status === 'fulfilled' ? results[4].value : null;
+    const bati = results[5].status === 'fulfilled' ? results[5].value : null;
+
+    // Helper : écrire seulement si absent dans les données manuelles
+    const set = (obj, key, val, fieldName) => {
+      if (val == null || val === '') return;
+      if (obj[key] != null && obj[key] !== '' && obj[key] !== '—') return; // déjà rempli manuellement
+      obj[key] = val;
+      autoFields.add(fieldName ?? key);
+    };
+
+    // ── Topographie / Climat ────────────────────────────────────────
+    if (topo) {
+      set(enriched, 'zone_climatique', topo.zone_climatique, 'zone_climatique');
+      set(enriched, 'zone_rtaa', topo.zone_rtaa, 'zone_rtaa');
+      set(enriched, 'pente_moy_pct', topo.pente_moy_pct != null ? parseFloat(topo.pente_moy_pct.toFixed?.(1) ?? topo.pente_moy_pct) : null, 'pente_moy_pct');
+    }
+
+    // ── Altitude IGN ────────────────────────────────────────────────
+    if (alti?.length) {
+      const z = alti[0]?.z ?? alti[0]?.altitude;
+      set(enriched, 'altitude_ngr', z, 'altitude_ngr');
+      // Recalculer zone climatique et RTAA avec altitude précise
+      if (z != null && !terrain.zone_climatique) {
+        const TA = window.TerrainAnalysis;
+        if (TA) {
+          enriched.zone_climatique = TA.deduireZoneClimatique?.(z) ?? enriched.zone_climatique;
+          enriched.zone_rtaa = TA.getZoneRTAA?.(z) ?? enriched.zone_rtaa;
+          autoFields.add('zone_climatique');
+          autoFields.add('zone_rtaa');
+        }
+      }
+    }
+
+    // ── PPR ──────────────────────────────────────────────────────────
+    if (ppr?.features?.length) {
+      const props = ppr.features[0].properties ?? {};
+      const pprZone = props.zone ?? props.alea ?? props.ZONE ?? null;
+      const pprLabel = props.libelle ?? props.nom ?? props.LIBELLE ?? pprZone;
+      set(enriched, 'zone_pprn', pprZone, 'zone_pprn');
+      set(enriched, 'ppr_label', pprLabel, 'ppr_label');
+      // Phase 3 data
+      if (!phases[3]) phases[3] = {};
+      set(phases[3], 'zone_pprn', pprZone, 'zone_pprn');
+    }
+
+    // ── PLU ──────────────────────────────────────────────────────────
+    if (plu?.features?.length) {
+      const props = plu.features[0].properties ?? {};
+      const pluZone = props.libelle ?? props.typezone ?? props.LIBELLE ?? null;
+      set(enriched, 'zone_plu', pluZone, 'zone_plu');
+      // Phase 4 data
+      if (!phases[4]) phases[4] = {};
+      set(phases[4], 'zone_plu', pluZone, 'zone_plu');
+
+      // Tenter de résoudre les règles PLU complètes via PLUP07Adapter
+      try {
+        let adapterInst = window.PLUP07Adapter;
+        // Si pas sur window, importer dynamiquement
+        if (!adapterInst) {
+          const mod = await import('../services/plu-p07-adapter.js').catch(() => null);
+          if (mod?.PLUP07Adapter) adapterInst = new mod.PLUP07Adapter();
+          else if (mod?.default) adapterInst = typeof mod.default === 'function' ? new mod.default() : mod.default;
+        }
+        // Si c'est une classe, instancier
+        if (typeof adapterInst === 'function') adapterInst = new adapterInst();
+        if (adapterInst && !adapterInst._loaded && adapterInst.loadRules) {
+          await adapterInst.loadRules('../data/plu-rules-reunion.json');
+        }
+        if (adapterInst?.resolve) {
+          const pluRules = adapterInst.resolve(
+            enriched.code_insee ?? enriched.commune, pluZone, enriched.zone_rtaa
+          );
+          if (pluRules) {
+            // Utiliser les règles résolues (même FALLBACK — mieux que rien)
+            set(phases[4], 'hauteur_max_m', pluRules.plu?.heMax, 'hauteur_max_m');
+            set(phases[4], 'emprise_sol_max_pct', pluRules.plu?.emprMax, 'emprise_sol_max_pct');
+            set(phases[4], 'permeable_min_pct', pluRules.plu?.permMin, 'permeable_min_pct');
+            set(phases[4], 'recul_voie_principale_m', pluRules.reculs?.voie, 'recul_voie_principale_m');
+            set(phases[4], 'recul_voie_secondaire_m', pluRules.reculs?.voie_secondaire, 'recul_voie_secondaire_m');
+            set(phases[4], 'recul_limite_sep_m', pluRules.reculs?.lat, 'recul_limite_sep_m');
+            set(phases[4], 'recul_fond_m', pluRules.reculs?.fond, 'recul_fond_m');
+            enriched._pluRules = pluRules; // garder pour la pré-esquisse
+            if (pluRules.id === 'FALLBACK') {
+              console.info('[PDF AutoEnrich] PLU: commune non trouvée, valeurs par défaut utilisées');
+            }
+          }
+        }
+      } catch (e) { console.warn('[PDF AutoEnrich] PLU adapter error:', e); }
+    }
+
+    // ── Géologie BRGM ───────────────────────────────────────────────
+    if (geo) {
+      const geoLabel = geo.label ?? geo.name ?? null;
+      set(enriched, 'geologie_type', geoLabel, 'geologie_type');
+      set(enriched, 'permeabilite', geo.permeability, 'permeabilite');
+    }
+
+    // ── Bâtiments voisins ───────────────────────────────────────────
+    const batCount = Array.isArray(bati) ? bati.length : (bati?.features?.length ?? 0);
+    if (batCount > 0) {
+      set(enriched, 'batiments_voisins_count', batCount, 'batiments_voisins_count');
+    }
+
+    // ── Fallback PLU rules si aucune résolution n'a fonctionné ─────
+    // Garantit qu'on a toujours des reculs/hauteur pour la pré-esquisse
+    if (!enriched._pluRules && enriched.contenance_m2) {
+      const zp = enriched.zone_plu ?? 'UB';
+      const isU = /^U/i.test(zp);
+      enriched._pluRules = {
+        id: 'FALLBACK_GENERIC',
+        plu: {
+          emprMax: isU ? 60 : 40,
+          permMin: isU ? 30 : 50,
+          heMax: isU ? 9 : 7,
+        },
+        reculs: { voie: 3, fond: 3, lat: 1.5 },
+      };
+      // Écrire aussi dans phases[4] si vide
+      if (!phases[4]) phases[4] = {};
+      set(phases[4], 'hauteur_max_m', enriched._pluRules.plu.heMax, 'hauteur_max_m');
+      set(phases[4], 'emprise_sol_max_pct', enriched._pluRules.plu.emprMax, 'emprise_sol_max_pct');
+      set(phases[4], 'permeable_min_pct', enriched._pluRules.plu.permMin, 'permeable_min_pct');
+      set(phases[4], 'recul_voie_principale_m', enriched._pluRules.reculs.voie, 'recul_voie_principale_m');
+      set(phases[4], 'recul_limite_sep_m', enriched._pluRules.reculs.lat, 'recul_limite_sep_m');
+      set(phases[4], 'recul_fond_m', enriched._pluRules.reculs.fond, 'recul_fond_m');
+      console.info('[PDF AutoEnrich] PLU: fallback générique appliqué');
+    }
+
+    console.log('[PDF AutoEnrich]', autoFields.size, 'champs enrichis :', [...autoFields].join(', '));
+    return { terrain: enriched, phases, autoFields };
+  },
+
   async _captureVisuals() {
     const v = {};
 
-    // Carte Mapbox (phase 0)
+    // Carte Mapbox (phase 0) — attendre que toutes les tuiles (PPR WMS…) soient chargées
+    const map = window.MapViewer?.getMap?.() ?? window.TerlabMap?._map;
+    if (map && !map.areTilesLoaded?.()) {
+      await new Promise(resolve => {
+        const onIdle = () => { map.off('idle', onIdle); resolve(); };
+        map.once('idle', onIdle);
+        setTimeout(resolve, 6000); // fallback max 6s
+      });
+    }
     v.map = window.TerlabMap?.captureAsDataURL?.() ?? null;
 
     // Snap carte avec ligne de coupe (phase 1, sauvé en session)
@@ -1930,7 +2606,7 @@ const ExportEngine = {
     v.reculsCanvas = this._canvasToDataURL('reculs-canvas');
 
     // Vue 3D terrain (phase 7)
-    v.terrain3d = window.Terrain3DViewer?.capture?.() ?? null;
+    v.terrain3d = window.Terrain3DViewer?.capture?.() ?? window.Terrain3D?.capture?.() ?? null;
 
     // Snapshot BIMShow Three.js (phase 7)
     const bimCanvas = document.querySelector('.tv-canvas');
@@ -2101,14 +2777,14 @@ const ExportEngine = {
    * Toutes les variables disponibles pour les conditions et l'interpolation.
    */
   _buildPhraseContext(session, terrain) {
-    const p3  = session?.getPhase?.(3)?.data ?? {};
-    const p4  = session?.getPhase?.(4)?.data ?? {};
-    const p6  = session?.getPhase?.(6)?.data ?? {};
-    const p7  = session?.getPhase?.(7)?.data ?? {};
+    const p3  = this._getPhaseData?.(session, 3) ?? session?.getPhase?.(3)?.data ?? {};
+    const p4  = this._getPhaseData?.(session, 4) ?? session?.getPhase?.(4)?.data ?? {};
+    const p6  = this._getPhaseData?.(session, 6) ?? session?.getPhase?.(6)?.data ?? {};
+    const p7  = this._getPhaseData?.(session, 7) ?? session?.getPhase?.(7)?.data ?? {};
 
     const surface = parseFloat(terrain.contenance_m2 ?? terrain.surface_m2 ?? 0);
     const alt     = parseFloat(terrain.altitude_ngr ?? 0);
-    const pente   = parseFloat(terrain.pente_pct ?? terrain.pente_estimee_pct ?? 0);
+    const pente   = parseFloat(terrain.pente_moy_pct ?? terrain.pente_pct ?? terrain.pente_estimee_pct ?? 0);
     const hauteur = parseFloat(p4.hauteur_max_m ?? terrain.hauteur_max_m ?? 0);
     const recul   = parseFloat(p4.recul_voie_principale_m ?? 0);
     const permeable = parseFloat(p4.permeable_min_pct ?? terrain.permeable_min_pct ?? 0);
@@ -2128,7 +2804,9 @@ const ExportEngine = {
       surface_m2:    surface,
       surface_ha:    (surface / 10000).toFixed(2),
       altitude:      alt,
+      altitude_ngr:  alt,      // alias pour conditions "missing: altitude_ngr"
       pente_pct:     pente,
+      pente_moy_pct: pente,    // alias pour conditions "missing: pente_moy_pct"
       exposition:    (terrain.exposition ?? terrain.orientation_terrain ?? '').toLowerCase(),
       zone_plu:      p4.zone_plu ?? terrain.zone_plu ?? '',
       zone_plu_type: ((p4.zone_plu ?? terrain.zone_plu_type ?? '').match(/^(AU|U|A|N)/i)?.[1] ?? '').toUpperCase(),
@@ -2137,6 +2815,7 @@ const ExportEngine = {
       cote_vent:     terrain.cote_vent ?? terrain.zone_pluvio ?? '',
       hauteur_max_m: hauteur,
       recul_voie_m:  recul,
+      recul_voie_principale_m: recul,  // alias pour conditions "missing: recul_voie_principale_m"
       permeable_min_pct: permeable,
       nom_ravine:    terrain.nom_ravine ?? p3.nom_ravine ?? '',
       has_ravine:    !!(terrain.nom_ravine || p3.nom_ravine || p3.has_ravine),
@@ -2145,6 +2824,8 @@ const ExportEngine = {
       petrel_survol: !!(p6.petrel_survol || p6.corridor_petrel),
       plu_en_revision: !!(terrain.plu_en_revision || p4.plu_en_revision),
       scot_rang:     scotRang,
+      scot_statut:   terrain.scot_statut ?? 'approuve',
+      scot_non_approuve: (terrain.scot_statut ?? 'approuve') !== 'approuve',
       scot_densite_min: scotDMin,
       scot_pct_aides: scotPctAides,
       scot_capacite_min: parseInt(terrain.scot_capacite_min ?? 0) || 0,
@@ -2415,9 +3096,12 @@ const ExportEngine = {
 
       const ctx = this._buildPhraseContext(session, terrain);
 
+      const scotStatutLabel = ctx.scot_non_approuve
+        ? ` (${ctx.scot_statut === 'en_elaboration' ? 'en élaboration' : 'en révision'})`
+        : '';
       const items = [
-        ['Rang SCoT',        ctx.scot_rang ? `Rang ${ctx.scot_rang} — ${ctx.scot_rang_label}` : '—'],
-        ['Densité min SCoT', ctx.scot_densite_min ? `${ctx.scot_densite_min} lgts/ha` : '—'],
+        ['Rang SCoT',        ctx.scot_rang ? `Rang ${ctx.scot_rang} — ${ctx.scot_rang_label}${scotStatutLabel}` : '—'],
+        ['Densité min SCoT', ctx.scot_densite_min ? `${ctx.scot_densite_min} lgts/ha${scotStatutLabel}` : '—'],
         ['Surface opération', ctx.surface_m2 ? `${ctx.surface_m2} m² (${ctx.surface_ha} ha)` : '—'],
         ['Capacité min SCoT', ctx.scot_capacite_min ? `${ctx.scot_capacite_min} logements` : '—'],
         ['Pente',             ctx.pente_pct ? `${ctx.pente_pct}%` : '—'],
@@ -2440,26 +3124,35 @@ const ExportEngine = {
 
   async generatePDF() {
     const session = window.SessionManager;
-    const terrain = session?.getTerrain?.() ?? {};
+    const terrainRaw = session?.getTerrain?.() ?? {};
 
-    if (!terrain.commune) {
+    if (!terrainRaw.commune) {
       window.TerlabToast?.show('Complétez la Phase 0 avant d\'exporter', 'warning');
       return;
     }
 
     this._setProgress(2, 'Capture des visuels…');
-    window.TerlabToast?.show('Génération PDF A3 en cours…', 'info', 8000);
+    window.TerlabToast?.show('Génération PDF A3 en cours…', 'info', 12000);
 
     try {
       // Capture tous les visuels AVANT manipulation DOM
-      this._setProgress(5, 'Capture cartes, graphiques, 3D…');
+      this._setProgress(4, 'Capture cartes, graphiques, 3D…');
       this._visuals = await this._captureVisuals();
+
+      // ── AUTO-ENRICHISSEMENT — remplir les données manquantes via APIs ──
+      this._setProgress(6, 'Auto-enrichissement du terrain…');
+      const enrichResult = await this._autoEnrich(session, terrainRaw);
+      const terrain = enrichResult.terrain;
+      this._autoFields = enrichResult.autoFields;
+
+      // Fusionner les phases enrichies dans un proxy session pour le PDF
+      this._enrichedPhases = enrichResult.phases;
 
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({ orientation: 'landscape', format: 'a3', unit: 'mm' });
 
       // Charger polices Unicode + phrases contextuelles en parallèle
-      this._setProgress(8, 'Chargement polices & phrases…');
+      this._setProgress(10, 'Chargement polices & phrases…');
       const [, phrases] = await Promise.all([
         this._loadUnicodeFont(pdf),
         this._loadPhrases(),
@@ -2515,7 +3208,11 @@ const ExportEngine = {
       pdf.save(filename);
 
       session?.saveExport?.('pdf', filename);
-      window.TerlabToast?.show('PDF A3 exporté avec succès', 'success');
+      const autoCount = this._autoFields?.size ?? 0;
+      const msg = autoCount > 0
+        ? `PDF A3 exporté — ${autoCount} champs auto-enrichis (à vérifier)`
+        : 'PDF A3 exporté avec succès';
+      window.TerlabToast?.show(msg, 'success');
       this._hideProgress();
 
     } catch (e) {

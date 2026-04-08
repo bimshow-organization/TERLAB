@@ -337,6 +337,56 @@ const Buildings3DViewer = {
     this._scene.add(sprite);
   },
 
+  // ─── COLOR MODES ──────────────────────────────────────────────
+  applyColorMode(mode) {
+    if (!this._buildingsGroup) return;
+
+    const meshes = this._buildingsGroup.children.filter(c => c.isMesh);
+    if (!meshes.length) return;
+
+    if (mode === 'type') {
+      // Restore original type-based colors
+      for (const mesh of meshes) {
+        const bType = mesh.userData.type ?? 'yes';
+        const color = this.BUILDING_COLORS[bType] ?? this.BUILDING_COLORS._default;
+        mesh.material.color.setHex(color);
+      }
+      return;
+    }
+
+    if (mode === 'distance') {
+      // Color by distance to parcel center (stored in userData.dist_m)
+      const distances = meshes.map(m => m.userData.dist_m ?? 0);
+      const maxDist = Math.max(...distances, 1);
+      for (const mesh of meshes) {
+        const d = mesh.userData.dist_m ?? 0;
+        const t = Math.min(d / maxDist, 1); // 0 = close, 1 = far
+        mesh.material.color.setHSL(0.33 - t * 0.33, 0.7, 0.45 + t * 0.15);
+        // green (close) → yellow → red (far)
+      }
+      return;
+    }
+
+    if (mode === 'surface') {
+      // Color by footprint area — estimate from bounding box of the extruded geometry
+      const areas = meshes.map(m => {
+        const geo = m.geometry;
+        if (!geo) return 0;
+        geo.computeBoundingBox();
+        const sz = geo.boundingBox.getSize(new THREE.Vector3());
+        // For extruded shapes rotated -PI/2 on X, footprint is in XY plane of the geometry
+        return sz.x * sz.y;
+      });
+      const maxArea = Math.max(...areas, 1);
+      for (let i = 0; i < meshes.length; i++) {
+        const t = Math.min(areas[i] / maxArea, 1); // 0 = small, 1 = large
+        meshes[i].material.color.setHSL(0.55 - t * 0.55, 0.65, 0.45 + t * 0.1);
+        // blue (small) → green → red (large)
+      }
+      return;
+    }
+  },
+
   // ─── CAMERA ───────────────────────────────────────────────────
   _centerCamera() {
     const box = new THREE.Box3().setFromObject(this._scene);

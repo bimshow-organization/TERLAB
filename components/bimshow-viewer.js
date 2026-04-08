@@ -773,6 +773,13 @@ const Terlab3DViewer = {
     if (this._draggingSun) {
       this._draggingSun = false;
       this._controls.enabled = true;
+      // Sync SunState from drag result
+      const dl = this._getDaylight(this._dayOfYear);
+      const hour = dl.sunrise + (dl.sunset - dl.sunrise) * this._sunProgress;
+      if (window.SunState) {
+        window.SunState._dayOfYear = this._dayOfYear;
+        window.SunState.setHour(hour, 'bimshow');
+      }
     }
   },
 
@@ -936,6 +943,10 @@ const Terlab3DViewer = {
     q('.tv-sun-slider')?.addEventListener('input', (e) => {
       this._sunProgress = e.target.value / 100;
       this._applySunFromProgress(this._sunProgress);
+      // Sync SunState
+      if (window.SunState) {
+        window.SunState.setProgress(this._sunProgress, 'bimshow');
+      }
     });
 
     // snapshot
