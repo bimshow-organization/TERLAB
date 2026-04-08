@@ -49,6 +49,9 @@ def parse_args():
     p.add_argument('--epsg',           type=int,   default=2975, help='EPSG projection locale (2975=RGR92)')
     p.add_argument('--input-epsg',     type=int,   default=None, help='EPSG du fichier COPC (auto-detect si omis)')
     p.add_argument('--dtm-only',       action='store_true',      help='Produire DTM uniquement')
+    p.add_argument('--buildings',      action='store_true',      help='Inclure les bâtiments (RANSAC)')
+    p.add_argument('--lidar-fetcher',  default='C:/GITHUB/Lidar-fetcher/lidar-server',
+                                       help='Chemin vers lidar-fetcher/lidar-server')
     p.add_argument('--verbose',        action='store_true')
     return p.parse_args()
 
@@ -241,16 +244,15 @@ def run_pdal(input_path: str, bbox_wgs84: list, bbox_local: list,
 def process_mesh_open3d(ply_ground_path: str, target_triangles: int,
                         poisson_depth: int, bbox_local: list, verbose: bool):
     """
-    Triangulation Delaunay 2D (XY) avec Z comme hauteur — la bonne méthode
-    pour un terrain / MNT. Poisson est inadapté aux surfaces quasi-planes.
+    Grille DEM interpolée → mesh triangulé régulier.
+    C'est la méthode standard et robuste pour un MNT terrain.
 
     1. Chargement point cloud sol (PLY)
-    2. Sous-échantillonnage grille régulière (voxel grid)
-    3. Triangulation Delaunay 2D sur (X, Y)
-    4. Construction mesh Open3D avec Z
-    5. Lissage + simplification
+    2. Interpolation sur grille régulière (scipy griddata)
+    3. Triangulation régulière de la grille
+    4. Simplification si nécessaire
     """
-    from scipy.spatial import Delaunay
+    from scipy.interpolate import griddata
 
     if verbose:
         print('[Mesh] Chargement point cloud sol...')
@@ -260,6 +262,8 @@ def process_mesh_open3d(ply_ground_path: str, target_triangles: int,
 
     if verbose:
         print(f'[Mesh] {len(pts)} points sol chargés')
+        print(f'[Mesh] X range : {pts[:,0].min():.2f} — {pts[:,0].max():.2f}')
+        print(f'[Mesh] Y range : {pts[:,1].min():.2f} — {pts[:,1].max():.2f}')
         print(f'[Mesh] Z range : {pts[:,2].min():.2f} — {pts[:,2].max():.2f} m')
 
     # Découpe bbox + marge
@@ -274,75 +278,73 @@ def process_mesh_open3d(ply_ground_path: str, target_triangles: int,
     if verbose:
         print(f'[Mesh] {len(pts)} points dans bbox (+{margin}m marge)')
 
-    # Sous-échantillonnage sur grille régulière pour contrôler la densité
-    # Calcul de la résolution de grille pour atteindre ~target_triangles
-    area = (maxx - minx + 2 * margin) * (maxy - miny + 2 * margin)
-    # ~2 triangles par point en Delaunay
-    target_pts = target_triangles // 2
-    grid_res = np.sqrt(area / target_pts) if target_pts > 0 else 0.2
+    if len(pts) < 10:
+        raise ValueError(f'Trop peu de points dans la bbox ({len(pts)})')
 
-    # Min 0.05m (résolution LiDAR), max 2m
-    grid_res = max(0.05, min(grid_res, 2.0))
-
-    if verbose:
-        print(f'[Mesh] Grille sous-échantillonnage : {grid_res:.3f}m')
-
-    # Grille : pour chaque cellule, garder le point avec le Z médian
-    grid_ix = ((pts[:, 0] - pts[:, 0].min()) / grid_res).astype(int)
-    grid_iy = ((pts[:, 1] - pts[:, 1].min()) / grid_res).astype(int)
-    grid_keys = grid_ix * 100000 + grid_iy
-
-    unique_keys, inverse = np.unique(grid_keys, return_inverse=True)
-    sampled_pts = np.empty((len(unique_keys), 3))
-    for i, key in enumerate(unique_keys):
-        cell_pts = pts[inverse == i]
-        # Médian pour robustesse aux outliers
-        sampled_pts[i] = np.median(cell_pts, axis=0)
+    # Calculer la résolution de grille pour ~target_triangles
+    # Chaque cellule produit 2 triangles
+    width  = maxx - minx + 2 * margin
+    height = maxy - miny + 2 * margin
+    n_cells = target_triangles // 2
+    aspect = width / height if height > 0 else 1
+    ny = max(10, int(np.sqrt(n_cells / aspect)))
+    nx = max(10, int(ny * aspect))
+    res_x = width / nx
+    res_y = height / ny
 
     if verbose:
-        print(f'[Mesh] {len(sampled_pts)} points après sous-échantillonnage')
+        print(f'[Mesh] Grille DEM : {nx}x{ny} ({res_x:.3f}x{res_y:.3f}m)')
 
-    # Triangulation Delaunay 2D sur (X, Y)
-    tri_2d = Delaunay(sampled_pts[:, :2])
-    faces = tri_2d.simplices
+    # Créer la grille régulière
+    grid_x = np.linspace(minx - margin, maxx + margin, nx + 1)
+    grid_y = np.linspace(miny - margin, maxy + margin, ny + 1)
+    gx, gy = np.meshgrid(grid_x, grid_y)
 
-    if verbose:
-        print(f'[Mesh] Delaunay : {len(faces)} triangles')
+    # Interpoler Z sur la grille (linear + nearest pour les bords)
+    gz = griddata(pts[:, :2], pts[:, 2], (gx, gy), method='linear')
+    # Remplir les NaN (bords) avec nearest
+    nan_mask = np.isnan(gz)
+    if nan_mask.any():
+        gz_nearest = griddata(pts[:, :2], pts[:, 2], (gx, gy), method='nearest')
+        gz[nan_mask] = gz_nearest[nan_mask]
 
-    # Filtrer les triangles trop grands (artefacts convex hull)
-    # Seuil = 3x l'espacement moyen réel entre points voisins
-    from scipy.spatial import cKDTree
-    tree = cKDTree(sampled_pts[:, :2])
-    dists, _ = tree.query(sampled_pts[:, :2], k=2)
-    mean_spacing = dists[:, 1].mean()
-    edge_max = mean_spacing * 3.0
-    v0 = sampled_pts[faces[:, 0], :2]
-    v1 = sampled_pts[faces[:, 1], :2]
-    v2 = sampled_pts[faces[:, 2], :2]
-    e01 = np.linalg.norm(v1 - v0, axis=1)
-    e12 = np.linalg.norm(v2 - v1, axis=1)
-    e20 = np.linalg.norm(v0 - v2, axis=1)
-    valid = (e01 < edge_max) & (e12 < edge_max) & (e20 < edge_max)
-    faces = faces[valid]
+    # Lissage gaussien léger pour atténuer le bruit LiDAR
+    from scipy.ndimage import gaussian_filter
+    gz = gaussian_filter(gz, sigma=1.5)
 
     if verbose:
-        print(f'[Mesh] {len(faces)} triangles après filtrage arêtes (max {edge_max:.2f}m)')
+        print(f'[Mesh] DEM interpolé+lissé : Z {np.nanmin(gz):.2f} — {np.nanmax(gz):.2f} m')
+
+    # Construire les vertices (grille aplatie)
+    rows, cols = gx.shape
+    vertices = np.column_stack([gx.ravel(), gy.ravel(), gz.ravel()])
+
+    # Construire les triangles (2 par cellule de la grille)
+    faces = []
+    for r in range(rows - 1):
+        for c in range(cols - 1):
+            i0 = r * cols + c
+            i1 = i0 + 1
+            i2 = (r + 1) * cols + c
+            i3 = i2 + 1
+            faces.append([i0, i2, i1])
+            faces.append([i1, i2, i3])
+    faces = np.array(faces, dtype=np.int32)
+
+    if verbose:
+        print(f'[Mesh] Grille → {len(faces)} triangles, {len(vertices)} vertices')
 
     # Construire le mesh Open3D
     mesh = o3d.geometry.TriangleMesh()
-    mesh.vertices = o3d.utility.Vector3dVector(sampled_pts)
+    mesh.vertices = o3d.utility.Vector3dVector(vertices)
     mesh.triangles = o3d.utility.Vector3iVector(faces)
-    mesh.compute_vertex_normals()
-
-    # Lissage Laplacien léger
-    mesh = mesh.filter_smooth_laplacian(number_of_iterations=3, lambda_filter=0.5)
     mesh.compute_vertex_normals()
 
     # Simplification si encore trop de triangles
     n_tris = len(mesh.triangles)
     if n_tris > target_triangles:
         if verbose:
-            print(f'[Mesh] Simplification {n_tris} → {target_triangles} triangles...')
+            print(f'[Mesh] Simplification {n_tris} → {target_triangles}...')
         mesh = mesh.simplify_quadric_decimation(target_triangles)
         mesh.compute_vertex_normals()
 
@@ -554,13 +556,20 @@ def export_glb(mesh, output_path: str, meta: dict, verbose: bool):
 
     verts = np.asarray(mesh.vertices).copy()
     tris  = np.asarray(mesh.triangles)
-    norms = np.asarray(mesh.vertex_normals)
+    norms = np.asarray(mesh.vertex_normals).copy()
 
-    # Centrer à l'origine pour Blender/Three.js (coords UTM trop grandes)
+    # Centrer à l'origine (coords UTM trop grandes pour float32)
     origin = verts.mean(axis=0)
     verts -= origin
     if verbose:
         print(f'[GLB] Centrage à l\'origine (offset {origin})')
+
+    # Conversion Z-up (géo/UTM) → Y-up (glTF/Blender/Three.js)
+    # X reste X, Y_new = Z_old (altitude), Z_new = -Y_old
+    verts_glb = np.column_stack([verts[:, 0], verts[:, 2], -verts[:, 1]])
+    norms_glb = np.column_stack([norms[:, 0], norms[:, 2], -norms[:, 1]])
+    verts = verts_glb
+    norms = norms_glb
 
     # UVs : de triangle_uvs (format flat) → par vertex
     if len(mesh.triangle_uvs) > 0:
@@ -627,7 +636,215 @@ def export_glb(mesh, output_path: str, meta: dict, verbose: bool):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 7. MAIN
+# 7. BÂTIMENTS : EXTRACTION + RANSAC MESH
+# ─────────────────────────────────────────────────────────────────────────────
+
+def extract_buildings_pdal(input_path: str, bbox_local: list, bbox_wgs84: list,
+                           input_epsg: int, target_epsg: int,
+                           tmp_dir: str, verbose: bool):
+    """
+    Extrait les points bâtiments (class 6) + non-sol haute (class 1 Z>2m)
+    depuis le COPC via PDAL.
+    """
+    already_projected = (input_epsg == target_epsg)
+    if already_projected:
+        minx, miny, maxx, maxy = bbox_local
+        bounds_str = f"([{minx},{maxx}],[{miny},{maxy}])"
+    else:
+        lon_min, lat_min, lon_max, lat_max = bbox_wgs84
+        bounds_str = f"([{lon_min},{lon_max}],[{lat_min},{lat_max}])"
+
+    ply_buildings = os.path.join(tmp_dir, 'buildings.ply')
+
+    stages = [
+        {"type": "readers.copc", "filename": str(input_path), "bounds": bounds_str}
+    ]
+    if not already_projected:
+        stages.append({
+            "type": "filters.reprojection",
+            "in_srs": f"EPSG:{input_epsg or 4326}",
+            "out_srs": f"EPSG:{target_epsg}"
+        })
+
+    # Extraire class 6 (bâtiment) et class 1 (non-classé, souvent bâtiments)
+    stages.extend([
+        {"type": "filters.range", "limits": "Classification[6:6]"},
+        {"type": "writers.ply", "filename": ply_buildings}
+    ])
+
+    pipeline_json = json.dumps({"pipeline": stages})
+    pipeline = pdal.Pipeline(pipeline_json)
+    pipeline.execute()
+
+    count = pipeline.arrays[0].shape[0] if len(pipeline.arrays) > 0 else 0
+
+    if verbose:
+        print(f'[PDAL] {count} points bâtiments (class 6) extraits')
+
+    if count < 50:
+        # Fallback : essayer les points hauts non-sol (class != 2, Z au-dessus du DTM)
+        if verbose:
+            print('[PDAL] Peu de class 6, tentative class 1+3+4+5...')
+        stages_alt = [
+            {"type": "readers.copc", "filename": str(input_path), "bounds": bounds_str}
+        ]
+        if not already_projected:
+            stages_alt.append({
+                "type": "filters.reprojection",
+                "in_srs": f"EPSG:{input_epsg or 4326}",
+                "out_srs": f"EPSG:{target_epsg}"
+            })
+        stages_alt.extend([
+            {"type": "filters.range", "limits": "Classification![2:2]"},
+            {"type": "filters.outlier", "method": "statistical", "mean_k": 8, "multiplier": 2.0},
+            {"type": "writers.ply", "filename": ply_buildings}
+        ])
+        pipeline2 = pdal.Pipeline(json.dumps({"pipeline": stages_alt}))
+        pipeline2.execute()
+        count = pipeline2.arrays[0].shape[0] if len(pipeline2.arrays) > 0 else 0
+        if verbose:
+            print(f'[PDAL] {count} points non-sol extraits (fallback)')
+
+    return ply_buildings, count
+
+
+def build_buildings_mesh(ply_path: str, lidar_fetcher_path: str,
+                         origin_offset: np.ndarray, verbose: bool):
+    """
+    Utilise le pipeline rationalization de lidar-fetcher pour créer
+    un mesh bâtiment depuis les points extraits.
+    Retourne un trimesh.Trimesh ou None.
+    """
+    import sys
+    import trimesh
+
+    pcd = o3d.io.read_point_cloud(ply_path)
+    pts = np.asarray(pcd.points)
+
+    if len(pts) < 50:
+        if verbose:
+            print('[Bâtiments] Pas assez de points pour RANSAC')
+        return None
+
+    # Importer le pipeline lidar-fetcher
+    if lidar_fetcher_path not in sys.path:
+        sys.path.insert(0, lidar_fetcher_path)
+
+    from rationalization.primitives import fit_multiple_planes
+    from rationalization.export import planes_to_mesh
+
+    if verbose:
+        print(f'[Bâtiments] RANSAC sur {len(pts)} points...')
+
+    planes = fit_multiple_planes(
+        pts, max_planes=20, threshold=0.15, min_inliers=50, min_remaining=30
+    )
+
+    if verbose:
+        print(f'[Bâtiments] {len(planes)} plans détectés')
+
+    if not planes:
+        return None
+
+    vertices, faces = planes_to_mesh(planes, simplify=True)
+
+    if len(faces) == 0:
+        if verbose:
+            print('[Bâtiments] Aucune face générée')
+        return None
+
+    # Centrer comme le terrain (même origine)
+    vertices = vertices - origin_offset
+
+    # Z-up → Y-up (même conversion que le terrain)
+    verts_glb = np.column_stack([vertices[:, 0], vertices[:, 2], -vertices[:, 1]])
+
+    # Couleur gris clair pour les bâtiments
+    colors = np.full((len(verts_glb), 4), [200, 200, 200, 255], dtype=np.uint8)
+
+    tm_buildings = trimesh.Trimesh(vertices=verts_glb, faces=faces)
+    tm_buildings.visual.vertex_colors = colors
+    tm_buildings.metadata['type'] = 'buildings'
+
+    if verbose:
+        print(f'[Bâtiments] Mesh : {len(faces)} triangles, {len(verts_glb)} vertices')
+
+    return tm_buildings
+
+
+def export_combined_glb(terrain_mesh, buildings_mesh, output_path: str,
+                        meta: dict, verbose: bool):
+    """
+    Exporte terrain + bâtiments dans un seul GLB via trimesh Scene.
+    """
+    import trimesh
+    import io
+    import datetime
+
+    verts = np.asarray(terrain_mesh.vertices).copy()
+    tris  = np.asarray(terrain_mesh.triangles)
+    norms = np.asarray(terrain_mesh.vertex_normals).copy()
+
+    origin = verts.mean(axis=0)
+    verts -= origin
+
+    # Z-up → Y-up
+    verts_glb = np.column_stack([verts[:, 0], verts[:, 2], -verts[:, 1]])
+    norms_glb = np.column_stack([norms[:, 0], norms[:, 2], -norms[:, 1]])
+
+    # UVs
+    uvs = None
+    if len(terrain_mesh.triangle_uvs) > 0:
+        tri_uvs_flat = np.asarray(terrain_mesh.triangle_uvs)
+        uv_per_tri = tri_uvs_flat.reshape(-1, 3, 2)
+        uvs = np.zeros((len(verts_glb), 2))
+        counts = np.zeros(len(verts_glb))
+        for ti, tri in enumerate(tris):
+            for vi, v_idx in enumerate(tri):
+                uvs[v_idx] += uv_per_tri[ti, vi]
+                counts[v_idx] += 1
+        counts = np.maximum(counts, 1)
+        uvs /= counts[:, None]
+
+    # Terrain mesh
+    tm_terrain = trimesh.Trimesh(vertices=verts_glb, faces=tris, vertex_normals=norms_glb)
+
+    if uvs is not None and len(terrain_mesh.textures) > 0:
+        tex_np = np.asarray(terrain_mesh.textures[0])
+        tex_pil = Image.fromarray(tex_np)
+        buf = io.BytesIO()
+        tex_pil.save(buf, 'PNG')
+        buf.seek(0)
+        material = trimesh.visual.texture.SimpleMaterial(
+            image=Image.open(buf),
+            ambient=[255, 255, 255, 255],
+            diffuse=[255, 255, 255, 255],
+        )
+        material.kwargs['metallicFactor'] = 0.0
+        material.kwargs['roughnessFactor'] = 1.0
+        tm_terrain.visual = trimesh.visual.TextureVisuals(uv=uvs, material=material)
+
+    # Assembler la scène
+    scene = trimesh.Scene()
+    scene.add_geometry(tm_terrain, node_name='terrain')
+
+    if buildings_mesh is not None:
+        scene.add_geometry(buildings_mesh, node_name='buildings')
+
+    scene.export(output_path, file_type='glb')
+
+    size_mb = os.path.getsize(output_path) / 1e6
+    if verbose:
+        n_terrain = len(tris)
+        n_buildings = len(buildings_mesh.faces) if buildings_mesh is not None else 0
+        print(f'[GLB] Combiné : terrain {n_terrain} + bâtiments {n_buildings} triangles')
+        print(f'[GLB] Exporté : {output_path} ({size_mb:.2f} Mo)')
+
+    return size_mb
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 8. MAIN
 # ─────────────────────────────────────────────────────────────────────────────
 
 def main():
@@ -695,8 +912,36 @@ def main():
             verbose=args.verbose
         )
 
-        # 5. Export GLB (centré à l'origine)
-        print('\n[5/5] Export GLB...')
+        # 5. Bâtiments (optionnel)
+        buildings_trimesh = None
+        n_building_pts = 0
+        if args.buildings:
+            n_steps = 6
+            print(f'\n[5/{n_steps}] Extraction bâtiments...')
+            input_epsg = args.input_epsg or detect_copc_srs(args.input)
+            ply_buildings, n_building_pts = extract_buildings_pdal(
+                input_path=args.input,
+                bbox_local=parcelle['bbox_local'],
+                bbox_wgs84=parcelle['bbox_wgs84'],
+                input_epsg=input_epsg,
+                target_epsg=args.epsg,
+                tmp_dir=tmp_dir,
+                verbose=args.verbose
+            )
+            if n_building_pts >= 50:
+                origin_offset = np.asarray(mesh.vertices).mean(axis=0)
+                buildings_trimesh = build_buildings_mesh(
+                    ply_path=ply_buildings,
+                    lidar_fetcher_path=args.lidar_fetcher,
+                    origin_offset=origin_offset,
+                    verbose=args.verbose
+                )
+        else:
+            n_steps = 5
+
+        # 6. Export GLB
+        step = n_steps
+        print(f'\n[{step}/{n_steps}] Export GLB...')
         verts_raw = np.asarray(mesh.vertices)
         origin_offset = verts_raw.mean(axis=0)
         meta = {
@@ -706,7 +951,12 @@ def main():
             'n_triangles': len(mesh.triangles),
             'origin_offset': origin_offset.tolist(),
         }
-        size_mb = export_glb(mesh, args.output, meta, args.verbose)
+
+        if buildings_trimesh is not None:
+            size_mb = export_combined_glb(mesh, buildings_trimesh,
+                                          args.output, meta, args.verbose)
+        else:
+            size_mb = export_glb(mesh, args.output, meta, args.verbose)
 
         # Copier DTM
         import shutil
@@ -727,6 +977,9 @@ def main():
             'duration_s': round(time.time() - t0, 1),
             'source_copc': os.path.basename(args.input),
             'source_texture': 'IGN WMTS ORTHOIMAGERY.ORTHOPHOTOS',
+            'buildings': buildings_trimesh is not None,
+            'n_building_points': n_building_pts,
+            'n_building_triangles': len(buildings_trimesh.faces) if buildings_trimesh is not None else 0,
         }
         with open(meta_out, 'w') as f:
             json.dump(meta_full, f, indent=2)

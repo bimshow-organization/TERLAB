@@ -337,6 +337,118 @@
     Le score aéraulique est sauvegardé dans la session et intégré à la synthèse (Phase 12).
   </div>
 
+  <!-- ═══ CELLULES — Générateur logement collectif ═══ -->
+  <div class="form-section anim-slide-up" id="p07-cellules-section">
+    <div class="fs-head">Cellules — Plan de plateau</div>
+
+    <!-- Type de bâtiment -->
+    <div class="p07-section" style="margin-bottom:8px">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-bottom:4px">Type de bâtiment</div>
+      <select id="cg-batiment-type" style="width:100%;padding:5px 8px;background:var(--raised);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--font-mono);font-size:10px">
+        <option value="lame_simple" selected>Lame simple coursive ext.</option>
+        <option value="lame_decalee">Lame décalée (stagger)</option>
+        <option value="plot_compact">Plot compact 4 logts</option>
+        <option value="duplex_bande">Duplex en bande (Beauchamp)</option>
+      </select>
+    </div>
+
+    <!-- Mixité logements -->
+    <div style="margin-bottom:8px">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-bottom:4px">Mixité logements</div>
+      <div id="cg-mixite-grid" style="display:grid;grid-template-columns:repeat(3, 1fr);gap:4px">
+        <div style="display:flex;align-items:center;gap:3px"><label style="font-size:9px;color:var(--text2);min-width:28px">T1a</label><input type="number" class="cg-mix" data-type="T1a" min="0" max="10" value="0" style="width:36px;padding:3px;background:var(--raised);border:1px solid var(--border);border-radius:2px;color:var(--text);font-family:var(--font-mono);font-size:10px;text-align:center"></div>
+        <div style="display:flex;align-items:center;gap:3px"><label style="font-size:9px;color:var(--text2);min-width:28px">T1b</label><input type="number" class="cg-mix" data-type="T1bis" min="0" max="10" value="0" style="width:36px;padding:3px;background:var(--raised);border:1px solid var(--border);border-radius:2px;color:var(--text);font-family:var(--font-mono);font-size:10px;text-align:center"></div>
+        <div style="display:flex;align-items:center;gap:3px"><label style="font-size:9px;color:var(--text2);min-width:28px">T2</label><input type="number" class="cg-mix" data-type="T2" min="0" max="10" value="3" style="width:36px;padding:3px;background:var(--raised);border:1px solid var(--border);border-radius:2px;color:var(--text);font-family:var(--font-mono);font-size:10px;text-align:center"></div>
+        <div style="display:flex;align-items:center;gap:3px"><label style="font-size:9px;color:var(--text2);min-width:28px">T3</label><input type="number" class="cg-mix" data-type="T3" min="0" max="10" value="2" style="width:36px;padding:3px;background:var(--raised);border:1px solid var(--border);border-radius:2px;color:var(--text);font-family:var(--font-mono);font-size:10px;text-align:center"></div>
+        <div style="display:flex;align-items:center;gap:3px"><label style="font-size:9px;color:var(--text2);min-width:28px">T4</label><input type="number" class="cg-mix" data-type="T4" min="0" max="10" value="0" style="width:36px;padding:3px;background:var(--raised);border:1px solid var(--border);border-radius:2px;color:var(--text);font-family:var(--font-mono);font-size:10px;text-align:center"></div>
+        <div style="display:flex;align-items:center;gap:3px"><label style="font-size:9px;color:var(--text2);min-width:28px">T4D</label><input type="number" class="cg-mix" data-type="T4_DUPLEX" min="0" max="10" value="0" style="width:36px;padding:3px;background:var(--raised);border:1px solid var(--border);border-radius:2px;color:var(--text);font-family:var(--font-mono);font-size:10px;text-align:center"></div>
+      </div>
+    </div>
+
+    <!-- Stagger -->
+    <div style="margin-bottom:8px;display:flex;align-items:center;gap:8px">
+      <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text2);cursor:pointer">
+        <input type="checkbox" id="cg-stagger"> Décalage (stagger)
+      </label>
+      <input type="number" id="cg-stagger-offset" min="0.5" max="2" step="0.1" value="1.0"
+             style="width:44px;padding:3px;background:var(--raised);border:1px solid var(--border);border-radius:2px;color:var(--text);font-family:var(--font-mono);font-size:10px;text-align:center">
+      <span style="font-size:9px;color:var(--faint)">m</span>
+    </div>
+
+    <!-- Noyau de circulation -->
+    <div style="margin-bottom:8px">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-bottom:4px">Noyau de circulation</div>
+      <select id="cg-noyau-type" style="width:100%;padding:5px 8px;background:var(--raised);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--font-mono);font-size:10px">
+        <option value="EXTERIEUR_COUVERT" selected>Ext\u00e9rieur couvert (standard LLS)</option>
+        <option value="INTERIEUR_FERME">Int\u00e9rieur ferm\u00e9 (cage b\u00e9ton)</option>
+        <option value="DEMI_EXTERIEUR">Demi-ext\u00e9rieur (cage ouverte 2 c\u00f4t\u00e9s)</option>
+      </select>
+      <div id="cg-noyau-note" style="font-size:10px;color:var(--faint);margin-top:4px;font-style:italic">
+        Saillie c\u00f4t\u00e9 coursive - Ne consomme pas de largeur dans les logements
+      </div>
+    </div>
+
+    <!-- Ascenseur -->
+    <div style="margin-bottom:8px">
+      <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text2);cursor:pointer">
+        <input type="checkbox" id="cg-avec-ascenseur">
+        Avec ascenseur
+        <span style="font-size:9px;color:var(--faint);margin-left:4px">(obligatoire R+3+)</span>
+      </label>
+    </div>
+
+    <!-- Espacement noyaux -->
+    <div style="margin-bottom:8px">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-bottom:4px">Espacement noyaux</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="range" id="cg-noyau-spacing" min="8" max="20" step="0.5" value="12" style="flex:1">
+        <span id="cg-noyau-spacing-val" style="font-family:var(--font-mono);font-size:11px;color:var(--text2);min-width:32px">12m</span>
+      </div>
+      <div style="font-size:9px;color:var(--faint)">1 noyau tous les 5-6 logements</div>
+    </div>
+
+    <!-- Bouton générer -->
+    <button id="cg-generate-btn" onclick="window.P07Cellules?.generate()"
+            style="width:100%;padding:8px;background:var(--accent2);border:1px solid rgba(154,120,32,.3);border-radius:var(--r-sm);color:var(--accent);font-family:var(--font-mono);font-size:10px;font-weight:700;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;transition:all .15s">
+      G\u00e9n\u00e9rer le plateau
+    </button>
+
+    <!-- Canvas SVG plateau -->
+    <div id="cg-plateau-canvas" style="margin-top:10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);min-height:80px;overflow-x:auto"></div>
+
+    <!-- Stats -->
+    <div id="cg-stats" style="display:none;grid-template-columns:1fr 1fr;gap:4px;margin-top:8px">
+      <div style="background:var(--raised);border:1px solid var(--border);border-radius:var(--r-sm);padding:4px 6px">
+        <div style="font-size:8px;color:var(--faint)">Logements</div>
+        <div style="font:600 13px var(--font-mono);color:var(--text)" id="cg-n-logements">—</div>
+      </div>
+      <div style="background:var(--raised);border:1px solid var(--border);border-radius:var(--r-sm);padding:4px 6px">
+        <div style="font-size:8px;color:var(--faint)">RTAA</div>
+        <div style="font:600 13px var(--font-mono);color:var(--success)" id="cg-rtaa-ok">—</div>
+      </div>
+      <div style="background:var(--raised);border:1px solid var(--border);border-radius:var(--r-sm);padding:4px 6px">
+        <div style="font-size:8px;color:var(--faint)">SU moy.</div>
+        <div style="font:600 13px var(--font-mono);color:var(--text)" id="cg-su-moy">—</div>
+      </div>
+      <div style="background:var(--raised);border:1px solid var(--border);border-radius:var(--r-sm);padding:4px 6px">
+        <div style="font-size:8px;color:var(--faint)">Prof. totale</div>
+        <div style="font:600 13px var(--font-mono);color:var(--text)" id="cg-prof">—</div>
+      </div>
+    </div>
+
+    <!-- Export BIMSHOW -->
+    <button id="cg-export-bimshow" style="display:none;width:100%;margin-top:8px;padding:7px;background:var(--raised);border:1px solid var(--border2);border-radius:var(--r-sm);color:var(--muted);font-family:var(--font-mono);font-size:9px;cursor:pointer;transition:all .15s"
+            onclick="window.P07Cellules?.exportBIMSHOW()">
+      Envoyer vers BIMSHOW
+    </button>
+
+    <!-- Export JSON -->
+    <button id="cg-export-json" style="display:none;width:100%;margin-top:4px;padding:7px;background:var(--raised);border:1px solid var(--border2);border-radius:var(--r-sm);color:var(--muted);font-family:var(--font-mono);font-size:9px;cursor:pointer;transition:all .15s"
+            onclick="window.P07Cellules?.exportJSON()">
+      Export JSON session
+    </button>
+  </div>
+
   <div class="val-block">
     <div class="val-title">Validation de la phase 7</div>
     <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Tous les checks PLU verts (reculs / emprise / hauteur)</span></div>
@@ -2285,4 +2397,141 @@ document.getElementById('pmc-btn-auto')?.addEventListener('click', () => {
 });
 document.getElementById('pmc-btn-reset')?.addEventListener('click', () => window.PlanMasseCanvas?.resetView());
 document.getElementById('pmc-btn-svg')?.addEventListener('click', () => window.PlanMasseCanvas?.exportSVG());
+
+// ═══════════════════════════════════════════════════════════════
+// CELLULE GENERATOR — Plan de plateau logement collectif
+// ═══════════════════════════════════════════════════════════════
+
+const CelluleGenerator = window.CelluleGenerator;
+let _plateau = null;
+
+const P07Cellules = {
+
+  async generate() {
+    if (!CelluleGenerator) {
+      window.TerlabToast?.show('CelluleGenerator non chargé', 'warning');
+      return;
+    }
+    if (!CelluleGenerator._rules) {
+      await CelluleGenerator.init();
+    }
+
+    const mixite = this._getMixite();
+    if (mixite.length === 0) {
+      window.TerlabToast?.show('Ajoutez au moins 1 logement dans la mixité', 'warning');
+      return;
+    }
+
+    const type_batiment = document.getElementById('cg-batiment-type')?.value ?? 'lame_simple';
+    const stagger       = document.getElementById('cg-stagger')?.checked ?? false;
+    const stagger_off   = parseFloat(document.getElementById('cg-stagger-offset')?.value ?? 1);
+    const noyau_type    = document.getElementById('cg-noyau-type')?.value ?? 'EXTERIEUR_COUVERT';
+    const noyau_spacing = parseFloat(document.getElementById('cg-noyau-spacing')?.value ?? 12);
+
+    const sessionP07 = SessionManager.getPhase(7)?.data ?? {};
+    const widthBatiment = sessionP07.width_batiment_m ?? sessionP07.gabarit_l_m ?? 50;
+    const niveaux = sessionP07.niveaux ?? parseInt(document.getElementById('sp-niveaux')?.value ?? 2);
+
+    // Forcer ascenseur si R+3+
+    const avecAsc = document.getElementById('cg-avec-ascenseur')?.checked || niveaux >= 4;
+    if (niveaux >= 4) {
+      const cb = document.getElementById('cg-avec-ascenseur');
+      if (cb) { cb.checked = true; cb.disabled = true; }
+    }
+
+    _plateau = CelluleGenerator.generatePlateau({
+      type_batiment,
+      mixite,
+      width_batiment_m: widthBatiment,
+      stagger,
+      stagger_offset_m: stagger_off,
+      noyau_type,
+      noyau_spacing_m:  noyau_spacing,
+      avec_ascenseur:   avecAsc
+    });
+
+    CelluleGenerator.renderPlateauSVG(_plateau, 'cg-plateau-canvas', 32);
+
+    // Note noyau
+    const noyauDef = CelluleGenerator._rules?.noyau_circulation?.types?.[noyau_type];
+    if (noyauDef) {
+      document.getElementById('cg-noyau-note').textContent =
+        noyauDef.position === 'SAILLIE_COURSIVE'
+          ? `Saillie ${noyauDef.saillie_m?.std ?? 1.8}m \u00b7 Pas de largeur consomm\u00e9e dans les logements`
+          : noyauDef.comment_impact ?? noyauDef.label;
+    }
+
+    // Stats
+    const s = _plateau.stats;
+    document.getElementById('cg-n-logements').textContent = s.n_logements;
+    document.getElementById('cg-rtaa-ok').textContent     = `${s.rtaa_conformes}/${s.n_logements}`;
+    document.getElementById('cg-su-moy').textContent      = `${s.surface_utile_moy_m2}m\u00b2`;
+    document.getElementById('cg-prof').textContent        =
+      `${(_plateau.dimensions.profondeur_totale_m ?? _plateau.dimensions.profondeur_m).toFixed(1)}m`;
+
+    document.getElementById('cg-stats').style.display        = 'grid';
+    document.getElementById('cg-export-bimshow').style.display = 'block';
+    document.getElementById('cg-export-json').style.display    = 'block';
+
+    SessionManager.savePhase(7, {
+      ...sessionP07,
+      plateau: _plateau,
+      mixite_reelle: _plateau.mixite_reelle
+    });
+  },
+
+  exportBIMSHOW() {
+    if (!_plateau) return;
+    const BIMSHOWBridge = window.TerlabBIMSHOW;
+    if (!BIMSHOWBridge?.connected) {
+      window.TerlabToast?.show('BIMSHOW non connect\u00e9', 'warning');
+      return;
+    }
+    BIMSHOWBridge.send('TERLAB_CELLULES', {
+      plateau: _plateau,
+      noyau_type: _plateau.noyau_type,
+      phase: 7
+    });
+    window.TerlabToast?.show('Plateau envoy\u00e9 vers BIMSHOW', 'success', 2000);
+  },
+
+  exportJSON() {
+    if (!_plateau) return;
+    const blob = new Blob([JSON.stringify(_plateau, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `plateau_${_plateau.id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  _getMixite() {
+    const mixite = [];
+    document.querySelectorAll('.cg-mix').forEach(input => {
+      const count = parseInt(input.value) || 0;
+      if (count > 0) {
+        mixite.push({ type: input.dataset.type, count });
+      }
+    });
+    return mixite;
+  }
+};
+
+window.P07Cellules = P07Cellules;
+
+// ── Event listeners noyau ──
+document.getElementById('cg-noyau-type')?.addEventListener('change', e => {
+  const def = CelluleGenerator?._rules?.noyau_circulation?.types?.[e.target.value];
+  if (def) {
+    document.getElementById('cg-noyau-note').textContent =
+      def.position === 'SAILLIE_COURSIVE'
+        ? `Saillie ${def.saillie_m?.std ?? 1.8}m \u00b7 Ne consomme pas de largeur dans les logements`
+        : def.comment_impact ?? def.label;
+  }
+});
+
+document.getElementById('cg-noyau-spacing')?.addEventListener('input', e => {
+  document.getElementById('cg-noyau-spacing-val').textContent = `${(+e.target.value).toFixed(1)}m`;
+});
 </script>

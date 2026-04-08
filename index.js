@@ -57,6 +57,8 @@ import CapacityStudyRenderer  from './services/capacity-study-renderer.js';
 import SdisChecker            from './services/sdis-checker.js';
 import RTAAAnalyzer           from './services/rtaa-analyzer.js';
 import UrbanismeAutorisations from './services/urbanisme-autorisations.js';
+import CelluleGenerator       from './services/cellule-generator.js';
+import RTAAValidator          from './services/rtaa-validator.js';
 
 // ─── Module aéraulique (Sprints 1-4) ────────────────────────
 import ParcelSelector     from './components/parcel-selector.js';
@@ -242,6 +244,8 @@ async function init() {
     window.SdisChecker            = SdisChecker;
     window.RTAAAnalyzer           = RTAAAnalyzer;
     window.UrbanismeAutorisations = UrbanismeAutorisations;
+    window.CelluleGenerator       = CelluleGenerator;
+    window.RTAAValidator          = RTAAValidator;
 
     // Composants phases
     window.RiskPlayer    = RiskPlayer;
