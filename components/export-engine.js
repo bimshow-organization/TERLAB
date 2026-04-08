@@ -15,9 +15,12 @@ const val  = (v, fallback = 'a renseigner') => (v != null && v !== '' && v !== '
 const em   = (v) => `<span class="fv em">${val(v, 'a renseigner')}</span>`;
 const auto = (v) => v != null && v !== '' ? `<span class="fv au">${v}</span>` : em();
 
-/** Data row helper */
-const row = (label, value, cls = '') =>
-  `<div class="fr"><span class="fl">${label}</span><span class="fv ${cls}">${val(value)}</span></div>`;
+/** Data row helper — detecte auto-values suffixees "(≈)" et applique style auto */
+const row = (label, value, cls = '') => {
+  const v = val(value);
+  const isAuto = typeof value === 'string' && value.includes('≈');
+  return `<div class="fr"><span class="fl">${label}</span><span class="fv ${cls}${isAuto ? ' au' : ''}">${v}</span></div>`;
+};
 
 /** Section title */
 const sec = (title) => `<div class="stitle">${title}</div>`;
@@ -479,7 +482,13 @@ const ExportEngine = {
             <img src="${pprSnap}" alt="Carte PPR">
             <span class="map-lbl">Carte PPR</span>
             <span class="map-src">AGORAH PEIGEO</span>
-          </div>` : mapImg(maps, 'p03_ppr', 200, 'Carte PPR', 'AGORAH PEIGEO')}
+          </div>` : mapImg(maps, 'p03_ppr', 200, 'PPR — Vue rapprochee', 'AGORAH PEIGEO')}
+          ${maps?.p03_ppr_context ? `
+          <div class="map-wrap" style="height:160px">
+            <img src="${maps.p03_ppr_context}" alt="Contexte PPR">
+            <span class="map-lbl">PPR — Contexte elargi</span>
+            <span class="map-src">AGORAH PEIGEO · Satellite</span>
+          </div>` : ''}
         </div>
         <div class="sec">
           ${sec('REGLEMENTATION PLU & RTAA DOM')}

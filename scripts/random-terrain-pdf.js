@@ -250,7 +250,31 @@ async function processOneTerrain(browser, runIndex) {
             });
             if (!valid.length) continue;
 
-            const feature = valid[Math.floor(Math.random() * valid.length)];
+            // Vérifier zone PLU — préférer zone urbaine (U*)
+            // Tester rapidement si la parcelle est en zone constructible
+            let selectedFeature = null;
+            for (const feat of valid) {
+              try {
+                const fCoords = feat.geometry.coordinates[0];
+                const flat = Array.isArray(fCoords[0][0]) ? fCoords[0] : fCoords;
+                const ctr = flat.reduce((a, p) => [a[0]+p[0], a[1]+p[1]], [0,0]).map(v => v/flat.length);
+                const pluResp = await fetch(
+                  `https://data.geopf.fr/wfs/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature`
+                  + `&TYPENAMES=wfs_du:zone_urba&OUTPUTFORMAT=application/json&SRSNAME=EPSG:4326&COUNT=1`
+                  + `&CQL_FILTER=INTERSECTS(geom,POINT(${ctr[1]} ${ctr[0]}))`,
+                  { signal: AbortSignal.timeout(5000) }
+                );
+                const pluData = await pluResp.json();
+                const zoneType = pluData?.features?.[0]?.properties?.typezone ?? '';
+                // Préférer U (urbain) — accepter AU (à urbaniser)
+                if (zoneType.startsWith('U') || zoneType.startsWith('AU')) {
+                  selectedFeature = feat;
+                  break;
+                }
+              } catch { /* pas de PLU = on prend quand même */ }
+            }
+            // Fallback : prendre la première parcelle si aucune n'est en zone U
+            const feature = selectedFeature || valid[Math.floor(Math.random() * valid.length)];
             const props = feature.properties;
             const c = props.contenance ?? props.contenanc;
             const insee = props.code_dep ? `${props.code_dep}${props.code_com}` : (props.code_insee ?? '');
@@ -343,6 +367,8 @@ async function processOneTerrain(browser, runIndex) {
             const t = window.SessionManager.getTerrain();
             const pts = await window.LidarService.getPointsForParcel(t.parcelle_geojson, 30);
             if (pts?.points?.length) {
+              // Sauvegarder les points bruts pour les profils terrain
+              window.LidarService._lastPoints = pts.points;
               const analysis = window.LidarService.analyzeTerrain(pts.points, t.parcelle_geojson);
               // Sauvegarder les résultats LiDAR dans la session
               const enriched = { ...t };
@@ -451,14 +477,91 @@ async function processOneTerrain(browser, runIndex) {
 
           // Zones climatiques/RTAA depuis altitude
           const TA = window.TerrainAnalysis;
-          if (TA && enriched.altitude_ngr) {
-            enriched.zone_climatique = TA.deduireZoneClimatique?.(enriched.altitude_ngr) ?? enriched.zone_climatique;
-            enriched.zone_rtaa = TA.getZoneRTAA?.(enriched.altitude_ngr) ?? enriched.zone_rtaa;
+          const alt = parseFloat(enriched.altitude_ngr);
+          if (TA && alt) {
+            enriched.zone_climatique = TA.deduireZoneClimatique?.(alt) ?? enriched.zone_climatique;
+            enriched.zone_rtaa = TA.getZoneRTAA?.(alt) ?? enriched.zone_rtaa;
           }
 
+          // ── Phase 3 — Risques (auto-dérivé) ──────────────────
+          const p3auto = {
+            ...(SM.getPhase(3)?.data ?? {}),
+          };
+          // Côte réf. NGR = altitude terrain (≈ = auto-dérivé)
+          if (alt && !p3auto.cote_reference_ngr) {
+            p3auto.cote_reference_ngr = Math.round(alt * 10) / 10;
+          }
+          // Zone vent RTAA depuis altitude
+          if (alt && !p3auto.zone_rtaa_vent) {
+            p3auto.zone_rtaa_vent = alt < 200 ? '≈ Zone 1 (< 200 m)' : alt < 600 ? '≈ Zone 2 (200–600 m)' : '≈ Zone 3 (> 600 m)';
+          }
+          // Simulation crue — hors PPR = pas de crue réglementaire
+          if (p3auto.simulateur_flood_m == null && !enriched.zone_pprn) {
+            p3auto.simulateur_flood_m = 0;
+            p3auto._flood_note = 'hors PPR';
+          }
+          // Hydrant / Accès SDIS — par défaut "à vérifier"
+          if (!p3auto.hydrant_present) p3auto.hydrant_present = 'verif';
+          if (!p3auto.acces_sdis) p3auto.acces_sdis = 'verif';
+          // PPRN — si pas en zone, l'indiquer
+          if (!enriched.zone_pprn && !p3auto.zone_pprn) {
+            p3auto.zone_pprn_status = 'Hors zone PPR approuve (a confirmer)';
+          }
+          SM.savePhase(3, p3auto, {}, false);
+
+          // ── Phase 4 — PLU & reculs (auto depuis JSON règles) ──
+          const p4auto = {
+            ...(SM.getPhase(4)?.data ?? {}),
+            zone_plu: enriched.zone_plu ?? null,
+          };
+          // Charger les règles PLU depuis les JSON par commune
+          try {
+            const commune = (enriched.commune ?? '').toLowerCase().replace(/[^a-z-]/g, '-').replace(/-+/g, '-');
+            if (commune) {
+              const pluResp = await fetch(`data/plu-rules-${commune}.json`).catch(() => null);
+              if (pluResp?.ok) {
+                const pluRules = await pluResp.json();
+                const zone = enriched.zone_plu?.replace(/[0-9]/g, '')?.toUpperCase?.() ?? '';
+                // Trouver les règles de la zone
+                const zoneRules = pluRules.zones?.[enriched.zone_plu]
+                  ?? pluRules.zones?.[zone]
+                  ?? pluRules.zones?.[Object.keys(pluRules.zones ?? {})[0]]
+                  ?? {};
+                const plu = zoneRules.plu ?? zoneRules;
+                const reculs = zoneRules.reculs ?? {};
+
+                if (plu.heMax && !p4auto.hauteur_max_m) p4auto.hauteur_max_m = `≈ ${plu.heMax}`;
+                if (plu.emprMax && !p4auto.emprise_sol_max_pct) p4auto.emprise_sol_max_pct = `≈ ${plu.emprMax}`;
+                if (reculs.voie && !p4auto.recul_voie_principale_m) p4auto.recul_voie_principale_m = `≈ ${reculs.voie}`;
+                if (reculs.lat && !p4auto.recul_limite_sep_m) p4auto.recul_limite_sep_m = `≈ ${reculs.lat}`;
+                if (reculs.fond && !p4auto.recul_fond_m) p4auto.recul_fond_m = `≈ ${reculs.fond}`;
+
+                // Stocker pour l'esquisse
+                enriched._pluRules = zoneRules;
+              }
+            }
+          } catch { /* pas de JSON PLU pour cette commune */ }
+          SM.savePhase(4, p4auto, {}, false);
+
+          // ── Phase 8 — Chantier (defaults raisonnables) ────────
+          const p8auto = { ...(SM.getPhase(8)?.data ?? {}) };
+          if (!p8auto.saison_demarrage) p8auto.saison_demarrage = 'hors_cyclone';
+          if (!p8auto.gestion_eaux_chantier) p8auto.gestion_eaux_chantier = 'a_definir';
+          // Ravine proche — check distance si connue
+          if (!p8auto.ravine_proche) {
+            p8auto.ravine_proche = (enriched.distance_ravine_m && enriched.distance_ravine_m < 50) ? 'oui' : 'non';
+          }
+          SM.savePhase(8, p8auto, {}, false);
+
           window.SessionManager.saveTerrain(enriched);
-          console.log('[PDF] Enrichi : PPR=' + (enriched.zone_pprn ?? '—') + ', PLU=' + (enriched.zone_plu ?? '—') +
-            ', alt=' + (enriched.altitude_ngr ?? '—') + ', geo=' + (enriched.geologie_type ?? '—'));
+
+          const autoCount = [
+            p3auto.cote_reference_ngr, p3auto.zone_rtaa_vent,
+            p4auto.hauteur_max_m, p4auto.emprise_sol_max_pct,
+            p4auto.recul_voie_principale_m
+          ].filter(Boolean).length;
+          console.log('[PDF] Enrichi : PPR=' + (enriched.zone_pprn ?? 'hors zone') + ', PLU=' + (enriched.zone_plu ?? '—') +
+            ', alt=' + (enriched.altitude_ngr ?? '—') + ', auto=' + autoCount + ' champs');
         } catch (e) { console.warn('[Enrich]', e.message); }
         window.__enrichDone = true;
       })();
@@ -469,7 +572,9 @@ async function processOneTerrain(browser, runIndex) {
     log('4c. Génération esquisse automatique…');
     await page.evaluate(() => {
       window.__esquisseDone = false;
+      window.__esquisseTime = 0;
       (async () => {
+        const t0 = performance.now();
         try {
           const APE = window.AutoPlanEngine;
           const SM = window.SessionManager;
@@ -496,6 +601,16 @@ async function processOneTerrain(browser, runIndex) {
           for (let i = 0; i <= 12; i++) {
             const ph = SM.getPhase(i);
             if (ph) sessionData.phases[i] = ph;
+          }
+
+          // Calculer la géométrie locale (pour le plan masse SVG + BpfBridge)
+          const TA = window.TerrainP07Adapter;
+          if (TA?.process) {
+            const adapted = TA.process(t.parcelle_geojson, { bearing: 0 });
+            if (adapted.valid) {
+              sessionData._parcelLocal = adapted.poly?.map(([x, y]) => ({ x, y })) ?? [];
+              sessionData._edgeTypes = TA.inferEdgeTypes?.(adapted.poly, sessionData) ?? [];
+            }
           }
 
           // Programme par défaut : logement collectif
@@ -530,10 +645,13 @@ async function processOneTerrain(browser, runIndex) {
             console.log('[PDF] AutoPlan : aucune solution');
           }
         } catch (e) { console.warn('[Esquisse] ' + e.message); }
+        window.__esquisseTime = Math.round(performance.now() - t0);
         window.__esquisseDone = true;
       })();
     });
     await waitFor(page, () => window.__esquisseDone, 15_000, 'Esquisse auto');
+    const esqTime = await page.evaluate(() => window.__esquisseTime);
+    log(`  ⏱ AutoPlanEngine : ${esqTime}ms`);
 
     // ── 5. Initialiser Mapbox pour les captures cartes ─────────
     log('5. Init Mapbox pour captures…');
@@ -591,6 +709,36 @@ async function processOneTerrain(browser, runIndex) {
         }
       });
     });
+    // Ajouter marqueur projet + contour parcelle (SANS couche PPR pour ne pas ralentir les captures)
+    if (mapReady) {
+      await page.evaluate(() => {
+        try {
+          const map = window.MapViewer?.getMap?.() ?? window.TerlabMap?._map;
+          const t = window.SessionManager?.getTerrain?.();
+          if (!map || !t?.lng || !t?.lat) return;
+
+          const lng = parseFloat(t.lng), lat = parseFloat(t.lat);
+
+          // Marqueur projet (terracotta)
+          if (window.mapboxgl) {
+            new mapboxgl.Marker({ color: '#C1652B' }).setLngLat([lng, lat]).addTo(map);
+          }
+
+          // Contour parcelle
+          if (t.parcelle_geojson && !map.getLayer('parcelle-outline')) {
+            map.addSource('parcelle-outline', { type: 'geojson', data: { type: 'Feature', geometry: t.parcelle_geojson, properties: {} } });
+            map.addLayer({ id: 'parcelle-outline', type: 'line', source: 'parcelle-outline', paint: { 'line-color': '#C1652B', 'line-width': 3 } });
+            map.addLayer({ id: 'parcelle-fill', type: 'fill', source: 'parcelle-outline', paint: { 'fill-color': '#C1652B', 'fill-opacity': 0.15 } });
+          }
+        } catch (e) { console.warn('[Map] Setup:', e.message); }
+      });
+      await page.evaluate(() => new Promise(resolve => {
+        const map = window.MapViewer?.getMap?.() ?? window.TerlabMap?._map;
+        if (!map) return resolve();
+        map.once('idle', resolve);
+        setTimeout(resolve, 4000);
+      }));
+    }
     log(mapReady ? '  ✓ Mapbox prêt pour captures' : '  ⚠ Mapbox non disponible — placeholders SVG');
 
     // ── 6. Générer le HTML des planches ─────────────────────────
@@ -626,7 +774,11 @@ async function processOneTerrain(browser, runIndex) {
           let mapCaptures = {};
           try {
             const map = window.MapViewer?.getMap?.() ?? window.TerlabMap?._map;
-            if (map && map.loaded?.()) {
+            if (map) {
+              // Attendre idle si pas encore chargée
+              if (!map.loaded?.()) {
+                await new Promise(r => { map.once('idle', r); setTimeout(r, 6000); });
+              }
               // Import dynamique du module MapCapture
               let MC = window.MapCapture;
               if (!MC) {
@@ -640,15 +792,190 @@ async function processOneTerrain(browser, runIndex) {
                   MC.captureAll(session),
                   new Promise(r => setTimeout(() => r({}), 20000))
                 ]);
+
+                // Après les captures standard → ajouter couche PPR PEIGEO + capture contexte élargi
+                try {
+                  const t = session?.getTerrain?.() ?? {};
+                  const coords = t.lng && t.lat ? [parseFloat(t.lng), parseFloat(t.lat)] : null;
+                  if (coords) {
+                    // Ajouter la couche PPR WMS
+                    if (!map.getSource('ppr-peigeo')) {
+                      const pprCfg = window.PPRService?.getPPRSourceConfig?.();
+                      if (pprCfg) {
+                        map.addSource('ppr-peigeo', pprCfg);
+                        map.addLayer({ id: 'ppr-layer', type: 'raster', source: 'ppr-peigeo', paint: { 'raster-opacity': 0.6 } });
+                      }
+                    }
+                    // PPR vue rapprochée (zoom 14)
+                    map.jumpTo({ center: coords, zoom: 14, pitch: 0, bearing: 0 });
+                    await new Promise(r => { map.once('idle', r); setTimeout(r, 6000); });
+                    mapCaptures.p03_ppr = map.getCanvas().toDataURL('image/jpeg', 0.92);
+
+                    // PPR contexte élargi (zoom 12)
+                    map.jumpTo({ center: coords, zoom: 12, pitch: 0, bearing: 0 });
+                    await new Promise(r => { map.once('idle', r); setTimeout(r, 5000); });
+                    mapCaptures.p03_ppr_context = map.getCanvas().toDataURL('image/jpeg', 0.92);
+                  }
+                } catch (e) { console.warn('[PDF] PPR capture:', e.message); }
+
                 const capKeys = Object.keys(mapCaptures).filter(k => mapCaptures[k]);
                 console.log(`[PDF] MapCapture : ${capKeys.length} vues — ${capKeys.join(', ')}`);
               }
             }
           } catch (e) { console.warn('[PDF] MapCapture error:', e.message); }
 
-          // Capture visuels DOM
+          // Capture visuels DOM (certains existeront, d'autres non en headless)
           let visuals = {};
           try { visuals = await engine._captureVisuals(); } catch { /* ok */ }
+
+          // ── Génération visuels programmatiques (headless) ──────
+          const CSR = window.CapacityStudyRenderer;
+          const proposal = window._activeProposal;
+
+          // Plan masse SVG + végétation BpfBridge
+          if (CSR?.renderPlanMasse && proposal && proposal.bat) {
+            try {
+              const sessionData = { terrain, phases: {} };
+              for (let i = 0; i <= 12; i++) {
+                const ph = session?.getPhase?.(i);
+                if (ph) sessionData.phases[i] = ph;
+              }
+              let svgStr = CSR.renderPlanMasse(sessionData, proposal, null, null, null);
+
+              // Enrichir le SVG avec la végétation BpfBridge
+              if (svgStr && svgStr.length > 100) {
+                try {
+                  const BPF = window.BpfBridge;
+                  const TA = window.TerrainP07Adapter;
+                  if (BPF?.generate && TA && sessionData._parcelLocal?.length >= 3) {
+                    const buildingPoly = [
+                      { x: proposal.bat.x, y: proposal.bat.y },
+                      { x: proposal.bat.x + proposal.bat.w, y: proposal.bat.y },
+                      { x: proposal.bat.x + proposal.bat.w, y: proposal.bat.y + proposal.bat.l },
+                      { x: proposal.bat.x, y: proposal.bat.y + proposal.bat.l },
+                    ];
+                    const bpfResult = await BPF.generate(sessionData, sessionData._parcelLocal, sessionData._edgeTypes ?? [], buildingPoly);
+                    if (bpfResult?.plants?.length) {
+                      // Injecter les arbres dans le SVG avant </svg>
+                      let treeSvg = '';
+                      for (const p of bpfResult.plants) {
+                        const r = p.canopyRadius ?? 2;
+                        const color = p.strate === 'arbre' ? '#2D5A27' : p.strate === 'arbuste' ? '#4A7C3F' : '#6B9B5E';
+                        const opacity = p.strate === 'arbre' ? 0.35 : 0.25;
+                        treeSvg += `<circle cx="${p.x}" cy="${-(p.y)}" r="${r}" fill="${color}" fill-opacity="${opacity}" stroke="${color}" stroke-width="0.1" stroke-opacity="0.5"/>`;
+                      }
+                      for (const a of (bpfResult.amenities ?? [])) {
+                        treeSvg += `<rect x="${a.x - (a.w??2)/2}" y="${-(a.y + (a.h??2)/2)}" width="${a.w??2}" height="${a.h??2}" fill="#D4A574" fill-opacity="0.3" stroke="#B8956A" stroke-width="0.1" rx="0.3"/>`;
+                        treeSvg += `<text x="${a.x}" y="${-(a.y)}" text-anchor="middle" font-size="0.7" fill="#8B6A20">${a.label ?? ''}</text>`;
+                      }
+                      svgStr = svgStr.replace('</svg>', treeSvg + '</svg>');
+                      console.log('[PDF] BpfBridge : ' + bpfResult.plants.length + ' plantes, ' + (bpfResult.amenities?.length ?? 0) + ' amenites');
+                    }
+                  }
+                } catch (e) { console.warn('[PDF] BpfBridge:', e.message); }
+
+                const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+                visuals.planMasse = await new Promise(r => {
+                  const reader = new FileReader();
+                  reader.onload = () => r(reader.result);
+                  reader.readAsDataURL(blob);
+                });
+                console.log('[PDF] Plan masse SVG généré : ' + Math.round(svgStr.length / 1024) + 'K');
+              }
+            } catch (e) { console.warn('[PDF] PlanMasse:', e.message); }
+          }
+
+          // Coupe gabarit SVG
+          if (CSR?.renderCoupeGabarit && proposal) {
+            try {
+              const sessionData = { terrain, phases: {} };
+              for (let i = 0; i <= 12; i++) {
+                const ph = session?.getPhase?.(i);
+                if (ph) sessionData.phases[i] = ph;
+              }
+              const svgStr = CSR.renderCoupeGabarit(sessionData, proposal, null);
+              if (svgStr && svgStr.length > 100) {
+                const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+                visuals.coupeGabarit = await new Promise(r => {
+                  const reader = new FileReader();
+                  reader.onload = () => r(reader.result);
+                  reader.readAsDataURL(blob);
+                });
+                console.log('[PDF] Coupe gabarit SVG : ' + Math.round(svgStr.length / 1024) + 'K');
+              }
+            } catch (e) { console.warn('[PDF] CoupeGabarit:', e.message); }
+          }
+
+          // Profils terrain depuis LiDAR (si points disponibles)
+          if (window.LidarService?._lastPoints || terrain.parcelle_geojson) {
+            try {
+              const TP = window.TerrainProfile;
+              const LS = window.LidarService;
+              if (TP?.render && LS?.getProfileFromPoints && LS._lastPoints?.length) {
+                const geojson = terrain.parcelle_geojson;
+                const coords = geojson?.coordinates?.[0] ?? geojson?.coordinates?.[0]?.[0];
+                if (coords?.length >= 2) {
+                  // Coupe A : longitudinale (premier→dernier point du polygone)
+                  const profileA = LS.getProfileFromPoints(LS._lastPoints, coords[0], coords[Math.floor(coords.length / 2)]);
+                  if (profileA?.length > 2) {
+                    const tmpDiv = document.createElement('div');
+                    tmpDiv.style.cssText = 'position:absolute;left:-9999px;width:700px;height:220px';
+                    document.body.appendChild(tmpDiv);
+                    const svgA = TP.render(profileA, tmpDiv, { width: 700, height: 220, label: 'Coupe A — Longitudinale' });
+                    if (svgA) {
+                      const str = TP.toSVGString?.(svgA) ?? new XMLSerializer().serializeToString(svgA);
+                      const blob = new Blob([str], { type: 'image/svg+xml' });
+                      visuals.sectionA = await new Promise(r => { const rd = new FileReader(); rd.onload = () => r(rd.result); rd.readAsDataURL(blob); });
+                      console.log('[PDF] Section A SVG : ' + Math.round(str.length / 1024) + 'K');
+                    }
+                    tmpDiv.remove();
+                  }
+
+                  // Coupe B : perpendiculaire
+                  const mid = Math.floor(coords.length / 4);
+                  const profileB = LS.getProfileFromPoints(LS._lastPoints, coords[mid], coords[mid + Math.floor(coords.length / 2)]);
+                  if (profileB?.length > 2) {
+                    const tmpDiv2 = document.createElement('div');
+                    tmpDiv2.style.cssText = 'position:absolute;left:-9999px;width:700px;height:220px';
+                    document.body.appendChild(tmpDiv2);
+                    const svgB = TP.render(profileB, tmpDiv2, { width: 700, height: 220, label: 'Coupe B — Perpendiculaire' });
+                    if (svgB) {
+                      const str = TP.toSVGString?.(svgB) ?? new XMLSerializer().serializeToString(svgB);
+                      const blob = new Blob([str], { type: 'image/svg+xml' });
+                      visuals.sectionB = await new Promise(r => { const rd = new FileReader(); rd.onload = () => r(rd.result); rd.readAsDataURL(blob); });
+                      console.log('[PDF] Section B SVG : ' + Math.round(str.length / 1024) + 'K');
+                    }
+                    tmpDiv2.remove();
+                  }
+                }
+              }
+            } catch (e) { console.warn('[PDF] Sections terrain:', e.message); }
+          }
+
+          // Injecter dans engine._visuals pour que _renderPlanche4 les trouve
+          if (proposal?.bat) {
+            // Enrichir bat avec niveaux/hauteur pour _renderPlanche4
+            const enrichedBat = {
+              ...proposal.bat,
+              niveaux: proposal.niveaux,
+              h: proposal.hauteur ?? (proposal.niveaux * 3),
+            };
+            visuals.activeProposal = {
+              ...proposal,
+              bat: enrichedBat,
+              metrics: {
+                emprise_m2: proposal.bat ? Math.round(proposal.bat.w * proposal.bat.l) : null,
+                sdp_m2: proposal.spTot ? Math.round(proposal.spTot) : null,
+                ces_pct: proposal.empPct ? Math.round(proposal.empPct * 10) / 10 : null,
+                permeable_pct: proposal.permPct ? Math.round(proposal.permPct * 10) / 10 : null,
+              },
+            };
+          }
+          engine._visuals = visuals;
+
+          // Debug : vérifier que plan masse est dans _visuals
+          console.log('[PDF] _visuals.planMasse: ' + (visuals.planMasse ? visuals.planMasse.slice(0, 60) + '...' : 'NULL'));
+          console.log('[PDF] _visuals.activeProposal: ' + (visuals.activeProposal ? JSON.stringify(Object.keys(visuals.activeProposal)).slice(0, 100) : 'NULL'));
 
           const allMaps = { ...mapCaptures, ...visuals };
 
@@ -657,7 +984,9 @@ async function processOneTerrain(browser, runIndex) {
           const capSizes = capKeys.map(k => `${k}:${Math.round((allMaps[k]?.length ?? 0)/1024)}K`);
           console.log(`[PDF] ${capKeys.length} captures — ${capSizes.join(', ')}`);
 
-          const html = engine._renderAllPlanches(session, terrain, allMaps, 'site');
+          // Toujours mode projet pour avoir la planche plan masse
+          const pdfMode = 'projet';
+          const html = engine._renderAllPlanches(session, terrain, allMaps, pdfMode);
 
           clearTimeout(timeout);
           resolve(html);
