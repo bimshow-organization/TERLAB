@@ -16,19 +16,26 @@
     <span class="ts-item">Séisme <strong style="color:var(--warning)">Zone 2</strong></span>
   </div>
 
-  <!-- BRGM stub -->
+  <!-- Détection géologique OBIA (depuis carte BRGM) -->
   <div class="form-section anim-slide-up">
-    <div class="fs-head">Carte géologique BRGM InfoTerre</div>
-    <div class="stub-warning">⚠️ STUB — InfoTerre BRGM n'a pas d'API REST directe. Données interprétées depuis altitude + zone. Consulter infoterre.brgm.fr pour la carte 1:50 000.</div>
-    <div class="brgm-inferred" id="brgm-inferred">
+    <div class="fs-head">Carte géologique BRGM</div>
+    <p class="field-note" style="margin-bottom:6px">Détection automatique de la formation géologique par analyse colorimétrique de la carte BRGM 1:50 000 (couche WMS affichée sur la carte).</p>
+    <button class="topo-btn" onclick="P02.detectGeology()" id="btn-detect-geo" style="margin-bottom:8px">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.2"/><path d="M6 3v3h3" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg>
+      Détecter la géologie depuis la carte BRGM
+    </button>
+    <div id="geo-obia-result"></div>
+    <div class="brgm-inferred" id="brgm-inferred" style="margin-top:6px">
       <div class="bi-icon">🔬</div>
       <div class="bi-body">
         <div class="bi-title" id="bi-title">Géologie non déterminée</div>
-        <div class="bi-note" id="bi-note">Altitude inconnue — complétez la Phase 0</div>
+        <div class="bi-note" id="bi-note">Cliquez « Détecter » ou consultez InfoTerre</div>
       </div>
     </div>
-    <a href="https://infoterre.brgm.fr" target="_blank" rel="noopener" class="source-btn" style="margin-top:6px;display:inline-flex">→ InfoTerre BRGM (1:50 000 Réunion) ↗</a>
-    <a href="https://ovpf.ipgp.fr" target="_blank" rel="noopener" class="source-btn" style="margin-left:10px">→ OVPF Piton de la Fournaise ↗</a>
+    <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+      <a href="https://infoterre.brgm.fr" target="_blank" rel="noopener" class="source-btn">→ InfoTerre BRGM ↗</a>
+      <a href="https://ovpf.ipgp.fr" target="_blank" rel="noopener" class="source-btn">→ OVPF Fournaise ↗</a>
+    </div>
   </div>
 
   <!-- Nature géologique -->
@@ -163,7 +170,9 @@
 .gtr-note { font-family:var(--font-mono); font-size:8.5px; color:var(--faint); margin-top:1px; }
 </style>
 <script type="module">
+const MapViewer      = window.TerlabMap;
 const SessionManager = window.SessionManager;
+const OBIAService    = window.OBIAService;
 const GEO_ADVICE = {
   basalte_recent: 'Basalte récent — excellentes caractéristiques mécaniques. Fondations superficielles généralement possibles. Vérifier la continuité de la dalle (absence de fissures ou de poches de scories).',
   basalte_ancien: 'Basalte altéré — argilisation possible en profondeur. Retrait-gonflement limité à La Réunion mais possible en zones humides. Étude G1 recommandée si zone PPRN.',
@@ -208,11 +217,78 @@ const P02 = {
     if (!item || item.classList.contains('checked')) return;
     item.classList.add('checked', 'auto-checked');
     item.setAttribute('aria-checked', 'true');
-    // Marquer le champ comme répondu
     if (el.tagName === 'SELECT') el.classList.add('answered');
     if (el.classList.contains('radio-group')) el.classList.add('answered');
-    // Mettre à jour la progression (via événement custom)
     document.dispatchEvent(new CustomEvent('terlab:val-changed'));
+  },
+
+  // ── Détection géologique OBIA depuis carte BRGM ─────────────────
+  async detectGeology() {
+    const terrain = SessionManager.getTerrain();
+    if (!terrain?.lat || !terrain?.lng) {
+      window.TerlabToast?.show('Complétez la Phase 0 (terrain) en premier', 'warning');
+      return;
+    }
+
+    const btn = document.getElementById('btn-detect-geo');
+    if (btn) { btn.classList.add('loading'); btn.textContent = 'Analyse en cours…'; }
+
+    try {
+      const map = MapViewer.getMap();
+      if (!map) throw new Error('Carte non chargée');
+
+      let result;
+      if (terrain.parcelle_geojson) {
+        // Multi-pixel sur toute la parcelle
+        result = await OBIAService.analyzeGeologyParcel(map, terrain.parcelle_geojson);
+      } else {
+        // Single-point au centre
+        const geo = await OBIAService.analyzeGeologyAtPoint(map, parseFloat(terrain.lng), parseFloat(terrain.lat));
+        if (geo) result = { dominant: geo, formations: [geo], pixelCount: 1, confidence: geo.confidence ?? 'faible' };
+      }
+
+      const container = document.getElementById('geo-obia-result');
+      if (result && container) {
+        container.innerHTML = OBIAService.buildGeologyResultHTML(result);
+
+        // Mettre à jour l'inferred
+        const dom = result.dominant;
+        document.getElementById('bi-title').textContent = dom.name;
+        document.getElementById('bi-note').textContent = `Perméabilité ${dom.permeability} · ${dom.coefficient} mm/h${dom.age ? ' · ' + dom.age : ''} — ${result.confidence}`;
+
+        // Auto-sélectionner le type géologique dans le select
+        const geoSelect = document.getElementById('geo-type');
+        if (geoSelect && !geoSelect.value) {
+          const typeMap = {
+            coulees_xxe: 'basalte_recent', coulees_historiques: 'basalte_recent', coulees_2300: 'basalte_recent',
+            fournaise_37ka: 'basalte_ancien', fournaise_170ka: 'basalte_ancien', fournaise_350ka: 'basalte_ancien',
+            neiges_primitif: 'basalte_ancien', neiges_alcalins: 'basalte_ancien', neiges_differencie: 'basalte_ancien',
+            plaine_cafres: 'basalte_ancien',
+            alluvions: 'alluvions', eboulis: 'alluvions', sable_plage: 'alluvions',
+            intrusions: 'indetermine', breches_explosion: 'aa_scories',
+          };
+          const selectVal = typeMap[dom.type] ?? 'indetermine';
+          geoSelect.value = selectVal;
+          this.updateGeoType();
+        }
+
+        // Sauvegarder en session
+        SessionManager.saveTerrain({
+          geologie_obia: result,
+          geologie_permeability: dom.permeability,
+          geologie_coefficient: dom.coefficient,
+        });
+
+        window.TerlabToast?.show(`${dom.name} — perméabilité ${dom.permeability}`, 'success', 4000);
+      } else {
+        window.TerlabToast?.show('Aucune donnée BRGM détectable — vérifiez que la couche géologique est visible', 'warning');
+      }
+    } catch (err) {
+      console.error('[P02] Erreur détection géologie:', err);
+      window.TerlabToast?.show(`Erreur : ${err.message}`, 'error');
+    } finally {
+      if (btn) { btn.classList.remove('loading'); btn.textContent = 'Détecter la géologie depuis la carte BRGM'; }
+    }
   }
 };
 const terrain = SessionManager.getTerrain();
@@ -227,4 +303,16 @@ if (terrain?.altitude_ngr) {
   document.getElementById('bi-note').textContent  = geo[1];
 }
 window.P02 = P02;
+
+// Auto-détection géologique au chargement si terrain connu et couche BRGM visible
+if (terrain?.lat && terrain?.lng) {
+  setTimeout(() => {
+    const map = MapViewer?.getMap?.();
+    if (map && map.getSource?.('brgm-geol')) {
+      const doDetect = () => P02.detectGeology();
+      if (map.areTilesLoaded()) setTimeout(doDetect, 800);
+      else map.once('idle', () => setTimeout(doDetect, 500));
+    }
+  }, 1500);
+}
 </script>

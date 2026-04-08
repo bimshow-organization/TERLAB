@@ -73,6 +73,20 @@
     </div>
   </div>
 
+  <!-- Profil altimétrique automatique (IGN API) -->
+  <div class="form-section anim-slide-up" id="auto-profile-section" style="display:none">
+    <div class="fs-head">Profil automatique N-S <span class="topo-source-badge">API IGN</span></div>
+    <div id="auto-profile-container" style="width:100%;min-height:140px"></div>
+    <div class="topo-btn-group" style="margin-top:4px">
+      <button class="topo-btn" onclick="P01.autoProfile()" id="btn-auto-profile">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M1 9 L3 5 L6 7 L9 3 L11 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Profil N-S automatique
+      </button>
+    </div>
+  </div>
+
   <!-- Visualisation LiDAR (visible après chargement des points) -->
   <div class="form-section anim-slide-up" id="lidar-viz-section" style="display:none">
     <div class="fs-head">Nuage de points LiDAR</div>
@@ -85,11 +99,27 @@
       </button>
       <button class="lidar-layer-btn" id="btn-lidar-rgb" onclick="P01.setLidarView('rgb')">
         <span class="lidar-swatch lidar-swatch-rgb"></span>
-        Image ortho
+        Ortho
+      </button>
+      <button class="lidar-layer-btn" id="btn-lidar-alt" onclick="P01.setLidarView('altitude')">
+        <span class="lidar-swatch" style="background:linear-gradient(90deg,#2166ac,#67a9cf,#fddbc7,#ef8a62,#b2182b);border-radius:2px"></span>
+        Altitude
+      </button>
+      <button class="lidar-layer-btn" id="btn-lidar-height" onclick="P01.setLidarView('height')">
+        <span class="lidar-swatch" style="background:linear-gradient(90deg,#f7fcb9,#31a354,#003418);border-radius:2px"></span>
+        Hauteur
       </button>
       <button class="lidar-layer-btn" id="btn-lidar-off" onclick="P01.setLidarView('off')">
         Masquer
       </button>
+    </div>
+
+    <!-- Taille de points -->
+    <div class="lidar-option-row" style="display:flex;align-items:center;gap:8px;margin:6px 0">
+      <span class="field-note" style="font-size:9px;min-width:50px">Taille pts</span>
+      <input type="range" min="1" max="8" value="3" step="0.5" id="lidar-point-size"
+             oninput="P01.setLidarPointSize(this.value)" style="flex:1;height:4px">
+      <span class="field-note" id="lidar-size-val" style="font-size:9px;min-width:16px">3</span>
     </div>
 
     <!-- Légende classification -->
@@ -100,6 +130,24 @@
       <div class="lidar-legend-item"><span class="lidar-dot" style="background:#006400"></span>Vég. haute</div>
       <div class="lidar-legend-item"><span class="lidar-dot" style="background:#ff4444"></span>Bâtiments</div>
       <div class="lidar-legend-item"><span class="lidar-dot" style="background:#4488ff"></span>Eau</div>
+    </div>
+
+    <!-- Légende altitude (masquée par défaut) -->
+    <div class="lidar-legend" id="lidar-legend-alt" style="display:none">
+      <div style="display:flex;align-items:center;gap:4px;width:100%">
+        <span class="field-note" style="font-size:8px" id="lidar-alt-min">—</span>
+        <div style="flex:1;height:8px;border-radius:3px;background:linear-gradient(90deg,#2166ac,#67a9cf,#f7f7f7,#fddbc7,#ef8a62,#b2182b)"></div>
+        <span class="field-note" style="font-size:8px" id="lidar-alt-max">—</span>
+      </div>
+    </div>
+
+    <!-- Légende hauteur (masquée par défaut) -->
+    <div class="lidar-legend" id="lidar-legend-height" style="display:none">
+      <div style="display:flex;align-items:center;gap:4px;width:100%">
+        <span class="field-note" style="font-size:8px">0m</span>
+        <div style="flex:1;height:8px;border-radius:3px;background:linear-gradient(90deg,#f7fcb9,#addd8e,#31a354,#003418)"></div>
+        <span class="field-note" style="font-size:8px" id="lidar-height-max">—</span>
+      </div>
     </div>
 
     <!-- Stats -->
@@ -287,6 +335,37 @@
     </div>
   </div>
 
+  <!-- ═══ ENSOLEILLEMENT (SunState synchro) ═══ -->
+  <div class="form-section anim-slide-up" id="p01-sun-section" style="padding:8px 13px;border-bottom:1px solid var(--border)">
+    <div class="sg-section-head"><span class="sg-sun-icon">&#9788;</span> Ensoleillement <span class="sg-badge">SunCalc</span></div>
+
+    <!-- Timeline scrub -->
+    <div class="sg-timeline" id="sg-timeline-p01">
+      <span class="sg-time-label" id="sg-sunrise-p01">06:00</span>
+      <input type="range" class="sg-scrub" id="sg-scrub-p01" min="0" max="1000" value="500"
+        oninput="P01._onSunScrub(this.value)">
+      <span class="sg-time-label" id="sg-sunset-p01">18:00</span>
+    </div>
+    <div class="sg-current-time" id="sg-current-p01">12:00</div>
+
+    <!-- Presets -->
+    <div class="sg-presets" id="sg-presets-p01"></div>
+
+    <!-- Info -->
+    <div class="sg-info-row">
+      <span class="sg-info-label">Dur&eacute;e ensoleillement</span>
+      <span class="sg-info-val" id="sg-hours-p01">&mdash;</span>
+    </div>
+    <div class="sg-info-row">
+      <span class="sg-info-label">Altitude solaire</span>
+      <span class="sg-info-val" id="sg-alt-p01">&mdash;</span>
+    </div>
+    <div class="sg-info-row">
+      <span class="sg-info-label">Azimut</span>
+      <span class="sg-info-val" id="sg-az-p01">&mdash;</span>
+    </div>
+  </div>
+
   <!-- Risk player -->
   <div style="padding:4px 13px 8px;border-bottom:1px solid var(--border)" id="risk-player-container-p01"></div>
 
@@ -452,7 +531,7 @@
 
 .map-ctl-group { position:absolute; top:10px; left:10px; z-index:10; display:flex; gap:5px; }
 .map-ctl-btn { padding:5px 10px; background:var(--surface); border:1px solid var(--border2); border-radius:var(--r-sm); font-family:var(--font-mono); font-size:9px; color:var(--muted); cursor:pointer; transition:all var(--tx-fast); }
-.map-ctl-btn:hover,.map-ctl-btn.active { border-color:var(--accent); color:var(--accent); background:var(--accent2); }
+.map-ctl-btn:hover,.map-ctl-btn.active { border-color:var(--accent); color:var(--accent); background:rgba(255,252,243,.92); }
 
 .topo-btn-group { display:flex; gap:4px; }
 .topo-btn-group .topo-btn { flex:1; }
@@ -516,6 +595,27 @@ const P01 = {
   startProfile() {
     MapViewer.activateTool('profile');
     document.getElementById('btn-trace-profile').textContent = '⏳ En cours — posez 2 points…';
+  },
+
+  // ─── Profil automatique N-S (API IGN) ──────────────────────────
+  async autoProfile() {
+    const terrain = SessionManager.getTerrain();
+    if (!terrain?.lat || !terrain?.lng) return;
+    const btn = document.getElementById('btn-auto-profile');
+    if (btn) btn.textContent = '⏳ Chargement…';
+    try {
+      const result = await window.TerrainProfile.autoProfile(
+        terrain, 'auto-profile-container', { nPoints: 20 }
+      );
+      if (!result) {
+        window.TerlabToast?.show('Profil IGN indisponible — tracez manuellement', 'warning');
+        return;
+      }
+      if (btn) btn.textContent = '↻ Régénérer le profil N-S';
+    } catch (e) {
+      console.warn('[P01] autoProfile:', e.message);
+      if (btn) btn.textContent = '⚠ Erreur — réessayer';
+    }
   },
 
   // ─── Valider la coupe au dossier ──────────────────────────────
@@ -669,6 +769,10 @@ const P01 = {
     });
     window.TerlabToast?.show('Altimétrie analysée — données sur la parcelle', 'success');
 
+    // Afficher la section profil auto et déclencher le profil N-S
+    document.getElementById('auto-profile-section').style.display = '';
+    this.autoProfile();
+
     // Auto-détecter la station météo la plus proche
     P01._autoDetectMeteo(lat, lng);
   },
@@ -817,27 +921,58 @@ const P01 = {
 
   // ─── Sélecteur de couche LiDAR ────────────────────────────────
   setLidarView(mode) {
-    // Mettre à jour les boutons
     document.querySelectorAll('.lidar-layer-btn').forEach(b => b.classList.remove('active'));
-    const legend = document.getElementById('lidar-legend');
+    const legendCls  = document.getElementById('lidar-legend');
+    const legendAlt  = document.getElementById('lidar-legend-alt');
+    const legendHgt  = document.getElementById('lidar-legend-height');
+
+    // Masquer toutes les légendes
+    if (legendCls) legendCls.style.display = 'none';
+    if (legendAlt) legendAlt.style.display = 'none';
+    if (legendHgt) legendHgt.style.display = 'none';
 
     if (mode === 'off') {
       MapViewer.toggleLidarLayer(false);
       document.getElementById('btn-lidar-off')?.classList.add('active');
-      if (legend) legend.style.display = 'none';
     } else {
       MapViewer.toggleLidarLayer(true);
       MapViewer.setLidarMode(mode);
       this._lidarViewMode = mode;
 
-      if (mode === 'classification') {
-        document.getElementById('btn-lidar-class')?.classList.add('active');
-        if (legend) legend.style.display = 'flex';
-      } else {
-        document.getElementById('btn-lidar-rgb')?.classList.add('active');
-        if (legend) legend.style.display = 'none';
+      const btnMap = { classification: 'btn-lidar-class', rgb: 'btn-lidar-rgb', altitude: 'btn-lidar-alt', height: 'btn-lidar-height' };
+      document.getElementById(btnMap[mode])?.classList.add('active');
+
+      if (mode === 'classification' && legendCls) legendCls.style.display = 'flex';
+      if (mode === 'altitude' && legendAlt) {
+        legendAlt.style.display = 'flex';
+        // Mettre à jour les bornes
+        const pts = this._lidarPoints ?? [];
+        if (pts.length) {
+          const alts = pts.map(p => p[2]).filter(v => v != null);
+          document.getElementById('lidar-alt-min').textContent = Math.round(Math.min(...alts)) + 'm';
+          document.getElementById('lidar-alt-max').textContent = Math.round(Math.max(...alts)) + 'm';
+        }
+      }
+      if (mode === 'height' && legendHgt) {
+        legendHgt.style.display = 'flex';
+        // Hauteur max = alt max non-sol - alt min sol
+        const pts = this._lidarPoints ?? [];
+        if (pts.length) {
+          const groundAlts = pts.filter(p => p[6] === 2).map(p => p[2]);
+          const groundMin = groundAlts.length ? Math.min(...groundAlts) : Math.min(...pts.map(p => p[2]));
+          const maxH = Math.max(...pts.map(p => p[2])) - groundMin;
+          document.getElementById('lidar-height-max').textContent = Math.round(maxH) + 'm';
+        }
       }
     }
+  },
+
+  // ─── Taille des points LiDAR ──────────────────────────────────
+  setLidarPointSize(size) {
+    const s = parseFloat(size);
+    const lbl = document.getElementById('lidar-size-val');
+    if (lbl) lbl.textContent = s;
+    MapViewer.setLidarPointSize(s);
   },
 
   // ─── Charger toutes les classes LiDAR (sol + bâtiments + végétation) ──
@@ -1192,15 +1327,19 @@ if (terrain?.lat && terrain?.lng && !p1data.station_meteo) {
 }
 
 // ─── GIEP : Terrain SVG auto si données parcelle connues ────────
-if (terrain?.contenance_m2 || terrain?.largeur_m) {
-  const longueur = parseFloat(terrain.largeur_m ?? Math.sqrt(terrain.contenance_m2 ?? 400));
-  const largeur  = parseFloat(terrain.longueur_m ?? Math.sqrt(terrain.contenance_m2 ?? 400) * 0.7);
-  TerrainSVG.init('terrainSVG', {
-    longueur, largeur,
+if (terrain?.parcelle_geojson || terrain?.contenance_m2 || terrain?.largeur_m) {
+  const svgOpts = {
     pente:       parseFloat(terrain.pente_moy_pct ?? 0),
     exposition:  terrain.orientation_terrain ?? null,
     ravine_dist: parseFloat(terrain.distance_ravine_m ?? 999),
-  });
+  };
+  if (terrain.parcelle_geojson) {
+    svgOpts.geojson = terrain.parcelle_geojson;
+  } else {
+    svgOpts.longueur = parseFloat(terrain.largeur_m ?? Math.sqrt(terrain.contenance_m2 ?? 400));
+    svgOpts.largeur  = parseFloat(terrain.longueur_m ?? Math.sqrt(terrain.contenance_m2 ?? 400) * 0.7);
+  }
+  TerrainSVG.init('terrainSVG', svgOpts);
 }
 
 // ─── GIEP : Hydrate les cellules détectées depuis la session ────
@@ -1229,15 +1368,19 @@ window.addEventListener('terlab:parcelle-found', async (e) => {
     const analyse = await TerrainAnalysis.autoAnalyze(feature, t);
     SessionManager.saveTerrain(analyse);
 
-    // Mettre à jour le SVG
-    const longueur = parseFloat(t.largeur_m ?? Math.sqrt(t.contenance_m2 ?? 400));
-    const largeur  = parseFloat(t.longueur_m ?? Math.sqrt(t.contenance_m2 ?? 400) * 0.7);
-    TerrainSVG.init('terrainSVG', {
-      longueur, largeur,
+    // Mettre à jour le SVG avec le vrai polygone
+    const svgOpts2 = {
       pente:       analyse.pente_moy_pct,
       exposition:  analyse.orientation_terrain,
       ravine_dist: parseFloat(t.distance_ravine_m ?? 999),
-    });
+    };
+    if (t.parcelle_geojson) {
+      svgOpts2.geojson = t.parcelle_geojson;
+    } else {
+      svgOpts2.longueur = parseFloat(t.largeur_m ?? Math.sqrt(t.contenance_m2 ?? 400));
+      svgOpts2.largeur  = parseFloat(t.longueur_m ?? Math.sqrt(t.contenance_m2 ?? 400) * 0.7);
+    }
+    TerrainSVG.init('terrainSVG', svgOpts2);
 
     // Mettre à jour les cellules détectées
     const pEl = document.getElementById('svg-pente');
@@ -1261,6 +1404,15 @@ window.addEventListener('terlab:parcelle-found', async (e) => {
   }
 });
 
+// ─── AUTO-ANALYSE : lancer l'altimétrie automatiquement si terrain connu ──
+if (terrain?.lat && terrain?.lng) {
+  // Petit délai pour laisser la carte Mapbox charger le DEM
+  setTimeout(() => {
+    console.log('[P01] Auto-analyse altimétrie…');
+    P01.analyzeAltitude();
+  }, 1200);
+}
+
 // ─── LiDAR : vérifier disponibilité serveur au chargement ──────
 LidarService.isAvailable().then(available => {
   if (available) {
@@ -1282,7 +1434,60 @@ if (p1data.lidar_source === 'lidar_hd') {
   }
 }
 
+// ── Sun overlay methods ──────────────────────────────────────
+P01._onSunScrub = function(val) {
+  window.SunState?.setProgress(val / 1000, 'p01');
+};
+
+P01._initSunOverlay = function() {
+  const wrap = document.getElementById('sg-presets-p01');
+  if (wrap && window.SunCalcService?.DATES_CLES) {
+    wrap.innerHTML = '';
+    for (const [label, day] of Object.entries(SunCalcService.DATES_CLES)) {
+      const btn = document.createElement('button');
+      btn.className = 'sg-preset-btn';
+      btn.textContent = label.replace(/ \(.*\)/, '');
+      btn.onclick = () => window.SunState?.setDayOfYear(day, 'p01');
+      wrap.appendChild(btn);
+    }
+  }
+  window.addEventListener('terlab:sun-changed', P01._onSunChanged);
+  P01._syncSunUI();
+};
+
+P01._onSunChanged = function(e) {
+  if (e.detail?.source === 'p01') return;
+  P01._syncSunUI();
+};
+
+P01._syncSunUI = function() {
+  const ss = window.SunState;
+  if (!ss) return;
+  const dl  = ss.getDaylight();
+  const pos = ss.getPosition();
+
+  const scrub = document.getElementById('sg-scrub-p01');
+  if (scrub) scrub.value = Math.round(ss.getProgress() * 1000);
+
+  const sr = document.getElementById('sg-sunrise-p01');
+  const st = document.getElementById('sg-sunset-p01');
+  const ct = document.getElementById('sg-current-p01');
+  if (sr) sr.textContent = ss.formatHour(dl.sunrise);
+  if (st) st.textContent = ss.formatHour(dl.sunset);
+  if (ct) ct.textContent = ss.formatHour();
+
+  const hrs = document.getElementById('sg-hours-p01');
+  if (hrs) hrs.textContent = dl.hours.toFixed(1) + ' h';
+
+  const alt = document.getElementById('sg-alt-p01');
+  if (alt) alt.textContent = pos.aboveHorizon ? Math.round(pos.altitude) + '°' : 'sous horizon';
+
+  const az = document.getElementById('sg-az-p01');
+  if (az) az.textContent = Math.round(pos.azimuth) + '°';
+};
+
 window.P01 = P01;
+P01._initSunOverlay();
 
 // Validation automatique aéraulique
 window.addEventListener('terlab:aeraulique-score', () => {
