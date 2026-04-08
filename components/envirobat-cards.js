@@ -223,8 +223,8 @@ const EnvirobatCards = (() => {
           <div class="eb-resume">${fiche.resume}</div>
           <div class="eb-tags">${fiche.tags.map(t => `<span class="eb-tag">${t}</span>`).join('')}</div>
           <div class="eb-actions">
-            <a href="${fiche.pdf}" target="_blank" rel="noopener" class="eb-btn eb-btn-pdf">📄 PDF</a>
-            <a href="${fiche.url}" target="_blank" rel="noopener" class="eb-btn eb-btn-web">↗ Fiche web</a>
+            <a href="${fiche.url && fiche.url !== 'https://www.envirobat-reunion.com' ? fiche.url : fiche.pdf}"
+               target="_blank" rel="noopener" class="eb-btn eb-btn-web">↗ Source web</a>
           </div>
         </div>
       </div>`;
@@ -238,7 +238,7 @@ const EnvirobatCards = (() => {
     el.innerHTML = `
       <div class="eb-header">
         <span class="eb-logo">enviroBAT</span>
-        <span class="eb-subtitle">Exemples à La Réunion — Retours d'expérience</span>
+        <span class="eb-subtitle">Retours d'expérience</span>
       </div>
       <div class="eb-scroll">${fiches.map(renderCard).join('')}</div>`;
   }

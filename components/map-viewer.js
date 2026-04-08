@@ -266,6 +266,104 @@ const MapViewer = {
     m.setFog({ range: [0.5, 10], color: '#0a0a14', 'high-color': '#1a1a2e', 'horizon-blend': 0.02 });
   },
 
+  // ── COURBES DE NIVEAU 2D (GeoJSON isolignes) ─────────────────
+  async addContourLines(wgsBounds, opts = {}) {
+    const m = this._map;
+    if (!m) return;
+    const ContourService = window.ContourService;
+    if (!ContourService) { console.warn('[Map] ContourService non disponible'); return; }
+
+    try {
+      // Générer les isolignes depuis BIL (haute résolution)
+      const contourData = await ContourService.fromBIL(wgsBounds, {
+        pixelSizeM: opts.pixelSizeM ?? 2,
+        maxDim: opts.maxDim ?? 256,
+        interval: opts.interval,
+      });
+      if (!contourData.lines.length) return;
+
+      const geojson = ContourService.toGeoJSON(contourData);
+
+      // Nettoyer source/layers existants
+      if (m.getLayer('contour-major')) m.removeLayer('contour-major');
+      if (m.getLayer('contour-minor')) m.removeLayer('contour-minor');
+      if (m.getLayer('contour-labels')) m.removeLayer('contour-labels');
+      if (m.getSource('contour-lines')) m.removeSource('contour-lines');
+
+      m.addSource('contour-lines', { type: 'geojson', data: geojson });
+
+      // Courbes mineures
+      m.addLayer({
+        id: 'contour-minor',
+        type: 'line',
+        source: 'contour-lines',
+        filter: ['==', ['get', 'isMajor'], false],
+        paint: {
+          'line-color': '#c8a85a',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.5, 17, 1.2],
+          'line-opacity': 0.45,
+        },
+      });
+
+      // Courbes majeures
+      m.addLayer({
+        id: 'contour-major',
+        type: 'line',
+        source: 'contour-lines',
+        filter: ['==', ['get', 'isMajor'], true],
+        paint: {
+          'line-color': '#ffa500',
+          'line-width': ['interpolate', ['linear'], ['zoom'], 13, 1, 17, 2.5],
+          'line-opacity': 0.8,
+        },
+      });
+
+      // Labels altitude sur courbes majeures
+      m.addLayer({
+        id: 'contour-labels',
+        type: 'symbol',
+        source: 'contour-lines',
+        filter: ['==', ['get', 'isMajor'], true],
+        layout: {
+          'symbol-placement': 'line',
+          'text-field': ['get', 'label'],
+          'text-size': 11,
+          'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
+          'text-max-angle': 30,
+          'text-padding': 40,
+        },
+        paint: {
+          'text-color': '#ffa500',
+          'text-halo-color': 'rgba(0,0,0,0.7)',
+          'text-halo-width': 1.5,
+        },
+      });
+
+      console.log(`[Map] ${contourData.lines.length} courbes de niveau (interval ${contourData.interval}m, ${contourData.minAlt.toFixed(0)}–${contourData.maxAlt.toFixed(0)} m)`);
+      return contourData;
+    } catch (err) {
+      console.warn('[Map] Courbes de niveau indisponibles:', err.message);
+    }
+  },
+
+  removeContourLines() {
+    const m = this._map;
+    if (!m) return;
+    if (m.getLayer('contour-major'))  m.removeLayer('contour-major');
+    if (m.getLayer('contour-minor'))  m.removeLayer('contour-minor');
+    if (m.getLayer('contour-labels')) m.removeLayer('contour-labels');
+    if (m.getSource('contour-lines')) m.removeSource('contour-lines');
+  },
+
+  toggleContourLines(visible) {
+    const m = this._map;
+    if (!m) return;
+    const v = visible ? 'visible' : 'none';
+    ['contour-major', 'contour-minor', 'contour-labels'].forEach(id => {
+      if (m.getLayer(id)) m.setLayoutProperty(id, 'visibility', v);
+    });
+  },
+
   // ── CARTE GÉOLOGIQUE BRGM (Phase 2) ───────────────────────────
   async _addBRGMLayers() {
     const m = this._map;
@@ -488,8 +586,8 @@ const MapViewer = {
       filter: ['==', 'extrude', 'true'],
       paint: {
         'fill-extrusion-color': '#c4b396',
-        'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 14, 0, 16, ['get', 'height']],
-        'fill-extrusion-base':   ['get', 'min_height'],
+        'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 14, 0, 16, ['coalesce', ['get', 'height'], 0]],
+        'fill-extrusion-base':   ['coalesce', ['get', 'min_height'], 0],
         'fill-extrusion-opacity': 0.75
       }
     });
@@ -531,7 +629,7 @@ const MapViewer = {
       source: 'gabarit-3d',
       paint: {
         'fill-extrusion-color':   '#f59e0b',
-        'fill-extrusion-height':  ['get', 'height'],
+        'fill-extrusion-height':  ['coalesce', ['get', 'height'], 0],
         'fill-extrusion-base':    0,
         'fill-extrusion-opacity': 0.7
       }
@@ -803,7 +901,7 @@ const MapViewer = {
         scales: {
           x: { ticks: { color: '#6b5c3e', font: { size: 9 }, maxTicksLimit: 6 } },
           y: {
-            ticks: { color: '#6b5c3e', font: { size: 9 }, callback: v => v + 'm' },
+            ticks: { color: '#6b5c3e', font: { size: 9 }, callback: v => parseFloat(v.toFixed(2)) + 'm' },
             grid: { color: 'rgba(154,120,32,0.1)' }
           }
         }

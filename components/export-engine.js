@@ -126,6 +126,114 @@ const ExportEngine = {
     pdf.text(`${uuid} · ${date}`, L.W - L.M, yF + 1.5, { align: 'right' });
   },
 
+  // ═══════════════════════════════════════════════════════════════
+  //  PDF — CARTOUCHE ARCHITECTURAL (bas de page)
+  // ═══════════════════════════════════════════════════════════════
+
+  /** Cartouche architectural en bas à droite — style ENSA */
+  _drawCartouche(pdf, terrain, pageNum, totalPages, mode) {
+    const L = this._L, C = this._C;
+    const cW = 110, cH = 18;
+    const cx = L.W - L.M - cW;
+    const cy = L.H - L.M_BOT - cH - 3;
+
+    // Fond + bordure
+    pdf.setFillColor(...C.cardBg);
+    pdf.rect(cx, cy, cW, cH, 'F');
+    pdf.setDrawColor(...C.accent);
+    pdf.setLineWidth(0.6);
+    pdf.rect(cx, cy, cW, cH);
+    // Séparations verticales
+    pdf.setDrawColor(...C.borderL);
+    pdf.setLineWidth(0.15);
+    pdf.line(cx + 40, cy, cx + 40, cy + cH);
+    pdf.line(cx + 80, cy, cx + 80, cy + cH);
+
+    // Case 1 : Projet
+    pdf.setFont('courier', 'bold'); pdf.setFontSize(4.5); pdf.setTextColor(...C.accent);
+    pdf.text('PROJET', cx + 2, cy + 3);
+    pdf.setFont('times', 'bold'); pdf.setFontSize(7); pdf.setTextColor(...C.ink);
+    pdf.text(terrain.commune ?? '—', cx + 2, cy + 8);
+    pdf.setFont('courier', 'normal'); pdf.setFontSize(5); pdf.setTextColor(...C.muted);
+    pdf.text(`${terrain.section ?? ''}${terrain.parcelle ?? ''}`, cx + 2, cy + 12);
+    const modeLabel = mode === 'projet' ? 'PROJET' : 'SITE';
+    pdf.setFont('courier', 'bold'); pdf.setFontSize(4); pdf.setTextColor(...C.accent);
+    pdf.text(modeLabel, cx + 2, cy + 16);
+
+    // Case 2 : Date + ENSA
+    pdf.setFont('courier', 'bold'); pdf.setFontSize(4.5); pdf.setTextColor(...C.accent);
+    pdf.text('ENSA LA RÉUNION', cx + 42, cy + 3);
+    pdf.setFont('courier', 'normal'); pdf.setFontSize(5); pdf.setTextColor(...C.muted);
+    pdf.text(new Date().toLocaleDateString('fr-FR'), cx + 42, cy + 8);
+    const uuid = this._session?.getOrCreateUUID?.()?.slice(-8) ?? '—';
+    pdf.text(`Réf. ${uuid}`, cx + 42, cy + 12);
+    pdf.text('A3 paysage · 1/500', cx + 42, cy + 16);
+
+    // Case 3 : Planche
+    pdf.setFont('courier', 'bold'); pdf.setFontSize(4.5); pdf.setTextColor(...C.accent);
+    pdf.text('PLANCHE', cx + 82, cy + 3);
+    pdf.setFont('times', 'bold'); pdf.setFontSize(18); pdf.setTextColor(...C.ink);
+    pdf.text(`${pageNum}`, cx + 82 + 10, cy + 13, { align: 'center' });
+    pdf.setFont('courier', 'normal'); pdf.setFontSize(5); pdf.setTextColor(...C.muted);
+    pdf.text(`/ ${totalPages}`, cx + 82 + 16, cy + 13);
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  //  PDF — IMAGE AVEC RATIO PRÉSERVÉ
+  // ═══════════════════════════════════════════════════════════════
+
+  /**
+   * Embed une image dans le PDF en préservant le ratio d'aspect.
+   * @param {object} pdf - instance jsPDF
+   * @param {string} imgData - dataURL (data:image/...)
+   * @param {number} x - x du cadre
+   * @param {number} y - y du cadre
+   * @param {number} maxW - largeur max du cadre
+   * @param {number} maxH - hauteur max du cadre
+   * @param {object} opts - { srcW, srcH, border, northArrow, scaleBar, scaleMeters }
+   */
+  _addImageFit(pdf, imgData, x, y, maxW, maxH, opts = {}) {
+    if (!imgData || typeof imgData !== 'string') return { w: 0, h: 0 };
+    const C = this._C;
+    const fmt = imgData.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
+
+    // Ratio source : essayer de lire depuis un canvas/image caché, sinon utiliser opts
+    const srcW = opts.srcW ?? 4;
+    const srcH = opts.srcH ?? 3;
+    const ratio = srcW / srcH;
+
+    // Calculer dimensions dans le cadre
+    let w = maxW, h = maxW / ratio;
+    if (h > maxH) { h = maxH; w = maxH * ratio; }
+
+    // Centrer dans le cadre
+    const ix = x + (maxW - w) / 2;
+    const iy = y + (maxH - h) / 2;
+
+    // Bordure
+    if (opts.border !== false) {
+      pdf.setDrawColor(...C.border);
+      pdf.setLineWidth(0.2);
+      pdf.rect(ix, iy, w, h);
+    }
+
+    try {
+      pdf.addImage(imgData, fmt, ix + 0.3, iy + 0.3, w - 0.6, h - 0.6);
+    } catch (e) { console.warn('[PDF] Image embed error:', e); }
+
+    // Échelle graphique
+    if (opts.scaleBar && opts.scaleMeters) {
+      this._drawScaleBar(pdf, ix + 4, iy + h - 8, opts.scaleMeters, Math.min(w * 0.35, 50));
+    }
+
+    // Flèche nord
+    if (opts.northArrow) {
+      this._drawNorthArrow(pdf, ix + w - 8, iy + 6, 6);
+    }
+
+    return { x: ix, y: iy, w, h };
+  },
+
   /** Étiquette de section : barre accent + UPPERCASE courier + filet */
   _drawSectionLabel(pdf, x, y, label, w) {
     const C = this._C;
@@ -614,25 +722,25 @@ const ExportEngine = {
   },
 
   // ═══════════════════════════════════════════════════════════════
-  //  PDF — PAGES
+  //  PDF — PLANCHES v2 (Site + Projet)
   // ═══════════════════════════════════════════════════════════════
 
-  /** Page 1 — Couverture + Fiche d'identité du terrain */
-  _page1(pdf, session, terrain, mapImg) {
+  /** PLANCHE 1 — Identité parcelle (partagée Site+Projet) */
+  _planche1(pdf, session, terrain, mapImg) {
     const L = this._L, C = this._C;
-    this._drawPageHeader(pdf, 'Fiche d\'identité du terrain', 'Phase 0 — Identification', 1, this._totalPages ?? 8);
+    const tp = this._totalPages;
+    this._drawPageHeader(pdf, 'Identité du terrain', 'Planche 1 — Identification', 1, tp);
     this._drawPageFooter(pdf, session);
+    this._drawCartouche(pdf, terrain, 1, tp, this._mode);
 
     const yStart = L.BODY_TOP + 2;
+    const V = (k, v, f) => this._val(k, v, f);
 
-    // ── COLONNE GAUCHE : données cadastrales ──
-    const xL = L.COL2_X1;
-    const wL = L.COL2_W;
+    // ── COLONNE GAUCHE : données cadastrales + coordonnées + topo/climat ──
+    const xL = L.COL2_X1, wL = L.COL2_W;
     let y = yStart;
 
     y = this._drawSectionLabel(pdf, xL, y, 'Données cadastrales', wL);
-
-    const V = (k, v, f) => this._val(k, v, f);
     y = this._drawKVBlockAuto(pdf, xL, y, wL, [
       ['Commune',              { text: terrain.commune ?? '—', auto: false }],
       ['Code INSEE',           { text: terrain.code_insee ?? '—', auto: false }],
@@ -643,9 +751,7 @@ const ExportEngine = {
       ['Adresse',              { text: terrain.adresse ?? '—', auto: false }],
     ]);
 
-    y += 4;
-
-    // Coordonnées
+    y += 3;
     y = this._drawSectionLabel(pdf, xL, y, 'Coordonnées', wL);
     y = this._drawKVBlock(pdf, xL, y, wL, [
       ['Latitude',  terrain.lat ? `${parseFloat(terrain.lat).toFixed(6)}°` : '—'],
@@ -653,88 +759,65 @@ const ExportEngine = {
       ['Datum',     'WGS 84 — RGR 92'],
     ]);
 
-    y += 4;
-
-    // Résumé topographique (auto-enrichi)
+    y += 3;
     y = this._drawSectionLabel(pdf, xL, y, 'Topographie & Climat', wL);
     y = this._drawKVBlockAuto(pdf, xL, y, wL, [
       ['Pente moyenne',      V('pente_moy_pct', terrain.pente_moy_pct != null ? `${terrain.pente_moy_pct} %` : null)],
       ['Dénivelé',           V('denivele', terrain.denivele != null ? `${terrain.denivele} m` : null)],
       ['Zone climatique',    V('zone_climatique', terrain.zone_climatique_nom ?? terrain.zone_climatique)],
       ['Zone RTAA',          V('zone_rtaa', terrain.zone_rtaa != null ? `Zone ${terrain.zone_rtaa}` : null)],
-      ['Zone PLU',           V('zone_plu', terrain.zone_plu)],
-      ['Zone PPRN',          V('zone_pprn', terrain.zone_pprn)],
     ]);
 
-    y += 4;
+    y += 3;
 
-    // Carte de situation miniature (si pas de mapImg)
-    if (!mapImg) {
-      const card = this._drawCard(pdf, xL, y, wL, 30, { accent: C.muted });
-      pdf.setFont('times', 'italic');
-      pdf.setFontSize(7);
-      pdf.setTextColor(...C.muted);
-      pdf.text('Carte non disponible', card.x + card.w / 2, card.y + card.h / 2, { align: 'center' });
-    }
-
-    // Snapshot cadastre (si dispo, en bas de la colonne gauche)
+    // Snapshot cadastre IGN (compact)
     const snapCad = terrain.snap_cadastre ?? null;
-    if (snapCad && y + 55 < L.BODY_BOT) {
+    if (snapCad && y + 50 < L.BODY_BOT - 22) {
       y = this._drawSectionLabel(pdf, xL, y, 'Cadastre IGN', wL);
-      const cadH = Math.min(L.BODY_BOT - y - 12, 60);
-      pdf.setDrawColor(...C.border); pdf.setLineWidth(0.15); pdf.rect(xL, y, wL, cadH);
-      try { pdf.addImage(snapCad, snapCad.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG', xL + 0.5, y + 0.5, wL - 1, cadH - 1); } catch {}
+      this._addImageFit(pdf, snapCad, xL, y, wL, Math.min(L.BODY_BOT - y - 30, 55),
+        { srcW: 4, srcH: 3, northArrow: true, scaleBar: false });
     }
 
-    // ── COLONNE DROITE : carte ──
-    const xR = L.COL2_X2;
-    const wR = L.COL2_W;
-    const mapH = L.BODY_H - 12;
+    // ── COLONNE DROITE : carte Mapbox (ratio préservé) ──
+    const xR = L.COL2_X2, wR = L.COL2_W;
+    const mapMaxH = L.BODY_H - 18;
 
     if (mapImg) {
-      // Cadre carte
-      pdf.setDrawColor(...C.border);
-      pdf.setLineWidth(0.3);
-      pdf.rect(xR, yStart, wR, mapH);
-
-      try {
-        pdf.addImage(mapImg, 'PNG', xR + 0.5, yStart + 0.5, wR - 1, mapH - 1);
-      } catch (e) {
-        console.warn('[PDF] Map image error:', e);
-      }
-
-      // Nord + échelle sur la carte
-      this._drawNorthArrow(pdf, xR + wR - 10, yStart + 6, 7);
-
-      // Échelle approximative (estimation depuis la contenance)
       const sideM = Math.sqrt(parseFloat(terrain.contenance_m2) || 400);
-      const visibleMeters = sideM * 4;
-      this._drawScaleBar(pdf, xR + 4, yStart + mapH - 10, visibleMeters, Math.min(wR * 0.4, 50));
+      this._addImageFit(pdf, mapImg, xR, yStart, wR, mapMaxH, {
+        srcW: 16, srcH: 9, northArrow: true,
+        scaleBar: true, scaleMeters: sideM * 4,
+      });
 
-      // Légende sous la carte
       pdf.setFont('courier', 'normal');
-      pdf.setFontSize(5.5);
+      pdf.setFontSize(5);
       pdf.setTextColor(...C.muted);
-      pdf.text('CARTE DE SITUATION — Source : IGN / Mapbox', xR + wR / 2, yStart + mapH + 4, { align: 'center' });
+      pdf.text('CARTE DE SITUATION — Source : IGN / Mapbox', xR + wR / 2, yStart + mapMaxH + 3, { align: 'center' });
+    } else {
+      const card = this._drawCard(pdf, xR, yStart, wR, 40, { accent: C.muted });
+      pdf.setFont('times', 'italic'); pdf.setFontSize(8); pdf.setTextColor(...C.muted);
+      pdf.text('Carte non disponible — naviguez en Phase 0', card.x + card.w / 2, card.y + 18, { align: 'center' });
     }
 
-    // ── Légende AUTO-ENRICHISSEMENT (si des champs auto existent) ──
+    // ── Légende auto-enrichissement ──
     if (this._autoFields?.size > 0) {
-      const ly = L.BODY_BOT - 4;
+      const ly = L.BODY_BOT - 22;
       pdf.setFillColor(...C.auto);
       pdf.roundedRect(xL, ly - 2, 10, 3.5, 0.6, 0.6, 'F');
       pdf.setFont('courier', 'bold'); pdf.setFontSize(4); pdf.setTextColor(255,255,255);
       pdf.text('AUTO', xL + 1, ly + 0.5);
       pdf.setFont('times', 'italic'); pdf.setFontSize(6.5); pdf.setTextColor(...C.auto);
-      pdf.text(`${this._autoFields.size} champs pré-remplis automatiquement (APIs IGN / PEIGEO / BRGM) — à vérifier par l'étudiant`, xL + 13, ly + 0.5);
+      pdf.text(`${this._autoFields.size} champs auto-enrichis (IGN / PEIGEO / BRGM) — à vérifier`, xL + 13, ly + 0.5);
     }
   },
 
-  /** Page 2 — Topographie & Géologie (Phases 1 + 2) */
-  _page2(pdf, session, terrain) {
+  /** PLANCHE 2 — Analyse du site : Topo + Géologie + Voisinage + Biodiversité */
+  _planche2(pdf, session, terrain) {
     const L = this._L, C = this._C;
-    this._drawPageHeader(pdf, 'Site — Topographie & Géologie', 'Phases 1 + 2', 2, this._totalPages ?? 8);
+    const tp = this._totalPages;
+    this._drawPageHeader(pdf, 'Analyse du site', 'Planche 2 — Topo · Géologie · Contexte', 2, tp);
     this._drawPageFooter(pdf, session);
+    this._drawCartouche(pdf, terrain, 2, tp, this._mode);
 
     const p1 = this._getPhaseData(session, 1);
     const p2 = this._getPhaseData(session, 2);
@@ -748,13 +831,9 @@ const ExportEngine = {
     yL = this._drawSectionLabel(pdf, xL, yL, 'Topographie & Microclimat', wL);
 
     yL = this._drawKVBlockAuto(pdf, xL, yL, wL, [
-      ['Pente moyenne',       V('pente_moy_pct', terrain.pente_moy_pct != null ? `${terrain.pente_moy_pct} %` : null)],
       ['Orientation',         V('orientation_terrain', terrain.orientation ?? terrain.orientation_terrain)],
       ['Alt. min DEM',        V('alt_min_dem', terrain.alt_min_dem != null ? `${terrain.alt_min_dem} m NGR` : null)],
       ['Alt. max DEM',        V('alt_max_dem', terrain.alt_max_dem != null ? `${terrain.alt_max_dem} m NGR` : null)],
-      ['Dénivelé',            V('denivele', (terrain.denivele ?? terrain.denivele_m) != null ? `${terrain.denivele ?? Math.round(terrain.denivele_m)} m` : null)],
-      ['Zone climatique',     V('zone_climatique', terrain.zone_climatique ?? terrain.zone_climatique_nom)],
-      ['Zone RTAA',           V('zone_rtaa', terrain.zone_rtaa)],
       ['Zone pluvio.',        V('zone_pluviometrique', terrain.zone_pluviometrique ?? terrain.zone_pluvio)],
       ['Station météo',       V('station_meteo', terrain.station_meteo)],
     ]);
@@ -849,19 +928,14 @@ const ExportEngine = {
       }
     }
 
-    // Terrain SVG ou aéraulique overlay (si capturé)
+    // Terrain SVG ou aéraulique overlay (si capturé) — ratio préservé
     if (this._visuals?.terrainSvg || this._visuals?.aeroOverlay) {
       const svgImg = this._visuals.terrainSvg ?? this._visuals.aeroOverlay;
       yL += (this._visuals?.profileChart ? 75 : 60);
-      if (yL + 45 < L.BODY_BOT) {
-        const card = this._drawCard(pdf, xL, yL, wL, 40, { accent: C.muted });
-        pdf.setFont('courier', 'bold');
-        pdf.setFontSize(6);
-        pdf.setTextColor(...C.muted);
-        pdf.text('COUPE TERRAIN', card.x, card.y);
-        try {
-          pdf.addImage(svgImg, 'PNG', card.x, card.y + 4, card.w, 34);
-        } catch (e) { console.warn('[PDF] Terrain SVG error:', e); }
+      if (yL + 45 < L.BODY_BOT - 22) {
+        yL = this._drawSectionLabel(pdf, xL, yL, 'Coupe terrain', wL);
+        const svgRatio = this._visuals.terrainSvg ? 3/2 : 2/1;
+        this._addImageFit(pdf, svgImg, xL, yL, wL, 38, { srcW: svgRatio, srcH: 1, northArrow: true });
       }
     }
 
@@ -956,41 +1030,33 @@ const ExportEngine = {
     // Échelle verticale
     this._drawScaleBar(pdf, layerX, ly + 4, 5, 20);
 
-    // Snapshot carte terrain 3D (capturé automatiquement)
+    // Snapshot carte terrain 3D — ratio préservé + nord
     const terrainSnap = terrain.snap_terrain3d ?? this._visuals?.phaseSnaps?.[1] ?? null;
-    if (terrainSnap && ly + 60 < L.BODY_BOT) {
-      const snapY = ly + 12;
-      const snapH = Math.min(L.BODY_BOT - snapY - 4, 55);
-      if (snapH > 25) {
-        pdf.setFont('courier', 'bold'); pdf.setFontSize(6); pdf.setTextColor(...C.muted);
-        pdf.text('VUE 3D TERRAIN — DEM MAPBOX', xR + wR / 2, snapY - 2, { align: 'center' });
-        pdf.setDrawColor(...C.border); pdf.setLineWidth(0.2);
-        pdf.rect(xR, snapY, wR, snapH);
-        try { pdf.addImage(terrainSnap, terrainSnap.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG', xR + 0.5, snapY + 0.5, wR - 1, snapH - 1); }
-        catch { /* snapshot indisponible */ }
-      }
+    if (terrainSnap && ly + 55 < L.BODY_BOT - 22) {
+      const snapY = ly + 10;
+      yR = this._drawSectionLabel(pdf, xR, snapY - 3, 'Vue 3D terrain — DEM Mapbox', wR);
+      this._addImageFit(pdf, terrainSnap, xR, snapY, wR, Math.min(L.BODY_BOT - snapY - 28, 50),
+        { srcW: 16, srcH: 9, northArrow: true });
+      ly = snapY + Math.min(L.BODY_BOT - snapY - 28, 50) + 4;
     }
 
-    // Snapshot carte géologique BRGM (capturé automatiquement)
+    // Snapshot carte géologique BRGM — ratio préservé + nord
     const brgmSnap = terrain.snap_brgm ?? this._visuals?.phaseSnaps?.[2] ?? null;
-    const brgmY = (terrainSnap ? (ly + 12 + Math.min(L.BODY_BOT - ly - 16, 55) + 6) : ly + 8);
-    if (brgmSnap && brgmY + 50 < L.BODY_BOT) {
-      const sH = Math.min(L.BODY_BOT - brgmY - 2, 55);
-      if (sH > 25) {
-        pdf.setFont('courier', 'bold'); pdf.setFontSize(6); pdf.setTextColor(...C.muted);
-        pdf.text('CARTE GÉOLOGIQUE — BRGM', xR + wR / 2, brgmY - 2, { align: 'center' });
-        pdf.setDrawColor(...C.border); pdf.setLineWidth(0.15);
-        pdf.rect(xR, brgmY, wR, sH);
-        try { pdf.addImage(brgmSnap, brgmSnap.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG', xR + 0.5, brgmY + 0.5, wR - 1, sH - 1); } catch {}
-      }
+    if (brgmSnap && ly + 50 < L.BODY_BOT - 22) {
+      const brgmY = ly + 2;
+      yR = this._drawSectionLabel(pdf, xR, brgmY - 3, 'Carte géologique — BRGM', wR);
+      this._addImageFit(pdf, brgmSnap, xR, brgmY, wR, Math.min(L.BODY_BOT - brgmY - 28, 50),
+        { srcW: 4, srcH: 3, northArrow: true });
     }
   },
 
-  /** Page 3 — Risques & Réglementation PLU (Phases 3 + 4) */
-  _page3(pdf, session, terrain) {
+  /** PLANCHE 3 — Risques & Réglementation PLU */
+  _planche3(pdf, session, terrain) {
     const L = this._L, C = this._C;
-    this._drawPageHeader(pdf, 'Risques naturels & Réglementation', 'Phases 3 + 4', 3, this._totalPages ?? 8);
+    const tp = this._totalPages;
+    this._drawPageHeader(pdf, 'Risques & Réglementation', 'Planche 3 — PPRN · PLU · RTAA', 3, tp);
     this._drawPageFooter(pdf, session);
+    this._drawCartouche(pdf, terrain, 3, tp, this._mode);
 
     const p3 = this._getPhaseData(session, 3);
     const p4 = this._getPhaseData(session, 4);
@@ -1001,7 +1067,7 @@ const ExportEngine = {
     const xL = L.COL2_X1, wL = L.COL2_W;
     let yL = yStart;
 
-    yL = this._drawSectionLabel(pdf, xL, yL, 'Risques naturels — PPRN', wL);
+    yL = this._drawSectionLabel(pdf, xL, yL, 'Hydrologie', wL);
 
     // Zone PPRN en gros
     const zoneColors = {
@@ -1080,19 +1146,16 @@ const ExportEngine = {
       yL += 5;
     }
 
-    // Snapshot carte PPR (capturé automatiquement depuis Mapbox)
+    // Snapshot carte PPR — ratio préservé + nord + échelle
     const pprSnap = terrain.snap_ppr ?? this._visuals?.phaseSnaps?.[3] ?? null;
     if (pprSnap) {
-      yL += 4;
-      const snapH = Math.min(L.BODY_BOT - yL - 4, 70);
+      yL += 3;
+      const snapH = Math.min(L.BODY_BOT - yL - 28, 65);
       if (snapH > 30) {
         yL = this._drawSectionLabel(pdf, xL, yL, 'Carte PPR — terrain', wL);
-        pdf.setDrawColor(...C.border);
-        pdf.setLineWidth(0.2);
-        pdf.rect(xL, yL, wL, snapH);
-        try {
-          pdf.addImage(pprSnap, pprSnap.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG', xL + 0.5, yL + 0.5, wL - 1, snapH - 1);
-        } catch (e) { console.warn('[PDF] PPR snap error:', e); }
+        const sideM = Math.sqrt(parseFloat(terrain.contenance_m2) || 400);
+        this._addImageFit(pdf, pprSnap, xL, yL, wL, snapH,
+          { srcW: 16, srcH: 9, northArrow: true, scaleBar: true, scaleMeters: sideM * 3 });
         pdf.setFont('courier', 'normal'); pdf.setFontSize(5); pdf.setTextColor(...C.muted);
         pdf.text('Source : AGORAH PEIGEO — PPR approuvés La Réunion', xL + wL / 2, yL + snapH + 3, { align: 'center' });
       }
@@ -1165,34 +1228,30 @@ const ExportEngine = {
 
     yR += 4;
 
-    // Schéma graphique des reculs — image capturée (priorité) ou dessin vectoriel
+    // Schéma graphique des reculs — ratio préservé, ou dessin vectoriel
     if (this._visuals?.reculsCanvas) {
-      const imgH = Math.min(L.BODY_BOT - yR - 4, 100);
+      const imgH = Math.min(L.BODY_BOT - yR - 28, 90);
       if (imgH > 30) {
-        pdf.setDrawColor(...C.border);
-        pdf.setLineWidth(0.2);
-        pdf.rect(xR, yR, wR, imgH);
-        try {
-          pdf.addImage(this._visuals.reculsCanvas, 'PNG', xR + 1, yR + 1, wR - 2, imgH - 2);
-        } catch (e) { console.warn('[PDF] Reculs canvas error:', e); }
-        pdf.setFont('courier', 'normal');
-        pdf.setFontSize(5);
-        pdf.setTextColor(...C.muted);
-        pdf.text('Schema des reculs — rendu interactif', xR + wR / 2, yR + imgH + 3, { align: 'center' });
+        this._addImageFit(pdf, this._visuals.reculsCanvas, xR, yR, wR, imgH,
+          { srcW: 1, srcH: 1, northArrow: false, scaleBar: false });
+        pdf.setFont('courier', 'normal'); pdf.setFontSize(5); pdf.setTextColor(...C.muted);
+        pdf.text('Schéma des reculs — rendu interactif', xR + wR / 2, yR + imgH + 3, { align: 'center' });
       }
     } else {
-      const schemaH = Math.min(L.BODY_BOT - yR - 4, 100);
+      const schemaH = Math.min(L.BODY_BOT - yR - 28, 90);
       if (schemaH > 40) {
         this._drawReculsSchema(pdf, xR, yR, wR, schemaH, p4, terrain);
       }
     }
   },
 
-  /** Page 4 — Voisinage & Biodiversité (Phases 5 + 6) */
-  _page4(pdf, session, terrain) {
+  /** PLANCHE — Voisinage & Biodiversité (utilisée en planche variable selon mode) */
+  _plancheVoisinage(pdf, session, terrain, pageNum) {
     const L = this._L, C = this._C;
-    this._drawPageHeader(pdf, 'Contexte — Voisinage & Biodiversité', 'Phases 5 + 6', 4, this._totalPages ?? 8);
+    const tp = this._totalPages;
+    this._drawPageHeader(pdf, 'Voisinage & Biodiversité', `Planche ${pageNum} — Contexte`, pageNum, tp);
     this._drawPageFooter(pdf, session);
+    this._drawCartouche(pdf, terrain, pageNum, tp, this._mode);
 
     const p6 = session?.getPhase?.(6)?.data ?? {};
     const yStart = L.BODY_TOP + 2;
@@ -1333,30 +1392,33 @@ const ExportEngine = {
     const snapBati = terrain.snap_bati3d ?? this._visuals?.phaseSnaps?.[5] ?? null;
     const snapNature = terrain.snap_nature ?? this._visuals?.phaseSnaps?.[6] ?? null;
 
-    // Colonne gauche : bâtiments 3D
-    if (snapBati && yL + 50 < L.BODY_BOT) {
-      yL += 8;
+    // Colonne gauche : bâtiments 3D — ratio préservé + nord
+    if (snapBati && yL + 50 < L.BODY_BOT - 22) {
+      yL += 6;
       yL = this._drawSectionLabel(pdf, xL, yL, 'Carte — Bâtiments voisins 3D', wL);
-      const sH = Math.min(L.BODY_BOT - yL - 2, 70);
-      pdf.setDrawColor(...C.border); pdf.setLineWidth(0.15); pdf.rect(xL, yL, wL, sH);
-      try { pdf.addImage(snapBati, snapBati.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG', xL + 0.5, yL + 0.5, wL - 1, sH - 1); } catch {}
+      this._addImageFit(pdf, snapBati, xL, yL, wL, Math.min(L.BODY_BOT - yL - 28, 65),
+        { srcW: 16, srcH: 9, northArrow: true });
     }
 
-    // Colonne droite : nature / ZNIEFF
-    if (snapNature && yR + 50 < L.BODY_BOT) {
-      yR += 4;
+    // Colonne droite : nature / ZNIEFF — ratio préservé + nord
+    if (snapNature && yR + 50 < L.BODY_BOT - 22) {
+      yR += 3;
       yR = this._drawSectionLabel(pdf, xR, yR, 'Carte — ZNIEFF & milieux naturels', wR);
-      const sH = Math.min(L.BODY_BOT - yR - 2, 70);
-      pdf.setDrawColor(...C.border); pdf.setLineWidth(0.15); pdf.rect(xR, yR, wR, sH);
-      try { pdf.addImage(snapNature, snapNature.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG', xR + 0.5, yR + 0.5, wR - 1, sH - 1); } catch {}
+      this._addImageFit(pdf, snapNature, xR, yR, wR, Math.min(L.BODY_BOT - yR - 28, 65),
+        { srcW: 16, srcH: 9, northArrow: true });
     }
   },
 
-  /** Page 5 — Esquisse & Chantier (Phases 7 + 8) */
-  _page5(pdf, session, terrain) {
+  /** PLANCHE — Parcelle & Enveloppe constructible (Site) / Parcelle+Coupe (Projet) */
+  _plancheParcelle(pdf, session, terrain, pageNum) {
     const L = this._L, C = this._C;
-    this._drawPageHeader(pdf, 'Projet — Esquisse & Chantier', 'Phases 7 + 8', 5, this._totalPages ?? 8);
+    const tp = this._totalPages;
+    const isProjet = this._mode === 'projet';
+    this._drawPageHeader(pdf,
+      isProjet ? 'Parcelle & Gabarit' : 'Parcelle & Enveloppe',
+      `Planche ${pageNum} — Esquisse`, pageNum, tp);
     this._drawPageFooter(pdf, session);
+    this._drawCartouche(pdf, terrain, pageNum, tp, this._mode);
 
     const p7 = this._getPhaseData(session, 7);
     const p8 = this._getPhaseData(session, 8);
@@ -1514,34 +1576,21 @@ const ExportEngine = {
 
     yL += 4;
 
-    // Snapshot 3D — session (glb_snapshot) ou captures live (terrain3d, bimshow)
+    // Snapshot 3D — ratio préservé
     const snapshot3d = p7.glb_snapshot ?? this._visuals?.terrain3d ?? this._visuals?.bimshow ?? null;
-    if (snapshot3d) {
-      yL = this._drawSectionLabel(pdf, xL, yL, 'Modele 3D — BIMSHOW', wL);
-      const imgH = 85;
-      pdf.setDrawColor(...C.border);
-      pdf.setLineWidth(0.2);
-      pdf.rect(xL, yL, wL, imgH);
-
-      try {
-        pdf.addImage(snapshot3d, 'PNG', xL + 1, yL + 1, wL - 2, imgH - 2);
-      } catch (e) {
-        pdf.setFont('times', 'italic');
-        pdf.setFontSize(8);
-        pdf.setTextColor(...C.muted);
-        pdf.text('Apercu 3D non disponible', xL + wL / 2, yL + imgH / 2, { align: 'center' });
-      }
-      yL += imgH + 4;
+    if (snapshot3d && yL + 55 < L.BODY_BOT - 22) {
+      yL = this._drawSectionLabel(pdf, xL, yL, 'Modèle 3D — BIMSHOW', wL);
+      this._addImageFit(pdf, snapshot3d, xL, yL, wL, Math.min(L.BODY_BOT - yL - 28, 75),
+        { srcW: 16, srcH: 9, northArrow: true });
+      yL += Math.min(L.BODY_BOT - yL - 28, 75) + 4;
     }
 
-    // Wind navigator SVG (si capturé)
-    if (this._visuals?.windNav && yL + 55 < L.BODY_BOT) {
-      yL = this._drawSectionLabel(pdf, xL, yL, 'Analyse aeraulique multi-echelle', wL);
-      const wndH = 50;
-      try {
-        pdf.addImage(this._visuals.windNav, 'PNG', xL, yL, wL, wndH);
-      } catch (e) { console.warn('[PDF] Wind nav error:', e); }
-      yL += wndH + 4;
+    // Wind navigator SVG — ratio préservé
+    if (this._visuals?.windNav && yL + 50 < L.BODY_BOT - 22) {
+      yL = this._drawSectionLabel(pdf, xL, yL, 'Analyse aéraulique multi-échelle', wL);
+      this._addImageFit(pdf, this._visuals.windNav, xL, yL, wL, 48,
+        { srcW: 1, srcH: 1, northArrow: true });
+      yL += 52;
     }
 
     // Gabarit en plan (schéma simplifié)
@@ -1587,9 +1636,19 @@ const ExportEngine = {
       yL = by + bh + 18;
     }
 
-    // ── COLONNE DROITE : Chantier ──
+    // ── COLONNE DROITE ──
     const xR = L.COL2_X2, wR = L.COL2_W;
     let yR = yStart;
+
+    // Coupe gabarit SVG (mode projet uniquement)
+    if (isProjet && this._visuals?.coupeGabarit) {
+      yR = this._drawSectionLabel(pdf, xR, yR, 'Coupe gabarit transversale', wR);
+      this._addImageFit(pdf, this._visuals.coupeGabarit, xR, yR, wR, 70,
+        { srcW: 420, srcH: 200, northArrow: false, scaleBar: false });
+      pdf.setFont('courier', 'normal'); pdf.setFontSize(5); pdf.setTextColor(...C.muted);
+      pdf.text('N-S · Reculs · Niveaux · Toiture 20°', xR + wR / 2, yR + 73, { align: 'center' });
+      yR += 78;
+    }
 
     yR = this._drawSectionLabel(pdf, xR, yR, 'Chantier & Construction', wR);
 
@@ -1701,11 +1760,13 @@ const ExportEngine = {
     }
   },
 
-  /** Page 6 — Synthèse & Durabilité (Phases 9+10+11+12) */
-  _page6(pdf, session, terrain) {
+  /** PLANCHE — Durabilité & Synthèse (Phases 9-12) */
+  _plancheDurabilite(pdf, session, terrain, pageNum) {
     const L = this._L, C = this._C;
-    this._drawPageHeader(pdf, 'Synthèse & Durabilité', 'Phases 9 — 12', 6, this._totalPages ?? 8);
+    const tp = this._totalPages;
+    this._drawPageHeader(pdf, 'Durabilité & Synthèse', `Planche ${pageNum} — Carbone · Entretien · Fin de vie`, pageNum, tp);
     this._drawPageFooter(pdf, session);
+    this._drawCartouche(pdf, terrain, pageNum, tp, this._mode);
 
     const p9  = session?.getPhase?.(9)?.data ?? {};
     const p10 = session?.getPhase?.(10)?.data ?? {};
@@ -1893,21 +1954,14 @@ const ExportEngine = {
       } catch (e) { console.warn('[PDF] QR code error:', e); }
     }
 
-    // Plan masse SVG (si capturé, phase 11)
-    if (this._visuals?.planMasse && yS + 55 < L.BODY_BOT) {
-      const pmW = 80;
-      const pmH = 55;
+    // Plan masse SVG miniature (si mode site — en mode projet c'est une planche dédiée)
+    if (this._mode !== 'projet' && this._visuals?.planMasse && yS + 55 < L.BODY_BOT - 22) {
+      const pmW = 75, pmH = 52;
       const pmX = L.W - L.M - pmW - (this._visuals?.qrCode ? 28 : 0);
-      try {
-        pdf.setDrawColor(...C.border);
-        pdf.setLineWidth(0.2);
-        pdf.rect(pmX, yS, pmW, pmH);
-        pdf.addImage(this._visuals.planMasse, 'PNG', pmX + 0.5, yS + 0.5, pmW - 1, pmH - 1);
-        pdf.setFont('courier', 'normal');
-        pdf.setFontSize(4.5);
-        pdf.setTextColor(...C.muted);
-        pdf.text('Plan masse', pmX + pmW / 2, yS + pmH + 3, { align: 'center' });
-      } catch (e) { console.warn('[PDF] Plan masse error:', e); }
+      this._addImageFit(pdf, this._visuals.planMasse, pmX, yS, pmW, pmH,
+        { srcW: 10, srcH: 7, northArrow: true, scaleBar: false });
+      pdf.setFont('courier', 'normal'); pdf.setFontSize(4.5); pdf.setTextColor(...C.muted);
+      pdf.text('Plan masse', pmX + pmW / 2, yS + pmH + 3, { align: 'center' });
     }
 
     // Grille d'avancement
@@ -2022,11 +2076,13 @@ const ExportEngine = {
   //  PDF — PAGE 7 : AUDIT & VIGILANCE
   // ═══════════════════════════════════════════════════════════════
 
-  /** Page 7 — Audit documentaire et points de vigilance */
-  _pageAudit(pdf, session, terrain) {
+  /** PLANCHE — Checklist & Audit documentaire */
+  _plancheAudit(pdf, session, terrain, pageNum) {
     const L = this._L, C = this._C;
-    this._drawPageHeader(pdf, 'Audit documentaire & Vigilance', 'Toutes phases', 7, this._totalPages ?? 8);
+    const tp = this._totalPages;
+    this._drawPageHeader(pdf, 'Checklist & Audit', `Planche ${pageNum} — Conformité · Données · Vigilance`, pageNum, tp);
     this._drawPageFooter(pdf, session);
+    this._drawCartouche(pdf, terrain, pageNum, tp, this._mode);
 
     const audit = this._buildAuditReport(session);
     if (!audit) return;
@@ -2754,6 +2810,139 @@ const ExportEngine = {
   },
 
   // ═══════════════════════════════════════════════════════════════
+  //  PLANCHE PROJET — Plan masse & Métriques (mode projet uniquement)
+  // ═══════════════════════════════════════════════════════════════
+
+  /** PLANCHE — Plan masse plein format + tableau métriques conformité */
+  _planchePlanMasse(pdf, session, terrain, pageNum) {
+    const L = this._L, C = this._C;
+    const tp = this._totalPages;
+    this._drawPageHeader(pdf, 'Plan masse & Conformité', `Planche ${pageNum} — Métriques`, pageNum, tp);
+    this._drawPageFooter(pdf, session);
+    this._drawCartouche(pdf, terrain, pageNum, tp, this._mode);
+
+    const yStart = L.BODY_TOP + 2;
+
+    // ── Plan masse SVG plein format (colonne gauche large) ──
+    const pmW = L.W - L.M * 2 - 130; // ~260mm pour le plan
+    const pmH = L.BODY_H - 22;
+
+    if (this._visuals?.planMasse) {
+      this._addImageFit(pdf, this._visuals.planMasse, L.M, yStart, pmW, pmH, {
+        srcW: 10, srcH: 7, northArrow: true,
+        scaleBar: true, scaleMeters: Math.sqrt(parseFloat(terrain.contenance_m2) || 400) * 2,
+      });
+      pdf.setFont('courier', 'normal'); pdf.setFontSize(5); pdf.setTextColor(...C.muted);
+      pdf.text('PLAN MASSE — Capacity Study Renderer', L.M + pmW / 2, yStart + pmH + 3, { align: 'center' });
+    } else {
+      const card = this._drawCard(pdf, L.M, yStart, pmW, 60, { accent: C.muted });
+      pdf.setFont('times', 'italic'); pdf.setFontSize(9); pdf.setTextColor(...C.muted);
+      pdf.text('Plan masse non disponible', card.x + card.w / 2, card.y + 25, { align: 'center' });
+      pdf.text('Générez un scénario en Phase 11 pour l\'obtenir', card.x + card.w / 2, card.y + 33, { align: 'center' });
+    }
+
+    // ── Colonne droite : métriques conformité ──
+    const xR = L.M + pmW + 6;
+    const wR = L.W - L.M - xR;
+    let yR = yStart;
+
+    yR = this._drawSectionLabel(pdf, xR, yR, 'Métriques conformité', wR);
+
+    // Récupérer les checks du plan-masse-engine (si disponible)
+    const proposal = this._visuals?.activeProposal ?? null;
+    const p4 = this._getPhaseData(session, 4);
+
+    if (proposal?.bat) {
+      const bat = proposal.bat;
+      const nv = proposal.niveaux ?? 2;
+      const he = nv * 3;
+      const heMax = parseFloat(p4.hauteur_max_m ?? 9);
+      const emprMax = parseFloat(p4.emprise_sol_max_pct ?? 60);
+      const empPct = proposal.empPct ?? 0;
+      const permPct = proposal.permPct ?? 0;
+
+      const checks = [
+        { label: 'Emprise bâtiment',  proj: `${(bat.w * bat.l).toFixed(0)} m²`, ok: true },
+        { label: 'Emprise sol',       proj: `${empPct.toFixed(1)}%`, rule: `≤ ${emprMax}%`, ok: empPct <= emprMax },
+        { label: 'Hauteur égout',     proj: `${he.toFixed(1)} m`, rule: `≤ ${heMax} m`, ok: he <= heMax },
+        { label: 'Niveaux',           proj: nv <= 1 ? 'RdC' : `R+${nv-1}`, rule: `≤ ${Math.floor(heMax/3)}`, ok: nv <= Math.floor(heMax/3) },
+        { label: 'Surface plancher',  proj: `${(proposal.spTot ?? 0).toFixed(0)} m²`, ok: true },
+        { label: 'Logements',         proj: `${proposal.nLgts ?? 0}`, ok: true },
+        { label: 'Perméabilité',      proj: `${permPct.toFixed(1)}%`, rule: '≥ 25%', ok: permPct >= 25 },
+        { label: 'Largeur RTAA',      proj: `${bat.w.toFixed(1)} m`, rule: '≤ 12 m', ok: bat.w <= 12 },
+      ];
+
+      for (const ck of checks) {
+        const level = ck.ok ? C.success : C.danger;
+        const icon = ck.ok ? '✓' : '✗';
+
+        // Fond alterné
+        if (checks.indexOf(ck) % 2 === 0) {
+          pdf.setFillColor(...C.lightBg);
+          pdf.rect(xR - 1, yR - 3, wR + 2, 6, 'F');
+        }
+
+        pdf.setFont('courier', 'bold'); pdf.setFontSize(6); pdf.setTextColor(...level);
+        pdf.text(icon, xR, yR);
+        pdf.setFont('times', 'normal'); pdf.setFontSize(7); pdf.setTextColor(...C.ink);
+        pdf.text(ck.label, xR + 5, yR);
+        pdf.setFont('courier', 'normal'); pdf.setFontSize(6.5); pdf.setTextColor(...C.ink);
+        pdf.text(ck.proj, xR + wR - 30, yR, { align: 'right' });
+        if (ck.rule) {
+          pdf.setFont('courier', 'normal'); pdf.setFontSize(5.5); pdf.setTextColor(...C.muted);
+          pdf.text(ck.rule, xR + wR, yR, { align: 'right' });
+        }
+        yR += 6;
+      }
+
+      // Score global
+      const okCount = checks.filter(c => c.ok).length;
+      yR += 4;
+      const scoreColor = okCount === checks.length ? C.success : okCount >= 6 ? C.warning : C.danger;
+      const scoreCard = this._drawCard(pdf, xR, yR, wR, 18, { accent: scoreColor });
+      pdf.setFont('times', 'bold'); pdf.setFontSize(16); pdf.setTextColor(...scoreColor);
+      pdf.text(`${okCount}/${checks.length}`, scoreCard.x + 2, scoreCard.y + 8);
+      pdf.setFont('courier', 'normal'); pdf.setFontSize(6); pdf.setTextColor(...C.muted);
+      pdf.text('CONFORMITÉ PLU', scoreCard.x + 25, scoreCard.y + 8);
+      yR += 24;
+
+      // Label scénario
+      if (proposal.label || proposal.family) {
+        yR = this._drawSectionLabel(pdf, xR, yR, 'Scénario', wR);
+        pdf.setFont('times', 'bold'); pdf.setFontSize(9); pdf.setTextColor(...C.ink);
+        pdf.text(proposal.label ?? proposal.family, xR, yR);
+        yR += 8;
+      }
+    } else {
+      // Pas de proposal — afficher les règles PLU seules
+      yR = this._drawKVBlockAuto(pdf, xR, yR, wR, [
+        ['Hauteur max',       this._val('hauteur_max_m', p4.hauteur_max_m ? `${p4.hauteur_max_m} m` : null)],
+        ['Emprise sol max',   this._val('emprise_sol_max_pct', p4.emprise_sol_max_pct ? `${p4.emprise_sol_max_pct} %` : null)],
+      ]);
+      yR += 6;
+      pdf.setFont('times', 'italic'); pdf.setFontSize(8); pdf.setTextColor(...C.muted);
+      pdf.text('Générez un scénario en Phase 11', xR, yR);
+      pdf.text('pour obtenir les métriques de conformité.', xR, yR + 5);
+    }
+
+    // 3D terrain (en bas de colonne droite si place)
+    if (this._visuals?.terrain3d && yR + 55 < L.BODY_BOT - 22) {
+      yR += 4;
+      yR = this._drawSectionLabel(pdf, xR, yR, 'Vue 3D terrain', wR);
+      this._addImageFit(pdf, this._visuals.terrain3d, xR, yR, wR, Math.min(L.BODY_BOT - yR - 28, 55),
+        { srcW: 16, srcH: 9, northArrow: true });
+    }
+
+    // Vent aéraulique (si place)
+    if (this._visuals?.windNav && yR + 50 < L.BODY_BOT - 22) {
+      yR += 4;
+      yR = this._drawSectionLabel(pdf, xR, yR, 'Aéraulique', wR);
+      this._addImageFit(pdf, this._visuals.windNav, xR, yR, wR, 45,
+        { srcW: 1, srcH: 1, northArrow: true });
+    }
+  },
+
+  // ═══════════════════════════════════════════════════════════════
   //  PDF — ORCHESTRATEUR
   // ═══════════════════════════════════════════════════════════════
   // ═══════════════════════════════════════════════════════════════
@@ -2933,7 +3122,7 @@ const ExportEngine = {
     const sections = [
       { key: 'identification', title: 'Identification du terrain' },
       { key: 'topographie',    title: 'Topographie & Microclimat' },
-      { key: 'risques',        title: 'Risques naturels' },
+      { key: 'risques',        title: 'Hydrologie' },
       { key: 'plu',            title: 'Réglementation PLU' },
       { key: 'scot',           title: 'SCoT intercommunal' },
       { key: 'programme',      title: 'Programme & Capacité' },
@@ -2967,10 +3156,12 @@ const ExportEngine = {
   //  PDF — PAGE 8 : ANALYSE & CONCLUSIONS
   // ═══════════════════════════════════════════════════════════════
 
-  _pageAnalyse(pdf, session, terrain, analysis) {
+  _plancheAnalyse(pdf, session, terrain, analysis, pageNum) {
     const L = this._L, C = this._C;
-    this._drawPageHeader(pdf, 'Analyse & Conclusions', 'Synthèse TERLAB', 8, 8);
+    const tp = this._totalPages;
+    this._drawPageHeader(pdf, 'Analyse & Conclusions', `Planche ${pageNum} — Synthèse`, pageNum, tp);
     this._drawPageFooter(pdf, session);
+    this._drawCartouche(pdf, terrain, pageNum, tp, this._mode);
 
     const yStart = L.BODY_TOP + 2;
 
@@ -3122,8 +3313,15 @@ const ExportEngine = {
     }
   },
 
-  async generatePDF() {
-    const session = window.SessionManager;
+  /**
+   * Génère le PDF A3 — deux modes :
+   * - 'site'  : 6 planches analyse terrain (sans plan masse)
+   * - 'projet': 8 planches avec plan masse + coupe gabarit + métriques
+   */
+  async generatePDF(mode = 'site') {
+    this._mode = mode;
+    this._session = window.SessionManager;
+    const session = this._session;
     const terrainRaw = session?.getTerrain?.() ?? {};
 
     if (!terrainRaw.commune) {
@@ -3131,87 +3329,160 @@ const ExportEngine = {
       return;
     }
 
-    this._setProgress(2, 'Capture des visuels…');
-    window.TerlabToast?.show('Génération PDF A3 en cours…', 'info', 12000);
+    const modeLabel = mode === 'projet' ? 'PDF Projet' : 'PDF Site';
+    this._setProgress(2, `${modeLabel} — Capture des visuels…`);
+    window.TerlabToast?.show(`Génération ${modeLabel} A3 en cours…`, 'info', 15000);
 
     try {
       // Capture tous les visuels AVANT manipulation DOM
       this._setProgress(4, 'Capture cartes, graphiques, 3D…');
       this._visuals = await this._captureVisuals();
 
-      // ── AUTO-ENRICHISSEMENT — remplir les données manquantes via APIs ──
+      // Capture coupe gabarit SVG (mode projet)
+      if (mode === 'projet') {
+        try {
+          const CSR = window.CapacityStudyRenderer;
+          const proposal = window._activeProposal ?? null;
+          if (CSR && proposal && session) {
+            const svgStr = CSR.renderCoupeGabarit(session, proposal, null);
+            if (svgStr && svgStr.length > 50) {
+              const svgEl = new DOMParser().parseFromString(svgStr, 'image/svg+xml').documentElement;
+              this._visuals.coupeGabarit = await this._svgToDataURL(svgEl, 840, 400);
+            }
+          }
+          // Stocker la proposition active pour métriques
+          this._visuals.activeProposal = proposal;
+        } catch (e) { console.warn('[PDF] Coupe gabarit capture error:', e); }
+      }
+
+      // ── AUTO-ENRICHISSEMENT ──
       this._setProgress(6, 'Auto-enrichissement du terrain…');
       const enrichResult = await this._autoEnrich(session, terrainRaw);
       const terrain = enrichResult.terrain;
       this._autoFields = enrichResult.autoFields;
-
-      // Fusionner les phases enrichies dans un proxy session pour le PDF
       this._enrichedPhases = enrichResult.phases;
 
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({ orientation: 'landscape', format: 'a3', unit: 'mm' });
 
-      // Charger polices Unicode + phrases contextuelles en parallèle
+      // Charger polices + phrases en parallèle
       this._setProgress(10, 'Chargement polices & phrases…');
       const [, phrases] = await Promise.all([
         this._loadUnicodeFont(pdf),
         this._loadPhrases(),
       ]);
-      const phraseCtx  = this._buildPhraseContext(session, terrain);
-      const analysis   = phrases ? this._buildAnalysis(phrases, phraseCtx) : null;
-      this._totalPages = analysis ? 8 : 7;
+      const phraseCtx = this._buildPhraseContext(session, terrain);
+      const analysis  = phrases ? this._buildAnalysis(phrases, phraseCtx) : null;
 
-      // Page 1 — Fiche identité
-      this._setProgress(15, 'Page 1 — Fiche d\'identité…');
-      this._page1(pdf, session, terrain, this._visuals.map);
+      // ═══════════════════════════════════════════════════════
+      //  PLAN DE PLANCHES selon le mode
+      // ═══════════════════════════════════════════════════════
+      //
+      //  MODE SITE (6 planches + analyse optionnelle) :
+      //    1. Identité parcelle
+      //    2. Analyse du site (topo + géologie)
+      //    3. Risques & Réglementation (PPRN + PLU + reculs)
+      //    4. Parcelle & Enveloppe (esquisse, reculs, pré-esquisse)
+      //    5. Durabilité & Synthèse (carbone, entretien, circulaire)
+      //    6. Checklist & Audit
+      //   [7. Analyse & Conclusions — si phrases dispo]
+      //
+      //  MODE PROJET (8 planches + analyse optionnelle) :
+      //    1. Identité parcelle
+      //    2. Analyse du site
+      //    3. Risques & Réglementation
+      //    4. Voisinage & Biodiversité
+      //    5. Parcelle & Gabarit (+ coupe gabarit transversale)
+      //    6. Plan masse & Métriques conformité
+      //    7. Durabilité & Synthèse
+      //    8. Checklist & Audit
+      //   [9. Analyse & Conclusions — si phrases dispo]
 
-      // Page 2 — Topographie & Géologie
-      this._setProgress(30, 'Page 2 — Topographie & Géologie…');
-      pdf.addPage();
-      this._page2(pdf, session, terrain);
+      if (mode === 'projet') {
+        this._totalPages = analysis ? 9 : 8;
 
-      // Page 3 — Risques & PLU
-      this._setProgress(45, 'Page 3 — Risques & PLU…');
-      pdf.addPage();
-      this._page3(pdf, session, terrain);
+        this._setProgress(12, 'Planche 1 — Identité…');
+        this._planche1(pdf, session, terrain, this._visuals.map);
 
-      // Page 4 — Voisinage & Biodiversité
-      this._setProgress(60, 'Page 4 — Voisinage & Biodiversité…');
-      pdf.addPage();
-      this._page4(pdf, session, terrain);
-
-      // Page 5 — Esquisse & Chantier
-      this._setProgress(75, 'Page 5 — Esquisse & Chantier…');
-      pdf.addPage();
-      this._page5(pdf, session, terrain);
-
-      // Page 6 — Synthèse
-      this._setProgress(82, 'Page 6 — Synthèse…');
-      pdf.addPage();
-      this._page6(pdf, session, terrain);
-
-      // Page 7 — Audit & Vigilance
-      this._setProgress(88, 'Page 7 — Audit & Vigilance…');
-      pdf.addPage();
-      this._pageAudit(pdf, session, terrain);
-
-      // Page 8 — Analyse & Conclusions (si phrases chargées)
-      if (analysis) {
-        this._setProgress(93, 'Page 8 — Analyse & Conclusions…');
+        this._setProgress(22, 'Planche 2 — Analyse du site…');
         pdf.addPage();
-        this._pageAnalyse(pdf, session, terrain, analysis);
+        this._planche2(pdf, session, terrain);
+
+        this._setProgress(32, 'Planche 3 — Risques & PLU…');
+        pdf.addPage();
+        this._planche3(pdf, session, terrain);
+
+        this._setProgress(42, 'Planche 4 — Voisinage & Biodiversité…');
+        pdf.addPage();
+        this._plancheVoisinage(pdf, session, terrain, 4);
+
+        this._setProgress(52, 'Planche 5 — Parcelle & Gabarit…');
+        pdf.addPage();
+        this._plancheParcelle(pdf, session, terrain, 5);
+
+        this._setProgress(62, 'Planche 6 — Plan masse & Métriques…');
+        pdf.addPage();
+        this._planchePlanMasse(pdf, session, terrain, 6);
+
+        this._setProgress(75, 'Planche 7 — Durabilité…');
+        pdf.addPage();
+        this._plancheDurabilite(pdf, session, terrain, 7);
+
+        this._setProgress(85, 'Planche 8 — Checklist & Audit…');
+        pdf.addPage();
+        this._plancheAudit(pdf, session, terrain, 8);
+
+        if (analysis) {
+          this._setProgress(92, 'Planche 9 — Analyse…');
+          pdf.addPage();
+          this._plancheAnalyse(pdf, session, terrain, analysis, 9);
+        }
+
+      } else {
+        // MODE SITE
+        this._totalPages = analysis ? 7 : 6;
+
+        this._setProgress(15, 'Planche 1 — Identité…');
+        this._planche1(pdf, session, terrain, this._visuals.map);
+
+        this._setProgress(28, 'Planche 2 — Analyse du site…');
+        pdf.addPage();
+        this._planche2(pdf, session, terrain);
+
+        this._setProgress(42, 'Planche 3 — Risques & PLU…');
+        pdf.addPage();
+        this._planche3(pdf, session, terrain);
+
+        this._setProgress(56, 'Planche 4 — Parcelle & Enveloppe…');
+        pdf.addPage();
+        this._plancheParcelle(pdf, session, terrain, 4);
+
+        this._setProgress(72, 'Planche 5 — Durabilité…');
+        pdf.addPage();
+        this._plancheDurabilite(pdf, session, terrain, 5);
+
+        this._setProgress(85, 'Planche 6 — Checklist & Audit…');
+        pdf.addPage();
+        this._plancheAudit(pdf, session, terrain, 6);
+
+        if (analysis) {
+          this._setProgress(92, 'Planche 7 — Analyse…');
+          pdf.addPage();
+          this._plancheAnalyse(pdf, session, terrain, analysis, 7);
+        }
       }
 
-      // Sauvegarde
-      this._setProgress(95, 'Sauvegarde…');
-      const filename = `TERLAB_${terrain.commune ?? 'terrain'}_${terrain.section ?? ''}${terrain.parcelle ?? ''}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      // ── Sauvegarde ──
+      this._setProgress(96, 'Sauvegarde…');
+      const suffix = mode === 'projet' ? '_PROJET' : '_SITE';
+      const filename = `TERLAB_${terrain.commune ?? 'terrain'}_${terrain.section ?? ''}${terrain.parcelle ?? ''}${suffix}_${new Date().toISOString().slice(0, 10)}.pdf`;
       pdf.save(filename);
 
       session?.saveExport?.('pdf', filename);
       const autoCount = this._autoFields?.size ?? 0;
       const msg = autoCount > 0
-        ? `PDF A3 exporté — ${autoCount} champs auto-enrichis (à vérifier)`
-        : 'PDF A3 exporté avec succès';
+        ? `${modeLabel} exporté — ${autoCount} champs auto-enrichis (à vérifier)`
+        : `${modeLabel} exporté avec succès`;
       window.TerlabToast?.show(msg, 'success');
       this._hideProgress();
 

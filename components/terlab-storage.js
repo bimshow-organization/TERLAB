@@ -3,7 +3,7 @@
 // Chaque session = un projet terrain indépendant avec son propre UUID
 
 const STORAGE_KEY   = 'terlab_sessions';
-const MAX_SESSIONS  = 50;
+const MAX_SESSIONS  = 8;
 
 const TerlabStorage = {
 

@@ -408,6 +408,130 @@ export class GabaritThree {
     ro.observe(this.canvas.parentElement ?? this.canvas);
   }
 
+  // ── ETUDE DE CAPACITE 3D ──────────────────────────────────────
+  /**
+   * Charge une étude de capacité complète dans la scène 3D
+   * @param {Object} proposal       — solution Pareto sélectionnée
+   * @param {Object} session        — session TERLAB
+   * @param {Array}  existingBldgs  — résultat ExistingBuildings.analyse()
+   */
+  loadCapacityStudy(proposal, session, existingBldgs) {
+    const THREE = window.THREE;
+    if (!THREE || !proposal?.bat) return;
+
+    // Nettoyer les groupes
+    for (const g of Object.values(this.groups)) {
+      while (g.children.length) g.remove(g.children[0]);
+    }
+
+    const bat = proposal.bat;
+    const nv = proposal.niveaux ?? 2;
+    const he = nv * 3;
+    const color = proposal.color ?? '#3B82F6';
+
+    // Sol parcelle (si disponible via session)
+    const terrain = session?.terrain ?? {};
+    const parcelLocal = session?._parcelLocal ?? [];
+    if (parcelLocal.length >= 3) {
+      const shape = new THREE.Shape();
+      const first = parcelLocal[0];
+      shape.moveTo(first.x ?? first[0], first.y ?? first[1]);
+      for (let i = 1; i < parcelLocal.length; i++) {
+        const p = parcelLocal[i];
+        shape.lineTo(p.x ?? p[0], p.y ?? p[1]);
+      }
+      shape.closePath();
+      const geom = new THREE.ShapeGeometry(shape);
+      geom.rotateX(-Math.PI / 2);
+      const mat = new THREE.MeshStandardMaterial({ color: 0xd4c9a8, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+      const mesh = new THREE.Mesh(geom, mat);
+      mesh.receiveShadow = true;
+      mesh.position.y = 0.01;
+      this.groups.parcels.add(mesh);
+    }
+
+    // Bâtiment proposé
+    const batGeom = new THREE.BoxGeometry(bat.w, he, bat.l);
+    const batMat = new THREE.MeshPhongMaterial({ color: new THREE.Color(color), transparent: true, opacity: 0.85 });
+    const batMesh = new THREE.Mesh(batGeom, batMat);
+    batMesh.position.set(bat.x + bat.w / 2, he / 2, bat.y + bat.l / 2);
+    batMesh.castShadow = true;
+    batMesh.receiveShadow = true;
+    this.groups.solution.add(batMesh);
+
+    // Varangue nord (1.5m saillie)
+    const varW = bat.w, varD = 1.5, varH = 3;
+    const varGeom = new THREE.BoxGeometry(varW, varH, varD);
+    const varMat = new THREE.MeshPhongMaterial({ color: 0xd4a574, transparent: true, opacity: 0.7 });
+    const varMesh = new THREE.Mesh(varGeom, varMat);
+    varMesh.position.set(bat.x + bat.w / 2, varH / 2, bat.y + bat.l + varD / 2);
+    this.groups.solution.add(varMesh);
+
+    // Lignes de plancher
+    const linesMat = new THREE.LineBasicMaterial({ color: 0x666666 });
+    for (let i = 1; i <= nv; i++) {
+      const y = i * 3;
+      const pts = [
+        new THREE.Vector3(bat.x, y, bat.y),
+        new THREE.Vector3(bat.x + bat.w, y, bat.y),
+        new THREE.Vector3(bat.x + bat.w, y, bat.y + bat.l),
+        new THREE.Vector3(bat.x, y, bat.y + bat.l),
+        new THREE.Vector3(bat.x, y, bat.y),
+      ];
+      const lGeom = new THREE.BufferGeometry().setFromPoints(pts);
+      this.groups.solution.add(new THREE.Line(lGeom, linesMat));
+    }
+
+    // Bâtiments existants
+    this._existingGroup = new THREE.Group();
+    if (existingBldgs?.footprints?.length) {
+      for (const fp of existingBldgs.footprints) {
+        if (!fp.poly?.length) continue;
+        const shape = new THREE.Shape();
+        shape.moveTo(fp.poly[0][0], fp.poly[0][1]);
+        for (let i = 1; i < fp.poly.length; i++) shape.lineTo(fp.poly[i][0], fp.poly[i][1]);
+        shape.closePath();
+        const extGeom = new THREE.ExtrudeGeometry(shape, { depth: fp.hauteur ?? 6, bevelEnabled: false });
+        extGeom.rotateX(-Math.PI / 2);
+        const mat = new THREE.MeshPhongMaterial({ color: 0x94A3B8, transparent: true, opacity: 0.6 });
+        const mesh = new THREE.Mesh(extGeom, mat);
+        mesh.castShadow = true;
+        this._existingGroup.add(mesh);
+      }
+    }
+    this.scene.add(this._existingGroup);
+
+    // Caméra auto
+    const cx = bat.x + bat.w / 2, cz = bat.y + bat.l / 2;
+    this.camera.position.set(cx - 30, he + 30, cz + 40);
+    this.camera.lookAt(cx, he / 2, cz);
+  }
+
+  /**
+   * Met à jour le mode d'affichage des bâtiments existants
+   * @param {'demolition'|'conservation'|'extension'} mode
+   */
+  updateExistingMode(mode) {
+    const THREE = window.THREE;
+    if (!THREE || !this._existingGroup) return;
+
+    const colors = {
+      demolition:   { color: 0xEF4444, wireframe: true,  opacity: 0.5 },
+      conservation: { color: 0x94A3B8, wireframe: false, opacity: 0.6 },
+      extension:    { color: 0x3B82F6, wireframe: false, opacity: 0.4 },
+    };
+
+    const style = colors[mode] ?? colors.conservation;
+    for (const mesh of this._existingGroup.children) {
+      if (mesh.material) {
+        mesh.material.color.setHex(style.color);
+        mesh.material.wireframe = style.wireframe;
+        mesh.material.opacity = style.opacity;
+        mesh.material.needsUpdate = true;
+      }
+    }
+  }
+
   dispose() {
     if (this.renderer) {
       this.renderer.setAnimationLoop(null);

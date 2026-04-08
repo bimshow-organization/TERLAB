@@ -128,7 +128,8 @@ const AeraulicMapTools = {
 
   /**
    * Ajoute un overlay heatmap C_TP sur la carte Mapbox.
-   * ⚠️ STUB PARTIEL — C_TP estimé depuis altitude Mapbox uniquement.
+   * Utilise un layer heatmap Mapbox pour un rendu lisse et transparent.
+   * C_TP estimé depuis altitude terrain Mapbox + gradient distance.
    */
   addCtpOverlay(map, profilePoints = [], windDir = 105) {
     if (!map) return;
@@ -136,8 +137,12 @@ const AeraulicMapTools = {
     const terrain = window.SessionManager?.getTerrain?.() ?? {};
     const lat0    = terrain.lat  ?? -21.0;
     const lng0    = terrain.lng  ?? 55.4;
-    const step    = 0.002;
+    const step    = 0.004;           // moins dense → pas de chevauchement
     const ext     = 0.04;
+
+    // Direction vent dominant → composantes normalisées pour gradient aéraulique
+    const windRad = (windDir ?? 105) * Math.PI / 180;
+    const wdx = Math.sin(windRad), wdz = -Math.cos(windRad);
 
     const features = [];
     for (let dlat = -ext; dlat <= ext; dlat += step) {
@@ -151,39 +156,75 @@ const AeraulicMapTools = {
         if (alt !== null) {
           if (alt > 1200)     siteType = 'ouvert';
           else if (alt > 600) siteType = 'entre_collines';
+          else if (alt < 200 && alt > 0) siteType = 'plaine';
           else if (alt < 0)   siteType = 'vallee';
         }
 
-        const { ctp } = MU.cTP(siteType);
-        const t = (ctp - 0.3) / (1.3 - 0.3);
-        const [r, g, b] = MU.cpToRGB(ctp - 0.65, [-0.65, 0.65]);
+        let { ctp } = MU.cTP(siteType);
+
+        // Sans données terrain, varier le CTP par gradient vent + distance
+        if (alt === null) {
+          const dx = dlng / ext, dz = dlat / ext;
+          const proj = dx * wdx + dz * wdz;          // projection sur axe vent
+          const dist = Math.hypot(dx, dz);
+          // Au vent → favorable, sous le vent → défavorable, bords → atténué
+          ctp = 1.0 + proj * 0.15 - dist * 0.1;
+          ctp = Math.max(0.3, Math.min(1.3, ctp));
+        }
 
         features.push({
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [lng, lat] },
-          properties: {
-            ctp,
-            color: MU.rgbToCss([r, g, b], 0.55),
-            radius: 8,
-          },
+          properties: { ctp },
         });
       }
     }
 
     const geojson = { type: 'FeatureCollection', features };
-
     this.removeCtpOverlay(map);
 
     map.addSource('ctp-overlay', { type: 'geojson', data: geojson });
+
+    // Layer heatmap : rendu lisse, transparent, couleurs vert→jaune→rouge
+    map.addLayer({
+      id: 'ctp-overlay-heat',
+      type: 'heatmap',
+      source: 'ctp-overlay',
+      paint: {
+        'heatmap-weight': ['get', 'ctp'],
+        'heatmap-intensity': 0.4,
+        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 10, 15, 14, 30, 16, 50],
+        'heatmap-opacity': 0.35,
+        'heatmap-color': [
+          'interpolate', ['linear'], ['heatmap-density'],
+          0,    'rgba(0,0,0,0)',
+          0.15, 'rgba(42,112,64,0.25)',     // vert — très favorable
+          0.35, 'rgba(74,159,56,0.35)',     // vert vif
+          0.55, 'rgba(230,190,50,0.35)',    // jaune — neutre
+          0.75, 'rgba(200,120,30,0.35)',    // orange — défavorable
+          1.0,  'rgba(180,50,30,0.30)',     // rouge — très défavorable
+        ],
+      },
+    });
+
+    // Cercles discrets visibles au zoom > 14 pour lecture ponctuelle
     map.addLayer({
       id: 'ctp-overlay-layer',
       type: 'circle',
       source: 'ctp-overlay',
+      minzoom: 14,
       paint: {
-        'circle-radius': 6,
-        'circle-color': ['get', 'color'],
-        'circle-opacity': 0.55,
-        'circle-blur': 0.5,
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 14, 3, 17, 6],
+        'circle-color': [
+          'interpolate', ['linear'], ['get', 'ctp'],
+          0.3, 'rgba(180,50,30,0.6)',       // vallée
+          0.6, 'rgba(200,120,30,0.5)',      // pied colline
+          1.0, 'rgba(42,112,64,0.5)',       // plaine
+          1.3, 'rgba(28,95,168,0.6)',       // toit écope
+        ],
+        'circle-opacity': 0.4,
+        'circle-blur': 0.3,
+        'circle-stroke-width': 0,
       },
     });
   },
@@ -191,6 +232,7 @@ const AeraulicMapTools = {
   removeCtpOverlay(map) {
     if (!map) return;
     if (map.getLayer('ctp-overlay-layer'))  map.removeLayer('ctp-overlay-layer');
+    if (map.getLayer('ctp-overlay-heat'))   map.removeLayer('ctp-overlay-heat');
     if (map.getSource('ctp-overlay'))       map.removeSource('ctp-overlay');
   },
 };

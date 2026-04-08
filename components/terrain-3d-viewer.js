@@ -2,10 +2,19 @@
 // Viewer 3D terrain + gabarit + pentes + ensoleillement
 // Sources : TerrainViz_Gamer_v4 · bimshow-shadow-study · GIEP giep-3d-slopes
 
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import SlopesService from '../services/slopes-service.js';
 import SunCalcService from '../services/sun-calc-service.js';
 import GeoStatusBar from './geo-status-bar.js';
 import GLBExporter from '../utils/glb-exporter.js';
+import ContourService from '../services/contour-service.js';
+
+// Exposer THREE globalement pour compatibilité scripts inline
+if (typeof window !== 'undefined' && !window.THREE) {
+  window.THREE = Object.assign({}, THREE);
+  window.THREE.OrbitControls = OrbitControls;
+}
 
 const Terrain3D = {
 
@@ -33,6 +42,8 @@ const Terrain3D = {
   _parcelData:   null,
   _session:      null,
   _dimLabels:    [],
+  _contourGroup: null,
+  _showContours: true,
   _mode:         'orbit',      // 'orbit' | 'top' | 'front'
   _showSun:      false,
   _showSlopes:   true,
@@ -55,7 +66,6 @@ const Terrain3D = {
     this._canvas = canvas;
 
     // Attendre Three.js
-    const THREE = window.THREE;
     if (!THREE) return console.error('[Terrain3D] Three.js non chargé');
 
     // Renderer
@@ -79,15 +89,7 @@ const Terrain3D = {
     this._setupLights();
 
     // OrbitControls
-    if (window.THREE?.OrbitControls) {
-      this._controls = new THREE.OrbitControls(this._cam, canvas);
-    } else {
-      // Charger depuis CDN si besoin
-      const { OrbitControls } = await import(
-        'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/controls/OrbitControls.js'
-      ).catch(() => ({ OrbitControls: null }));
-      if (OrbitControls) this._controls = new OrbitControls(this._cam, canvas);
-    }
+    this._controls = new OrbitControls(this._cam, canvas);
     if (this._controls) {
       this._controls.enableDamping = true;
       this._controls.dampingFactor = 0.08;
@@ -101,6 +103,9 @@ const Terrain3D = {
 
     // Construire le terrain depuis la session
     await this._buildTerrain();
+
+    // Courbes de niveau 3D (BIL)
+    this._buildContours();
 
     // Gabarit depuis Phase 7
     this._buildGabarit();
@@ -131,7 +136,6 @@ const Terrain3D = {
 
   // ─── LUMIÈRES ─────────────────────────────────────────────────
   _setupLights() {
-    const THREE = window.THREE;
     const scene = this._scene;
 
     // Ambiance
@@ -157,7 +161,6 @@ const Terrain3D = {
 
   // ─── BACKGROUND WIREFRAME SIMPLE ──────────────────────────────
   _makeBgGrid() {
-    const THREE = window.THREE;
     const size  = this.SCALE_FACTOR * this.BG_EXPANSION;
     const div   = 48;
 
@@ -209,7 +212,6 @@ const Terrain3D = {
 
   // ─── TERRAIN IGN TEXTURÉ ──────────────────────────────────────
   async _buildTerrain() {
-    const THREE = window.THREE;
     const t = this._parcelData;
     if (!t?.parcelle_geojson) {
       this._buildDemoTerrain();
@@ -339,7 +341,6 @@ const Terrain3D = {
 
   // ─── TERRAIN DE DÉMONSTRATION ─────────────────────────────────
   _buildDemoTerrain() {
-    const THREE = window.THREE;
     const w = 20, d = 14, h = this.EXTRUDE_DEPTH;
 
     const verts = new Float32Array([
@@ -385,7 +386,6 @@ const Terrain3D = {
 
   // ─── TEXTURE SATELLITE ────────────────────────────────────────
   async _loadSatTexture(mesh, t, minX, maxX, minZ, maxZ, sf) {
-    const THREE = window.THREE;
     const mg    = 0.15;   // marge 15%
     const lngR  = (maxX - minX) / sf / 111320 / Math.cos(t.lat * Math.PI / 180);
     const latR  = (maxZ - minZ) / sf / 111320;
@@ -415,7 +415,6 @@ const Terrain3D = {
   },
 
   _makeTerrainTexture() {
-    const THREE = window.THREE;
     const cv  = document.createElement('canvas');
     cv.width  = cv.height = 256;
     const ctx = cv.getContext('2d');
@@ -429,7 +428,6 @@ const Terrain3D = {
 
   // ─── GABARIT EXTRUDÉ ──────────────────────────────────────────
   _buildGabarit() {
-    const THREE = window.THREE;
     const p7 = this._session?.phases?.[7]?.data ?? {};
     const L  = parseFloat(p7.gabarit_l_m ?? 10);
     const W  = parseFloat(p7.gabarit_w_m ?? 8);
@@ -472,7 +470,6 @@ const Terrain3D = {
   },
 
   _makeGabaritLabel(scL, scH, scW, L, W, H) {
-    const THREE = window.THREE;
     const cv  = document.createElement('canvas');
     cv.width  = 256; cv.height = 64;
     const ctx = cv.getContext('2d');
@@ -495,9 +492,54 @@ const Terrain3D = {
     this._scene.add(sp);
   },
 
+  // ─── COURBES DE NIVEAU 3D ──────────────────────────────────────
+  async _buildContours() {
+    const t = this._parcelData;
+    if (!t?.parcelle_geojson) return;
+
+    // Nettoyer si existant
+    if (this._contourGroup) {
+      this._contourGroup.traverse(o => { o.geometry?.dispose(); o.material?.dispose(); });
+      this._scene.remove(this._contourGroup);
+      this._contourGroup = null;
+    }
+
+    const geom = t.parcelle_geojson;
+    const coords = geom.type === 'Polygon' ? geom.coordinates[0] : geom.coordinates[0][0];
+    const lngs = coords.map(c => c[0]), lats = coords.map(c => c[1]);
+    const margin = 0.001; // ~100m de marge
+    const wgsBounds = {
+      west:  Math.min(...lngs) - margin,
+      east:  Math.max(...lngs) + margin,
+      south: Math.min(...lats) - margin,
+      north: Math.max(...lats) + margin,
+    };
+
+    try {
+      const contourData = await ContourService.fromBIL(wgsBounds, { pixelSizeM: 2, maxDim: 200 });
+      if (!contourData.lines.length) return;
+
+      // On a besoin des coordonnées UTM centrées comme le mesh BIL
+      await window.BILTerrain._ensureProj4();
+      const sw = proj4('EPSG:4326', 'EPSG:2975', [wgsBounds.west, wgsBounds.south]);
+      const ne = proj4('EPSG:4326', 'EPSG:2975', [wgsBounds.east, wgsBounds.north]);
+      const cX = (sw[0] + ne[0]) / 2, cY = (sw[1] + ne[1]) / 2;
+      const utmBounds = { minX: sw[0], minY: sw[1], maxX: ne[0], maxY: ne[1], cX, cY };
+
+      this._contourGroup = ContourService.toThreeGroup(contourData, utmBounds, {
+        scaleZ: 1.0,
+        labels: true,
+      });
+      this._contourGroup.visible = this._showContours;
+      this._scene.add(this._contourGroup);
+      console.log(`[Terrain3D] ${contourData.lines.length} courbes de niveau (interval ${contourData.interval}m)`);
+    } catch (err) {
+      console.warn('[Terrain3D] Courbes de niveau indisponibles:', err.message);
+    }
+  },
+
   // ─── FLÈCHES DE PENTE ─────────────────────────────────────────
   _buildSlopeArrows() {
-    const THREE = window.THREE;
     if (this._slopeArrows) {
       this._slopeArrows.forEach(a => this._scene.remove(a));
     }
@@ -578,7 +620,6 @@ const Terrain3D = {
 
   // ─── LABELS ALTITUDES ─────────────────────────────────────────
   _makeAltLabels(scaledPts, alts) {
-    const THREE = window.THREE;
     this._dimLabels.forEach(l => this._scene.remove(l));
     this._dimLabels = [];
 
@@ -612,7 +653,6 @@ const Terrain3D = {
 
   // ─── COTATIONS ────────────────────────────────────────────────
   _makeDims(scaledPts, localPts, sf) {
-    const THREE = window.THREE;
     const xs  = scaledPts.map(p => p.x);
     const zs  = scaledPts.map(p => p.z);
     const minX = Math.min(...xs), maxX = Math.max(...xs);
@@ -694,7 +734,6 @@ const Terrain3D = {
 
   // ─── CENTRER CAMÉRA ───────────────────────────────────────────
   _centerCamera() {
-    const THREE = window.THREE;
     const target = this._terrainGroup ?? this._topMesh;
     if (!target || !this._controls) return;
     const box  = new THREE.Box3().setFromObject(target);
@@ -733,6 +772,11 @@ const Terrain3D = {
   toggleSlopes(on) {
     this._showSlopes = on ?? !this._showSlopes;
     this._slopeArrows?.forEach(a => { a.visible = this._showSlopes; });
+  },
+
+  toggleContours(on) {
+    this._showContours = on ?? !this._showContours;
+    if (this._contourGroup) this._contourGroup.visible = this._showContours;
   },
 
   toggleDims(on) {
