@@ -57,7 +57,7 @@
       "icon": "🏢",
       "url": "https://www.cinor.re",
       "communes": ["Saint-Denis", "Sainte-Marie", "Sainte-Suzanne", "La Montagne", "Saint-François"],
-      "phases": [0, 4],
+      "phases": [4],
       "contact": "Service Urbanisme — 0262 XX XX XX",
       "gratuit": true
     },
@@ -70,7 +70,7 @@
       "icon": "🏢",
       "url": "https://www.cirest.fr",
       "communes": ["Saint-Benoît", "Saint-André", "Bras-Panon", "Salazie", "Sainte-Rose"],
-      "phases": [0, 4],
+      "phases": [4],
       "gratuit": true
     },
     {
@@ -82,7 +82,7 @@
       "icon": "🏢",
       "url": "https://www.casud.re",
       "communes": ["Saint-Joseph", "Saint-Philippe", "Entre-Deux", "Le Tampon", "Petite-Île", "Saint-Pierre partiel"],
-      "phases": [0, 4],
+      "phases": [4],
       "gratuit": true
     },
     {
@@ -94,7 +94,7 @@
       "icon": "🏢",
       "url": "https://www.tco.re",
       "communes": ["Le Port", "La Possession", "Saint-Leu", "Trois-Bassins", "Saint-Paul", "Étang-Salé"],
-      "phases": [0, 4],
+      "phases": [4],
       "gratuit": true
     },
     {

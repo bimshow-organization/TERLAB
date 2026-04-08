@@ -1,0 +1,2321 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Atlas Psychédélique · Composition Urbaine & Paysagère Mathématique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&family=Unbounded:wght@200;400;700&family=Cormorant:ital,wght@0,300;1,300;1,600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#08090d;
+  --card:#0e1018;
+  --border:rgba(255,255,255,.06);
+  --border-hi:rgba(255,255,255,.18);
+  --ink:#e8e0d4;
+  --sub:#8a8070;
+  --dim:#3a3530;
+
+  /* Convention palette — same semantics, psychédélic treatment */
+  --hedge:rgba(20,200,120,.7);      /* haie → vert acide lumineux */
+  --tree:rgba(80,240,160,.55);      /* arbre → disque vert néon */
+  --water:rgba(40,160,240,.45);     /* eau → bleu électrique */
+  --gravel:rgba(220,170,60,.5);     /* gravier → or chaud */
+  --lawn:rgba(100,220,80,.3);       /* pelouse → vert phosphorescent */
+  --bldg:rgba(200,140,80,.4);       /* bâtiment → ocre chaud */
+  --axis:rgba(255,200,80,.6);       /* axe → or vif en tirets */
+  --folie:rgba(255,60,100,.7);      /* folie → rouge-rose signal */
+
+  --gold:rgba(220,170,60,.8);
+  --p:rgba(120,80,255,.7);          /* psyché accent — violet */
+  --pk2:rgba(255,60,180,.65);       /* psyché 2 — magenta */
+  --pk3:rgba(40,220,200,.65);       /* psyché 3 — cyan-teal */
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+body{
+  font-family:'Cormorant',serif;
+  background:var(--bg);
+  color:var(--ink);
+  font-size:14px;
+  line-height:1.5;
+  /* Subtle noise grain */
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+}
+
+/* ─── Header ─── */
+header {
+  text-align:center;
+  padding:80px 24px 56px;
+  position:relative;
+  overflow:hidden;
+  border-bottom:1px solid var(--border);
+}
+header::before{
+  content:'';
+  position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(80,40,200,.12) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 30% at 20% 100%, rgba(40,200,160,.08) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 80% 60%, rgba(200,60,120,.07) 0%, transparent 60%);
+  pointer-events:none;
+}
+header h1{
+  font-family:'Unbounded',sans-serif;
+  font-weight:200;
+  font-size:clamp(1.4rem,4vw,2.6rem);
+  letter-spacing:-.02em;
+  line-height:1.15;
+  margin-bottom:12px;
+  position:relative;
+}
+header h1 em{font-style:normal;color:var(--pk3)}
+header h1 strong{font-weight:700;color:var(--gold)}
+header p.sub{
+  font-family:'Fragment Mono',monospace;
+  font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--sub);position:relative;margin-bottom:8px;
+}
+header .meta{font-family:'Fragment Mono',monospace;font-size:10.5px;color:var(--dim);position:relative}
+
+/* ─── Legend ─── */
+.legend{
+  max-width:980px;margin:32px auto;padding:22px 28px;
+  border:1px solid var(--border);border-radius:2px;
+  background:rgba(255,255,255,.02);
+  position:relative;overflow:hidden;
+}
+.legend::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(80,40,200,.04) 0%,transparent 60%);
+  pointer-events:none;
+}
+.legend h3{
+  font-family:'Fragment Mono',monospace;font-size:10px;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--sub);
+  margin-bottom:16px;
+}
+.leg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px 20px}
+.leg-item{display:flex;align-items:center;gap:9px;font-family:'Fragment Mono',monospace;font-size:10.5px;color:var(--sub)}
+.leg-sw{width:26px;height:14px;border-radius:1px;flex-shrink:0}
+.leg-sw.hedge{background:var(--hedge);box-shadow:0 0 8px var(--hedge)}
+.leg-sw.tree{background:var(--tree);border-radius:50%;box-shadow:0 0 8px var(--tree)}
+.leg-sw.water{background:var(--water);box-shadow:0 0 8px var(--water)}
+.leg-sw.gravel{background:var(--gravel)}
+.leg-sw.lawn{background:var(--lawn)}
+.leg-sw.bldg{background:var(--bldg)}
+.leg-sw.axis{background:none;border:1.5px dashed var(--axis);height:12px}
+.leg-sw.folie{background:var(--folie);border-radius:50%;box-shadow:0 0 10px var(--folie)}
+
+/* ─── Sections ─── */
+.section{max-width:1280px;margin:0 auto;padding:48px 24px 32px}
+.section-hd{border-top:1px solid var(--border);padding-top:28px;margin-bottom:28px;position:relative}
+.section-hd::before{
+  content:'';
+  position:absolute;top:0;left:0;right:0;height:1px;
+}
+.section.s1 .section-hd::before{background:linear-gradient(90deg,transparent,var(--p),transparent)}
+.section.s2 .section-hd::before{background:linear-gradient(90deg,transparent,var(--pk2),transparent)}
+.section.s3 .section-hd::before{background:linear-gradient(90deg,transparent,var(--pk3),transparent)}
+.section.s4 .section-hd::before{background:linear-gradient(90deg,transparent,var(--gold),transparent)}
+.section-hd .num{
+  font-family:'Fragment Mono',monospace;font-size:10px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--dim);display:block;margin-bottom:6px;
+}
+.section-hd h2{
+  font-family:'Unbounded',sans-serif;font-weight:200;
+  font-size:clamp(1rem,2.5vw,1.5rem);letter-spacing:-.01em;margin-bottom:8px;
+}
+.section.s1 .section-hd h2 em{color:var(--p);font-style:normal}
+.section.s2 .section-hd h2 em{color:var(--pk2);font-style:normal}
+.section.s3 .section-hd h2 em{color:var(--pk3);font-style:normal}
+.section.s4 .section-hd h2 em{color:var(--gold);font-style:normal}
+.section-hd p.sdesc{font-size:12.5px;color:var(--sub);max-width:580px;font-family:'Fragment Mono',monospace;line-height:1.65}
+
+/* ─── Grid & Card ─── */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:20px}
+.card{
+  background:var(--card);border:1px solid var(--border);border-radius:2px;
+  padding:14px 13px 34px;position:relative;
+  transition:border-color .25s,box-shadow .25s,transform .25s;
+  overflow:hidden;
+}
+.card::after{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(255,255,255,.02) 0%,transparent 70%);
+  pointer-events:none;
+}
+.card:hover{
+  border-color:var(--border-hi);
+  box-shadow:0 8px 40px rgba(0,0,0,.6),0 0 20px rgba(80,40,200,.08);
+  transform:translateY(-2px);
+}
+.svg-wrap{width:100%;display:flex;justify-content:center;margin-bottom:11px}
+.svg-wrap svg{max-width:100%;height:auto;display:block}
+
+.badge{
+  display:inline-block;font-family:'Fragment Mono',monospace;
+  font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;
+  padding:2px 7px;border-radius:1px;margin-bottom:7px;
+  border:1px solid;
+}
+.section.s1 .badge{color:var(--p);border-color:rgba(120,80,255,.3);background:rgba(120,80,255,.08)}
+.section.s2 .badge{color:var(--pk2);border-color:rgba(255,60,180,.3);background:rgba(255,60,180,.08)}
+.section.s3 .badge{color:var(--pk3);border-color:rgba(40,220,200,.3);background:rgba(40,220,200,.08)}
+.section.s4 .badge{color:var(--gold);border-color:rgba(220,170,60,.3);background:rgba(220,170,60,.08)}
+
+.name{display:block;font-family:'Cormorant',serif;font-size:13.5px;font-weight:300;font-style:italic;margin-bottom:2px;line-height:1.3;color:var(--ink)}
+.eq{display:block;font-family:'Fragment Mono',monospace;font-size:9px;color:var(--dim);letter-spacing:.04em;margin-bottom:8px}
+.desc{display:block;font-size:11.5px;color:var(--sub);line-height:1.6;margin-bottom:6px;font-family:'Fragment Mono',monospace}
+.theory{
+  display:block;font-family:'Cormorant',serif;font-size:11px;font-style:italic;
+  color:var(--dim);border-top:1px solid var(--border);
+  padding-top:7px;margin-top:4px;line-height:1.5;
+}
+
+/* ─── Rand button ─── */
+.rand-btn{
+  position:absolute;bottom:8px;right:8px;width:22px;height:22px;
+  border-radius:50%;background:rgba(255,255,255,.04);
+  border:1px solid var(--border);color:var(--sub);font-size:12px;
+  cursor:pointer;transition:all .2s;padding:0;
+  display:flex;align-items:center;justify-content:center;
+  line-height:1;
+}
+.rand-btn:hover{
+  border-color:var(--border-hi);color:var(--gold);
+  background:rgba(220,170,60,.1);transform:rotate(180deg);
+}
+
+.div{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);max-width:1280px;margin:0 auto}
+footer{
+  text-align:center;padding:28px 24px;
+  border-top:1px solid var(--border);
+  font-family:'Fragment Mono',monospace;font-size:10px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+}
+
+/* ─── Global SVG Animations ─── */
+@keyframes rot-slow  {to{transform:rotate(360deg)}}
+@keyframes rot-mid   {to{transform:rotate(360deg)}}
+@keyframes rot-rev   {to{transform:rotate(-360deg)}}
+@keyframes pulse-r   {0%,100%{r:4}50%{r:7}}
+@keyframes pulse-op  {0%,100%{opacity:.4}50%{opacity:1}}
+@keyframes drift-x   {0%,100%{transform:translateX(0)}50%{transform:translateX(6px)}}
+@keyframes drift-y   {0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes flicker   {0%,100%{opacity:.6}40%{opacity:1}70%{opacity:.7}}
+@keyframes dash-flow {to{stroke-dashoffset:-40}}
+@keyframes scale-br  {0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@keyframes hue-rot   {from{filter:hue-rotate(0deg)}to{filter:hue-rotate(360deg)}}
+@keyframes wave-op   {0%,100%{opacity:.25}50%{opacity:.65}}
+
+/* Per-card animation helpers */
+.anim-rot-slow  {transform-origin:70px 70px;animation:rot-slow  18s linear infinite}
+.anim-rot-mid   {transform-origin:70px 70px;animation:rot-mid   10s linear infinite}
+.anim-rot-rev   {transform-origin:70px 70px;animation:rot-rev   12s linear infinite}
+.anim-rot-fast  {transform-origin:70px 70px;animation:rot-slow   6s linear infinite}
+.anim-pulse-op  {animation:pulse-op 3s ease-in-out infinite}
+.anim-drift-x   {animation:drift-x 5s ease-in-out infinite}
+.anim-drift-y   {animation:drift-y 4s ease-in-out infinite}
+.anim-flicker   {animation:flicker 2.5s ease-in-out infinite}
+.anim-scale-br  {transform-origin:70px 70px;animation:scale-br 4s ease-in-out infinite}
+.anim-wave-op   {animation:wave-op 4s ease-in-out infinite}
+.anim-hue      {animation:hue-rot 12s linear infinite}
+
+/* Staggered delays */
+.d1{animation-delay:.4s}.d2{animation-delay:.8s}.d3{animation-delay:1.2s}
+.d4{animation-delay:1.6s}.d5{animation-delay:2s}.d6{animation-delay:2.4s}
+.d7{animation-delay:2.8s}.d8{animation-delay:3.2s}.d9{animation-delay:3.6s}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Atlas <strong>Psychédélique</strong><br/><em>Composition Urbaine</em> &amp; Paysagère Mathématique</h1>
+  <p class="sub">Phyllotaxie · Courbes · Bruit · Enveloppes biologiques</p>
+  <p class="meta">20 types · 4 catégories · Plans zénithaux générés algorithmiquement · Conventions graphiques unifiées</p>
+</header>
+
+<div class="legend">
+  <h3>Conventions graphiques · Lecture des plans zénithaux</h3>
+  <div class="leg-grid">
+    <div class="leg-item"><div class="leg-sw hedge"></div>Haie / Palissade — tracé sombre épais</div>
+    <div class="leg-item"><div class="leg-sw tree"></div>Arbre isolé — disque couronné</div>
+    <div class="leg-item"><div class="leg-sw water"></div>Plan d'eau / Canal — bleu électrique</div>
+    <div class="leg-item"><div class="leg-sw gravel"></div>Allée / Gravier — ocre doré</div>
+    <div class="leg-item"><div class="leg-sw lawn"></div>Parterre / Pelouse — vert phosphore</div>
+    <div class="leg-item"><div class="leg-sw bldg"></div>Bâtiment / Pavillon — ocre chaud</div>
+    <div class="leg-item"><div class="leg-sw axis"></div>Axe hypothétique — tiret or</div>
+    <div class="leg-item"><div class="leg-sw folie"></div>Folie / Monument — rouge signal</div>
+  </div>
+</div>
+
+<!-- All cards injected by JS -->
+<div id="root"></div>
+
+<footer>Atlas Psychédélique · MGA BIMSHOW Plant Factory · La Réunion · Phyllotaxie &amp; Mathématiques du Vivant</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// MATH LIBRARY — ported from bpf-math.ts, bpf-phyllotaxis.ts, bpf-curves.ts, noise.ts
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const M = {
+  // ── Scalars (bpf-math.ts) ──
+  lerp:(a,b,t)=>a+(b-a)*t,
+  clamp:(x,mn,mx)=>Math.max(mn,Math.min(mx,x)),
+  smoothstep:(t)=>t*t*(3-2*t),
+  smootherstep:(t)=>t*t*t*(t*(t*6-15)+10),
+  lanceolatEnv:(t,p=0.5,q=0.2)=>Math.sin(Math.PI*Math.pow(t,p))*Math.pow(1-t,q),
+  ellipticEnv:(t,a=0.52,b=0.14)=>Math.sin(Math.PI*Math.pow(t,a))*Math.pow(1-t,b)*2.1,
+  flareRadius:(s,r0,r1,F=1.4,k=8)=>r0*(1-s)+r1*s+F*r0*Math.exp(-k*s),
+  hash1:(n)=>(Math.abs(Math.sin(n*127.1+311.7)*43758.5453))%1,
+  gaussian:(x,mu=0,sigma=1)=>Math.exp(-0.5*((x-mu)/sigma)**2),
+  bias:(t,b)=>t/(((1/b-2)*(1-t))+1),
+  gain:(t,g)=>t<0.5?M.bias(2*t,g)*0.5:1-M.bias(2-2*t,g)*0.5,
+  taperRadius:(t,r0,r1,k=0.9)=>r0*Math.pow(1-M.clamp(t,0,1),k),
+  leafEnvelope:(t,wMax,k=1)=>wMax*Math.pow(Math.sin(Math.PI*M.clamp(t,0,1)),k),
+  leafEnvelopeAsymm:(t,wMax,tMax=0.45)=>{
+    const tc=M.clamp(t,0,1);
+    return tc<tMax?wMax*Math.pow(Math.sin(Math.PI*tc/(2*tMax)),0.8):wMax*Math.pow(Math.sin(Math.PI*(1-tc)/(2*(1-tMax))),0.7);
+  },
+  logisticGrowth:(t,K,r,N0=1)=>K/(1+((K-N0)/N0)*Math.exp(-r*t)),
+  beerLambert:(z,I0,k,LAI)=>I0*Math.exp(-k*LAI*z),
+  vonBertalanffy:(t,Linf,k,t0=0)=>Linf*(1-Math.exp(-k*(t-t0))),
+
+  // ── Phyllotaxis (bpf-phyllotaxis.ts) ──
+  PHI_RAD: Math.PI*(3-Math.sqrt(5)),
+  PHI: (1+Math.sqrt(5))/2,
+  vogel:(i,c=1,pr=1)=>{
+    const r=c*Math.sqrt(i)*pr;
+    const th=i*Math.PI*(3-Math.sqrt(5));
+    return {x:r*Math.cos(th),y:r*Math.sin(th),r,theta:th};
+  },
+  insertionAngle:(i,mode='alternate')=>{
+    const PHI_RAD=Math.PI*(3-Math.sqrt(5));
+    const ORIX=[Math.PI,Math.PI/2,Math.PI,Math.PI*3/2];
+    switch(mode){
+      case 'alternate':return (i%2)*Math.PI;
+      case 'decussate':return i*Math.PI/2;
+      case 'whorled3':return i*Math.PI*2/3;
+      case 'golden':return i*PHI_RAD;
+      case 'bijugate':return i*PHI_RAD+(i%2)*Math.PI;
+      case 'orixate':return ORIX[i%4]+Math.floor(i/4)*Math.PI*2;
+      case 'fasciculate':return i*PHI_RAD;
+      default:return i*PHI_RAD;
+    }
+  },
+  rosetteLeaves:(N,stemLen,insertAng=35,sf=0.8)=>Array.from({length:N},(_,i)=>{
+    const az=i*Math.PI*(3-Math.sqrt(5));
+    const elev=Math.PI/2-(insertAng+i*sf)*Math.PI/180;
+    return {az,elev,tipX:Math.cos(az)*Math.cos(elev)*stemLen,tipY:Math.sin(elev)*stemLen,tipZ:Math.sin(az)*Math.cos(elev)*stemLen};
+  }),
+  coneScales:(N,R,H,alpha=0.85)=>Array.from({length:N},(_,i)=>{
+    const hFrac=Math.pow(i/N,alpha);
+    const h=H*hFrac;
+    const r=R*(1-hFrac);
+    const th=i*Math.PI*(3-Math.sqrt(5));
+    return {pos:{x:r*Math.cos(th),y:h,z:r*Math.sin(th)},scale:r*0.5+0.02};
+  }),
+  fibSphere:(N,R=1)=>Array.from({length:N},(_,i)=>{
+    const y=1-(i/(N-1))*2;
+    const sinY=Math.sqrt(Math.max(0,1-y*y));
+    const th=i*Math.PI*(3-Math.sqrt(5));
+    return {x:R*sinY*Math.cos(th),y:R*y,z:R*sinY*Math.sin(th)};
+  }),
+  spiralDecay:(turns,r0,decay,H,N=64)=>{
+    const TAU=Math.PI*2;
+    const pitch=H/Math.max(turns,0.001);
+    return Array.from({length:N},(_,i)=>{
+      const t=i/(N-1);
+      const theta=t*turns*TAU;
+      const r=r0*Math.exp(-decay*theta/TAU);
+      return {x:r*Math.cos(theta),y:pitch*theta/TAU,z:r*Math.sin(theta)};
+    });
+  },
+
+  // ── Curves (bpf-curves.ts) ──
+  bezierCubic:(p0,p1,p2,p3,t)=>{
+    const u=1-t,u2=u*u,u3=u2*u,t2=t*t,t3=t2*t;
+    return {
+      x:u3*p0.x+3*t*u2*p1.x+3*t2*u*p2.x+t3*p3.x,
+      y:u3*p0.y+3*t*u2*p1.y+3*t2*u*p2.y+t3*p3.y,
+    };
+  },
+  catmullRom:(p0,p1,p2,p3,t,tau=0.5)=>{
+    const t2=t*t,t3=t2*t;
+    const f=k=>tau*((-t3+2*t2-t)*p0[k]+(3*t3-5*t2+2)*p1[k]+(-3*t3+4*t2+t)*p2[k]+(t3-t2)*p3[k]);
+    return {x:f('x'),y:f('y')};
+  },
+  sampleCatmullRom:(pts,N=64)=>{
+    const n=pts.length;
+    if(n<2)return pts;
+    const ext=(a,b)=>({x:2*a.x-b.x,y:2*a.y-b.y});
+    const chain=[ext(pts[0],pts[1]),...pts,ext(pts[n-1],pts[n-2])];
+    const segs=chain.length-3;
+    return Array.from({length:N},(_,i)=>{
+      const gt=(i/(N-1))*segs;
+      const seg=Math.min(Math.floor(gt),segs-1);
+      const t=gt-seg;
+      return M.catmullRom(chain[seg],chain[seg+1],chain[seg+2],chain[seg+3],t);
+    });
+  },
+
+  // ── Noise (noise.ts) ──
+  hn:(x,y,s=0)=>Math.abs(Math.sin(x*127.1+y*311.7+s*73.3)*43758.5453)%1,
+  fbm2:(x,y,s=0)=>{
+    const hn=M.hn;
+    return hn(x,y,s)*0.5+hn(x*2,y*2,s+1)*0.25+hn(x*4,y*4,s+2)*0.125;
+  },
+  hashNoise:(x,y,z,s)=>Math.abs(Math.sin(x*127.1+y*311.7+z*74.7+s*53.3)*43758.5453)%1,
+  sarc:(t)=>Math.sin(t*Math.PI),
+  sellipse:(t,power=2)=>Math.pow(1-Math.pow(2*t-1,power),1/power),
+};
+
+// Perlin noise (full implementation)
+(()=>{
+  function fade(t){return t*t*t*(t*(t*6-15)+10)}
+  function lerp(a,b,t){return a+t*(b-a)}
+  const GRAD2=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]];
+  function grad2d(h,x,y){const g=GRAD2[h&7];return g[0]*x+g[1]*y}
+  function buildPerm(seed){
+    const p=new Uint8Array(512);
+    for(let i=0;i<256;i++)p[i]=i;
+    let s=seed;
+    for(let i=255;i>0;i--){s=(s*1664525+1013904223)>>>0;const j=s%(i+1);const tmp=p[i];p[i]=p[j];p[j]=tmp}
+    for(let i=0;i<256;i++)p[i+256]=p[i];
+    return p;
+  }
+  const cache=new Map();
+  function getPerm(seed){if(!cache.has(seed))cache.set(seed,buildPerm(seed));return cache.get(seed)}
+  M.perlinNoise2D=(x,y,seed=0)=>{
+    const p=getPerm(seed);
+    const xi=Math.floor(x)&255,yi=Math.floor(y)&255;
+    const xf=x-Math.floor(x),yf=y-Math.floor(y);
+    const u=fade(xf),v=fade(yf);
+    const aa=p[p[xi]+yi],ab=p[p[xi]+yi+1],ba=p[p[xi+1]+yi],bb=p[p[xi+1]+yi+1];
+    return lerp(lerp(grad2d(aa,xf,yf),grad2d(ba,xf-1,yf),u),lerp(grad2d(ab,xf,yf-1),grad2d(bb,xf-1,yf-1),u),v);
+  };
+  M.perlinFBM=(x,y,seed=0,octaves=3)=>{
+    let val=0,amp=1,total=0,freq=1;
+    for(let i=0;i<octaves;i++){val+=M.perlinNoise2D(x*freq,y*freq,seed+i)*amp;total+=amp;amp*=0.5;freq*=2}
+    return val/total;
+  };
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SVG GENERATORS — each returns SVG inner HTML string (viewBox 0 0 140 140)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const W=140,H=140,CX=70,CY=70;
+
+// Colour helpers
+const hedge=(op=0.7)=>`rgba(20,200,120,${op})`;
+const tree=(op=0.55)=>`rgba(80,240,160,${op})`;
+const water=(op=0.45)=>`rgba(40,160,240,${op})`;
+const gravel=(op=0.5)=>`rgba(220,170,60,${op})`;
+const lawn=(op=0.3)=>`rgba(100,220,80,${op})`;
+const bldg=(op=0.4)=>`rgba(200,140,80,${op})`;
+const folie=(op=0.7)=>`rgba(255,60,100,${op})`;
+const p1=(op=0.6)=>`rgba(120,80,255,${op})`;
+const p2=(op=0.6)=>`rgba(255,60,180,${op})`;
+const p3=(op=0.6)=>`rgba(40,220,200,${op})`;
+const gold=(op=0.6)=>`rgba(220,170,60,${op})`;
+const axisLine=(x1,y1,x2,y2,op=0.5)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${gold(op)}" stroke-width=".8" stroke-dasharray="5,3"/>`;
+const ripple=(cx,cy,d=0,col='rgba(40,160,240,.4)')=>`<circle cx="${cx}" cy="${cy}" r="3" fill="none" stroke="${col}" stroke-width=".7"><animate attributeName="r" from="3" to="22" dur="2.8s" begin="${d}s" repeatCount="indefinite"/><animate attributeName="opacity" from=".8" to="0" dur="2.8s" begin="${d}s" repeatCount="indefinite"/></circle>`;
+
+// ── §1 · Phyllotaxie ─────────────────────────────────────────────────────────
+
+function gen_vogel_disk(){
+  const N=89,R=62;
+  let o='';
+  // Background lawn field
+  o+=`<ellipse cx="${CX}" cy="${CY}" rx="64" ry="64" fill="${lawn(.15)}" stroke="${hedge(.25)}" stroke-width=".5"/>`;
+  // Golden angle spiral — tree disks + folie center
+  for(let i=0;i<N;i++){
+    const v=M.vogel(i+0.5,R/Math.sqrt(N));
+    const x=CX+v.x,y=CY+v.y;
+    const r=2.8*(1-i/N*0.5)+1;
+    const hue=i/N;
+    const col=`hsla(${120+hue*80},80%,60%,${0.6-i/N*0.3})`;
+    if(i<12){
+      o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="${tree()}" stroke="${hedge(.5)}" stroke-width=".5"/>`;
+    } else if(i<34){
+      o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(r*.8).toFixed(1)}" fill="${lawn(.5)}" stroke="${tree(.4)}" stroke-width=".4"/>`;
+    } else {
+      o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(r*.6).toFixed(1)}" fill="${col}"/>`;
+    }
+  }
+  // Center folie — pulsing
+  o+=`<circle cx="${CX}" cy="${CY}" r="5" fill="${folie()}" stroke="${folie(.9)}" stroke-width="1.5">
+    <animate attributeName="r" values="4;7;4" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values=".7;1;.7" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="${CX}" cy="${CY}" r="20" fill="none" stroke="${folie(.15)}" stroke-width=".6">
+    <animate attributeName="r" values="10;30;10" dur="4s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values=".4;0;.4" dur="4s" repeatCount="indefinite"/>
+  </circle>`;
+  // Axis lines — parastiche spirals
+  o+=axisLine(CX,CY,CX,CY-64);
+  o+=axisLine(CX,CY,CX+55,CY+32);
+  o+=axisLine(CX,CY,CX-55,CY+32);
+  return o;
+}
+
+function gen_fibonacci_rosette(){
+  const leaves=M.rosetteLeaves(21,52,38,1.1);
+  let o='';
+  o+=`<ellipse cx="${CX}" cy="${CY}" rx="66" ry="66" fill="${lawn(.08)}" stroke="${hedge(.2)}" stroke-width=".4"/>`;
+  // Project to zenith
+  leaves.forEach((l,i)=>{
+    const x=CX+l.tipX*0.85,y=CY+l.tipY*0.35-l.tipZ*0.85;
+    const ang=Math.atan2(y-CY,x-CX)*180/Math.PI;
+    const R=Math.sqrt((x-CX)**2+(y-CY)**2);
+    // Leaf path
+    const lw=M.leafEnvelope(0.5,10,0.9);
+    const col=`hsla(${90+i*8},70%,55%,${0.55-i*0.012})`;
+    const path=leafPath(CX,CY,x,y,lw);
+    o+=`<path d="${path}" fill="${col}" stroke="${hedge(.4)}" stroke-width=".6"/>`;
+    if(i<8){
+      o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5" fill="${tree(.7)}" stroke="${hedge(.6)}" stroke-width=".5"/>`;
+    }
+  });
+  // Center — pulsing crown
+  o+=`<circle cx="${CX}" cy="${CY}" r="7" fill="${bldg(.6)}" stroke="${gold(.8)}" stroke-width="1">
+    <animate attributeName="r" values="6;9;6" dur="4s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="${CX}" cy="${CY}" r="18" fill="none" stroke="${gold(.2)}" stroke-width=".7" stroke-dasharray="5,3">
+    <animateTransform attributeName="transform" type="rotate" from="0 70 70" to="360 70 70" dur="10s" repeatCount="indefinite"/>
+  </circle>`;
+  o+=`<circle cx="${CX}" cy="${CY}" r="3" fill="${folie(.8)}"/>`;
+  o+=ripple(CX,CY,0,folie(.4));
+  return o;
+}
+
+function leafPath(bx,by,tx,ty,w){
+  const dx=tx-bx,dy=ty-by;
+  const len=Math.sqrt(dx*dx+dy*dy);
+  const nx=-dy/len*w,ny=dx/len*w;
+  const mx=bx+dx*0.45+nx*0.8,my=by+dy*0.45+ny*0.8;
+  const mx2=bx+dx*0.55-nx*0.8,my2=by+dy*0.55-ny*0.8;
+  return `M${bx.toFixed(1)},${by.toFixed(1)} C${(bx+nx).toFixed(1)},${(by+ny).toFixed(1)} ${mx.toFixed(1)},${my.toFixed(1)} ${tx.toFixed(1)},${ty.toFixed(1)} C${mx2.toFixed(1)},${my2.toFixed(1)} ${(bx-nx).toFixed(1)},${(by-ny).toFixed(1)} ${bx.toFixed(1)},${by.toFixed(1)} Z`;
+}
+
+function gen_decussate_field(){
+  let o='';
+  // Gravel background
+  o+=`<rect x="4" y="4" width="132" height="132" fill="${gravel(.18)}" stroke="${gold(.3)}" stroke-width=".5" rx="1"/>`;
+  // Grid de vecteurs décussés — insertionAngle('decussate')
+  for(let row=0;row<7;row++){
+    for(let col=0;col<7;col++){
+      const i=row*7+col;
+      const ax=M.insertionAngle(i,'decussate');
+      const x=14+col*20,y=14+row*20;
+      const lx=x+Math.cos(ax)*9,ly=y+Math.sin(ax)*9;
+      const col_=`hsla(${(ax*180/Math.PI)%360},70%,60%,0.7)`;
+      o+=`<line x1="${x}" y1="${y}" x2="${lx.toFixed(1)}" y2="${ly.toFixed(1)}" stroke="${col_}" stroke-width="1.5" stroke-linecap="round"/>`;
+      o+=`<circle cx="${x}" cy="${y}" r="2.2" fill="${tree(.6)}" stroke="${hedge(.5)}" stroke-width=".5"/>`;
+    }
+  }
+  // Axes diagonaux
+  o+=axisLine(4,4,136,136);
+  o+=axisLine(136,4,4,136);
+  // Animated water pool
+  o+=`<ellipse cx="${CX}" cy="${CY}" rx="12" ry="12" fill="${water(.4)}" stroke="${water(.7)}" stroke-width="1"/>
+  <ellipse cx="${CX}" cy="${CY}" rx="12" ry="12" fill="none" stroke="${water(.3)}" stroke-width=".8">
+    <animate attributeName="rx" values="12;22;12" dur="2.5s" repeatCount="indefinite"/>
+    <animate attributeName="ry" values="12;22;12" dur="2.5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values=".5;0;.5" dur="2.5s" repeatCount="indefinite"/>
+  </ellipse>`;
+  o+=ripple(CX,CY,0);
+  return o;
+}
+
+function gen_cone_scales(){
+  const scales=M.coneScales(55,58,60);
+  let o='';
+  o+=`<ellipse cx="${CX}" cy="${CY}" rx="66" ry="66" fill="${lawn(.08)}" stroke="${hedge(.2)}" stroke-width=".5"/>`;
+  // Project cone to ortho zenith
+  scales.forEach((sc,i)=>{
+    const x=CX+sc.pos.x,y=CY-sc.pos.y*0.6+sc.pos.z*0.7;
+    const s=sc.scale*18+2;
+    const t=i/scales.length;
+    const col=`hsla(${260+t*120},65%,55%,${0.7-t*0.3})`;
+    const sw=t<0.3?hedge(.6):t<0.6?lawn(.5):tree(.4);
+    o+=`<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${s.toFixed(1)}" ry="${(s*0.6).toFixed(1)}" fill="${col}" stroke="${sw}" stroke-width=".5" transform="rotate(${(i*137.5).toFixed(1)},${x.toFixed(1)},${y.toFixed(1)})"/>`;
+  });
+  o+=`<circle cx="${CX}" cy="${CY}" r="5" fill="${folie()}" stroke="${folie(.9)}" stroke-width="1">
+    <animate attributeName="opacity" values=".5;1;.5" dur="2s" repeatCount="indefinite"/>
+  </circle>`;
+  return o;
+}
+
+function gen_bijugate_torsion(){
+  let o='';
+  o+=`<ellipse cx="${CX}" cy="${CY}" rx="65" ry="65" fill="${p1(.05)}" stroke="${p1(.2)}" stroke-width=".5"/>`;
+  // Two interleaved spirals
+  for(let i=0;i<76;i++){
+    const ax=M.insertionAngle(i,'bijugate');
+    const r=6+i*0.7;
+    const x=CX+Math.cos(ax)*r,y=CY+Math.sin(ax)*r;
+    const t=i/76;
+    const spiral=i%2===0?p1(.6):p2(.6);
+    const rr=2.5*(1-t*0.5)+1;
+    o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rr.toFixed(1)}" fill="${i%2===0?tree(.5):lawn(.5)}" stroke="${spiral}" stroke-width=".6"/>`;
+    if(i>0&&i%8===0){
+      const prev_ax=M.insertionAngle(i-8,'bijugate');
+      const pr=(6+(i-8)*0.7);
+      const px=CX+Math.cos(prev_ax)*pr,py=CY+Math.sin(prev_ax)*pr;
+      o+=`<line x1="${px.toFixed(1)}" y1="${py.toFixed(1)}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${spiral.replace('.6','.25')}" stroke-width=".5" stroke-dasharray="3,2"/>`;
+    }
+  }
+  // Spinning center
+  o+=`<ellipse cx="${CX}" cy="${CY}" rx="6" ry="6" fill="${water(.5)}" stroke="${water(.8)}" stroke-width="1"/>
+  <circle cx="${CX}" cy="${CY}" r="14" fill="none" stroke="${p1(.3)}" stroke-width=".8" stroke-dasharray="4,3">
+    <animateTransform attributeName="transform" type="rotate" from="0 70 70" to="360 70 70" dur="6s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="${CX}" cy="${CY}" r="22" fill="none" stroke="${p2(.2)}" stroke-width=".6" stroke-dasharray="3,4">
+    <animateTransform attributeName="transform" type="rotate" from="360 70 70" to="0 70 70" dur="9s" repeatCount="indefinite"/>
+  </circle>`;
+  o+=ripple(CX,CY,0,p1(.5));
+  o+=ripple(CX,CY,1,p2(.5));
+  return o;
+}
+
+// ── §2 · Courbes & Frenet ────────────────────────────────────────────────────
+
+function gen_catmullrom_river(){
+  // Generate organic river channel via Catmull-Rom
+  const pts=[{x:10,y:CY+M.hn(1,0)*30-15},{x:34,y:CY+M.hn(2,0)*28-14},{x:70,y:CY+M.hn(3,0)*24-12},{x:105,y:CY+M.hn(4,0)*28-14},{x:130,y:CY+M.hn(5,0)*30-15}];
+  const sampled=M.sampleCatmullRom(pts,80);
+  // Water channel — 3 passes for width
+  const pathD=(offset)=>sampled.map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${(p.y+offset).toFixed(1)}`).join(' ');
+  let o='';
+  o+=`<rect x="0" y="0" width="140" height="140" fill="${lawn(.12)}" stroke="none"/>`;
+  // Banks (haie)
+  o+=`<path d="${pathD(-12)} L${sampled[sampled.length-1].x.toFixed(1)},${(sampled[sampled.length-1].y-12).toFixed(1)} ${sampled.slice().reverse().map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${(p.y-16).toFixed(1)}`).join(' ')} Z" fill="${hedge(.18)}" stroke="${hedge(.4)}" stroke-width=".6"/>`;
+  o+=`<path d="${pathD(12)} L${sampled[sampled.length-1].x.toFixed(1)},${(sampled[sampled.length-1].y+16).toFixed(1)} ${sampled.slice().reverse().map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${(p.y+16).toFixed(1)}`).join(' ')} Z" fill="${hedge(.18)}" stroke="${hedge(.4)}" stroke-width=".6"/>`;
+  // Animated water flow
+  const waterD=`${pathD(-10)} L${sampled[sampled.length-1].x},${sampled[sampled.length-1].y+10} ${sampled.slice().reverse().map(p=>`L${p.x.toFixed(1)},${(p.y+10).toFixed(1)}`).join(' ')} Z`;
+  o+=`<path d="${waterD}" fill="${water(.45)}" stroke="${water(.7)}" stroke-width="1"/>
+  <path d="${pathD(0)}" fill="none" stroke="rgba(80,200,255,.4)" stroke-width="1.5" stroke-dasharray="6,4">
+    <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.5s" repeatCount="indefinite"/>
+  </path>`;
+  // Frenet normal lines (lateral morphology)
+  for(let i=2;i<sampled.length-2;i+=10){
+    const p=sampled[i],pn=sampled[i+1],pp=sampled[i-1];
+    const tx=(pn.x-pp.x),ty=(pn.y-pp.y);
+    const len=Math.sqrt(tx*tx+ty*ty);
+    const nx=-ty/len*14,ny=tx/len*14;
+    o+=`<line x1="${(p.x+nx).toFixed(1)}" y1="${(p.y+ny).toFixed(1)}" x2="${(p.x-nx).toFixed(1)}" y2="${(p.y-ny).toFixed(1)}" stroke="${gold(.3)}" stroke-width=".6" stroke-dasharray="3,2"/>`;
+  }
+  // Trees along banks
+  for(let i=0;i<sampled.length;i+=14){
+    const p=sampled[i],pn=sampled[Math.min(i+1,sampled.length-1)],pp=sampled[Math.max(i-1,0)];
+    const tx=pn.x-pp.x,ty=pn.y-pp.y,len=Math.sqrt(tx*tx+ty*ty);
+    const nx=-ty/len*18,ny=tx/len*18;
+    o+=`<circle cx="${(p.x+nx).toFixed(1)}" cy="${(p.y+ny).toFixed(1)}" r="4" fill="${tree(.6)}" stroke="${hedge(.5)}" stroke-width=".7"/>`;
+    o+=`<circle cx="${(p.x-nx).toFixed(1)}" cy="${(p.y-ny).toFixed(1)}" r="4" fill="${tree(.55)}" stroke="${hedge(.5)}" stroke-width=".7"/>`;
+  }
+  o+=ripple(CX,CY-.5*M.hn(6,0)*10,0);
+  return o;
+}
+
+function gen_bezier_forest(){
+  let o='';
+  o+=`<rect x="0" y="0" width="140" height="140" fill="${lawn(.1)}" stroke="none"/>`;
+  // Generate fractal tree from Bezier recursion
+  function bezTree(x,y,ang,len,depth,seed){
+    if(depth<=0||len<2)return '';
+    let res='';
+    const tx=x+Math.cos(ang)*len,ty=y+Math.sin(ang)*len;
+    const cp1x=x+Math.cos(ang-0.3)*len*0.5,cp1y=y+Math.sin(ang-0.3)*len*0.5;
+    const cp2x=tx+Math.cos(ang+0.4)*len*0.3,cp2y=ty+Math.sin(ang+0.4)*len*0.3;
+    const t=1-depth/7;
+    const sw=Math.max(0.4,3*(1-t));
+    const col=depth>4?bldg(.55):depth>2?hedge(.55):tree(.6);
+    res+=`<path d="M${x.toFixed(1)},${y.toFixed(1)} C${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${tx.toFixed(1)},${ty.toFixed(1)}" fill="none" stroke="${col}" stroke-width="${sw.toFixed(1)}" stroke-linecap="round"/>`;
+    if(depth===1){
+      res+=`<circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="3.5" fill="${tree(.7)}" stroke="${hedge(.5)}" stroke-width=".5"/>`;
+    }
+    const spread=0.55+M.hash1(seed)*0.25;
+    res+=bezTree(tx,ty,ang-spread,len*0.65,depth-1,seed*1.3+1);
+    res+=bezTree(tx,ty,ang+spread,len*0.65,depth-1,seed*0.7+2);
+    return res;
+  }
+  // 5 trees
+  const trees=[{x:30,y:130,ang:-Math.PI/2,len:28,s:1},{x:60,y:132,ang:-Math.PI/2+0.1,len:30,s:2},{x:90,y:128,ang:-Math.PI/2-0.1,len:26,s:3},{x:115,y:130,ang:-Math.PI/2+0.15,len:24,s:4},{x:15,y:128,ang:-Math.PI/2-0.1,len:20,s:5}];
+  trees.forEach(t=>o+=bezTree(t.x,t.y,t.ang,t.len,6,t.s));
+  // Animated water pool
+  o+=`<ellipse cx="${CX}" cy="30" rx="22" ry="12" fill="${water(.35)}" stroke="${water(.6)}" stroke-width="1">
+    <animate attributeName="ry" values="10;14;10" dur="3s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values=".5;.8;.5" dur="3s" repeatCount="indefinite"/>
+  </ellipse>`;
+  o+=ripple(CX,30,0);
+  // Axis
+  o+=axisLine(CX,0,CX,140,.35);
+  return o;
+}
+
+function gen_frenet_parade(){
+  // Catmull-Rom spine + frenet frames visualized as fan
+  const pts=[{x:10,y:110},{x:40,y:50},{x:70,y:90},{x:100,y:40},{x:130,y:80}];
+  const sampled=M.sampleCatmullRom(pts,60);
+  let o='';
+  o+=`<rect x="0" y="0" width="140" height="140" fill="${p1(.04)}" stroke="none"/>`;
+  // Spine path
+  const spineD=sampled.map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  o+=`<path d="${spineD}" fill="none" stroke="${gravel(.5)}" stroke-width="2" stroke-linecap="round"/>`;
+  // Frenet frames — T (tangent), N (normal)
+  for(let i=2;i<sampled.length-2;i+=8){
+    const p=sampled[i],pn=sampled[Math.min(i+2,sampled.length-1)],pp=sampled[Math.max(i-2,0)];
+    const tx=(pn.x-pp.x),ty=(pn.y-pp.y);
+    const tlen=Math.sqrt(tx*tx+ty*ty)||1;
+    const Tx=tx/tlen,Ty=ty/tlen;
+    const Nx=-Ty,Ny=Tx;
+    const s=12;
+    // Tangent (T) — gold
+    o+=`<line x1="${p.x.toFixed(1)}" y1="${p.y.toFixed(1)}" x2="${(p.x+Tx*s).toFixed(1)}" y2="${(p.y+Ty*s).toFixed(1)}" stroke="${gold(.8)}" stroke-width="1.2" stroke-linecap="round"/>`;
+    // Normal (N) — p3 (cyan)
+    o+=`<line x1="${p.x.toFixed(1)}" y1="${p.y.toFixed(1)}" x2="${(p.x+Nx*s).toFixed(1)}" y2="${(p.y+Ny*s).toFixed(1)}" stroke="${p3(.8)}" stroke-width="1.2" stroke-linecap="round"/>`;
+    // Frame circle
+    o+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2" fill="${bldg(.7)}" stroke="${gold(.6)}" stroke-width=".5"/>`;
+  }
+  // Hedge boundary
+  o+=`<rect x="3" y="3" width="134" height="134" fill="none" stroke="${hedge(.3)}" stroke-width="1.2" rx="1"/>`;
+  // Animated spine glow
+  o+=`<path d="${spineD}" fill="none" stroke="${gold(.25)}" stroke-width="3" stroke-linecap="round">
+    <animate attributeName="stroke-opacity" values=".1;.4;.1" dur="3s" repeatCount="indefinite"/>
+    <animate attributeName="stroke-width" values="2;5;2" dur="3s" repeatCount="indefinite"/>
+  </path>`;
+  // Trees at control points
+  pts.forEach((pt,i)=>{
+    o+=`<circle cx="${pt.x}" cy="${pt.y}" r="4" fill="${tree(.6)}" stroke="${hedge(.5)}" stroke-width=".7">
+      <animate attributeName="r" values="3;5;3" dur="${2+i*.4}s" begin="${i*.3}s" repeatCount="indefinite"/>
+    </circle>`;
+  });
+  return o;
+}
+
+function gen_arc_reparam(){
+  // Multiple isometric flow lines via arc-length reparametrization
+  let o='';
+  o+=`<rect x="0" y="0" width="140" height="140" fill="${lawn(.08)}" stroke="none"/>`;
+  // Generate N reparameterized curves with offset control points
+  for(let k=0;k<7;k++){
+    const off=k*6-18;
+    const pts=[{x:5,y:CY+off},{x:38+M.hn(k,1)*16-8,y:CY+off-24+k*4},{x:70+M.hn(k,2)*12-6,y:CY+off+20-k*3},{x:102+M.hn(k,3)*14-7,y:CY+off-16+k*4},{x:135,y:CY+off+k*2}];
+    const sampled=M.sampleCatmullRom(pts,50);
+    const d=sampled.map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    const t=k/6;
+    const colFlow=`hsla(${180+t*80},70%,60%,${0.55-t*0.1})`;
+    const sw=k===3?1.8:k===0||k===6?0.6:1.0;
+    const dash=k===0||k===6?'stroke-dasharray="4,3"':'';
+    o+=`<path d="${d}" fill="none" stroke="${colFlow}" stroke-width="${sw}" stroke-linecap="round" ${dash}/>`;
+  }
+  // Mark equal-length sample points
+  const spine=[{x:5,y:CY},{x:38,y:CY-20},{x:70,y:CY+16},{x:102,y:CY-12},{x:135,y:CY}];
+  const spSampled=M.sampleCatmullRom(spine,40);
+  spSampled.filter((_,i)=>i%8===0).forEach(p=>{
+    o+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.8" fill="${water(.6)}" stroke="${water(.8)}" stroke-width=".6"/>`;
+  });
+  // Hedge along top/bottom
+  o+=`<rect x="0" y="0" width="140" height="5" fill="${hedge(.35)}" stroke="${hedge(.5)}" stroke-width=".5"/>`;
+  o+=`<rect x="0" y="135" width="140" height="5" fill="${hedge(.35)}" stroke="${hedge(.5)}" stroke-width=".5"/>`;
+  // Animated midline flow
+  o+=`<line x1="0" y1="${CY}" x2="140" y2="${CY}" stroke="${gold(.4)}" stroke-width=".8" stroke-dasharray="8,4">
+    <animate attributeName="stroke-dashoffset" from="0" to="-48" dur="1.8s" repeatCount="indefinite"/>
+  </line>`;
+  return o;
+}
+
+function gen_spiral_decay_field(){
+  // spiralDecay() projected to zenith — multiple helices
+  let o='';
+  o+=`<ellipse cx="${CX}" cy="${CY}" rx="66" ry="66" fill="${water(.08)}" stroke="${water(.2)}" stroke-width=".5"/>`;
+  // 5 spirals with different parameters
+  const configs=[
+    {turns:2.5,r0:60,decay:0.6,H:80,N:60,col:p1},
+    {turns:3,r0:50,decay:0.8,H:80,N:60,col:p2},
+    {turns:2,r0:45,decay:0.4,H:70,N:50,col:p3},
+    {turns:3.5,r0:38,decay:1.0,H:80,N:55,col:()=>water()},
+    {turns:2,r0:30,decay:0.5,H:60,N:45,col:()=>tree()},
+  ];
+  configs.forEach((cfg,ci)=>{
+    const pts=M.spiralDecay(cfg.turns,cfg.r0,cfg.decay,cfg.H,cfg.N);
+    const projected=pts.map(p=>({x:CX+p.x,y:CY-p.y*0.3+p.z*0.8}));
+    const d=projected.map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    o+=`<path d="${d}" fill="none" stroke="${cfg.col(.55)}" stroke-width="${1.2-ci*0.1}" stroke-linecap="round"/>`;
+    // Trees at turns
+    for(let i=0;i<pts.length;i+=Math.round(cfg.N/cfg.turns)){
+      o+=`<circle cx="${projected[i].x.toFixed(1)}" cy="${projected[i].y.toFixed(1)}" r="2.5" fill="${tree(.5)}" stroke="${hedge(.4)}" stroke-width=".5"/>`;
+    }
+  });
+  // Center folie + orbital rings
+  o+=`<circle cx="${CX}" cy="${CY}" r="5" fill="${folie(.8)}" stroke="${folie()}" stroke-width="1.5">
+    <animate attributeName="r" values="4;8;4" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values=".7;1;.7" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="${CX}" cy="${CY}" r="18" fill="none" stroke="${p1(.25)}" stroke-width=".8" stroke-dasharray="5,3">
+    <animateTransform attributeName="transform" type="rotate" from="0 70 70" to="360 70 70" dur="5s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="${CX}" cy="${CY}" r="30" fill="none" stroke="${p2(.15)}" stroke-width=".6" stroke-dasharray="3,5">
+    <animateTransform attributeName="transform" type="rotate" from="360 70 70" to="0 70 70" dur="9s" repeatCount="indefinite"/>
+  </circle>`;
+  o+=ripple(CX,CY,0,p1(.5));
+  o+=ripple(CX,CY,1.2,p2(.5));
+  return o;
+}
+
+// ── §3 · Noise & Champs ──────────────────────────────────────────────────────
+
+function gen_perlin_terrain(){
+  // perlinFBM() → contour lines as psychedelic topography
+  const RES=14,STEP=W/RES;
+  let o='';
+  o+=`<rect x="0" y="0" width="140" height="140" fill="${lawn(.06)}" stroke="none"/>`;
+  // Draw filled contour patches
+  const seed=42;
+  const grid=Array.from({length:RES+1},(_,iy)=>Array.from({length:RES+1},(_,ix)=>{
+    const nx=(ix/RES)*3,ny=(iy/RES)*3;
+    return M.perlinFBM(nx,ny,seed,4)*0.5+0.5; // [0,1]
+  }));
+  // Colour bands by height
+  const bands=[
+    {lo:0.0,hi:0.25,fill:water(.35),stroke:water(.6)},
+    {lo:0.25,hi:0.42,fill:lawn(.3),stroke:tree(.4)},
+    {lo:0.42,hi:0.60,fill:`rgba(80,180,80,.25)`,stroke:tree(.5)},
+    {lo:0.60,hi:0.75,fill:`rgba(180,160,80,.3)`,stroke:gravel(.5)},
+    {lo:0.75,hi:1.0,fill:bldg(.35),stroke:bldg(.6)},
+  ];
+  bands.forEach(b=>{
+    let cells='';
+    for(let iy=0;iy<RES;iy++){
+      for(let ix=0;ix<RES;ix++){
+        const v=grid[iy][ix];
+        if(v>=b.lo&&v<b.hi){
+          const x=ix*STEP,y=iy*STEP;
+          cells+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(STEP+.5).toFixed(1)}" height="${(STEP+.5).toFixed(1)}" fill="${b.fill}" stroke="${b.stroke}" stroke-width=".3"/>`;
+        }
+      }
+    }
+    o+=cells;
+  });
+  // Contour lines at key thresholds
+  [0.25,0.42,0.60,0.75].forEach((th,ti)=>{
+    const col=[water(.6),tree(.7),gravel(.6),bldg(.7)][ti];
+    for(let iy=0;iy<RES;iy++){
+      for(let ix=0;ix<RES;ix++){
+        const v0=grid[iy][ix],v1=grid[iy][ix+1]??v0,v2=grid[iy+1]?.[ix]??v0;
+        if((v0<th)!==(v1<th)){
+          const t=(th-v0)/(v1-v0);
+          const x=ix*STEP+t*STEP,y=iy*STEP;
+          o+=`<circle cx="${x.toFixed(1)}" cy="${(y+STEP/2).toFixed(1)}" r=".8" fill="${col}"/>`;
+        }
+      }
+    }
+  });
+  // Trees on high ground
+  for(let iy=1;iy<RES-1;iy+=2){
+    for(let ix=1;ix<RES-1;ix+=2){
+      if(grid[iy][ix]>0.6){
+        const x=ix*STEP+STEP/2,y=iy*STEP+STEP/2;
+        o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${tree(.65)}" stroke="${hedge(.5)}" stroke-width=".5"/>`;
+      }
+    }
+  }
+  // Animated cardinal axes
+  o+=`<line x1="${CX}" y1="0" x2="${CX}" y2="140" stroke="${gold(.25)}" stroke-width=".7" stroke-dasharray="5,3">
+    <animate attributeName="stroke-opacity" values=".2;.6;.2" dur="4s" repeatCount="indefinite"/>
+  </line>
+  <line x1="0" y1="${CY}" x2="140" y2="${CY}" stroke="${gold(.25)}" stroke-width=".7" stroke-dasharray="5,3">
+    <animate attributeName="stroke-opacity" values=".2;.6;.2" dur="4s" begin=".5s" repeatCount="indefinite"/>
+  </line>
+  <circle cx="${CX}" cy="${CY}" r="4" fill="${folie(.6)}" stroke="${folie(.8)}" stroke-width=".8">
+    <animate attributeName="r" values="3;6;3" dur="3s" repeatCount="indefinite"/>
+  </circle>`;
+  return o;
+}
+
+function gen_fbm2_garden(){
+  // fbm2() as vector field → organic allée paths
+  let o='';
+  o+=`<rect x="0" y="0" width="140" height="140" fill="${lawn(.1)}" stroke="none"/>`;
+  // Vector field — arrows
+  for(let row=0;row<9;row++){
+    for(let col=0;col<9;col++){
+      const x=8+col*15.5,y=8+row*15.5;
+      const nx=(x/140)*4,ny=(y/140)*4;
+      const angle=M.fbm2(nx,ny,1)*Math.PI*4;
+      const mag=6+M.fbm2(nx+0.5,ny+0.5,2)*4;
+      const tx=x+Math.cos(angle)*mag,ty=y+Math.sin(angle)*mag;
+      const fv=M.fbm2(nx,ny,0);
+      const col_=fv>0.7?hedge(.7):fv>0.4?tree(.6):lawn(.8);
+      o+=`<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${tx.toFixed(1)}" y2="${ty.toFixed(1)}" stroke="${col_}" stroke-width=".9" stroke-linecap="round"/>`;
+      o+=`<circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r=".8" fill="${col_}"/>`;
+    }
+  }
+  // Gravel paths following field lines
+  const NUM_PATHS=4;
+  for(let pi=0;pi<NUM_PATHS;pi++){
+    let px=10+pi*35,py=CY+M.hash1(pi)*30-15;
+    let pts=[];
+    for(let step=0;step<25;step++){
+      pts.push({x:px,y:py});
+      const nx=(px/140)*4,ny=(py/140)*4;
+      const angle=M.fbm2(nx,ny,1)*Math.PI*4;
+      px+=Math.cos(angle)*5;py+=Math.sin(angle)*5;
+      if(px<0||px>140||py<0||py>140)break;
+    }
+    const d=pts.map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    o+=`<path d="${d}" fill="none" stroke="${gravel(.55)}" stroke-width="2.5" stroke-linecap="round"/>`;
+  }
+  // Hedge boundary
+  o+=`<rect x="2" y="2" width="136" height="136" fill="none" stroke="${hedge(.4)}" stroke-width="1.5" rx="1"/>`;
+  // Animated water center
+  o+=`<ellipse cx="${CX}" cy="${CY}" rx="11" ry="11" fill="${water(.4)}" stroke="${water(.7)}" stroke-width="1">
+    <animate attributeName="rx" values="9;13;9" dur="2.8s" repeatCount="indefinite"/>
+    <animate attributeName="ry" values="9;13;9" dur="2.8s" repeatCount="indefinite"/>
+  </ellipse>`;
+  o+=ripple(CX,CY,0);
+  return o;
+}
+
+function gen_hashNoise_mosaic(){
+  // Voronoï approximation via hashNoise — cellular mosaic
+  const N_cells=18;
+  const centers=Array.from({length:N_cells},(_,i)=>({
+    x:10+M.hn(i,0)*120,
+    y:10+M.hn(i,1)*120,
+    v:M.hn(i,2),
+    v2:M.hn(i,3),
+  }));
+  let o='';
+  o+=`<rect x="0" y="0" width="140" height="140" fill="${p1(.04)}" stroke="none"/>`;
+  // Draw each cell as polygon approximation
+  centers.forEach((c,ci)=>{
+    // Assign type by v
+    const fill=c.v>0.75?water(.3):c.v>0.5?lawn(.3):c.v>0.25?gravel(.3):bldg(.25);
+    const stroke2=c.v>0.5?hedge(.45):p1(.45);
+    // Simple circle approximation for cell
+    const r=Math.sqrt(14400/N_cells)*0.45;
+    o+=`<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="${r.toFixed(1)}" fill="${fill}" stroke="${stroke2}" stroke-width=".7"/>`;
+    // Element
+    if(c.v2>0.7){
+      o+=`<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3" fill="${tree(.65)}" stroke="${hedge(.5)}" stroke-width=".6"/>`;
+    } else if(c.v2>0.4){
+      o+=`<rect x="${(c.x-4).toFixed(1)}" y="${(c.y-4).toFixed(1)}" width="8" height="8" fill="${bldg(.5)}" stroke="${gold(.4)}" stroke-width=".5" rx=".5"/>`;
+    } else {
+      o+=`<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="2" fill="${folie(.5)}"/>`;
+    }
+  });
+  // Axis grid + spin indicator
+  [35,70,105].forEach(pos=>{
+    o+=axisLine(pos,0,pos,140,.2);
+    o+=axisLine(0,pos,140,pos,.2);
+  });
+  o+=`<circle cx="70" cy="70" r="55" fill="none" stroke="${p2(.15)}" stroke-width=".7" stroke-dasharray="6,4">
+    <animateTransform attributeName="transform" type="rotate" from="0 70 70" to="360 70 70" dur="12s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="70" cy="70" r="35" fill="none" stroke="${p1(.12)}" stroke-width=".5" stroke-dasharray="4,5">
+    <animateTransform attributeName="transform" type="rotate" from="360 70 70" to="0 70 70" dur="8s" repeatCount="indefinite"/>
+  </circle>`;
+  return o;
+}
+
+function gen_perlin_drift(){
+  // Particle drift field — perlinNoise2D velocity
+  let o='';
+  o+=`<rect x="0" y="0" width="140" height="140" fill="${p2(.03)}" stroke="none"/>`;
+  // Drift trails
+  const N_part=24;
+  for(let pi=0;pi<N_part;pi++){
+    let px=M.hash1(pi*7)*130+5,py=M.hash1(pi*11)*130+5;
+    const pts=[{x:px,y:py}];
+    for(let step=0;step<18;step++){
+      const nx=px/50,ny=py/50;
+      const vx=M.perlinNoise2D(nx,ny,pi)*4-2;
+      const vy=M.perlinNoise2D(nx+10,ny+10,pi+50)*4-2;
+      px+=vx*3;py+=vy*3;
+      if(px<0||px>140||py<0||py>140)break;
+      pts.push({x:px,y:py});
+    }
+    const d=pts.map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    const t=pi/N_part;
+    const col=`hsla(${280+t*120},70%,65%,${0.5+t*0.2})`;
+    o+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="${.8+t*.4}" stroke-linecap="round"/>`;
+    if(pts.length>2){
+      const last=pts[pts.length-1];
+      const type=pi%3;
+      if(type===0) o+=`<circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="2.5" fill="${tree(.7)}" stroke="${hedge(.5)}" stroke-width=".5"/>`;
+      else if(type===1) o+=`<circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="2" fill="${water(.7)}"/>`;
+      else o+=`<circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="1.8" fill="${folie(.6)}"/>`;
+    }
+  }
+  // Animated hedge
+  o+=`<rect x="2" y="2" width="136" height="136" fill="none" stroke="${hedge(.35)}" stroke-width="1.2" rx="1">
+    <animate attributeName="stroke-width" values="1;2;1" dur="3.5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values=".4;.8;.4" dur="3.5s" repeatCount="indefinite"/>
+  </rect>`;
+  // Axis
+  o+=axisLine(CX,0,CX,140,.35);
+  return o;
+}
+
+function gen_noise_hedges(){
+  // fbm2() iso-contours → haies fractales fermées
+  let o='';
+  o+=`<rect x="0" y="0" width="140" height="140" fill="${lawn(.08)}" stroke="none"/>`;
+  // 4 nested iso-value haies
+  const thresholds=[0.38,0.48,0.56,0.64];
+  const cols=[hedge(.5),hedge(.6),hedge(.7),hedge(.85)];
+  const RES=28;
+  thresholds.forEach((th,ti)=>{
+    let segs=[];
+    for(let iy=0;iy<RES;iy++){
+      for(let ix=0;ix<RES;ix++){
+        const x0=ix/RES*4,y0=iy/RES*4;
+        const x1=(ix+1)/RES*4,y1=(iy+1)/RES*4;
+        const v00=M.fbm2(x0,y0,ti),v10=M.fbm2(x1,y0,ti),v01=M.fbm2(x0,y1,ti);
+        const px=ix*140/RES,py=iy*140/RES,pw=140/RES;
+        if((v00<th)!==(v10<th)){
+          const t=(th-v00)/(v10-v00);
+          segs.push({x1:px+t*pw,y1:py,x2:px+t*pw,y2:py+pw});
+        }
+        if((v00<th)!==(v01<th)){
+          const t=(th-v00)/(v01-v00);
+          segs.push({x1:px,y1:py+t*pw,x2:px+pw,y2:py+t*pw});
+        }
+      }
+    }
+    segs.forEach(s=>{
+      o+=`<line x1="${s.x1.toFixed(1)}" y1="${s.y1.toFixed(1)}" x2="${s.x2.toFixed(1)}" y2="${s.y2.toFixed(1)}" stroke="${cols[ti]}" stroke-width="${.6+ti*.3}" stroke-linecap="round"/>`;
+    });
+  });
+  // Trees scattered by noise
+  for(let i=0;i<15;i++){
+    const tx=8+M.hash1(i*3)*124,ty=8+M.hash1(i*5)*124;
+    const nv=M.fbm2(tx/50,ty/50,0);
+    if(nv>0.5){
+      o+=`<circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="3.5" fill="${tree(.6)}" stroke="${hedge(.5)}" stroke-width=".6"/>`;
+    }
+  }
+  // Central water animated
+  o+=`<ellipse cx="${CX}" cy="${CY}" rx="10" ry="10" fill="${water(.35)}" stroke="${water(.6)}" stroke-width="1">
+    <animate attributeName="rx" values="8;12;8" dur="3s" repeatCount="indefinite"/>
+    <animate attributeName="ry" values="8;12;8" dur="3s" repeatCount="indefinite"/>
+  </ellipse>`;
+  o+=ripple(CX,CY,0);
+  return o;
+}
+
+// ── §4 · Enveloppes & Croissance ─────────────────────────────────────────────
+
+function gen_lanceo_phyllum(){
+  // lanceolatEnv() × insertionAngle() → nénuphars en spirale
+  let o='';
+  // Water base
+  o+=`<ellipse cx="${CX}" cy="${CY}" rx="65" ry="65" fill="${water(.25)}" stroke="${water(.5)}" stroke-width="1"/>`;
+  // Ripples
+  [12,24,36,48,60].forEach((r,i)=>{
+    o+=`<ellipse cx="${CX}" cy="${CY}" rx="${r}" ry="${r}" fill="none" stroke="${water(.2+i*0.04)}" stroke-width=".5"/>`;
+  });
+  // Nénuphars — golden angle placement + lanceolatEnv shape
+  const N=21;
+  for(let i=0;i<N;i++){
+    const ax=M.insertionAngle(i,'golden');
+    const r=8+i*2.8;
+    if(r>60)break;
+    const cx2=CX+Math.cos(ax)*r,cy2=CY+Math.sin(ax)*r;
+    const t=(i/N);
+    const size=6+M.lanceolatEnv(t)*18;
+    const col=`hsla(${100+i*8},65%,50%,${0.6-t*0.2})`;
+    const sw=size*0.35;
+    // Nénuphar outline (ellipse with cut)
+    const gap=Math.PI*0.18;
+    const pts=Array.from({length:20},(_,k)=>{
+      const a=ax+gap+(k/19)*(Math.PI*2-gap*2);
+      return {x:cx2+Math.cos(a)*size,y:cy2+Math.sin(a)*size*(0.55+M.lanceolatEnv(k/19,0.4)*0.3)};
+    });
+    const d=pts.map((p,pi)=>(pi===0?'M':'L')+`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ')+'Z';
+    o+=`<path d="${d}" fill="${col}" stroke="${tree(.5)}" stroke-width=".6"/>`;
+    // Pistil
+    if(i%3===0) o+=`<circle cx="${cx2.toFixed(1)}" cy="${cy2.toFixed(1)}" r="1.8" fill="${folie(.7)}"/>`;
+  }
+  // Central folie + spin rings
+  o+=`<circle cx="${CX}" cy="${CY}" r="5" fill="${folie(.8)}" stroke="${folie()}" stroke-width="1.5">
+    <animate attributeName="r" values="4;7;4" dur="2.5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values=".6;1;.6" dur="2.5s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="${CX}" cy="${CY}" r="15" fill="none" stroke="${folie(.2)}" stroke-width=".7" stroke-dasharray="4,3">
+    <animateTransform attributeName="transform" type="rotate" from="0 70 70" to="360 70 70" dur="8s" repeatCount="indefinite"/>
+  </circle>`;
+  o+=ripple(CX,CY,0);
+  o+=ripple(CX,CY,1.4);
+  return o;
+}
+
+function gen_logistic_forest(){
+  // logisticGrowth() → canopée en couronnes de croissance
+  let o='';
+  o+=`<rect x="0" y="0" width="140" height="140" fill="${lawn(.1)}" stroke="none"/>`;
+  // Ground plane
+  o+=`<rect x="0" y="100" width="140" height="40" fill="${lawn(.2)}" stroke="${hedge(.3)}" stroke-width=".5"/>`;
+  // N trees with logistic growth profiles
+  const N_trees=9;
+  for(let i=0;i<N_trees;i++){
+    const tx=8+i*15.5;
+    const r=M.hash1(i*3);
+    const K=20+r*18;
+    const rate=0.4+M.hash1(i*7)*0.6;
+    const age=0.3+M.hash1(i*11)*0.7;
+    const sz=M.logisticGrowth(age,K,rate,1);
+    const ty=100-sz*0.5;
+    const hue=90+i*12;
+    const col=`hsla(${hue},65%,50%,0.6)`;
+    // Trunk
+    o+=`<line x1="${tx.toFixed(1)}" y1="100" x2="${tx.toFixed(1)}" y2="${ty.toFixed(1)}" stroke="${bldg(.7)}" stroke-width="${(sz/14).toFixed(1)}" stroke-linecap="round"/>`;
+    // Growth rings (logistic curves)
+    for(let ring=1;ring<=3;ring++){
+      const ringAge=age*ring/3;
+      const ringR=M.logisticGrowth(ringAge,sz,rate,1)*0.4;
+      o+=`<ellipse cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" rx="${ringR.toFixed(1)}" ry="${(ringR*0.7).toFixed(1)}" fill="none" stroke="${col}" stroke-width=".5" opacity="${ring*0.25+0.15}"/>`;
+    }
+    // Animated crown
+    const dur=(2+i*0.3).toFixed(1);
+    const del=(i*0.25).toFixed(1);
+    o+=`<circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="${sz.toFixed(1)}" fill="${col}" stroke="${tree(.5)}" stroke-width=".8">
+      <animate attributeName="r" values="${sz.toFixed(1)};${(sz*1.12).toFixed(1)};${sz.toFixed(1)}" dur="${dur}s" begin="${del}s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values=".75;1;.75" dur="${dur}s" begin="${del}s" repeatCount="indefinite"/>
+    </circle>`;
+  }
+  // Axis
+  o+=axisLine(0,100,140,100,.4);
+  // Central building
+  o+=`<rect x="${CX-8}" y="68" width="16" height="32" fill="${bldg(.55)}" stroke="${gold(.5)}" stroke-width=".8" rx="1"/>`;
+  // Water pool
+  o+=`<ellipse cx="${CX}" cy="115" rx="16" ry="8" fill="${water(.4)}" stroke="${water(.6)}" stroke-width=".8"/>`;
+  o+=ripple(CX,115,0);
+  return o;
+}
+
+function gen_beer_canopy(){
+  // beerLambert() → exponential canopy attenuation → ombrage progressif
+  let o='';
+  o+=`<rect x="0" y="0" width="140" height="140" fill="${lawn(.06)}" stroke="none"/>`;
+  // Multiple canopy layers — Beer-Lambert attenuation
+  const LAI_layers=[{z:0,LAI:0.5},{z:0.15,LAI:1.2},{z:0.35,LAI:2.0},{z:0.55,LAI:2.8},{z:0.75,LAI:3.5},{z:0.90,LAI:4.0}];
+  const k=0.6,I0=1.0;
+  LAI_layers.forEach((layer,li)=>{
+    const I=M.beerLambert(layer.z,I0,k,layer.LAI);
+    const alpha=M.clamp(1-I,0.05,0.7);
+    const y=6+li*21;
+    const r=62-li*3;
+    const col=`rgba(20,180,80,${(alpha*0.6).toFixed(2)})`;
+    o+=`<ellipse cx="${CX}" cy="${y+12}" rx="${r}" ry="${12-li}" fill="${col}" stroke="${hedge(.3+li*0.08)}" stroke-width=".6"/>`;
+    // Trees within this layer
+    const N_t=Math.round(8-li);
+    for(let t=0;t<N_t;t++){
+      const tx=CX+(t-(N_t-1)/2)*13;
+      const tr=4-li*0.4;
+      o+=`<circle cx="${tx.toFixed(1)}" cy="${y.toFixed(1)}" r="${tr.toFixed(1)}" fill="${`hsla(${100+li*10},60%,45%,0.65)`}" stroke="${hedge(.5)}" stroke-width=".5"/>`;
+    }
+    // I value label
+    o+=`<text x="4" y="${y+10}" font-family="monospace" font-size="7" fill="${gold(.4)}" font-style="italic">I=${I.toFixed(2)}</text>`;
+  });
+  // Ground cover
+  o+=`<rect x="0" y="128" width="140" height="12" fill="${lawn(.25)}" stroke="${hedge(.35)}" stroke-width=".5"/>`;
+  // Central water
+  o+=`<ellipse cx="${CX}" cy="134" rx="20" ry="5" fill="${water(.4)}" stroke="${water(.6)}" stroke-width=".7"/>`;
+  // Animated scan line
+  o+=`<line x1="${CX}" y1="0" x2="${CX}" y2="140" stroke="${gold(.3)}" stroke-width=".7" stroke-dasharray="5,3">
+    <animate attributeName="opacity" values=".2;.6;.2" dur="3s" repeatCount="indefinite"/>
+  </line>
+  <line x1="0" y1="0" x2="140" y2="0" stroke="${p3(.3)}" stroke-width="1.5">
+    <animate attributeName="y1" values="0;140;0" dur="5s" repeatCount="indefinite"/>
+    <animate attributeName="y2" values="0;140;0" dur="5s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values=".4;0;.4" dur="5s" repeatCount="indefinite"/>
+  </line>`;
+  return o;
+}
+
+function gen_leaf_wave(){
+  // leafEnvelopeAsymm() + catmullRom → vague de feuilles en champ
+  let o='';
+  o+=`<rect x="0" y="0" width="140" height="140" fill="${p3(.04)}" stroke="none"/>`;
+  // Wave of leaves along a Catmull-Rom spine
+  const spineY=CY;
+  const spine=[{x:0,y:spineY},{x:35,y:spineY-18},{x:70,y:spineY+8},{x:105,y:spineY-22},{x:140,y:spineY+5}];
+  const spSampled=M.sampleCatmullRom(spine,70);
+  // Spine path
+  const spd=spSampled.map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  o+=`<path d="${spd}" fill="none" stroke="${gravel(.35)}" stroke-width="1.5" stroke-dasharray="6,4" stroke-linecap="round"/>`;
+  // Draw leaf at each sample
+  spSampled.filter((_,i)=>i%5===2).forEach((p,li)=>{
+    const t=p.x/140;
+    const wMax=M.leafEnvelopeAsymm(0.5,14)*M.sarc(t)*1.2;
+    const lLen=18+M.lanceolatEnv(t)*8;
+    const idx=spSampled.indexOf(p);
+    const pn=spSampled[Math.min(idx+2,spSampled.length-1)];
+    const pp=spSampled[Math.max(idx-2,0)];
+    const ang=Math.atan2(pn.y-pp.y,pn.x-pp.x);
+    const perpAng=ang-Math.PI/2;
+    const tipX=p.x+Math.cos(ang)*lLen,tipY=p.y+Math.sin(ang)*lLen;
+    const hue=100+li*18;
+    const lPath=leafPath(p.x,p.y,tipX,tipY,wMax);
+    o+=`<path d="${lPath}" fill="hsla(${hue},68%,48%,.65)" stroke="${tree(.5)}" stroke-width=".6"/>`;
+    // Sub-vein
+    const midX=p.x+Math.cos(ang)*lLen*0.5,midY=p.y+Math.sin(ang)*lLen*0.5;
+    o+=`<line x1="${p.x.toFixed(1)}" y1="${p.y.toFixed(1)}" x2="${tipX.toFixed(1)}" y2="${tipY.toFixed(1)}" stroke="${tree(.35)}" stroke-width=".4" stroke-dasharray="3,2"/>`;
+  });
+  // Animated hedge borders
+  o+=`<rect x="1" y="1" width="138" height="138" fill="none" stroke="${hedge(.3)}" stroke-width="1.2" rx="1">
+    <animate attributeName="opacity" values=".4;.7;.4" dur="4s" repeatCount="indefinite"/>
+  </rect>`;
+  // Water features
+  [30,CX,110].forEach((wx,wi)=>{
+    o+=`<ellipse cx="${wx}" cy="${CY+35}" rx="8" ry="5" fill="${water(.3)}" stroke="${water(.5)}" stroke-width=".7"/>`;
+    o+=ripple(wx,CY+35,wi*0.7);
+  });
+  return o;
+}
+
+function gen_flare_roots(){
+  // flareRadius() × fibSphere() → radiculaires en coupe zenithale
+  let o='';
+  o+=`<ellipse cx="${CX}" cy="${CY}" rx="66" ry="66" fill="${bldg(.1)}" stroke="${bldg(.3)}" stroke-width=".5"/>`;
+  // fibSphere projected to ortho
+  const fibPts=M.fibSphere(42,58);
+  // Root systems — flare radius from center
+  const N_roots=12;
+  for(let ri=0;ri<N_roots;ri++){
+    const ax=ri*Math.PI*2/N_roots+M.hash1(ri)*0.3;
+    const rootLen=35+M.hash1(ri*3)*18;
+    const N_seg=20;
+    const pts=Array.from({length:N_seg},(_,si)=>{
+      const s=si/(N_seg-1);
+      const r=M.flareRadius(s,22,1.5,1.6,7)*0.85;
+      const wobble=M.hash1(ri*7+si)*0.3-0.15;
+      const a2=ax+wobble*s*0.8;
+      return {x:CX+Math.cos(a2)*rootLen*s+Math.cos(a2+Math.PI/2)*r*(1-s),y:CY+Math.sin(a2)*rootLen*s+Math.sin(a2+Math.PI/2)*r*(1-s)};
+    });
+    const d=pts.map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    const col=`hsla(${20+ri*15},60%,45%,${0.55-ri*0.02})`;
+    o+=`<path d="${d}" fill="${col}" stroke="${bldg(.6)}" stroke-width=".5"/>`;
+  }
+  // fibSphere point overlay
+  fibPts.forEach((fp,fi)=>{
+    const x=CX+fp.x*0.9,y=CY+fp.y*0.4+fp.z*0.7;
+    if(fi%4===0){
+      o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.5" fill="${tree(.5)}" stroke="${hedge(.4)}" stroke-width=".4"/>`;
+    }
+  });
+  // Central folie + spinning rings
+  o+=`<circle cx="${CX}" cy="${CY}" r="9" fill="${bldg(.6)}" stroke="${gold(.7)}" stroke-width="1.2"/>`;
+  o+=`<circle cx="${CX}" cy="${CY}" r="22" fill="none" stroke="${gold(.18)}" stroke-width=".8" stroke-dasharray="5,3">
+    <animateTransform attributeName="transform" type="rotate" from="0 70 70" to="360 70 70" dur="6s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="${CX}" cy="${CY}" r="38" fill="none" stroke="${p1(.12)}" stroke-width=".6" stroke-dasharray="3,5">
+    <animateTransform attributeName="transform" type="rotate" from="360 70 70" to="0 70 70" dur="11s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="${CX}" cy="${CY}" r="4" fill="${folie(.8)}" stroke="${folie()}" stroke-width="1.2">
+    <animate attributeName="r" values="3;6;3" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values=".7;1;.7" dur="2s" repeatCount="indefinite"/>
+  </circle>`;
+  o+=ripple(CX,CY,0,p1(.5));
+  o+=ripple(CX,CY,1,gold(.4));
+  return o;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CARD DATA
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const SECTIONS=[
+{cls:'s1',num:'§ 01',title:'Spirales &amp; <em>Phyllotaxie</em>',
+ desc:'vogel() · insertionAngle() · rosetteLeaves() · coneScales() · PHI_RAD',
+ cards:[
+  {type:'vogel_disk',badge:'vogel ·137.5°',name:'Disque de Vogel',eq:'r(i)=c·√i · θ(i)=i·φ_rad',
+   desc:'Rosette phyllotactique — 89 organes en spirale dorée. Les couronnes d\'arbres tracent les parastiches de Fibonacci (8,13,21).',
+   theory:'Vogel 1979 — meilleure emballage du tournesol',gen:gen_vogel_disk},
+  {type:'fibonacci_rosette',badge:'rosetteLeaves()',name:'Rosette d\'Agave',eq:'az=i·φ · elev=f(insertAng)',
+   desc:'Projection zénithale de rosetteLeaves() — feuilles élancées en profil leafEnvelope(). Spirale incrémentale à 137.5°.',
+   theory:'Atracteur doré — l\'angle irrationnel évite le chevauchement',gen:gen_fibonacci_rosette},
+  {type:'decussate_field',badge:'decussate',name:'Champ Décussé',eq:'θ(i)=i·π/2',
+   desc:'insertionAngle(i,\'decussate\') → vecteurs à 90° successifs. Lamiaceae, Aceraceae. Grille vectorielle en damier rotatif.',
+   theory:'Décussation — croiser les paires pour maximiser la lumière',gen:gen_decussate_field},
+  {type:'cone_scales',badge:'coneScales()',name:'Mandala d\'Écailles',eq:'h(i)=(i/N)^α · r(i)=R·(1-h)',
+   desc:'coneScales() projeté en orthogonal — écailles d\'épicéa en spirale. Mathai & Davis 1974. Gradient de taille/densité.',
+   theory:'Cône de Conifère — optimisation de l\'emballage des graines',gen:gen_cone_scales},
+  {type:'bijugate_torsion',badge:'bijugate',name:'Double Spirale Bijuguée',eq:'θ(i)=i·φ+(i%2)·π',
+   desc:'insertionAngle(\'bijugate\') — deux spirales dorées décalées de π. Cephalotaxus, Dipsacaceae. Torsion interlacée.',
+   theory:'Bijugation — double symétrie sur fond d\'irrationalité',gen:gen_bijugate_torsion},
+]},
+
+{cls:'s2',num:'§ 02',title:'Courbes &amp; <em>Frenet</em>',
+ desc:'sampleCatmullRom() · bezierCubic() · frenetFrames() · spiralDecay() · reparamByArcLength()',
+ cards:[
+  {type:'catmullrom_river',badge:'catmull-rom',name:'Rivière Catmull-Rom',eq:'CR(p₀,p₁,p₂,p₃,t,τ=0.5)',
+   desc:'sampleCatmullRom() → chenal fluide avec frames de Frenet en tirets. Berges = haies. Arbres symétriques sur normales.',
+   theory:'Continuité C1 — tangente continue sans oscillations',gen:gen_catmullrom_river},
+  {type:'bezier_forest',badge:'bezierCubic()',name:'Forêt de Bézier',eq:'B(t)=Σ C(3,k)·(1-t)^(3-k)·t^k·Pₖ',
+   desc:'bezierCubic() en récursion — arborescence auto-similaire. Troncs bruns, couronnes disques verts. Profondeur 6.',
+   theory:'Bézier récursif — la forêt comme grammaire L-système continue',gen:gen_bezier_forest},
+  {type:'frenet_parade',badge:'frenetFrames()',name:'Défilé de Frenet',eq:'T=∂C/∂s · N=⊥T · B=T×N',
+   desc:'Courbe Catmull-Rom + frames de Frenet visualisés : T en or (tangente), N en cyan (normale). Transport parallèle.',
+   theory:'Hanson & Ma 1995 — éviter les singularités de courbure nulle',gen:gen_frenet_parade},
+  {type:'arc_reparam',badge:'reparamByArcLength()',name:'Courants Isomérisés',eq:'s(t)=∫₀ᵗ|∂C/∂u|du',
+   desc:'7 courbes Catmull-Rom reparamétrées par longueur d\'arc — points équidistants marqués en bleu. Grille de flux.',
+   theory:'Reparamétrisation — garantir la vitesse de parcours constante',gen:gen_arc_reparam},
+  {type:'spiral_decay_field',badge:'spiralDecay()',name:'Tourbillons Hélicoïdaux',eq:'r(θ)=r₀·e^(−decay·θ/2π)',
+   desc:'spiralDecay() — 5 hélices à décroissance exponentielle projetées en zénithal. Vrilles, cyme scorpioïde, tige volubile.',
+   theory:'Fm.04 — spirale logarithmique à amortissement d\'amplitude',gen:gen_spiral_decay_field},
+]},
+
+{cls:'s3',num:'§ 03',title:'Noise &amp; <em>Champs</em>',
+ desc:'perlinFBM() · fbm2() · hashNoise() · perlinNoise2D() · sellipse()',
+ cards:[
+  {type:'perlin_terrain',badge:'perlinFBM()',name:'Topographie de Perlin',eq:'FBM(x,y)=Σ Aᵢ·P(fᵢ·x,fᵢ·y)',
+   desc:'perlinFBM(x,y,seed,4) → 5 bandes altimétriques colorées : eau, prairie, forêt, roche, bâti. Courbes de niveaux.',
+   theory:'Brownien fractionnaire — relief crédible par superposition d\'octaves',gen:gen_perlin_terrain},
+  {type:'fbm2_garden',badge:'fbm2()',name:'Jardin Vectoriel FBM',eq:'fbm2=hn·0.5+hn₂·0.25+hn₄·0.125',
+   desc:'fbm2() → champ de vecteurs organiques sur grille 9×9. 4 allées-gravier suivent les lignes de champ. Haies aux bords.',
+   theory:'FBM 2D — turbulence légère pour chemins semi-naturels',gen:gen_fbm2_garden},
+  {type:'hashNoise_mosaic',badge:'hashNoise()',name:'Mosaïque Cellulaire',eq:'hn(x,y)=|sin(x·127+y·311)·43758|%1',
+   desc:'hashNoise() → tessellation Voronoï approchée. 18 cellules typisées : eau, pelouse, gravier, bâtiment selon v.',
+   theory:'Voronoï stochastique — la ville comme partition de l\'espace',gen:gen_hashNoise_mosaic},
+  {type:'perlin_drift',badge:'perlinNoise2D()',name:'Dérive de Perlin',eq:'v(x,y)=(P(x,y),P(x+10,y+10))',
+   desc:'perlinNoise2D() → champ de vitesse. 24 particules dérivent, laissent des traces spectrales. Points finaux typifiés.',
+   theory:'Advection dans un champ de Perlin — mobilité organique',gen:gen_perlin_drift},
+  {type:'noise_hedges',badge:'fbm2() iso',name:'Haies Fractales',eq:'∂(fbm2>th) → contours',
+   desc:'4 iso-niveaux de fbm2() tracés comme haies d\'épaisseur croissante. Arbres sur les crêtes. Mare centrale.',
+   theory:'Marching squares — extraire la géographie du bruit',gen:gen_noise_hedges},
+]},
+
+{cls:'s4',num:'§ 04',title:'Enveloppes &amp; <em>Croissance</em>',
+ desc:'lanceolatEnv() · logisticGrowth() · beerLambert() · leafEnvelopeAsymm() · flareRadius() · fibSphere()',
+ cards:[
+  {type:'lanceo_phyllum',badge:'lanceolatEnv()',name:'Champ de Nénuphars',eq:'lenv(t,p,q)=sin(πt^p)·(1-t)^q',
+   desc:'lanceolatEnv() × insertionAngle(\'golden\') → 21 nénuphars en spirale. Silhouette en segment circulaire lancéolé.',
+   theory:'Enveloppe lancéolée — profil d\'aiguille, de pétale pointu',gen:gen_lanceo_phyllum},
+  {type:'logistic_forest',badge:'logisticGrowth()',name:'Forêt Logistique',eq:'N(t)=K/(1+((K−N₀)/N₀)·e^(−rt))',
+   desc:'logisticGrowth() → hauteur et rayon de 9 arbres à différents stades. Anneaux de croissance concentriques.',
+   theory:'Verhulst 1838 — croissance limitée par la capacité de charge K',gen:gen_logistic_forest},
+  {type:'beer_canopy',badge:'beerLambert()',name:'Atténuation de Canopée',eq:'I(z)=I₀·e^(−k·LAI·z)',
+   desc:'beerLambert() → 6 strates de canopée avec atténuation lumineuse progressive. Densité foliaire visible.',
+   theory:'Fm.14 — chaque strate absorbe selon son Leaf Area Index',gen:gen_beer_canopy},
+  {type:'leaf_wave',badge:'leafEnvelopeAsymm()',name:'Vague de Feuilles',eq:'env(t)=sin^0.8(πt/2tMax)',
+   desc:'leafEnvelopeAsymm() + sarc(t) + sampleCatmullRom() → cortège de feuilles le long d\'une onde Catmull.',
+   theory:'Asymétrie de la feuille — base arrondie, apex effilé',gen:gen_leaf_wave},
+  {type:'flare_roots',badge:'flareRadius()',name:'Radiculaires en Coupe',eq:'r(s)=r₀(1-s)+r₁s+F·r₀·e^(−ks)',
+   desc:'flareRadius() → 12 contreforts racinaires + fibSphere() en overlay. Épanouissement basal à décroissance exponentielle.',
+   theory:'Fm.08 — contrefort des arbres tropicaux, stress mécanique',gen:gen_flare_roots},
+]},
+];
+
+
+// ─── Animation post-processor ────────────────────────────────────────────────
+// Wraps specific patterns with animation classes
+function animSVG(type, svgHTML) {
+  switch(type) {
+
+  case 'vogel_disk':
+    // Whole disk rotates slowly; inner ring pulses
+    return `<g class="anim-rot-slow">${svgHTML}</g>
+      <circle cx="70" cy="70" r="68" fill="none" stroke="rgba(120,80,255,.12)" stroke-width=".5" class="anim-scale-br"/>`;
+
+  case 'fibonacci_rosette':
+    // Leaves breathe and rotate
+    return `<g class="anim-rot-slow" style="animation-duration:24s">${svgHTML}</g>
+      <circle cx="70" cy="70" r="64" fill="none" stroke="rgba(40,220,200,.08)" stroke-width=".5" class="anim-wave-op"/>`;
+
+  case 'decussate_field':
+    // Whole grid rotates very slowly; water ripples
+    return `<g class="anim-rot-slow" style="animation-duration:30s;transform-origin:70px 70px">${svgHTML}</g>`;
+
+  case 'cone_scales':
+    // Mandala counter-rotates in two layers
+    return `<g class="anim-rot-slow" style="animation-duration:20s">${svgHTML}</g>
+      <ellipse cx="70" cy="70" rx="30" ry="30" fill="none" stroke="rgba(255,60,100,.2)" stroke-width="1" class="anim-rot-rev" style="animation-duration:14s"/>`;
+
+  case 'bijugate_torsion':
+    // Double spiral rotates; two halo rings counter-rotate
+    return `<g class="anim-rot-slow" style="animation-duration:16s">${svgHTML}</g>
+      <ellipse cx="70" cy="70" rx="50" ry="50" fill="none" stroke="rgba(120,80,255,.12)" stroke-width="1" class="anim-rot-rev" style="animation-duration:11s"/>
+      <ellipse cx="70" cy="70" rx="28" ry="28" fill="none" stroke="rgba(255,60,180,.1)" stroke-width="1" class="anim-rot-slow" style="animation-duration:8s"/>`;
+
+  case 'catmullrom_river':
+    // River flows — dash animation + trees sway
+    return svgHTML +
+      `<rect x="0" y="0" width="140" height="140" fill="none" stroke="${hedge(.1)}" stroke-width=".3" class="anim-pulse-op"/>`;
+
+  case 'bezier_forest':
+    // Trees sway gently
+    return `<g class="anim-drift-x" style="animation-duration:6s;transform-origin:70px 100px">${svgHTML}</g>`;
+
+  case 'frenet_parade':
+    // Frame vectors spin periodically
+    return `<g class="anim-rot-slow" style="animation-duration:22s">${svgHTML}</g>
+      <rect x="3" y="3" width="134" height="134" fill="none" stroke="${p3(.1)}" stroke-width=".5" class="anim-pulse-op"/>`;
+
+  case 'arc_reparam':
+    // Flow lines pulse opacity
+    return `<g class="anim-wave-op" style="animation-duration:5s">${svgHTML}</g>`;
+
+  case 'spiral_decay_field':
+    // Spirals rotate
+    return `<g class="anim-rot-slow" style="animation-duration:14s">${svgHTML}</g>
+      <circle cx="70" cy="70" r="62" fill="none" stroke="${p1(.08)}" stroke-width=".5" class="anim-rot-rev" style="animation-duration:9s"/>`;
+
+  case 'perlin_terrain':
+    // Terrain color shifts slowly
+    return `<g class="anim-hue" style="animation-duration:20s">${svgHTML}</g>`;
+
+  case 'fbm2_garden':
+    // Vectors drift
+    return `<g class="anim-drift-x" style="animation-duration:8s;transform-origin:70px 70px">${svgHTML}</g>`;
+
+  case 'hashNoise_mosaic':
+    // Cells pulse
+    return `<g class="anim-scale-br" style="animation-duration:6s">${svgHTML}</g>
+      <rect x="0" y="0" width="140" height="140" fill="none" stroke="${p2(.08)}" stroke-width=".4" class="anim-pulse-op"/>`;
+
+  case 'perlin_drift':
+    // Particles drift
+    return `<g class="anim-drift-y" style="animation-duration:7s;transform-origin:70px 70px">${svgHTML}</g>`;
+
+  case 'noise_hedges':
+    // Hedge contours breathe
+    return `<g class="anim-scale-br" style="animation-duration:8s;transform-origin:70px 70px">${svgHTML}</g>`;
+
+  case 'lanceo_phyllum':
+    // Lily pads rotate
+    return `<g class="anim-rot-slow" style="animation-duration:20s">${svgHTML}</g>
+      <circle cx="70" cy="70" r="63" fill="none" stroke="${water(.1)}" stroke-width=".5" class="anim-pulse-op"/>`;
+
+  case 'logistic_forest':
+    // Forest sways
+    return `<g class="anim-drift-x" style="animation-duration:9s;transform-origin:70px 80px">${svgHTML}</g>`;
+
+  case 'beer_canopy':
+    // Canopy layers pulse opacity
+    return `<g class="anim-wave-op" style="animation-duration:6s">${svgHTML}</g>`;
+
+  case 'leaf_wave':
+    // Wave drifts
+    return `<g class="anim-drift-y" style="animation-duration:5s;transform-origin:70px 70px">${svgHTML}</g>
+      <rect x="1" y="1" width="138" height="138" fill="none" stroke="${tree(.08)}" stroke-width=".4" class="anim-scale-br" style="animation-duration:7s"/>`;
+
+  case 'flare_roots':
+    // Roots slowly rotate
+    return `<g class="anim-rot-slow" style="animation-duration:25s">${svgHTML}</g>
+      <circle cx="70" cy="70" r="64" fill="none" stroke="${p1(.1)}" stroke-width=".5" class="anim-rot-rev" style="animation-duration:18s"/>`;
+
+  default:
+    return svgHTML;
+  }
+}
+
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PARAMETRIC REGEN SYSTEM — each type has its own mutation logic
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Per-card state — stored as JSON in card.dataset.state
+function getState(card) {
+  try { return JSON.parse(card.dataset.state||'{}'); } catch(e){ return {}; }
+}
+function setState(card, s) { card.dataset.state = JSON.stringify(s); }
+
+// Mutation helpers
+const R = {
+  rnd: (mn,mx) => mn + Math.random()*(mx-mn),
+  rndInt: (mn,mx) => Math.floor(mn + Math.random()*(mx-mn+1)),
+  pick: (...a) => a[Math.floor(Math.random()*a.length)],
+  jitter: (v, amt) => v + (Math.random()*2-1)*amt,
+  cycle: (v, list) => { const i=(list.indexOf(v)+1)%list.length; return list[i]; },
+};
+
+// ── Per-type regen configs ───────────────────────────────────────────────────
+const REGEN_CONFIG = {
+
+  vogel_disk: {
+    init: () => ({ N:89, c:1.0, pr:1.0, seed:0 }),
+    mutate: s => ({
+      N: R.rndInt(34,144),              // Fibonacci numbers feel best
+      c: R.rnd(0.7, 1.4),
+      pr: R.rnd(0.6, 1.6),             // plastochroneRatio → parastiche order switch
+      seed: R.rndInt(0, 999),
+    }),
+    label: 'N·c·plastochroneRatio',
+  },
+
+  fibonacci_rosette: {
+    init: () => ({ N:21, insertAng:38, spread:1.1, seed:0 }),
+    mutate: s => ({
+      N: R.rndInt(8, 34),
+      insertAng: R.rndInt(20, 55),     // insertion angle → compact vs open rosette
+      spread: R.rnd(0.5, 2.0),
+      seed: R.rndInt(0, 999),
+    }),
+    label: 'N·insertAng·spread',
+  },
+
+  decussate_field: {
+    init: () => ({ mode:'decussate', rows:7, cols:7 }),
+    mutate: s => ({
+      mode: R.pick('decussate','whorled3','golden','alternate','orixate','bijugate'),
+      rows: R.rndInt(5, 10),
+      cols: R.rndInt(5, 10),
+    }),
+    label: 'mode·grid',
+  },
+
+  cone_scales: {
+    init: () => ({ N:55, alpha:0.85, R:58, H:60 }),
+    mutate: s => ({
+      N: R.rndInt(20, 89),
+      alpha: R.rnd(0.5, 1.3),          // distribution exponent → uniform↔clustered
+      R: R.rnd(40, 70),
+      H: R.rnd(40, 80),
+    }),
+    label: 'N·alpha·R/H',
+  },
+
+  bijugate_torsion: {
+    init: () => ({ N:76, tightness:0.7, offset:Math.PI }),
+    mutate: s => ({
+      N: R.rndInt(30, 110),
+      tightness: R.rnd(0.3, 1.2),     // spiral tightness
+      offset: R.pick(Math.PI, Math.PI/2, Math.PI*2/3, Math.PI*3/4),
+    }),
+    label: 'N·tightness·offset',
+  },
+
+  catmullrom_river: {
+    init: () => ({ seed:0, tau:0.5, width:10 }),
+    mutate: s => ({
+      seed: R.rndInt(0, 9999),         // entirely new river course
+      tau: R.rnd(0.3, 0.8),           // Catmull-Rom tension → straight↔wavy
+      width: R.rndInt(6, 18),
+    }),
+    label: 'seed·tau·width',
+  },
+
+  bezier_forest: {
+    init: () => ({ nTrees:5, depth:6, spread:0.55, decay:0.65, seed:0 }),
+    mutate: s => ({
+      nTrees: R.rndInt(3, 8),
+      depth: R.rndInt(4, 7),
+      spread: R.rnd(0.3, 0.9),        // branch spread angle
+      decay: R.rnd(0.5, 0.8),         // branch length decay ratio
+      seed: R.rndInt(0, 999),
+    }),
+    label: 'nTrees·depth·spread·decay',
+  },
+
+  frenet_parade: {
+    init: () => ({ seed:0, nPts:5, amplitude:40 }),
+    mutate: s => ({
+      seed: R.rndInt(0, 9999),         // new control point positions
+      nPts: R.rndInt(4, 8),
+      amplitude: R.rndInt(20, 60),    // vertical amplitude of control points
+    }),
+    label: 'seed·nPts·amplitude',
+  },
+
+  arc_reparam: {
+    init: () => ({ nCurves:7, seed:0, spread:30 }),
+    mutate: s => ({
+      nCurves: R.rndInt(4, 12),
+      seed: R.rndInt(0, 9999),
+      spread: R.rndInt(10, 50),       // vertical spread between curves
+    }),
+    label: 'nCurves·seed·spread',
+  },
+
+  spiral_decay_field: {
+    init: () => ({ nSpirals:5, seed:0 }),
+    mutate: s => ({
+      nSpirals: R.rndInt(2, 8),
+      seed: R.rndInt(0, 999),         // random turns/decay/r0 per spiral
+    }),
+    label: 'nSpirals·seed',
+  },
+
+  perlin_terrain: {
+    init: () => ({ seed:42, octaves:4 }),
+    mutate: s => ({
+      seed: R.rndInt(0, 9999),         // entirely new terrain
+      octaves: R.rndInt(2, 6),
+    }),
+    label: 'seed·octaves',
+  },
+
+  fbm2_garden: {
+    init: () => ({ seed:1, nPaths:4 }),
+    mutate: s => ({
+      seed: R.rndInt(0, 999),
+      nPaths: R.rndInt(2, 7),
+    }),
+    label: 'seed·nPaths',
+  },
+
+  hashNoise_mosaic: {
+    init: () => ({ nCells:18, seed:0 }),
+    mutate: s => ({
+      nCells: R.rndInt(10, 28),
+      seed: R.rndInt(0, 9999),         // new cell positions + types
+    }),
+    label: 'nCells·seed',
+  },
+
+  perlin_drift: {
+    init: () => ({ nParticles:24, seed:0, speed:3 }),
+    mutate: s => ({
+      nParticles: R.rndInt(12, 40),
+      seed: R.rndInt(0, 9999),
+      speed: R.rnd(1.5, 5),           // drift velocity
+    }),
+    label: 'nParticles·seed·speed',
+  },
+
+  noise_hedges: {
+    init: () => ({ thresholds:[0.38,0.48,0.56,0.64], seed:0 }),
+    mutate: s => {
+      const base = R.rnd(0.25, 0.45);
+      const step = R.rnd(0.06, 0.14);
+      return {
+        thresholds: [base, base+step, base+step*2, base+step*3],
+        seed: R.rndInt(0, 99),         // shift iso-levels + new noise field
+      };
+    },
+    label: 'thresholds·seed',
+  },
+
+  lanceo_phyllum: {
+    init: () => ({ N:21, p:0.5, q:0.2, mode:'golden' }),
+    mutate: s => ({
+      N: R.rndInt(12, 34),
+      p: R.rnd(0.2, 0.9),             // lanceolatEnv exponent p
+      q: R.rnd(0.1, 0.5),             // lanceolatEnv exponent q
+      mode: R.pick('golden','bijugate','whorled3','decussate'),
+    }),
+    label: 'N·p·q·mode',
+  },
+
+  logistic_forest: {
+    init: () => ({ nTrees:9, seed:0 }),
+    mutate: s => ({
+      nTrees: R.rndInt(5, 13),
+      seed: R.rndInt(0, 9999),         // new K/r/age per tree
+    }),
+    label: 'nTrees·seed',
+  },
+
+  beer_canopy: {
+    init: () => ({ k:0.6, nLayers:6, LAImax:4.0 }),
+    mutate: s => ({
+      k: R.rnd(0.2, 1.2),             // extinction coefficient
+      nLayers: R.rndInt(3, 9),
+      LAImax: R.rnd(2, 6),
+    }),
+    label: 'k·nLayers·LAImax',
+  },
+
+  leaf_wave: {
+    init: () => ({ seed:0, amplitude:22, nLeaves:14 }),
+    mutate: s => ({
+      seed: R.rndInt(0, 9999),         // new spine control points
+      amplitude: R.rndInt(10, 38),    // wave amplitude
+      nLeaves: R.rndInt(8, 20),
+    }),
+    label: 'seed·amplitude·nLeaves',
+  },
+
+  flare_roots: {
+    init: () => ({ nRoots:12, F:1.6, k:7, seed:0 }),
+    mutate: s => ({
+      nRoots: R.rndInt(6, 18),
+      F: R.rnd(0.8, 2.8),             // flare amplitude
+      k: R.rnd(3, 14),                // flare decay speed
+      seed: R.rndInt(0, 999),
+    }),
+    label: 'nRoots·F·k',
+  },
+};
+
+// ── Parametric generator wrappers ────────────────────────────────────────────
+// Each wraps the raw gen_ function, passing params down via M._p (thread-local hack)
+const GEN_PARAMETRIC = {};
+
+// Build parametric wrappers for each type
+(()=>{
+  // vogel_disk
+  GEN_PARAMETRIC.vogel_disk = (s) => {
+    const N=s.N||89, c=s.c||1, pr=s.pr||1, seed=s.seed||0;
+    const PHI_RAD=Math.PI*(3-Math.sqrt(5));
+    let o='';
+    o+=`<ellipse cx="70" cy="70" rx="64" ry="64" fill="${lawn(.15)}" stroke="${hedge(.25)}" stroke-width=".5"/>`;
+    for(let i=0;i<N;i++){
+      const v=M.vogel(i+0.5,62/Math.sqrt(N)*c,pr);
+      const x=70+v.x,y=70+v.y;
+      const r=2.8*(1-i/N*0.5)+1;
+      const hue=i/N;
+      const col=`hsla(${120+hue*80},80%,60%,${0.6-i/N*0.3})`;
+      if(i<Math.round(N*0.13)){
+        o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="${tree()}" stroke="${hedge(.5)}" stroke-width=".5"/>`;
+      } else if(i<Math.round(N*0.38)){
+        o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(r*.8).toFixed(1)}" fill="${lawn(.5)}" stroke="${tree(.4)}" stroke-width=".4"/>`;
+      } else {
+        o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${(r*.6).toFixed(1)}" fill="${col}"/>`;
+      }
+    }
+    o+=`<circle cx="70" cy="70" r="5" fill="${folie()}" stroke="${folie(.9)}" stroke-width="1.5"><animate attributeName="r" values="4;7;4" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" values=".7;1;.7" dur="2s" repeatCount="indefinite"/></circle>
+    <circle cx="70" cy="70" r="20" fill="none" stroke="${folie(.15)}" stroke-width=".6"><animate attributeName="r" values="10;30;10" dur="4s" repeatCount="indefinite"/><animate attributeName="opacity" values=".4;0;.4" dur="4s" repeatCount="indefinite"/></circle>`;
+    o+=axisLine(70,70,70,6);
+    o+=axisLine(70,70,70+55,70+32);
+    o+=axisLine(70,70,70-55,70+32);
+    return o;
+  };
+
+
+  // fibonacci_rosette
+  GEN_PARAMETRIC.fibonacci_rosette = (s) => {
+    const N=s.N||21, insertAng=s.insertAng||38, spread=s.spread||1.1, seed=s.seed||0;
+    const leaves=M.rosetteLeaves(N,52,insertAng,spread);
+    let o='';
+    o+=`<ellipse cx="70" cy="70" rx="66" ry="66" fill="${lawn(.08)}" stroke="${hedge(.2)}" stroke-width=".4"/>`;
+    leaves.forEach((l,i)=>{
+      const x=70+l.tipX*0.85,y=70+l.tipY*0.35-l.tipZ*0.85;
+      const lw=M.leafEnvelope(0.5,10,0.9);
+      const col=`hsla(${90+i*8+seed},70%,55%,${0.55-i*0.012})`;
+      const path=leafPath(70,70,x,y,lw);
+      o+=`<path d="${path}" fill="${col}" stroke="${hedge(.4)}" stroke-width=".6"/>`;
+      if(i<8) o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.5" fill="${tree(.7)}" stroke="${hedge(.6)}" stroke-width=".5"/>`;
+    });
+    o+=`<circle cx="70" cy="70" r="7" fill="${bldg(.6)}" stroke="${gold(.8)}" stroke-width="1">
+      <animate attributeName="r" values="6;9;6" dur="4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="70" cy="70" r="18" fill="none" stroke="${gold(.2)}" stroke-width=".7" stroke-dasharray="5,3">
+      <animateTransform attributeName="transform" type="rotate" from="0 70 70" to="360 70 70" dur="10s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="70" cy="70" r="3" fill="${folie(.8)}"/>`;
+    o+=ripple(70,70,0,folie(.4));
+    return o;
+  };
+
+  // decussate_field
+  GEN_PARAMETRIC.decussate_field = (s) => {
+    const mode=s.mode||'decussate', rows=s.rows||7, cols=s.cols||7;
+    let o='';
+    o+=`<rect x="4" y="4" width="132" height="132" fill="${gravel(.18)}" stroke="${gold(.3)}" stroke-width=".5" rx="1"/>`;
+    for(let row=0;row<rows;row++){
+      for(let col=0;col<cols;col++){
+        const i=row*cols+col;
+        const ax=M.insertionAngle(i,mode);
+        const x=14+col*(118/Math.max(cols-1,1)),y=14+row*(118/Math.max(rows-1,1));
+        const lx=x+Math.cos(ax)*9,ly=y+Math.sin(ax)*9;
+        const c=`hsla(${(ax*180/Math.PI)%360},70%,60%,0.7)`;
+        o+=`<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${lx.toFixed(1)}" y2="${ly.toFixed(1)}" stroke="${c}" stroke-width="1.5" stroke-linecap="round"/>`;
+        o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.2" fill="${tree(.6)}" stroke="${hedge(.5)}" stroke-width=".5"/>`;
+      }
+    }
+    o+=axisLine(4,4,136,136); o+=axisLine(136,4,4,136);
+    o+=`<ellipse cx="70" cy="70" rx="12" ry="12" fill="${water(.4)}" stroke="${water(.7)}" stroke-width="1"/>
+    <ellipse cx="70" cy="70" rx="12" ry="12" fill="none" stroke="${water(.3)}" stroke-width=".8"><animate attributeName="rx" values="12;22;12" dur="2.5s" repeatCount="indefinite"/><animate attributeName="ry" values="12;22;12" dur="2.5s" repeatCount="indefinite"/><animate attributeName="opacity" values=".5;0;.5" dur="2.5s" repeatCount="indefinite"/></ellipse>`;
+    o+=`<text x="70" y="136" text-anchor="middle" font-family="monospace" font-size="7" fill="${gold(.5)}">${mode}</text>`;
+    return o;
+  };
+
+  // cone_scales
+  GEN_PARAMETRIC.cone_scales = (s) => {
+    const N=s.N||55, alpha=s.alpha||0.85, Rc=s.R||58, H=s.H||60;
+    const scales=M.coneScales(N,Rc,H,alpha);
+    let o='';
+    o+=`<ellipse cx="70" cy="70" rx="66" ry="66" fill="${lawn(.08)}" stroke="${hedge(.2)}" stroke-width=".5"/>`;
+    scales.forEach((sc,i)=>{
+      const x=70+sc.pos.x,y=70-sc.pos.y*0.6+sc.pos.z*0.7;
+      const sz=sc.scale*18+2;
+      const t=i/scales.length;
+      const col=`hsla(${260+t*120},65%,55%,${0.7-t*0.3})`;
+      const sw=t<0.3?hedge(.6):t<0.6?lawn(.5):tree(.4);
+      o+=`<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="${sz.toFixed(1)}" ry="${(sz*0.6).toFixed(1)}" fill="${col}" stroke="${sw}" stroke-width=".5" transform="rotate(${(i*137.5).toFixed(1)},${x.toFixed(1)},${y.toFixed(1)})"/>`;
+    });
+    o+=`<circle cx="70" cy="70" r="5" fill="${folie()}" stroke="${folie(.9)}" stroke-width="1"><animate attributeName="opacity" values=".5;1;.5" dur="2s" repeatCount="indefinite"/><animate attributeName="r" values="4;8;4" dur="3s" repeatCount="indefinite"/></circle>
+    <circle cx="70" cy="70" r="16" fill="none" stroke="${folie(.2)}" stroke-width=".7" stroke-dasharray="4,3"><animateTransform attributeName="transform" type="rotate" from="0 70 70" to="360 70 70" dur="7s" repeatCount="indefinite"/></circle>`;
+    return o;
+  };
+
+  // bijugate_torsion
+  GEN_PARAMETRIC.bijugate_torsion = (s) => {
+    const N=s.N||76, tight=s.tightness||0.7, offset=s.offset||Math.PI;
+    let o='';
+    o+=`<ellipse cx="70" cy="70" rx="65" ry="65" fill="${p1(.05)}" stroke="${p1(.2)}" stroke-width=".5"/>`;
+    for(let i=0;i<N;i++){
+      const ax=i*Math.PI*(3-Math.sqrt(5))+(i%2)*offset;
+      const r=6+i*tight;
+      const x=70+Math.cos(ax)*r,y=70+Math.sin(ax)*r;
+      const t=i/N;
+      const spiral=i%2===0?p1(.6):p2(.6);
+      const rr=2.5*(1-t*0.5)+1;
+      if(r>65)break;
+      o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rr.toFixed(1)}" fill="${i%2===0?tree(.5):lawn(.5)}" stroke="${spiral}" stroke-width=".6"/>`;
+      if(i>0&&i%8===0){
+        const prev_ax=(i-8)*Math.PI*(3-Math.sqrt(5))+((i-8)%2)*offset;
+        const pr2=6+(i-8)*tight;
+        if(pr2<65){const px=70+Math.cos(prev_ax)*pr2,py=70+Math.sin(prev_ax)*pr2;o+=`<line x1="${px.toFixed(1)}" y1="${py.toFixed(1)}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${spiral.replace('.6','.25')}" stroke-width=".5" stroke-dasharray="3,2"/>`;}
+      }
+    }
+    o+=`<ellipse cx="70" cy="70" rx="6" ry="6" fill="${water(.5)}" stroke="${water(.8)}" stroke-width="1"/>
+    <circle cx="70" cy="70" r="14" fill="none" stroke="${p1(.3)}" stroke-width=".8" stroke-dasharray="4,3"><animateTransform attributeName="transform" type="rotate" from="0 70 70" to="360 70 70" dur="6s" repeatCount="indefinite"/></circle>
+    <circle cx="70" cy="70" r="22" fill="none" stroke="${p2(.2)}" stroke-width=".6" stroke-dasharray="3,4"><animateTransform attributeName="transform" type="rotate" from="360 70 70" to="0 70 70" dur="9s" repeatCount="indefinite"/></circle>`;
+    return o;
+  };
+
+  // catmullrom_river
+  GEN_PARAMETRIC.catmullrom_river = (s) => {
+    const seed=s.seed||0, tau=s.tau||0.5, width=s.width||10;
+    const pts=[{x:10,y:70+M.hn(seed,0)*30-15},{x:34,y:70+M.hn(seed,1)*28-14},{x:70,y:70+M.hn(seed,2)*24-12},{x:105,y:70+M.hn(seed,3)*28-14},{x:130,y:70+M.hn(seed,4)*30-15}];
+    const sampled=M.sampleCatmullRom(pts,80);
+    const pathD=(offset)=>sampled.map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${(p.y+offset).toFixed(1)}`).join(' ');
+    const spineCenter=pathD(0);
+    let o='';
+    o+=`<rect x="0" y="0" width="140" height="140" fill="${lawn(.12)}" stroke="none"/>`;
+    o+=`<path d="${pathD(-width-6)} L${sampled[sampled.length-1].x},${sampled[sampled.length-1].y-width-10} ${sampled.slice().reverse().map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${(p.y-width-6).toFixed(1)}`).join(' ')} Z" fill="${hedge(.18)}" stroke="${hedge(.4)}" stroke-width=".6"/>`;
+    o+=`<path d="${pathD(width+6)} L${sampled[sampled.length-1].x},${sampled[sampled.length-1].y+width+10} ${sampled.slice().reverse().map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${(p.y+width+6).toFixed(1)}`).join(' ')} Z" fill="${hedge(.18)}" stroke="${hedge(.4)}" stroke-width=".6"/>`;
+    const waterD=`${pathD(-width)} L${sampled[sampled.length-1].x},${sampled[sampled.length-1].y+width} ${sampled.slice().reverse().map(p=>`L${p.x.toFixed(1)},${(p.y+width).toFixed(1)}`).join(' ')} Z`;
+    o+=`<path d="${waterD}" fill="${water(.45)}" stroke="${water(.7)}" stroke-width="1"/>
+    <path d="${spineCenter}" fill="none" stroke="rgba(80,200,255,.4)" stroke-width="1.5" stroke-dasharray="6,4"><animate attributeName="stroke-dashoffset" from="0" to="-40" dur="1.5s" repeatCount="indefinite"/></path>`;
+    for(let i=2;i<sampled.length-2;i+=10){
+      const p=sampled[i],pn=sampled[i+1],pp=sampled[i-1];
+      const tx=(pn.x-pp.x),ty=(pn.y-pp.y),len=Math.sqrt(tx*tx+ty*ty);
+      const nx=-ty/len*14,ny=tx/len*14;
+      o+=`<line x1="${(p.x+nx).toFixed(1)}" y1="${(p.y+ny).toFixed(1)}" x2="${(p.x-nx).toFixed(1)}" y2="${(p.y-ny).toFixed(1)}" stroke="${gold(.3)}" stroke-width=".6" stroke-dasharray="3,2"/>`;
+    }
+    for(let i=0;i<sampled.length;i+=14){
+      const p=sampled[i],pn=sampled[Math.min(i+1,sampled.length-1)],pp=sampled[Math.max(i-1,0)];
+      const tx=pn.x-pp.x,ty=pn.y-pp.y,len=Math.sqrt(tx*tx+ty*ty);
+      const nx=-ty/len*18,ny=tx/len*18;
+      o+=`<circle cx="${(p.x+nx).toFixed(1)}" cy="${(p.y+ny).toFixed(1)}" r="4" fill="${tree(.6)}" stroke="${hedge(.5)}" stroke-width=".7"/>`;
+      o+=`<circle cx="${(p.x-nx).toFixed(1)}" cy="${(p.y-ny).toFixed(1)}" r="4" fill="${tree(.55)}" stroke="${hedge(.5)}" stroke-width=".7"/>`;
+    }
+    return o;
+  };
+
+  // bezier_forest
+  GEN_PARAMETRIC.bezier_forest = (s) => {
+    const nTrees=s.nTrees||5, depth=s.depth||6, spread=s.spread||0.55, decay=s.decay||0.65, seed=s.seed||0;
+    let o='';
+    o+=`<rect x="0" y="0" width="140" height="140" fill="${lawn(.1)}" stroke="none"/>`;
+    function bezTree(x,y,ang,len,d,sd){
+      if(d<=0||len<2)return '';
+      let res='';
+      const tx=x+Math.cos(ang)*len,ty=y+Math.sin(ang)*len;
+      const cp1x=x+Math.cos(ang-0.3)*len*0.5,cp1y=y+Math.sin(ang-0.3)*len*0.5;
+      const cp2x=tx+Math.cos(ang+0.4)*len*0.3,cp2y=ty+Math.sin(ang+0.4)*len*0.3;
+      const t=1-d/depth;
+      const sw=Math.max(0.4,3*(1-t));
+      const col=d>depth*0.6?bldg(.55):d>depth*0.3?hedge(.55):tree(.6);
+      res+=`<path d="M${x.toFixed(1)},${y.toFixed(1)} C${cp1x.toFixed(1)},${cp1y.toFixed(1)} ${cp2x.toFixed(1)},${cp2y.toFixed(1)} ${tx.toFixed(1)},${ty.toFixed(1)}" fill="none" stroke="${col}" stroke-width="${sw.toFixed(1)}" stroke-linecap="round"/>`;
+      if(d===1) res+=`<circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="3.5" fill="${tree(.7)}" stroke="${hedge(.5)}" stroke-width=".5"/>`;
+      const sp=spread+M.hash1(sd)*0.25;
+      res+=bezTree(tx,ty,ang-sp,len*decay,d-1,sd*1.3+1);
+      res+=bezTree(tx,ty,ang+sp,len*decay,d-1,sd*0.7+2);
+      return res;
+    }
+    const baseLen=140/(nTrees+1);
+    for(let i=0;i<nTrees;i++){
+      const tx=baseLen*(i+0.5+M.hash1(seed+i)*0.4-0.2);
+      const ty=128+M.hash1(seed+i*3)*8-4;
+      const ang=-Math.PI/2+(M.hash1(seed+i*7)*0.3-0.15);
+      o+=bezTree(tx,ty,ang,22+M.hash1(seed+i*5)*12,depth,i+seed*0.01);
+    }
+    o+=`<ellipse cx="70" cy="30" rx="22" ry="12" fill="${water(.35)}" stroke="${water(.6)}" stroke-width="1"><animate attributeName="ry" values="10;14;10" dur="3s" repeatCount="indefinite"/><animate attributeName="opacity" values=".5;.8;.5" dur="3s" repeatCount="indefinite"/></ellipse>`;
+    o+=ripple(70,30,0);
+    o+=axisLine(70,0,70,140,.35);
+    return o;
+  };
+
+  // frenet_parade
+  GEN_PARAMETRIC.frenet_parade = (s) => {
+    const seed=s.seed||0, nPts=s.nPts||5, amp=s.amplitude||40;
+    const pts=Array.from({length:nPts},(_,i)=>({
+      x:10+i*(120/(nPts-1)),
+      y:70+(i%2===0?-1:1)*amp*(0.5+M.hash1(seed+i)*0.5),
+    }));
+    const sampled=M.sampleCatmullRom(pts,60);
+    const spineD=sampled.map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    let o='';
+    o+=`<rect x="0" y="0" width="140" height="140" fill="${p1(.04)}" stroke="none"/>`;
+    o+=`<path d="${spineD}" fill="none" stroke="${gold(.25)}" stroke-width="3" stroke-linecap="round"><animate attributeName="stroke-opacity" values=".1;.4;.1" dur="3s" repeatCount="indefinite"/><animate attributeName="stroke-width" values="2;5;2" dur="3s" repeatCount="indefinite"/></path>`;
+    o+=`<path d="${spineD}" fill="none" stroke="${gravel(.5)}" stroke-width="2" stroke-linecap="round"/>`;
+    for(let i=2;i<sampled.length-2;i+=8){
+      const p=sampled[i],pn=sampled[Math.min(i+2,sampled.length-1)],pp=sampled[Math.max(i-2,0)];
+      const tx=(pn.x-pp.x),ty=(pn.y-pp.y);
+      const tlen=Math.sqrt(tx*tx+ty*ty)||1;
+      const Tx=tx/tlen,Ty=ty/tlen,Nx=-Ty,Ny=Tx;
+      const sc=12;
+      o+=`<line x1="${p.x.toFixed(1)}" y1="${p.y.toFixed(1)}" x2="${(p.x+Tx*sc).toFixed(1)}" y2="${(p.y+Ty*sc).toFixed(1)}" stroke="${gold(.8)}" stroke-width="1.2" stroke-linecap="round"/>`;
+      o+=`<line x1="${p.x.toFixed(1)}" y1="${p.y.toFixed(1)}" x2="${(p.x+Nx*sc).toFixed(1)}" y2="${(p.y+Ny*sc).toFixed(1)}" stroke="${p3(.8)}" stroke-width="1.2" stroke-linecap="round"/>`;
+      o+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2" fill="${bldg(.7)}" stroke="${gold(.6)}" stroke-width=".5"/>`;
+    }
+    o+=`<rect x="3" y="3" width="134" height="134" fill="none" stroke="${hedge(.3)}" stroke-width="1.2" rx="1"/>`;
+    pts.forEach((pt,i)=>{
+      o+=`<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="4" fill="${tree(.6)}" stroke="${hedge(.5)}" stroke-width=".7"><animate attributeName="r" values="3;5;3" dur="${(2+i*.4).toFixed(1)}s" begin="${(i*.3).toFixed(1)}s" repeatCount="indefinite"/></circle>`;
+    });
+    return o;
+  };
+
+  // arc_reparam
+  GEN_PARAMETRIC.arc_reparam = (s) => {
+    const nc=s.nCurves||7, seed=s.seed||0, spread=s.spread||30;
+    let o='';
+    o+=`<rect x="0" y="0" width="140" height="140" fill="${lawn(.08)}" stroke="none"/>`;
+    for(let k=0;k<nc;k++){
+      const off=k*spread/(nc-1)-spread/2;
+      const pts=[{x:5,y:70+off},{x:38+M.hn(seed+k,1)*16-8,y:70+off-24+k*4},{x:70+M.hn(seed+k,2)*12-6,y:70+off+20-k*3},{x:102+M.hn(seed+k,3)*14-7,y:70+off-16+k*4},{x:135,y:70+off+k*2}];
+      const sampled=M.sampleCatmullRom(pts,50);
+      const d=sampled.map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+      const t=k/Math.max(nc-1,1);
+      const colFlow=`hsla(${180+t*80},70%,60%,${0.55-t*0.1})`;
+      const sw=k===Math.floor(nc/2)?1.8:k===0||k===nc-1?0.6:1.0;
+      const dash=k===0||k===nc-1?'stroke-dasharray="4,3"':'';
+      o+=`<path d="${d}" fill="none" stroke="${colFlow}" stroke-width="${sw}" stroke-linecap="round" ${dash}/>`;
+    }
+    const spine=[{x:5,y:70},{x:38,y:50},{x:70,y:86},{x:102,y:58},{x:135,y:70}];
+    const spSampled=M.sampleCatmullRom(spine,40);
+    spSampled.filter((_,i)=>i%8===0).forEach(p=>{
+      o+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2.8" fill="${water(.6)}" stroke="${water(.8)}" stroke-width=".6"/>`;
+    });
+    o+=`<rect x="0" y="0" width="140" height="5" fill="${hedge(.35)}" stroke="${hedge(.5)}" stroke-width=".5"/>`;
+    o+=`<rect x="0" y="135" width="140" height="5" fill="${hedge(.35)}" stroke="${hedge(.5)}" stroke-width=".5"/>`;
+    o+=`<line x1="0" y1="70" x2="140" y2="70" stroke="${gold(.4)}" stroke-width=".8" stroke-dasharray="8,4"><animate attributeName="stroke-dashoffset" from="0" to="-48" dur="1.8s" repeatCount="indefinite"/></line>`;
+    return o;
+  };
+
+  // spiral_decay_field
+  GEN_PARAMETRIC.spiral_decay_field = (s) => {
+    const ns=s.nSpirals||5, seed=s.seed||0;
+    let o='';
+    o+=`<ellipse cx="70" cy="70" rx="66" ry="66" fill="${water(.08)}" stroke="${water(.2)}" stroke-width=".5"/>`;
+    const pcols=[p1,p2,p3,()=>water(),()=>tree(),()=>lawn(),p1,p2];
+    for(let ci=0;ci<ns;ci++){
+      const turns=1.5+M.hash1(seed+ci)*2.5;
+      const r0=25+M.hash1(seed+ci+10)*35;
+      const decay=0.3+M.hash1(seed+ci+20)*0.8;
+      const H=60+M.hash1(seed+ci+30)*30;
+      const pts=M.spiralDecay(turns,r0,decay,H,60);
+      const projected=pts.map(p=>({x:70+p.x,y:70-p.y*0.3+p.z*0.8}));
+      const d=projected.map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+      o+=`<path d="${d}" fill="none" stroke="${pcols[ci%pcols.length](.55)}" stroke-width="${1.2-ci*0.05}" stroke-linecap="round"/>`;
+      for(let i=0;i<pts.length;i+=Math.round(60/turns)){
+        o+=`<circle cx="${projected[i].x.toFixed(1)}" cy="${projected[i].y.toFixed(1)}" r="2.5" fill="${tree(.5)}" stroke="${hedge(.4)}" stroke-width=".5"/>`;
+      }
+    }
+    o+=`<circle cx="70" cy="70" r="5" fill="${folie(.8)}" stroke="${folie()}" stroke-width="1.5"><animate attributeName="r" values="4;8;4" dur="2s" repeatCount="indefinite"/></circle>
+    <circle cx="70" cy="70" r="18" fill="none" stroke="${p1(.25)}" stroke-width=".8" stroke-dasharray="5,3"><animateTransform attributeName="transform" type="rotate" from="0 70 70" to="360 70 70" dur="5s" repeatCount="indefinite"/></circle>
+    <circle cx="70" cy="70" r="30" fill="none" stroke="${p2(.15)}" stroke-width=".6" stroke-dasharray="3,5"><animateTransform attributeName="transform" type="rotate" from="360 70 70" to="0 70 70" dur="9s" repeatCount="indefinite"/></circle>`;
+    o+=ripple(70,70,0,p1(.5));
+    o+=ripple(70,70,1.2,p2(.5));
+    return o;
+  };
+
+  // perlin_terrain
+  GEN_PARAMETRIC.perlin_terrain = (s) => {
+    const seed=s.seed||42, octaves=s.octaves||4;
+    const RES=14,STEP=140/RES;
+    let o='';
+    o+=`<rect x="0" y="0" width="140" height="140" fill="${lawn(.06)}" stroke="none"/>`;
+    const grid=Array.from({length:RES+1},(_,iy)=>Array.from({length:RES+1},(_,ix)=>M.perlinFBM(ix/RES*3,iy/RES*3,seed,octaves)*0.5+0.5));
+    const bands=[{lo:0,hi:.25,fill:water(.35),stroke:water(.6)},{lo:.25,hi:.42,fill:lawn(.3),stroke:tree(.4)},{lo:.42,hi:.60,fill:`rgba(80,180,80,.25)`,stroke:tree(.5)},{lo:.60,hi:.75,fill:`rgba(180,160,80,.3)`,stroke:gravel(.5)},{lo:.75,hi:1,fill:bldg(.35),stroke:bldg(.6)}];
+    bands.forEach(b=>{
+      for(let iy=0;iy<RES;iy++) for(let ix=0;ix<RES;ix++){
+        if(grid[iy][ix]>=b.lo&&grid[iy][ix]<b.hi){
+          o+=`<rect x="${(ix*STEP).toFixed(1)}" y="${(iy*STEP).toFixed(1)}" width="${(STEP+.5).toFixed(1)}" height="${(STEP+.5).toFixed(1)}" fill="${b.fill}" stroke="${b.stroke}" stroke-width=".3"/>`;
+        }
+      }
+    });
+    [.25,.42,.60,.75].forEach((th,ti)=>{
+      const col=[water(.6),tree(.7),gravel(.6),bldg(.7)][ti];
+      for(let iy=0;iy<RES;iy++) for(let ix=0;ix<RES;ix++){
+        const v0=grid[iy][ix],v1=grid[iy][ix+1]??v0,v2=grid[iy+1]?.[ix]??v0;
+        if((v0<th)!==(v1<th)){const t=(th-v0)/(v1-v0);o+=`<circle cx="${(ix*STEP+t*STEP).toFixed(1)}" cy="${(iy*STEP+STEP/2).toFixed(1)}" r=".8" fill="${col}"/>`;}
+      }
+    });
+    for(let iy=1;iy<RES-1;iy+=2) for(let ix=1;ix<RES-1;ix+=2){
+      if(grid[iy][ix]>0.6) o+=`<circle cx="${(ix*STEP+STEP/2).toFixed(1)}" cy="${(iy*STEP+STEP/2).toFixed(1)}" r="3" fill="${tree(.65)}" stroke="${hedge(.5)}" stroke-width=".5"/>`;
+    }
+    o+=`<line x1="70" y1="0" x2="70" y2="140" stroke="${gold(.25)}" stroke-width=".7" stroke-dasharray="5,3"><animate attributeName="stroke-opacity" values=".2;.6;.2" dur="4s" repeatCount="indefinite"/></line>
+    <line x1="0" y1="70" x2="140" y2="70" stroke="${gold(.25)}" stroke-width=".7" stroke-dasharray="5,3"><animate attributeName="stroke-opacity" values=".2;.6;.2" dur="4s" begin=".5s" repeatCount="indefinite"/></line>
+    <circle cx="70" cy="70" r="4" fill="${folie(.6)}" stroke="${folie(.8)}" stroke-width=".8"><animate attributeName="r" values="3;6;3" dur="3s" repeatCount="indefinite"/></circle>`;
+    return o;
+  };
+
+  // fbm2_garden
+  GEN_PARAMETRIC.fbm2_garden = (s) => {
+    const seed=s.seed||1, nPaths=s.nPaths||4;
+    let o='';
+    o+=`<rect x="0" y="0" width="140" height="140" fill="${lawn(.1)}" stroke="none"/>`;
+    for(let row=0;row<9;row++) for(let col=0;col<9;col++){
+      const x=8+col*15.5,y=8+row*15.5;
+      const nx=(x/140)*4,ny=(y/140)*4;
+      const angle=M.fbm2(nx,ny,seed)*Math.PI*4;
+      const mag=6+M.fbm2(nx+0.5,ny+0.5,seed+2)*4;
+      const tx=x+Math.cos(angle)*mag,ty=y+Math.sin(angle)*mag;
+      const fv=M.fbm2(nx,ny,seed);
+      const col2=fv>0.7?hedge(.7):fv>0.4?tree(.6):lawn(.8);
+      o+=`<line x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${tx.toFixed(1)}" y2="${ty.toFixed(1)}" stroke="${col2}" stroke-width=".9" stroke-linecap="round"/>`;
+      o+=`<circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r=".8" fill="${col2}"/>`;
+    }
+    for(let pi=0;pi<nPaths;pi++){
+      let px=10+pi*(120/Math.max(nPaths-1,1)),py=70+M.hash1(seed+pi)*30-15;
+      const pts=[];
+      for(let step=0;step<25;step++){
+        pts.push({x:px,y:py});
+        const nx=(px/140)*4,ny=(py/140)*4;
+        const angle=M.fbm2(nx,ny,seed)*Math.PI*4;
+        px+=Math.cos(angle)*5;py+=Math.sin(angle)*5;
+        if(px<0||px>140||py<0||py>140)break;
+      }
+      const d=pts.map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+      o+=`<path d="${d}" fill="none" stroke="${gravel(.55)}" stroke-width="2.5" stroke-linecap="round"/>`;
+    }
+    o+=`<rect x="2" y="2" width="136" height="136" fill="none" stroke="${hedge(.4)}" stroke-width="1.5" rx="1"/>`;
+    o+=`<ellipse cx="70" cy="70" rx="11" ry="11" fill="${water(.4)}" stroke="${water(.7)}" stroke-width="1"><animate attributeName="rx" values="9;13;9" dur="2.8s" repeatCount="indefinite"/><animate attributeName="ry" values="9;13;9" dur="2.8s" repeatCount="indefinite"/></ellipse>`;
+    o+=ripple(70,70,0);
+    return o;
+  };
+
+  // hashNoise_mosaic
+  GEN_PARAMETRIC.hashNoise_mosaic = (s) => {
+    const nCells=s.nCells||18, seed=s.seed||0;
+    const centers=Array.from({length:nCells},(_,i)=>({x:10+M.hn(seed+i,0)*120,y:10+M.hn(seed+i,1)*120,v:M.hn(seed+i,2),v2:M.hn(seed+i,3)}));
+    let o='';
+    o+=`<rect x="0" y="0" width="140" height="140" fill="${p1(.04)}" stroke="none"/>`;
+    centers.forEach(c=>{
+      const fill=c.v>0.75?water(.3):c.v>0.5?lawn(.3):c.v>0.25?gravel(.3):bldg(.25);
+      const stroke2=c.v>0.5?hedge(.45):p1(.45);
+      const r=Math.sqrt(14400/nCells)*0.45;
+      o+=`<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="${r.toFixed(1)}" fill="${fill}" stroke="${stroke2}" stroke-width=".7"/>`;
+      if(c.v2>0.7) o+=`<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3" fill="${tree(.65)}" stroke="${hedge(.5)}" stroke-width=".6"/>`;
+      else if(c.v2>0.4) o+=`<rect x="${(c.x-4).toFixed(1)}" y="${(c.y-4).toFixed(1)}" width="8" height="8" fill="${bldg(.5)}" stroke="${gold(.4)}" stroke-width=".5" rx=".5"/>`;
+      else o+=`<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="2" fill="${folie(.5)}"/>`;
+    });
+    [35,70,105].forEach(pos=>{o+=axisLine(pos,0,pos,140,.2);o+=axisLine(0,pos,140,pos,.2);});
+    o+=`<circle cx="70" cy="70" r="55" fill="none" stroke="${p2(.15)}" stroke-width=".7" stroke-dasharray="6,4"><animateTransform attributeName="transform" type="rotate" from="0 70 70" to="360 70 70" dur="12s" repeatCount="indefinite"/></circle>
+    <circle cx="70" cy="70" r="35" fill="none" stroke="${p1(.12)}" stroke-width=".5" stroke-dasharray="4,5"><animateTransform attributeName="transform" type="rotate" from="360 70 70" to="0 70 70" dur="8s" repeatCount="indefinite"/></circle>`;
+    return o;
+  };
+
+  // perlin_drift
+  GEN_PARAMETRIC.perlin_drift = (s) => {
+    const nP=s.nParticles||24, seed=s.seed||0, speed=s.speed||3;
+    let o='';
+    o+=`<rect x="0" y="0" width="140" height="140" fill="${p2(.03)}" stroke="none"/>`;
+    for(let pi=0;pi<nP;pi++){
+      let px=M.hash1((pi+seed)*7)*130+5,py=M.hash1((pi+seed)*11)*130+5;
+      const pts=[{x:px,y:py}];
+      for(let step=0;step<18;step++){
+        const nx=px/50,ny=py/50;
+        const vx=M.perlinNoise2D(nx,ny,pi+seed)*speed-speed/2;
+        const vy=M.perlinNoise2D(nx+10,ny+10,pi+seed+50)*speed-speed/2;
+        px+=vx*3;py+=vy*3;
+        if(px<0||px>140||py<0||py>140)break;
+        pts.push({x:px,y:py});
+      }
+      const d=pts.map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+      const t=pi/nP;
+      const col=`hsla(${280+t*120},70%,65%,${0.5+t*0.2})`;
+      o+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="${.8+t*.4}" stroke-linecap="round"/>`;
+      if(pts.length>2){
+        const last=pts[pts.length-1],type=pi%3;
+        if(type===0) o+=`<circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="2.5" fill="${tree(.7)}" stroke="${hedge(.5)}" stroke-width=".5"/>`;
+        else if(type===1) o+=`<circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="2" fill="${water(.7)}"/>`;
+        else o+=`<circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="1.8" fill="${folie(.6)}"/>`;
+      }
+    }
+    o+=`<rect x="2" y="2" width="136" height="136" fill="none" stroke="${hedge(.35)}" stroke-width="1.2" rx="1"><animate attributeName="stroke-width" values="1;2;1" dur="3.5s" repeatCount="indefinite"/><animate attributeName="opacity" values=".4;.8;.4" dur="3.5s" repeatCount="indefinite"/></rect>`;
+    o+=axisLine(70,0,70,140,.35);
+    return o;
+  };
+
+  // noise_hedges
+  GEN_PARAMETRIC.noise_hedges = (s) => {
+    const thresholds=s.thresholds||[0.38,0.48,0.56,0.64], seed=s.seed||0;
+    let o='';
+    o+=`<rect x="0" y="0" width="140" height="140" fill="${lawn(.08)}" stroke="none"/>`;
+    const cols=[hedge(.5),hedge(.6),hedge(.7),hedge(.85)];
+    const RES=28;
+    thresholds.forEach((th,ti)=>{
+      const segs=[];
+      for(let iy=0;iy<RES;iy++) for(let ix=0;ix<RES;ix++){
+        const x0=(ix/RES)*4+seed*0.1,y0=(iy/RES)*4;
+        const x1=((ix+1)/RES)*4+seed*0.1,y1=y0;
+        const v00=M.fbm2(x0,y0,ti+seed),v10=M.fbm2(x1,y0,ti+seed),v01=M.fbm2(x0,(iy+1)/RES*4,ti+seed);
+        const px=ix*140/RES,py=iy*140/RES,pw=140/RES;
+        if((v00<th)!==(v10<th)){const t=(th-v00)/(v10-v00);segs.push({x1:px+t*pw,y1:py,x2:px+t*pw,y2:py+pw});}
+        if((v00<th)!==(v01<th)){const t=(th-v00)/(v01-v00);segs.push({x1:px,y1:py+t*pw,x2:px+pw,y2:py+t*pw});}
+      }
+      segs.forEach(sg=>o+=`<line x1="${sg.x1.toFixed(1)}" y1="${sg.y1.toFixed(1)}" x2="${sg.x2.toFixed(1)}" y2="${sg.y2.toFixed(1)}" stroke="${cols[ti]}" stroke-width="${.6+ti*.3}" stroke-linecap="round"/>`);
+    });
+    for(let i=0;i<15;i++){
+      const tx=8+M.hash1(i*3+seed)*124,ty=8+M.hash1(i*5+seed)*124;
+      if(M.fbm2(tx/50+seed*0.1,ty/50,0)>0.5) o+=`<circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="3.5" fill="${tree(.6)}" stroke="${hedge(.5)}" stroke-width=".6"/>`;
+    }
+    o+=`<ellipse cx="70" cy="70" rx="10" ry="10" fill="${water(.35)}" stroke="${water(.6)}" stroke-width="1"><animate attributeName="rx" values="8;12;8" dur="3s" repeatCount="indefinite"/><animate attributeName="ry" values="8;12;8" dur="3s" repeatCount="indefinite"/></ellipse>`;
+    o+=ripple(70,70,0);
+    return o;
+  };
+
+  // lanceo_phyllum
+  GEN_PARAMETRIC.lanceo_phyllum = (s) => {
+    const N=s.N||21, p=s.p||0.5, q=s.q||0.2, mode=s.mode||'golden';
+    let o='';
+    o+=`<ellipse cx="70" cy="70" rx="65" ry="65" fill="${water(.25)}" stroke="${water(.5)}" stroke-width="1"/>`;
+    [12,24,36,48,60].forEach((r,i)=>o+=`<ellipse cx="70" cy="70" rx="${r}" ry="${r}" fill="none" stroke="${water(.2+i*0.04)}" stroke-width=".5"/>`);
+    for(let i=0;i<N;i++){
+      const ax=M.insertionAngle(i,mode);
+      const r=8+i*2.8;
+      if(r>62)break;
+      const cx2=70+Math.cos(ax)*r,cy2=70+Math.sin(ax)*r;
+      const t=i/N;
+      const size=6+M.lanceolatEnv(t,p,q)*18;
+      const col=`hsla(${100+i*8},65%,50%,${0.6-t*0.2})`;
+      const gap=Math.PI*0.18;
+      const pts=Array.from({length:20},(_,k)=>{
+        const a=ax+gap+(k/19)*(Math.PI*2-gap*2);
+        return {x:cx2+Math.cos(a)*size,y:cy2+Math.sin(a)*size*(0.55+M.lanceolatEnv(k/19,p,q)*0.3)};
+      });
+      const d=pts.map((p2,pi)=>(pi===0?'M':'L')+`${p2.x.toFixed(1)},${p2.y.toFixed(1)}`).join(' ')+'Z';
+      o+=`<path d="${d}" fill="${col}" stroke="${tree(.5)}" stroke-width=".6"/>`;
+      if(i%3===0) o+=`<circle cx="${cx2.toFixed(1)}" cy="${cy2.toFixed(1)}" r="1.8" fill="${folie(.7)}"/>`;
+    }
+    o+=`<circle cx="70" cy="70" r="5" fill="${folie(.8)}" stroke="${folie()}" stroke-width="1.5"><animate attributeName="r" values="4;7;4" dur="2.5s" repeatCount="indefinite"/></circle>
+    <circle cx="70" cy="70" r="15" fill="none" stroke="${folie(.2)}" stroke-width=".7" stroke-dasharray="4,3"><animateTransform attributeName="transform" type="rotate" from="0 70 70" to="360 70 70" dur="8s" repeatCount="indefinite"/></circle>`;
+    o+=ripple(70,70,0);o+=ripple(70,70,1.4);
+    return o;
+  };
+
+  // logistic_forest
+  GEN_PARAMETRIC.logistic_forest = (s) => {
+    const nTrees=s.nTrees||9, seed=s.seed||0;
+    let o='';
+    o+=`<rect x="0" y="0" width="140" height="140" fill="${lawn(.1)}" stroke="none"/>`;
+    o+=`<rect x="0" y="100" width="140" height="40" fill="${lawn(.2)}" stroke="${hedge(.3)}" stroke-width=".5"/>`;
+    for(let i=0;i<nTrees;i++){
+      const tx=8+i*(124/Math.max(nTrees-1,1));
+      const r=M.hash1((i+1+seed)*3);
+      const K=20+r*18;
+      const rate=0.4+M.hash1((i+1+seed)*7)*0.6;
+      const age=0.3+M.hash1((i+1+seed)*11)*0.7;
+      const sz=M.logisticGrowth(age,K,rate,1);
+      const ty=100-sz*0.5;
+      const hue=90+i*12;
+      const col=`hsla(${hue},65%,50%,0.6)`;
+      o+=`<line x1="${tx.toFixed(1)}" y1="100" x2="${tx.toFixed(1)}" y2="${ty.toFixed(1)}" stroke="${bldg(.7)}" stroke-width="${(sz/14).toFixed(1)}" stroke-linecap="round"/>`;
+      for(let ring=1;ring<=3;ring++){
+        const ringAge=age*ring/3;
+        const ringR=M.logisticGrowth(ringAge,sz,rate,1)*0.4;
+        o+=`<ellipse cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" rx="${ringR.toFixed(1)}" ry="${(ringR*0.7).toFixed(1)}" fill="none" stroke="${col}" stroke-width=".5" opacity="${ring*0.25+0.15}"/>`;
+      }
+      const dur=(2+i*0.3).toFixed(1),del=(i*0.25).toFixed(1);
+      o+=`<circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="${sz.toFixed(1)}" fill="${col}" stroke="${tree(.5)}" stroke-width=".8"><animate attributeName="r" values="${sz.toFixed(1)};${(sz*1.12).toFixed(1)};${sz.toFixed(1)}" dur="${dur}s" begin="${del}s" repeatCount="indefinite"/><animate attributeName="opacity" values=".75;1;.75" dur="${dur}s" begin="${del}s" repeatCount="indefinite"/></circle>`;
+    }
+    o+=axisLine(0,100,140,100,.4);
+    o+=`<rect x="${70-8}" y="68" width="16" height="32" fill="${bldg(.55)}" stroke="${gold(.5)}" stroke-width=".8" rx="1"/>`;
+    o+=`<ellipse cx="70" cy="115" rx="16" ry="8" fill="${water(.4)}" stroke="${water(.6)}" stroke-width=".8"><animate attributeName="ry" values="6;10;6" dur="3s" repeatCount="indefinite"/></ellipse>`;
+    o+=ripple(70,115,0);
+    return o;
+  };
+
+  // beer_canopy
+  GEN_PARAMETRIC.beer_canopy = (s) => {
+    const k=s.k||0.6, nLayers=s.nLayers||6, LAImax=s.LAImax||4.0;
+    let o='';
+    o+=`<rect x="0" y="0" width="140" height="140" fill="${lawn(.06)}" stroke="none"/>`;
+    for(let li=0;li<nLayers;li++){
+      const z=li/(nLayers-1||1);
+      const LAI=LAImax*z;
+      const I=M.beerLambert(z,1.0,k,LAI);
+      const alpha=M.clamp(1-I,0.05,0.7);
+      const y=6+li*(128/Math.max(nLayers-1,1));
+      const r=62-li*2.5;
+      const col=`rgba(20,180,80,${(alpha*0.6).toFixed(2)})`;
+      o+=`<ellipse cx="70" cy="${y+10}" rx="${r}" ry="${12-li}" fill="${col}" stroke="${hedge(.3+li*0.08)}" stroke-width=".6"/>`;
+      const N_t=Math.round(8-li*(6/Math.max(nLayers-1,1)));
+      for(let t=0;t<N_t;t++){
+        const tx=70+(t-(N_t-1)/2)*13;
+        const tr=4-li*0.4;
+        o+=`<circle cx="${tx.toFixed(1)}" cy="${y.toFixed(1)}" r="${Math.max(1,tr).toFixed(1)}" fill="hsla(${100+li*10},60%,45%,0.65)" stroke="${hedge(.5)}" stroke-width=".5"/>`;
+      }
+      o+=`<text x="4" y="${y+10}" font-family="monospace" font-size="7" fill="${gold(.4)}" font-style="italic">I=${I.toFixed(2)}</text>`;
+    }
+    o+=`<rect x="0" y="130" width="140" height="10" fill="${lawn(.25)}" stroke="${hedge(.35)}" stroke-width=".5"/>`;
+    o+=`<ellipse cx="70" cy="135" rx="20" ry="4" fill="${water(.4)}" stroke="${water(.6)}" stroke-width=".7"/>`;
+    o+=`<line x1="70" y1="0" x2="70" y2="140" stroke="${gold(.3)}" stroke-width=".7" stroke-dasharray="5,3"><animate attributeName="opacity" values=".2;.6;.2" dur="3s" repeatCount="indefinite"/></line>
+    <line x1="0" y1="0" x2="140" y2="0" stroke="${p3(.3)}" stroke-width="1.5"><animate attributeName="y1" values="0;140;0" dur="5s" repeatCount="indefinite"/><animate attributeName="y2" values="0;140;0" dur="5s" repeatCount="indefinite"/><animate attributeName="opacity" values=".4;0;.4" dur="5s" repeatCount="indefinite"/></line>`;
+    return o;
+  };
+
+  // leaf_wave
+  GEN_PARAMETRIC.leaf_wave = (s) => {
+    const seed=s.seed||0, amp=s.amplitude||22, nLeaves=s.nLeaves||14;
+    const spineY=70;
+    const spine=[{x:0,y:spineY},{x:35,y:spineY-amp*(0.5+M.hash1(seed)*0.5)},{x:70,y:spineY+amp*(0.3+M.hash1(seed+1)*0.4)},{x:105,y:spineY-amp*(0.4+M.hash1(seed+2)*0.5)},{x:140,y:spineY+amp*(0.2+M.hash1(seed+3)*0.4)}];
+    const spSampled=M.sampleCatmullRom(spine,70);
+    const spd=spSampled.map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+    let o='';
+    o+=`<rect x="0" y="0" width="140" height="140" fill="${p3(.04)}" stroke="none"/>`;
+    o+=`<path d="${spd}" fill="none" stroke="${gravel(.35)}" stroke-width="1.5" stroke-dasharray="6,4" stroke-linecap="round"/>`;
+    const step=Math.max(2,Math.floor(70/nLeaves));
+    spSampled.filter((_,i)=>i%step===2).forEach((p,li)=>{
+      const t=p.x/140;
+      const wMax=M.leafEnvelopeAsymm(0.5,14)*M.sarc(t)*1.2;
+      const lLen=18+M.lanceolatEnv(t)*8;
+      const idx=spSampled.indexOf(p);
+      const pn=spSampled[Math.min(idx+2,spSampled.length-1)];
+      const pp2=spSampled[Math.max(idx-2,0)];
+      const ang=Math.atan2(pn.y-pp2.y,pn.x-pp2.x);
+      const tipX=p.x+Math.cos(ang)*lLen,tipY=p.y+Math.sin(ang)*lLen;
+      const hue=100+li*18;
+      const lPath=leafPath(p.x,p.y,tipX,tipY,wMax);
+      o+=`<path d="${lPath}" fill="hsla(${hue},68%,48%,.65)" stroke="${tree(.5)}" stroke-width=".6"/>`;
+      o+=`<line x1="${p.x.toFixed(1)}" y1="${p.y.toFixed(1)}" x2="${tipX.toFixed(1)}" y2="${tipY.toFixed(1)}" stroke="${tree(.35)}" stroke-width=".4" stroke-dasharray="3,2"/>`;
+    });
+    o+=`<rect x="1" y="1" width="138" height="138" fill="none" stroke="${hedge(.3)}" stroke-width="1.2" rx="1"><animate attributeName="opacity" values=".4;.7;.4" dur="4s" repeatCount="indefinite"/></rect>`;
+    [30,70,110].forEach((wx,wi)=>{
+      o+=`<ellipse cx="${wx}" cy="${spineY+35}" rx="8" ry="5" fill="${water(.3)}" stroke="${water(.5)}" stroke-width=".7"/>`;
+      o+=ripple(wx,spineY+35,wi*0.7);
+    });
+    return o;
+  };
+
+  // flare_roots
+  GEN_PARAMETRIC.flare_roots = (s) => {
+    const nRoots=s.nRoots||12, F=s.F||1.6, k=s.k||7, seed=s.seed||0;
+    let o='';
+    o+=`<ellipse cx="70" cy="70" rx="66" ry="66" fill="${bldg(.1)}" stroke="${bldg(.3)}" stroke-width=".5"/>`;
+    const fibPts=M.fibSphere(42,58);
+    for(let ri=0;ri<nRoots;ri++){
+      const ax=ri*Math.PI*2/nRoots+M.hash1(ri+seed)*0.3;
+      const rootLen=35+M.hash1(ri*3+seed)*18;
+      const N_seg=20;
+      const pts=Array.from({length:N_seg},(_,si)=>{
+        const s2=si/(N_seg-1);
+        const r=M.flareRadius(s2,22,1.5,F,k)*0.85;
+        const wobble=M.hash1(ri*7+si+seed)*0.3-0.15;
+        const a2=ax+wobble*s2*0.8;
+        return {x:70+Math.cos(a2)*rootLen*s2+Math.cos(a2+Math.PI/2)*r*(1-s2),y:70+Math.sin(a2)*rootLen*s2+Math.sin(a2+Math.PI/2)*r*(1-s2)};
+      });
+      const d=pts.map((p,i)=>(i===0?'M':'L')+`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+      const col=`hsla(${20+ri*15},60%,45%,${0.55-ri*0.015})`;
+      o+=`<path d="${d}" fill="${col}" stroke="${bldg(.6)}" stroke-width=".5"/>`;
+    }
+    fibPts.forEach((fp,fi)=>{
+      const x=70+fp.x*0.9,y=70+fp.y*0.4+fp.z*0.7;
+      if(fi%4===0) o+=`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.5" fill="${tree(.5)}" stroke="${hedge(.4)}" stroke-width=".4"/>`;
+    });
+    o+=`<circle cx="70" cy="70" r="9" fill="${bldg(.6)}" stroke="${gold(.7)}" stroke-width="1.2"/>
+    <circle cx="70" cy="70" r="22" fill="none" stroke="${gold(.18)}" stroke-width=".8" stroke-dasharray="5,3"><animateTransform attributeName="transform" type="rotate" from="0 70 70" to="360 70 70" dur="6s" repeatCount="indefinite"/></circle>
+    <circle cx="70" cy="70" r="38" fill="none" stroke="${p1(.12)}" stroke-width=".6" stroke-dasharray="3,5"><animateTransform attributeName="transform" type="rotate" from="360 70 70" to="0 70 70" dur="11s" repeatCount="indefinite"/></circle>
+    <circle cx="70" cy="70" r="4" fill="${folie(.8)}" stroke="${folie()}" stroke-width="1.2"><animate attributeName="r" values="3;6;3" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" values=".7;1;.7" dur="2s" repeatCount="indefinite"/></circle>`;
+    o+=ripple(70,70,0,p1(.5));o+=ripple(70,70,1,gold(.4));
+    return o;
+  };
+
+})();
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function mkRng(seed){
+  let s=(seed||Math.random()*99999)|0;
+  return function(a,b){s=((s*1664525+1013904223)&0xffffffff)>>>0;const v=s/4294967296;return a===undefined?v:a+Math.floor(v*(b-a+1));};
+}
+
+function renderCard(card,sectionCls){
+  const rawSVG=card.gen();
+  const svgContent=animSVG(card.type,rawSVG);
+  return `<div class="card" data-type="${card.type}">
+    <span class="badge">${card.badge}</span>
+    <div class="svg-wrap">
+      <svg viewBox="0 0 140 140" width="140" height="140" xmlns="http://www.w3.org/2000/svg"
+           style="filter:drop-shadow(0 0 12px rgba(80,40,200,.15))">
+        ${svgContent}
+      </svg>
+    </div>
+    <span class="name">${card.name}</span>
+    <span class="eq">${card.eq}</span>
+    <span class="desc">${card.desc}</span>
+    <span class="theory">${card.theory}</span>
+    <button class="rand-btn" title="Régénérer" onclick="regenCard(this)">↻</button>
+  </div>`;
+}
+
+function renderSection(sec){
+  const cards=sec.cards.map(c=>renderCard(c,sec.cls)).join('');
+  return `
+<div class="div"></div>
+<section class="section ${sec.cls}">
+  <div class="section-hd">
+    <span class="num">${sec.num}</span>
+    <h2>${sec.title}</h2>
+    <p class="sdesc">${sec.desc}</p>
+  </div>
+  <div class="grid">${cards}</div>
+</section>`;
+}
+
+document.getElementById('root').innerHTML=SECTIONS.map(renderSection).join('');
+
+// ─── Regen (↻) ───────────────────────────────────────────────────────────────
+// Map type → gen function
+const GEN_MAP={};
+SECTIONS.forEach(sec=>sec.cards.forEach(c=>{GEN_MAP[c.type]=c.gen;}));
+
+
+window.regenCard=function(btn){
+  const card=btn.closest('.card');
+  const type=card.dataset.type;
+  const svg=card.querySelector('svg');
+  if(!svg)return;
+
+  // Get current state, init if needed
+  const cfg=REGEN_CONFIG[type];
+  let state=getState(card);
+  if(!state||Object.keys(state).length===0) state=cfg?cfg.init():{};
+
+  // Mutate state using type-specific logic
+  if(cfg&&cfg.mutate) state=cfg.mutate(state);
+  setState(card,state);
+
+  // Use parametric generator if available, else fall back to gen map
+  const genP=GEN_PARAMETRIC[type];
+  const genBase=GEN_MAP[type];
+  const rawSVG=genP?genP(state):(genBase?genBase():'');
+  svg.innerHTML=animSVG(type,rawSVG);
+
+  // Show mutated param in eq field
+  const eq=card.querySelector('.eq');
+  if(eq&&cfg){
+    const vals=Object.entries(state).map(([k,v])=>{
+      if(Array.isArray(v)) return `${k}=[${v.map(x=>x.toFixed?x.toFixed(2):x).join(',')}]`;
+      return `${k}=${typeof v==='number'&&v%1!==0?v.toFixed(2):v}`;
+    }).join(' · ');
+    eq.textContent=vals.substring(0,60)+(vals.length>60?'…':'');
+  }
+
+  // Animate button
+  btn.style.transform='rotate(360deg)';btn.style.transition='transform .4s ease';
+  setTimeout(()=>{btn.style.transform='';btn.style.transition='';},400);
+};
+
+
+</script>
+</body>
+</html>

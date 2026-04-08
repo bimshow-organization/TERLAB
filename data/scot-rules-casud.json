@@ -1,0 +1,147 @@
+{
+  "version": "2026-04",
+  "scot": "SCoT Grand Sud",
+  "interco": "CASUD",
+  "interco_nom": "Communauté d'Agglomération du Sud",
+  "scot_perimetre": "CIVIS + CASUD (SMEP Grand Sud — 10 communes)",
+  "approbation": "2020-02-18",
+  "modification_simplifiee_1": "2023",
+  "horizon": "2035",
+  "source_doo": "https://smepgrandsud.re/wp-content/uploads/2020/03/06_SCoT-DOO-03-02-2020-FINAL.pdf",
+  "source_smep": "https://smepgrandsud.re/documentation/",
+  "communes": ["Le Tampon", "Saint-Joseph", "Saint-Philippe", "Entre-Deux"],
+  "communes_insee": ["97422", "97412", "97417", "97403"],
+
+  "armature_urbaine": {
+    "description": "Hiérarchie des polarités urbaines — DOO Orientation prescriptive B.1 (communes CASUD uniquement)",
+    "note": "Le pôle principal du Grand Sud (Saint-Pierre) est dans la CIVIS. Le rang le plus élevé CASUD est rang 2.",
+    "niveaux": {
+      "rang_2": {
+        "label": "Pôles secondaires",
+        "places_urbaines": [
+          { "nom": "Le Tampon centre", "commune": "Le Tampon" },
+          { "nom": "Saint-Joseph centre", "commune": "Saint-Joseph" }
+        ],
+        "densite_min_lgts_ha": 50,
+        "note": "Le Tampon forme un bipôle avec Saint-Pierre (CIVIS). Relié par projet TCSP Grand Sud."
+      },
+      "rang_3": {
+        "label": "Villes relais",
+        "places_urbaines": [
+          { "nom": "Plaine-des-Cafres / 19ème KM", "commune": "Le Tampon" }
+        ],
+        "densite_min_lgts_ha": 30,
+        "note": "Plaine-des-Cafres : ville relais en altitude, porte des Hauts."
+      },
+      "rang_4": {
+        "label": "Bourgs de proximité",
+        "places_urbaines": [
+          { "nom": "Entre-Deux centre", "commune": "Entre-Deux" },
+          { "nom": "Saint-Philippe centre", "commune": "Saint-Philippe" },
+          { "nom": "Monvert-les-Hauts", "commune": "Le Tampon" }
+        ],
+        "densite_min_lgts_ha": 20,
+        "extensions_max_ha": {
+          "entre_deux": 5,
+          "saint_philippe": 9,
+          "monvert_les_hauts": 2
+        },
+        "note": "Extensions limitées par commune."
+      },
+      "rang_5": {
+        "label": "Territoires Ruraux Habités (TRH)",
+        "places_urbaines": [],
+        "densite_min_lgts_ha": 10,
+        "extension_max_pct_surface_trh": 3,
+        "note": "Max 3% de la surface TRH existante. Saint-Philippe dispersé."
+      }
+    }
+  },
+
+  "logement": {
+    "description": "Politiques publiques du logement — DOO D.2 (Grand Sud total)",
+    "production_10ans_total_grand_sud": 45000,
+    "production_annuelle_estimee_casud": 1500,
+    "pct_logements_aides_dans_production": 40,
+    "pct_min_en_eud": 50,
+    "extensions_economiques_ha": {
+      "le_tampon": 9,
+      "saint_joseph": 8,
+      "entre_deux": 5,
+      "saint_philippe": 5
+    },
+    "orientations": [
+      "40% minimum de logements aidés dans la production neuve",
+      "50% minimum des logements neufs dans les EUD",
+      "Décohabitation jeunes, mixité sociale, habitat intermédiaire",
+      "Réhabilitation du parc dégradé"
+    ]
+  },
+
+  "densite": {
+    "description": "Densités d'aménagement minimales — DOO B.1",
+    "note": "Moyennes à l'échelle de la polarité urbaine. Pas de rang 1 pour CASUD (pôle principal = Saint-Pierre, CIVIS).",
+    "regles": [
+      { "rang": [2], "densite_min_lgts_ha": 50, "label": "Pôles secondaires (Le Tampon, Saint-Joseph)" },
+      { "rang": [3], "densite_min_lgts_ha": 30, "label": "Villes relais (Plaine-des-Cafres)" },
+      { "rang": [4], "densite_min_lgts_ha": 20, "label": "Bourgs de proximité" },
+      { "rang": [5], "densite_min_lgts_ha": 10, "label": "TRH" }
+    ],
+    "zatt_500m": {
+      "description": "Zone dans rayon 500m d'un arrêt RRTG/TCSP — DOO B.8",
+      "densite_min_tous_rangs": 50,
+      "stationnement_abattement_possible": true
+    }
+  },
+
+  "environnement": {
+    "continuite_ecologique": {
+      "description": "Trame verte, bleue et noire — DOO A.5",
+      "espaces_continuite_ecologique": true,
+      "construction_interdite_sauf_exceptions": true,
+      "trame_noire_ciel_nocturne": true,
+      "especes_envahissantes_proscrites": true,
+      "palettes_vegetales": "DAUPI/CBNM 2019 — espèces indigènes/endémiques"
+    },
+    "risques": {
+      "description": "Prévention risques naturels — DOO A.12a",
+      "inondation_alea_fort_exclu": true,
+      "mouvements_terrain_alea_faible_seul": true,
+      "feux_de_foret_hors_secteurs_importants": true,
+      "impermeabilisation_minimisee": true,
+      "infiltration_a_la_source": true
+    },
+    "eau": {
+      "description": "Protection ressource eau — DOO A.6-A.8",
+      "perimetres_protection_captages": true,
+      "gestion_ep_parcelle": true,
+      "pleine_terre_part_minimale": true,
+      "assainissement_poles": "collectif obligatoire",
+      "assainissement_trh": "autonome conforme si raccordement impossible"
+    }
+  },
+
+  "transports": {
+    "description": "Cohérence urbanisation/transports — DOO B.5-B.10",
+    "rrtg": {
+      "trace": "Littoral → Pierrefonds → Saint-Joseph",
+      "competence": "Région"
+    },
+    "tcsp_grand_sud": {
+      "trace": "Saint-Pierre → La Rivière/Bois-de-Nèfles-Cocos → Le Tampon",
+      "competence": "CIVIS/CASUD",
+      "note": "Structurant le bipôle Saint-Pierre/Le Tampon"
+    },
+    "rn3": {
+      "amelioration": true,
+      "deviation_le_tampon": true,
+      "securisation_acces_cilaos": true
+    },
+    "barreaux_liaison": "Saint-Joseph ↔ Le Tampon ↔ L'Étang-Salé ↔ Saint-Pierre",
+    "poles_echange_500m_densite_50": true,
+    "modes_actifs": {
+      "velo_voies_dediees": true,
+      "securite_pmr_pietons": true
+    }
+  }
+}

@@ -1,0 +1,135 @@
+{
+  "version": "2026-04",
+  "scot": "SCoT Est (en élaboration)",
+  "interco": "CIREST",
+  "interco_nom": "Communauté Intercommunale Réunion Est",
+  "statut": "en_elaboration",
+  "approbation": null,
+  "historique": "SCoT initial 2004, abrogé le 2018-12-13. Nouvelle révision prescrite 2022-03-31.",
+  "revision_prescrite": "2022-03-31",
+  "padd_debat": "2025-12-11",
+  "consultation_publique": "2026-02-15 au 2026-06-15",
+  "source_consultation": "https://www.cirest.fr/schema-de-coherence-territorial-scot-est/",
+  "source_deal": "https://www.reunion.developpement-durable.gouv.fr/etat-d-avancement-des-scot-a-la-reunion-a244.html",
+  "communes": ["Saint-André", "Bras-Panon", "Saint-Benoît", "Sainte-Rose", "Salazie", "La Plaine-des-Palmistes"],
+  "communes_insee": ["97409", "97402", "97410", "97419", "97421", "97406"],
+  "horizon": "2047",
+
+  "note_importante": "Aucun SCoT approuvé en vigueur. Le SAR 2011 est le seul document supra-communal opposable. Les densités ci-dessous sont des prescriptions SAR, pas des orientations SCoT.",
+
+  "armature_urbaine": {
+    "description": "Armature projetée basée sur le SAR 2011 et le projet TCSP Esti+ (non validée par un DOO)",
+    "source": "SAR 2011 + PLH CIREST 2019-2024",
+    "niveaux": {
+      "rang_1": {
+        "label": "Pôle principal",
+        "places_urbaines": [
+          { "nom": "Saint-Benoît centre", "commune": "Saint-Benoît" }
+        ],
+        "densite_min_lgts_ha": 50,
+        "note": "Siège de la CIREST. Pôle principal SAR."
+      },
+      "rang_2": {
+        "label": "Pôle secondaire",
+        "places_urbaines": [
+          { "nom": "Saint-André centre", "commune": "Saint-André" }
+        ],
+        "densite_min_lgts_ha": 50,
+        "note": "Commune la plus peuplée de la CIREST."
+      },
+      "rang_3": {
+        "label": "Ville relais",
+        "places_urbaines": [
+          { "nom": "Bras-Panon centre", "commune": "Bras-Panon" }
+        ],
+        "densite_min_lgts_ha": 30,
+        "note": "Sur le tracé TCSP Esti+."
+      },
+      "rang_4": {
+        "label": "Bourgs",
+        "places_urbaines": [
+          { "nom": "Plaine-des-Palmistes centre", "commune": "La Plaine-des-Palmistes" },
+          { "nom": "Sainte-Rose centre", "commune": "Sainte-Rose" },
+          { "nom": "Hell-Bourg", "commune": "Salazie" }
+        ],
+        "densite_min_lgts_ha": 20,
+        "note": "Communes rurales ou de montagne."
+      },
+      "rang_5": {
+        "label": "Villages / TRH",
+        "places_urbaines": [],
+        "densite_min_lgts_ha": 10,
+        "note": "Hameaux dispersés, non significatif en développement résidentiel."
+      }
+    }
+  },
+
+  "logement": {
+    "description": "Objectifs PLH CIREST 2019-2024 (en l'absence de SCoT)",
+    "source": "PLH CIREST",
+    "production_annuelle_objectif": 800,
+    "besoin_estime_annuel": 1030,
+    "logements_sociaux_stock": 11600,
+    "pct_logements_aides_dans_production": null,
+    "orientations": [
+      "Production estimée ~800 logements/an (objectif PLH)",
+      "Besoin réel ~1030 logements/an pour couvrir croissance démographique",
+      "Parc social concentré à Saint-Benoît et Saint-André"
+    ]
+  },
+
+  "densite": {
+    "description": "Densités SAR 2011 (seul document opposable)",
+    "note": "Prescriptions SAR île, pas de DOO spécifique CIREST. Densités 10-50 lgts/ha selon niveau d'armature.",
+    "regles": [
+      { "rang": [1, 2], "densite_min_lgts_ha": 50, "label": "Pôles principaux et secondaires (SAR)" },
+      { "rang": [3], "densite_min_lgts_ha": 30, "label": "Villes relais (SAR)" },
+      { "rang": [4], "densite_min_lgts_ha": 20, "label": "Bourgs (SAR)" },
+      { "rang": [5], "densite_min_lgts_ha": 10, "label": "TRH (SAR)" }
+    ],
+    "zatt_500m": {
+      "description": "Zone dans rayon 500m d'un arrêt TCSP — prescription SAR",
+      "densite_min": 50,
+      "applicable_si_tcsp_esti_plus": true
+    }
+  },
+
+  "environnement": {
+    "continuite_ecologique": {
+      "description": "Enjeux écologiques majeurs du territoire Est",
+      "parc_national": true,
+      "piton_fournaise": true,
+      "cirque_salazie": true,
+      "ravines_corridors": true
+    },
+    "risques": {
+      "description": "Risques naturels spécifiques Est",
+      "volcanisme_sainte_rose": true,
+      "cyclones_cote_au_vent": true,
+      "inondation_ravines_saint_andre_saint_benoit": true,
+      "pluviometrie_superieure_2000mm_an": true,
+      "impermeabilisation_minimisee": true,
+      "infiltration_a_la_source": true
+    }
+  },
+
+  "transports": {
+    "description": "Projet TCSP Esti+ (DUP 2018)",
+    "tcsp_esti_plus": {
+      "trace": "Saint-André → Bras-Panon → Saint-Benoît",
+      "longueur_km": 21,
+      "stations": "35 à 40",
+      "budget_millions_eur": 105,
+      "dup_arrete": "2018-09-17"
+    },
+    "note": "Pas de desserte TC pour Salazie, Sainte-Rose et La Plaine-des-Palmistes (communes enclavées)."
+  },
+
+  "enjeux_scot_2047": [
+    "Accueillir 34 000 habitants supplémentaires d'ici 2047",
+    "Structurer le tourisme côte et Hauts",
+    "Diversifier les zones économiques",
+    "Intégrer la résilience climatique",
+    "Renforcer la desserte TC (TCSP Esti+)"
+  ]
+}

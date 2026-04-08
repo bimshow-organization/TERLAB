@@ -1,0 +1,151 @@
+{
+  "version": "2026-04",
+  "scot": "SCoT Grand Sud",
+  "interco": "CIVIS",
+  "interco_nom": "Communauté Intercommunale des Villes Solidaires",
+  "scot_perimetre": "CIVIS + CASUD (SMEP Grand Sud — 10 communes)",
+  "approbation": "2020-02-18",
+  "modification_simplifiee_1": "2023",
+  "horizon": "2035",
+  "source_doo": "https://smepgrandsud.re/wp-content/uploads/2020/03/06_SCoT-DOO-03-02-2020-FINAL.pdf",
+  "source_smep": "https://smepgrandsud.re/documentation/",
+  "communes": ["Saint-Pierre", "Saint-Louis", "L'Étang-Salé", "Petite-Île", "Cilaos", "Les Avirons"],
+  "communes_insee": ["97416", "97414", "97404", "97405", "97424", "97401"],
+
+  "armature_urbaine": {
+    "description": "Hiérarchie des polarités urbaines — DOO Orientation prescriptive B.1 (communes CIVIS uniquement)",
+    "niveaux": {
+      "rang_1": {
+        "label": "Pôle principal",
+        "places_urbaines": [
+          { "nom": "Saint-Pierre centre", "commune": "Saint-Pierre" }
+        ],
+        "densite_min_lgts_ha": 50,
+        "pct_logements_neufs": { "min": 50 },
+        "note": "Seul pôle principal du Grand Sud. Bipôle avec Le Tampon (CASUD)."
+      },
+      "rang_2": {
+        "label": "Pôles secondaires",
+        "places_urbaines": [
+          { "nom": "Saint-Louis centre", "commune": "Saint-Louis" }
+        ],
+        "densite_min_lgts_ha": 50,
+        "note": "Au moins 50% des projets résidentiels en EUD."
+      },
+      "rang_3": {
+        "label": "Villes relais",
+        "places_urbaines": [
+          { "nom": "Étang-Salé-les-Hauts", "commune": "L'Étang-Salé" },
+          { "nom": "Rivière-Saint-Louis / Bois-de-Nèfles-Coco", "commune": "Saint-Louis" },
+          { "nom": "Ravine-des-Cabris", "commune": "Saint-Pierre" },
+          { "nom": "Grands Bois", "commune": "Saint-Pierre" },
+          { "nom": "Les Avirons centre", "commune": "Les Avirons" }
+        ],
+        "densite_min_lgts_ha": 30,
+        "note": "Densité moyenne à l'échelle de la polarité, pas par opération."
+      },
+      "rang_4": {
+        "label": "Bourgs de proximité",
+        "places_urbaines": [
+          { "nom": "Cilaos centre", "commune": "Cilaos" },
+          { "nom": "Petite-Île centre", "commune": "Petite-Île" }
+        ],
+        "densite_min_lgts_ha": 20,
+        "note": "Extensions limitées. Cilaos : 2 ha max, Petite-Île en continuité urbaine."
+      },
+      "rang_5": {
+        "label": "Territoires Ruraux Habités (TRH)",
+        "places_urbaines": [],
+        "densite_min_lgts_ha": 10,
+        "extension_max_pct_surface_trh": 3,
+        "note": "Max 3% de la surface TRH existante en extension."
+      }
+    }
+  },
+
+  "logement": {
+    "description": "Politiques publiques du logement — DOO D.2 (Grand Sud total)",
+    "production_10ans_total_grand_sud": 45000,
+    "production_annuelle_estimee_civis": 1700,
+    "pct_logements_aides_dans_production": 40,
+    "pct_min_en_eud": 50,
+    "extensions_max_ha": {
+      "saint_pierre_poles": 60,
+      "les_avirons": 7,
+      "cilaos": 2
+    },
+    "orientations": [
+      "40% minimum de logements aidés dans la production neuve",
+      "50% minimum des logements neufs dans les EUD",
+      "Décohabitation jeunes, mixité sociale, habitat intermédiaire",
+      "Réhabilitation du parc dégradé",
+      "Opérateurs privés contribuent au logement social"
+    ]
+  },
+
+  "densite": {
+    "description": "Densités d'aménagement minimales — DOO B.1",
+    "note": "Moyennes à l'échelle de la polarité urbaine. Peuvent inclure 'équivalents-logements' (équipements). Déductibles : parcs publics, espaces publics structurants.",
+    "regles": [
+      { "rang": [1, 2], "densite_min_lgts_ha": 50, "label": "Pôle principal + Pôles secondaires" },
+      { "rang": [3], "densite_min_lgts_ha": 30, "label": "Villes relais" },
+      { "rang": [4], "densite_min_lgts_ha": 20, "label": "Bourgs de proximité" },
+      { "rang": [5], "densite_min_lgts_ha": 10, "label": "TRH" }
+    ],
+    "zatt_500m": {
+      "description": "Zone dans rayon 500m d'un arrêt RRTG/TCSP — DOO B.8",
+      "densite_min_tous_rangs": 50,
+      "stationnement_abattement_possible": true
+    }
+  },
+
+  "environnement": {
+    "continuite_ecologique": {
+      "description": "Trame verte, bleue et noire — DOO A.5",
+      "espaces_continuite_ecologique": true,
+      "construction_interdite_sauf_exceptions": true,
+      "trame_noire_ciel_nocturne": true,
+      "especes_envahissantes_proscrites": true,
+      "palettes_vegetales": "DAUPI/CBNM 2019 — espèces indigènes/endémiques"
+    },
+    "risques": {
+      "description": "Prévention risques naturels — DOO A.12a",
+      "inondation_alea_fort_exclu": true,
+      "mouvements_terrain_alea_faible_seul": true,
+      "recul_trait_cote_alea_fort_exclu": true,
+      "submersion_marine_changement_climatique_2100": true,
+      "impermeabilisation_minimisee": true,
+      "infiltration_a_la_source": true
+    },
+    "eau": {
+      "description": "Protection ressource eau — DOO A.6-A.8",
+      "perimetres_protection_captages": true,
+      "gestion_ep_parcelle": true,
+      "pleine_terre_part_minimale": true,
+      "assainissement_poles": "collectif obligatoire",
+      "assainissement_trh": "autonome conforme si raccordement impossible"
+    }
+  },
+
+  "transports": {
+    "description": "Cohérence urbanisation/transports — DOO B.5-B.10",
+    "rrtg": {
+      "trace": "Littoral Saint-Denis → Pierrefonds → Saint-Joseph",
+      "competence": "Région"
+    },
+    "tcsp_grand_sud": {
+      "trace": "Saint-Pierre → La Rivière/Bois-de-Nèfles-Cocos → Le Tampon",
+      "competence": "CIVIS/CASUD",
+      "note": "Structurant le bipôle Saint-Pierre/Le Tampon"
+    },
+    "poles_echange_500m_densite_50": true,
+    "modes_actifs": {
+      "velo_voies_dediees": true,
+      "securite_pmr_pietons": true
+    },
+    "stationnement": {
+      "parkings_relais": true,
+      "bornes_recharge_electrique": true
+    }
+  }
+}

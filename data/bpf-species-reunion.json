@@ -1,0 +1,530 @@
+{
+  "_meta": {
+    "source": "BIMSHOW Plant Factory — presets.ts + reunion-protected-species.ts",
+    "version": "1.0",
+    "date": "2026-04-08",
+    "note": "Espèces tropicales pertinentes La Réunion — extraction statique BPF DNA"
+  },
+
+  "species": {
+    "palm_coconut": {
+      "sci": "Cocos nucifera", "label": "Cocotier", "family": "Arecaceae",
+      "growthForm": "palm", "crownShape": "palm_crown",
+      "trunkH": 15, "trunkR0": 0.24, "isPalm": true,
+      "frondCount": 14, "frondLen": 4.5, "frondAng": 55,
+      "canopyRadius": 5, "svgSymbol": "palm",
+      "zone": ["littoral"], "cycloneResist": "faible",
+      "status": "ok", "strate": "canopee"
+    },
+    "latania": {
+      "sci": "Latania lontaroides", "label": "Latanier rouge", "family": "Arecaceae",
+      "growthForm": "palm", "crownShape": "palm_crown",
+      "trunkH": 7, "trunkR0": 0.18, "isPalm": true,
+      "frondCount": 10, "frondLen": 2.5, "frondAng": 45,
+      "canopyRadius": 3, "svgSymbol": "palm",
+      "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
+      "status": "protege", "strate": "canopee"
+    },
+    "acanthophoenix_crinita": {
+      "sci": "Acanthophoenix crinita", "label": "Palmiste rouge", "family": "Arecaceae",
+      "growthForm": "palm", "crownShape": "palm_crown",
+      "trunkH": 10, "trunkR0": 0.14, "isPalm": true,
+      "frondCount": 16, "frondLen": 3.0, "frondAng": 50,
+      "canopyRadius": 3.5, "svgSymbol": "palm",
+      "zone": ["mipentes", "hauts"], "cycloneResist": "moyenne",
+      "status": "protege", "strate": "canopee"
+    },
+    "mango": {
+      "sci": "Mangifera indica", "label": "Manguier", "family": "Anacardiaceae",
+      "growthForm": "tree", "crownShape": "spreading",
+      "trunkH": 8, "trunkR0": 0.38, "isPalm": false,
+      "b1Count": 10, "canopyRadius": 6, "svgSymbol": "broadleaf",
+      "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
+      "status": "ok", "strate": "canopee",
+      "note": "Racines taproot — min 5m des fondations"
+    },
+    "casuarina": {
+      "sci": "Casuarina equisetifolia", "label": "Filao", "family": "Casuarinaceae",
+      "growthForm": "tree", "crownShape": "conical",
+      "trunkH": 8, "trunkR0": 0.16, "isPalm": false,
+      "b1Count": 12, "canopyRadius": 3.5, "svgSymbol": "conifer",
+      "zone": ["littoral"], "cycloneResist": "bonne",
+      "status": "invasif_vigilance", "strate": "canopee",
+      "note": "Brise-vent efficace mais invasif — usage contrôlé"
+    },
+    "flamboyant": {
+      "sci": "Delonix regia", "label": "Flamboyant", "family": "Fabaceae",
+      "growthForm": "tree", "crownShape": "umbrella",
+      "trunkH": 11, "trunkR0": 0.264, "isPalm": false,
+      "b1Count": 8, "canopyRadius": 7, "svgSymbol": "broadleaf_flower",
+      "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
+      "status": "ok", "strate": "canopee"
+    },
+    "tamarind": {
+      "sci": "Tamarindus indica", "label": "Tamarinier", "family": "Fabaceae",
+      "growthForm": "tree", "crownShape": "spreading",
+      "trunkH": 12, "trunkR0": 0.32, "isPalm": false,
+      "b1Count": 10, "canopyRadius": 6, "svgSymbol": "broadleaf",
+      "zone": ["littoral", "mipentes"], "cycloneResist": "bonne",
+      "status": "ok", "strate": "canopee"
+    },
+    "acacia_heterophylla": {
+      "sci": "Acacia heterophylla", "label": "Tamarin des hauts", "family": "Fabaceae",
+      "growthForm": "tree", "crownShape": "spreading",
+      "trunkH": 14, "trunkR0": 0.35, "isPalm": false,
+      "b1Count": 10, "canopyRadius": 6, "svgSymbol": "broadleaf",
+      "zone": ["hauts"], "cycloneResist": "bonne",
+      "status": "protege", "strate": "canopee"
+    },
+    "calophyllum_tacamahaca": {
+      "sci": "Calophyllum tacamahaca", "label": "Takamaka", "family": "Calophyllaceae",
+      "growthForm": "tree", "crownShape": "spreading",
+      "trunkH": 18, "trunkR0": 0.45, "isPalm": false,
+      "b1Count": 8, "canopyRadius": 7, "svgSymbol": "broadleaf",
+      "zone": ["littoral", "mipentes"], "cycloneResist": "bonne",
+      "status": "protege", "strate": "canopee"
+    },
+    "calophyllum_inophyllum": {
+      "sci": "Calophyllum inophyllum", "label": "Tamanu", "family": "Calophyllaceae",
+      "growthForm": "tree", "crownShape": "spreading",
+      "trunkH": 14, "trunkR0": 0.35, "isPalm": false,
+      "b1Count": 8, "canopyRadius": 5, "svgSymbol": "broadleaf",
+      "zone": ["littoral"], "cycloneResist": "bonne",
+      "status": "ok", "strate": "canopee"
+    },
+    "pandanus": {
+      "sci": "Pandanus utilis", "label": "Vacoa", "family": "Pandanaceae",
+      "growthForm": "palm", "crownShape": "vase",
+      "trunkH": 5, "trunkR0": 0.25, "isPalm": true,
+      "frondCount": 20, "frondLen": 2.0, "frondAng": 40,
+      "canopyRadius": 3, "svgSymbol": "palm",
+      "zone": ["littoral"], "cycloneResist": "bonne",
+      "status": "ok", "strate": "canopee"
+    },
+    "strelitzia": {
+      "sci": "Strelitzia nicolai", "label": "Oiseau de paradis géant", "family": "Strelitziaceae",
+      "growthForm": "palm", "crownShape": "palm_crown",
+      "trunkH": 4, "trunkR0": 0.25, "isPalm": true,
+      "frondCount": 5, "canopyRadius": 2, "svgSymbol": "tropical_shrub",
+      "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
+      "status": "ok", "strate": "arbustif"
+    },
+    "banana_musa": {
+      "sci": "Musa acuminata", "label": "Bananier", "family": "Musaceae",
+      "growthForm": "palm", "crownShape": "palm_crown",
+      "trunkH": 4, "trunkR0": 0.25, "isPalm": true,
+      "frondCount": 6, "canopyRadius": 2.5, "svgSymbol": "tropical_shrub",
+      "zone": ["littoral", "mipentes"], "cycloneResist": "faible",
+      "status": "ok", "strate": "arbustif"
+    },
+    "plumeria": {
+      "sci": "Plumeria rubra", "label": "Frangipanier", "family": "Apocynaceae",
+      "growthForm": "tree", "crownShape": "vase",
+      "trunkH": 3.5, "trunkR0": 0.25, "isPalm": false,
+      "b1Count": 5, "canopyRadius": 2.5, "svgSymbol": "broadleaf_flower",
+      "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
+      "status": "ok", "strate": "arbustif"
+    },
+    "bougainvillea": {
+      "sci": "Bougainvillea spectabilis", "label": "Bougainvillier", "family": "Nyctaginaceae",
+      "growthForm": "shrub", "crownShape": "spherical",
+      "trunkH": 6, "trunkR0": 0.08, "isPalm": false,
+      "b1Count": 15, "canopyRadius": 2.5, "svgSymbol": "shrub_flower",
+      "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
+      "status": "ok", "strate": "arbustif"
+    },
+    "hibiscus_tiliaceus": {
+      "sci": "Hibiscus tiliaceus", "label": "Bourao", "family": "Malvaceae",
+      "growthForm": "tree", "crownShape": "spreading",
+      "trunkH": 12, "trunkR0": 0.25, "isPalm": false,
+      "b1Count": 8, "canopyRadius": 5, "svgSymbol": "broadleaf_flower",
+      "zone": ["littoral"], "cycloneResist": "bonne",
+      "status": "ok", "strate": "canopee"
+    },
+    "heliconia": {
+      "sci": "Heliconia rostrata", "label": "Héliconia", "family": "Heliconiaceae",
+      "growthForm": "palm", "crownShape": "palm_crown",
+      "trunkH": 3, "trunkR0": 0.15, "isPalm": true,
+      "frondCount": 5, "canopyRadius": 1.5, "svgSymbol": "tropical_shrub",
+      "zone": ["littoral", "mipentes"], "cycloneResist": "faible",
+      "status": "ok", "strate": "arbustif"
+    },
+    "alpinia": {
+      "sci": "Alpinia purpurata", "label": "Alpinia", "family": "Zingiberaceae",
+      "growthForm": "herb", "crownShape": "spherical",
+      "trunkH": 2.5, "trunkR0": 0.06, "isPalm": false,
+      "canopyRadius": 1.0, "svgSymbol": "tropical_shrub",
+      "zone": ["littoral", "mipentes"], "cycloneResist": "faible",
+      "status": "ok", "strate": "couvre_sol"
+    },
+    "bamboo_phyllo": {
+      "sci": "Phyllostachys aurea", "label": "Bambou doré", "family": "Poaceae",
+      "growthForm": "bamboo", "crownShape": "columnar",
+      "trunkH": 6, "trunkR0": 0.072, "isPalm": false,
+      "canopyRadius": 2, "svgSymbol": "bamboo",
+      "zone": ["littoral", "mipentes", "hauts"], "cycloneResist": "bonne",
+      "status": "ok", "strate": "arbustif"
+    },
+    "cryptomeria_japonica": {
+      "sci": "Cryptomeria japonica", "label": "Cryptomeria", "family": "Cupressaceae",
+      "growthForm": "tree", "crownShape": "conical",
+      "trunkH": 22, "trunkR0": 0.4, "isPalm": false,
+      "b1Count": 14, "canopyRadius": 4, "svgSymbol": "conifer",
+      "zone": ["hauts"], "cycloneResist": "bonne",
+      "status": "ok", "strate": "canopee"
+    },
+    "pittosporum": {
+      "sci": "Pittosporum tobira", "label": "Pittosporum", "family": "Pittosporaceae",
+      "growthForm": "shrub", "crownShape": "spherical",
+      "trunkH": 2.5, "trunkR0": 0.08, "isPalm": false,
+      "canopyRadius": 1.5, "svgSymbol": "shrub",
+      "zone": ["mipentes", "hauts"], "cycloneResist": "bonne",
+      "status": "ok", "strate": "arbustif"
+    },
+    "ficus_benjamina": {
+      "sci": "Ficus benjamina", "label": "Figuier pleureur", "family": "Moraceae",
+      "growthForm": "tree", "crownShape": "spherical",
+      "trunkH": 7, "trunkR0": 0.18, "isPalm": false,
+      "b1Count": 10, "canopyRadius": 5, "svgSymbol": "broadleaf",
+      "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
+      "status": "ok", "strate": "canopee"
+    },
+    "terminalia_catappa": {
+      "sci": "Terminalia catappa", "label": "Badamier", "family": "Combretaceae",
+      "growthForm": "tree", "crownShape": "umbrella",
+      "trunkH": 10, "trunkR0": 0.3, "isPalm": false,
+      "b1Count": 6, "canopyRadius": 6, "svgSymbol": "broadleaf",
+      "zone": ["littoral"], "cycloneResist": "moyenne",
+      "status": "ok", "strate": "canopee"
+    },
+    "carica_papaya": {
+      "sci": "Carica papaya", "label": "Papayer", "family": "Caricaceae",
+      "growthForm": "palm", "crownShape": "palm_crown",
+      "trunkH": 4, "trunkR0": 0.1, "isPalm": true,
+      "frondCount": 8, "canopyRadius": 2, "svgSymbol": "palm",
+      "zone": ["littoral", "mipentes"], "cycloneResist": "faible",
+      "status": "ok", "strate": "arbustif"
+    },
+    "persea_americana": {
+      "sci": "Persea americana", "label": "Avocatier", "family": "Lauraceae",
+      "growthForm": "tree", "crownShape": "spherical",
+      "trunkH": 10, "trunkR0": 0.25, "isPalm": false,
+      "b1Count": 8, "canopyRadius": 5, "svgSymbol": "broadleaf",
+      "zone": ["mipentes"], "cycloneResist": "moyenne",
+      "status": "ok", "strate": "canopee"
+    },
+    "psidium_guajava": {
+      "sci": "Psidium guajava", "label": "Goyavier", "family": "Myrtaceae",
+      "growthForm": "tree", "crownShape": "spherical",
+      "trunkH": 4, "trunkR0": 0.14, "isPalm": false,
+      "canopyRadius": 3, "svgSymbol": "broadleaf",
+      "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
+      "status": "invasif", "strate": "arbustif"
+    },
+    "nastus_borbonicus": {
+      "sci": "Nastus borbonicus", "label": "Bambou marron", "family": "Poaceae",
+      "growthForm": "bamboo", "crownShape": "columnar",
+      "trunkH": 8, "trunkR0": 0.25, "isPalm": false,
+      "canopyRadius": 2.5, "svgSymbol": "bamboo",
+      "zone": ["hauts"], "cycloneResist": "bonne",
+      "status": "protege", "strate": "canopee"
+    },
+    "dombeya_acutangula": {
+      "sci": "Dombeya acutangula", "label": "Mahot tantan", "family": "Malvaceae",
+      "growthForm": "tree", "crownShape": "spreading",
+      "trunkH": 10, "trunkR0": 0.22, "isPalm": false,
+      "b1Count": 8, "canopyRadius": 4, "svgSymbol": "broadleaf_flower",
+      "zone": ["mipentes", "hauts"], "cycloneResist": "bonne",
+      "status": "protege", "strate": "canopee"
+    },
+    "cassine_orientalis": {
+      "sci": "Cassine orientalis", "label": "Bois rouge", "family": "Celastraceae",
+      "growthForm": "tree", "crownShape": "spherical",
+      "trunkH": 12, "trunkR0": 0.25, "isPalm": false,
+      "b1Count": 8, "canopyRadius": 4, "svgSymbol": "broadleaf",
+      "zone": ["mipentes", "hauts"], "cycloneResist": "bonne",
+      "status": "protege", "strate": "canopee"
+    },
+    "aphloia_theiformis": {
+      "sci": "Aphloia theiformis", "label": "Fougère marron", "family": "Aphloiaceae",
+      "growthForm": "tree", "crownShape": "spherical",
+      "trunkH": 6, "trunkR0": 0.12, "isPalm": false,
+      "canopyRadius": 2.5, "svgSymbol": "broadleaf",
+      "zone": ["mipentes", "hauts"], "cycloneResist": "moyenne",
+      "status": "protege", "strate": "arbustif"
+    },
+    "ixora_coccinea": {
+      "sci": "Ixora coccinea", "label": "Ixora", "family": "Rubiaceae",
+      "growthForm": "shrub", "crownShape": "spherical",
+      "trunkH": 1.5, "trunkR0": 0.04, "isPalm": false,
+      "canopyRadius": 0.8, "svgSymbol": "shrub_flower",
+      "zone": ["littoral", "mipentes"], "cycloneResist": "faible",
+      "status": "ok", "strate": "couvre_sol"
+    },
+    "vetiver": {
+      "sci": "Chrysopogon zizanioides", "label": "Vétiver", "family": "Poaceae",
+      "growthForm": "grass", "crownShape": "columnar",
+      "trunkH": 1.5, "trunkR0": 0.03, "isPalm": false,
+      "canopyRadius": 0.5, "svgSymbol": "grass",
+      "zone": ["littoral", "mipentes", "hauts"], "cycloneResist": "bonne",
+      "status": "ok", "strate": "couvre_sol",
+      "note": "Anti-érosion — idéal talus et bords ravine"
+    },
+    "canna_indica": {
+      "sci": "Canna indica", "label": "Canna", "family": "Cannaceae",
+      "growthForm": "herb", "crownShape": "spherical",
+      "trunkH": 1.5, "trunkR0": 0.04, "isPalm": false,
+      "canopyRadius": 0.6, "svgSymbol": "shrub_flower",
+      "zone": ["littoral", "mipentes"], "cycloneResist": "faible",
+      "status": "ok", "strate": "couvre_sol"
+    }
+  },
+
+  "gardenPatterns": {
+    "haie_brise_vent": {
+      "label": "Haie brise-vent",
+      "type": "haie",
+      "placement": "linear",
+      "density": 1.0,
+      "strata": [
+        { "speciesKey": "casuarina", "weight": 0.5, "minN": 3, "maxN": 8 },
+        { "speciesKey": "hibiscus_tiliaceus", "weight": 0.3, "minN": 2, "maxN": 5 },
+        { "speciesKey": "bougainvillea", "weight": 0.2, "minN": 2, "maxN": 4 }
+      ],
+      "zone": ["littoral"],
+      "role": "Protection cyclonique façade exposée"
+    },
+    "massif_tropical": {
+      "label": "Massif tropical créole",
+      "type": "massif",
+      "placement": "clustered",
+      "density": 2.5,
+      "strata": [
+        { "speciesKey": "heliconia", "weight": 0.4, "minN": 3, "maxN": 8 },
+        { "speciesKey": "alpinia", "weight": 0.35, "minN": 2, "maxN": 6 },
+        { "speciesKey": "strelitzia", "weight": 0.25, "minN": 2, "maxN": 5 }
+      ],
+      "zone": ["littoral", "mipentes"],
+      "role": "Massif ornemental proche varangue"
+    },
+    "massif_fleuri": {
+      "label": "Massif fleuri",
+      "type": "massif",
+      "placement": "clustered",
+      "density": 3.0,
+      "strata": [
+        { "speciesKey": "strelitzia", "weight": 0.35, "minN": 2, "maxN": 5 },
+        { "speciesKey": "bougainvillea", "weight": 0.4, "minN": 2, "maxN": 5 },
+        { "speciesKey": "ixora_coccinea", "weight": 0.25, "minN": 3, "maxN": 8 }
+      ],
+      "zone": ["littoral", "mipentes"],
+      "role": "Massif fleuri entrée parcelle"
+    },
+    "allee_palmiers": {
+      "label": "Allée de palmiers",
+      "type": "allee",
+      "placement": "linear",
+      "density": 0.12,
+      "strata": [
+        { "speciesKey": "acanthophoenix_crinita", "weight": 0.6, "minN": 4, "maxN": 10 },
+        { "speciesKey": "latania", "weight": 0.4, "minN": 2, "maxN": 6 }
+      ],
+      "zone": ["littoral", "mipentes"],
+      "role": "Allée d'accès parcelle"
+    },
+    "canopee_ombrage": {
+      "label": "Canopée ombrage",
+      "type": "foret",
+      "placement": "scattered",
+      "density": 0.08,
+      "strata": [
+        { "speciesKey": "mango", "weight": 0.4, "minN": 1, "maxN": 3 },
+        { "speciesKey": "terminalia_catappa", "weight": 0.3, "minN": 1, "maxN": 2 },
+        { "speciesKey": "flamboyant", "weight": 0.3, "minN": 1, "maxN": 2 }
+      ],
+      "zone": ["littoral", "mipentes"],
+      "role": "Ombrage bioclimatique façade Ouest"
+    },
+    "tampon_pprn": {
+      "label": "Massif tampon zone risque",
+      "type": "massif",
+      "placement": "scattered",
+      "density": 0.5,
+      "strata": [
+        { "speciesKey": "vetiver", "weight": 0.5, "minN": 10, "maxN": 30 },
+        { "speciesKey": "bamboo_phyllo", "weight": 0.3, "minN": 2, "maxN": 6 },
+        { "speciesKey": "casuarina", "weight": 0.2, "minN": 1, "maxN": 3 }
+      ],
+      "zone": ["littoral", "mipentes", "hauts"],
+      "role": "Stabilisation zone PPRN — vétiver anti-érosion"
+    },
+    "haie_limite": {
+      "label": "Haie de clôture",
+      "type": "haie",
+      "placement": "linear",
+      "density": 1.5,
+      "strata": [
+        { "speciesKey": "bougainvillea", "weight": 0.5, "minN": 4, "maxN": 10 },
+        { "speciesKey": "pittosporum", "weight": 0.3, "minN": 3, "maxN": 8 },
+        { "speciesKey": "ixora_coccinea", "weight": 0.2, "minN": 3, "maxN": 8 }
+      ],
+      "zone": ["littoral", "mipentes", "hauts"],
+      "role": "Haie séparative fond/latéral"
+    },
+    "jardin_creole": {
+      "label": "Jardin créole (fruitiers + ornement)",
+      "type": "massif",
+      "placement": "scattered",
+      "density": 0.15,
+      "strata": [
+        { "speciesKey": "mango", "weight": 0.25, "minN": 1, "maxN": 2 },
+        { "speciesKey": "carica_papaya", "weight": 0.2, "minN": 1, "maxN": 3 },
+        { "speciesKey": "banana_musa", "weight": 0.2, "minN": 2, "maxN": 4 },
+        { "speciesKey": "plumeria", "weight": 0.2, "minN": 1, "maxN": 2 },
+        { "speciesKey": "alpinia", "weight": 0.15, "minN": 2, "maxN": 5 }
+      ],
+      "zone": ["littoral", "mipentes"],
+      "role": "Jardin résiduel vivrier + ornemental"
+    },
+    "foret_hauts": {
+      "label": "Boisement des hauts",
+      "type": "foret",
+      "placement": "scattered",
+      "density": 0.1,
+      "strata": [
+        { "speciesKey": "acacia_heterophylla", "weight": 0.4, "minN": 2, "maxN": 5 },
+        { "speciesKey": "cryptomeria_japonica", "weight": 0.3, "minN": 1, "maxN": 3 },
+        { "speciesKey": "dombeya_acutangula", "weight": 0.3, "minN": 1, "maxN": 3 }
+      ],
+      "zone": ["hauts"],
+      "role": "Reboisement / haie haute des hauts"
+    }
+  },
+
+  "zonePlacement": {
+    "bande_voie": {
+      "label": "Bande de recul voie",
+      "patterns": ["haie_brise_vent", "massif_fleuri"],
+      "priority": 1,
+      "note": "Entre alignement voie et façade — haie basse ou massif fleuri"
+    },
+    "fond_parcelle": {
+      "label": "Fond de parcelle",
+      "patterns": ["canopee_ombrage", "jardin_creole", "foret_hauts"],
+      "priority": 2,
+      "note": "Canopée haute pour ombrage bioclimatique Ouest"
+    },
+    "lateral": {
+      "label": "Limites latérales",
+      "patterns": ["haie_limite"],
+      "priority": 3,
+      "note": "Haie séparative — intimité + brise-vent"
+    },
+    "zone_pprn": {
+      "label": "Zone PPRN inconstructible",
+      "patterns": ["tampon_pprn"],
+      "priority": 1,
+      "note": "Végétalisation stabilisatrice en zone R1/R2"
+    },
+    "residuel": {
+      "label": "Jardin résiduel",
+      "patterns": ["jardin_creole", "massif_tropical"],
+      "priority": 4,
+      "note": "Espace entre bâti et limites — jardin créole"
+    }
+  },
+
+  "amenities": {
+    "piscine": {
+      "label": "Piscine",
+      "svgSymbol": "piscine",
+      "w": 8, "h": 4,
+      "minParcelArea": 250,
+      "bufferBati": 3,
+      "bufferLimite": 2,
+      "placement": "fond_parcelle",
+      "preferExposure": "ouest",
+      "zone": ["littoral", "mipentes"],
+      "note": "Piscine rectangulaire. Déclaration préalable si < 100m². PC si > 100m² ou couverture > 1.8m."
+    },
+    "bassin": {
+      "label": "Bassin ornemental",
+      "svgSymbol": "bassin",
+      "r": 2,
+      "minParcelArea": 150,
+      "bufferBati": 1.5,
+      "bufferLimite": 1,
+      "placement": "residuel",
+      "zone": ["littoral", "mipentes", "hauts"],
+      "note": "Bassin circulaire décoratif. Pas de formalité si < 10m²."
+    },
+    "kiosque": {
+      "label": "Kiosque bois",
+      "svgSymbol": "kiosque",
+      "w": 3.5, "h": 3.5,
+      "minParcelArea": 200,
+      "bufferBati": 2,
+      "bufferLimite": 1,
+      "placement": "fond_parcelle",
+      "zone": ["littoral", "mipentes", "hauts"],
+      "note": "Paillote/kiosque bois. DP si > 5m² d'emprise au sol et < 20m²."
+    },
+    "pergola": {
+      "label": "Pergola",
+      "svgSymbol": "pergola",
+      "w": 5, "h": 3,
+      "minParcelArea": 120,
+      "bufferBati": 0,
+      "bufferLimite": 1,
+      "placement": "bande_voie",
+      "preferFacade": "ouest",
+      "zone": ["littoral", "mipentes"],
+      "note": "Pergola bois adossée ou indépendante. Protection solaire RTAA DOM façade Ouest."
+    },
+    "cuisine_ext": {
+      "label": "Cuisine extérieure",
+      "svgSymbol": "cuisine_ext",
+      "w": 3, "h": 2.5,
+      "minParcelArea": 200,
+      "bufferBati": 1,
+      "bufferLimite": 2,
+      "placement": "residuel",
+      "zone": ["littoral", "mipentes"],
+      "note": "Plan de travail + barbecue. Tradition créole varangue arrière."
+    },
+    "tisanerie": {
+      "label": "Tisanerie créole",
+      "svgSymbol": "tisanerie",
+      "w": 2.5, "h": 2.5,
+      "minParcelArea": 150,
+      "bufferBati": 2,
+      "bufferLimite": 1,
+      "placement": "fond_parcelle",
+      "zone": ["littoral", "mipentes", "hauts"],
+      "note": "Carré d'herbes médicinales : citronnelle, ayapana, géranium rosat, faham. Tradition pharmacopée créole."
+    },
+    "potager": {
+      "label": "Potager créole",
+      "svgSymbol": "potager",
+      "w": 4, "h": 3,
+      "minParcelArea": 200,
+      "bufferBati": 2,
+      "bufferLimite": 1,
+      "placement": "fond_parcelle",
+      "preferExposure": "est",
+      "zone": ["littoral", "mipentes", "hauts"],
+      "note": "Potager vivrier : brèdes, tomates, piments, patates douces. Soleil matin préféré."
+    },
+    "terrasse": {
+      "label": "Terrasse extérieure",
+      "svgSymbol": "terrasse",
+      "w": 5, "h": 3,
+      "minParcelArea": 80,
+      "bufferBati": 0,
+      "bufferLimite": 0,
+      "placement": "adjacent_bati",
+      "zone": ["littoral", "mipentes", "hauts"],
+      "note": "Dalle béton/bois. Varangue prolongée. Pas de formalité si non couverte et < 20m²."
+    }
+  }
+}

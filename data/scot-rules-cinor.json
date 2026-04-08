@@ -1,0 +1,171 @@
+{
+  "version": "2026-04",
+  "scot": "SCoT CINOR",
+  "interco": "CINOR",
+  "interco_nom": "Communauté Intercommunale du Nord",
+  "statut": "en_revision",
+  "approbation": "2013-12-18",
+  "revision_prescrite": "2019",
+  "doo_revision_version": "v6 — octobre 2024",
+  "enquete_publique_prevue": "2025",
+  "approbation_estimee": "2025-10",
+  "horizon": "2021-2041",
+  "source_doo": "https://www.cinor.re/PDF/ori_objc_SCOT.pdf",
+  "source_pas": "https://www.cinor.re/PDF/SCoT_CINOR_Projet_Amenagement_Strategique_v5_janvier2023.pdf",
+  "source_daacl": "https://www.cinor.re/PDF/SCoT_CINOR_DOO_DAACL_28-09_2.pdf",
+  "communes": ["Saint-Denis", "Sainte-Marie", "Sainte-Suzanne"],
+  "communes_insee": ["97411", "97418", "97420"],
+
+  "armature_urbaine": {
+    "description": "Hiérarchie des polarités urbaines CINOR en 5 niveaux (DOO v6 Prescription P45)",
+    "niveaux": {
+      "rang_1": {
+        "label": "Cœur d'agglomération / Pôle principal",
+        "places_urbaines": [
+          { "nom": "Saint-Denis centre-ville / Littoral Est", "commune": "Saint-Denis" },
+          { "nom": "Duparc - Centre-Ville - Convenance - Beauséjour", "commune": "Sainte-Marie" },
+          { "nom": "Grande Montée - La Ressource - Rivière des Pluies", "commune": "Sainte-Marie" }
+        ],
+        "densite_min_lgts_ha": 50,
+        "note": "Cœur d'agglomération étendu entre Saint-Denis et Sainte-Marie."
+      },
+      "rang_2": {
+        "label": "Autres pôles centraux littoraux",
+        "places_urbaines": [
+          { "nom": "Bel Air - Trois Frères - centre-ville", "commune": "Sainte-Suzanne" },
+          { "nom": "La Marine", "commune": "Sainte-Suzanne" },
+          { "nom": "Quartier Français", "commune": "Sainte-Suzanne" }
+        ],
+        "densite_min_lgts_ha": 40,
+        "note": "Pôles littoraux de Sainte-Suzanne."
+      },
+      "rang_3": {
+        "label": "Pôles secondaires / mi-pentes",
+        "places_urbaines": [
+          { "nom": "Bellepierre - Montgaillard", "commune": "Saint-Denis" },
+          { "nom": "Moufia - Bois de Nèfles", "commune": "Saint-Denis" },
+          { "nom": "La Bretagne", "commune": "Saint-Denis" },
+          { "nom": "Bagatelle", "commune": "Sainte-Suzanne" },
+          { "nom": "Deux Rives", "commune": "Sainte-Suzanne" }
+        ],
+        "densite_min_lgts_ha": { "saint_denis": 50, "sainte_suzanne": 30 },
+        "note": "Densité différenciée : 50 lgts/ha à Saint-Denis, 30 à Sainte-Suzanne."
+      },
+      "rang_4": {
+        "label": "Centralités villageoises / Hauts",
+        "places_urbaines": [
+          { "nom": "Saint-Bernard", "commune": "Saint-Denis" },
+          { "nom": "Le Brûlé", "commune": "Saint-Denis" },
+          { "nom": "Saint-François", "commune": "Saint-Denis" },
+          { "nom": "Bois de Nèfles les Hauts", "commune": "Saint-Denis" },
+          { "nom": "Bellevue", "commune": "Saint-Denis" },
+          { "nom": "Moka - Beaumonts les Hauts", "commune": "Sainte-Marie" },
+          { "nom": "Terrain Élisa - Ressource Barrau", "commune": "Sainte-Marie" },
+          { "nom": "Commune Ango - Commune Caron", "commune": "Sainte-Suzanne" },
+          { "nom": "Bras Pistolet - Chane Kane", "commune": "Sainte-Suzanne" }
+        ],
+        "densite_min_lgts_ha": { "saint_denis": 20, "sainte_marie": 25, "sainte_suzanne": 20 },
+        "note": "Villages des Hauts. 25 lgts/ha pour Sainte-Marie, 20 pour les autres."
+      },
+      "rang_5": {
+        "label": "Pôle d'équilibre",
+        "places_urbaines": [
+          { "nom": "La Montagne", "commune": "Saint-Denis" }
+        ],
+        "densite_min_lgts_ha": 40,
+        "note": "Statut spécifique, densité 40 lgts/ha malgré position mi-pente."
+      }
+    }
+  },
+
+  "logement": {
+    "description": "Politiques publiques du logement (DOO v6 P40-P45)",
+    "production_annuelle_total": 1440,
+    "repartition_par_commune": {
+      "Saint-Denis": 700,
+      "Sainte-Marie": 490,
+      "Sainte-Suzanne": 250
+    },
+    "production_annuelle_logements_aides": 575,
+    "pct_logements_aides_dans_production": 40,
+    "pct_densification": 60,
+    "orientations": [
+      "40% minimum de logements aidés dans la production neuve",
+      "60% de la production en densification du tissu existant",
+      "Diversification des formes d'habitat : compacte et économe en foncier",
+      "Adaptation au vieillissement et diminution taille des ménages",
+      "Remise sur le marché des logements vacants"
+    ]
+  },
+
+  "densite": {
+    "description": "Densités d'aménagement minimales (DOO v6 P45)",
+    "note": "Densités brutes incluant voiries et espaces communs. S'appliquent à l'ensemble des zones d'extension de l'urbanisation.",
+    "regles": [
+      { "rang": [1], "densite_min_lgts_ha": 50, "label": "Cœur d'agglomération" },
+      { "rang": [2], "densite_min_lgts_ha": 40, "label": "Pôles centraux littoraux" },
+      { "rang": [3], "densite_min_lgts_ha": 30, "densite_max_lgts_ha": 50, "label": "Pôles secondaires (30 Ste-Suzanne, 50 St-Denis)" },
+      { "rang": [4], "densite_min_lgts_ha": 20, "densite_max_lgts_ha": 25, "label": "Centralités villageoises" },
+      { "rang": [5], "densite_min_lgts_ha": 40, "label": "Pôle d'équilibre La Montagne" }
+    ]
+  },
+
+  "environnement": {
+    "continuite_ecologique": {
+      "description": "Trame verte, bleue et noire (DOO v6 P47)",
+      "reservoirs_averes_ha": 10430,
+      "reservoirs_potentiels_ha": 3952,
+      "corridors_averes_ha": 1313,
+      "pct_territoire_trame": 64,
+      "bande_ravine_inconstructible_m": 10,
+      "trame_noire": true,
+      "principe_erc": true
+    },
+    "risques": {
+      "description": "Prévention risques naturels (DOO v6 P63)",
+      "inondation_hors_zones_aleas": true,
+      "recul_trait_de_cote": true,
+      "carte_locale_exposition_obligatoire": true,
+      "zone_0_30ans_interdite_extension": true,
+      "pprl_sainte_suzanne": true,
+      "impermeabilisation_minimisee": true,
+      "infiltration_a_la_source": true
+    },
+    "eau": {
+      "description": "Protection ressource eau (DOO v6 P58-P62)",
+      "gestion_ep_parcelle_obligatoire": true,
+      "infiltration_recuperation_obligatoire": true,
+      "cuves_recuperation_pluie_obligatoires": true,
+      "bande_inconstructible_cours_eau_m": 10,
+      "step_principales": ["Grand Prado (Sainte-Marie)", "Trois Frères (Sainte-Suzanne)"]
+    }
+  },
+
+  "transports": {
+    "description": "Cohérence urbanisation/transports (DOO v6 P29-P32)",
+    "part_modale_tc_actuelle_pct": 11,
+    "part_modale_tc_objectif_pct": 15,
+    "tcsp_existant": "Ligne structurante CITALIS — 50% de la fréquentation",
+    "projet_baobab": "Desserte structurante Quartier Français → entrée Ouest Saint-Denis",
+    "pem_projetes": ["Lambert (P+R)", "Bertin entrée Est"],
+    "transport_cable_projete": "La Montagne",
+    "modes_actifs": {
+      "itineraires_cyclables_dedies": true,
+      "zones_30_centralites": true,
+      "ecosysteme_velo": true
+    },
+    "stationnement": {
+      "restrictions_centre_ville": true,
+      "parkings_relais": true
+    }
+  },
+
+  "consommation_fonciere": {
+    "description": "Objectifs ZAN (DOO v6 p19-20)",
+    "phase_1_2021_2031_ha": 206.7,
+    "phase_2_2031_2041_ha": 104.4,
+    "total_2021_2041_ha": 311.1,
+    "reduction_phase_1_pct": 50,
+    "objectif_phase_2": "tendre vers le zéro artificialisation nette"
+  }
+}

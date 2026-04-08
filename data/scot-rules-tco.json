@@ -8,7 +8,7 @@
   "revision_prescrite": "2022-12-16",
   "source_doo": "https://www.tco.re/wp-content/uploads/2022/10/08_scot-modifie-doo_cc10.22.pdf",
   "communes": ["Le Port", "La Possession", "Saint-Paul", "Trois-Bassins", "Saint-Leu"],
-  "communes_insee": ["97407", "97406", "97415", "97423", "97416"],
+  "communes_insee": ["97407", "97408", "97413", "97415", "97423"],
 
   "armature_urbaine": {
     "description": "Hiérarchie des polarités urbaines du TCO en 5 rangs (DOO O5)",
