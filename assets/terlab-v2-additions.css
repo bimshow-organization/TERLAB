@@ -19,8 +19,8 @@
   align-items: stretch;
   overflow-x: hidden;
   scrollbar-width: none;
-  padding: 0 2px;
-  gap: 1px;
+  padding: 0 6px;
+  gap: 4px;
 }
 .tb-phases::-webkit-scrollbar { display: none; }
 
@@ -31,7 +31,7 @@
   justify-content: center;
   gap: 2px;
   min-width: 0;
-  padding: 3px 6px;
+  padding: 3px 8px;
   height: 100%;
   background: transparent;
   border: none;
@@ -67,6 +67,19 @@
 .phase-card.progress:hover {
   background: rgba(245,158,11,.06);
 }
+/* Phase déjà vue — petit point sous le numéro */
+.phase-card.visited .pc-num::after {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--muted);
+  margin: 1px auto 0;
+  opacity: .6;
+}
+.phase-card.visited.done .pc-num::after { background: var(--success); }
+.phase-card.visited.active .pc-num::after { background: var(--accent); }
 
 .pc-num {
   font-family: var(--font-mono);
@@ -125,6 +138,91 @@
 .phase-arrow {
   display: none;
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   1b · PHASE PLAYER (lecteur progressif)
+───────────────────────────────────────────────────────────────── */
+.phase-player {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 8px;
+  height: 100%;
+  border-left: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.pp-btn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  color: var(--faint);
+  cursor: pointer;
+  transition: all var(--tx-fast);
+  padding: 0;
+}
+.pp-btn:hover {
+  color: var(--text);
+  background: rgba(255,255,255,.06);
+  border-color: var(--muted);
+}
+.pp-btn.pp-play {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.pp-btn.pp-play:hover {
+  background: var(--accent2);
+  color: var(--accent);
+}
+.pp-btn.pp-play.playing {
+  background: var(--accent2);
+  color: var(--accent);
+  border-color: var(--accent);
+  animation: pp-pulse 1.5s ease-in-out infinite;
+}
+@keyframes pp-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99,102,241,.3); }
+  50%      { box-shadow: 0 0 0 4px rgba(99,102,241,.08); }
+}
+
+.pp-counter {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: .05em;
+  min-width: 28px;
+  text-align: center;
+}
+
+.pp-speed {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 2px 3px;
+  cursor: pointer;
+  outline: none;
+}
+.pp-speed:hover { border-color: var(--muted); }
+.pp-speed option { background: var(--surface); color: var(--text); }
+
+.pp-skip { position: relative; }
+.pp-skip.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent2);
+}
+.pp-skip.active:hover { background: rgba(99,102,241,.15); }
 
 /* ─────────────────────────────────────────────────────────────────
    2 · THÈME IVOIRE POUR PHASE 0 (identification)
@@ -642,11 +740,22 @@
 /* ─────────────────────────────────────────────────────────────────
    OBIA Result
 ───────────────────────────────────────────────────────────────── */
-.obia-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 6px 0; }
-.obia-cell  { background: var(--card); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 5px 8px; }
-.obia-label { font-size: 9px; color: var(--faint); font-family: var(--font-mono); }
-.obia-val   { font-size: 13px; color: var(--text); font-weight: 600; }
-.obia-bar   { height: 3px; background: var(--accent); border-radius: 2px; margin-top: 3px; }
+.obia-header { display: flex; justify-content: space-between; align-items: center;
+  font-size: 10px; font-family: var(--font-mono); color: var(--faint);
+  padding: 4px 2px 6px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+.obia-pixels { opacity: .7; }
+.obia-confidence { font-weight: 600; }
+.obia-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin: 0 0 4px; }
+.obia-cell  { background: var(--card); border: 1px solid var(--border); border-radius: var(--r-sm);
+  padding: 6px 8px; transition: border-color .15s; }
+.obia-cell:hover { border-color: var(--accent); }
+.obia-cell-head { display: flex; align-items: center; gap: 4px; margin-bottom: 3px; }
+.obia-icon  { font-size: 13px; line-height: 1; }
+.obia-label { font-size: 9px; color: var(--faint); font-family: var(--font-mono); line-height: 1.2; }
+.obia-val-row { display: flex; align-items: center; gap: 6px; }
+.obia-val   { font-size: 14px; color: var(--text); font-weight: 700; min-width: 32px; }
+.obia-bar-wrap { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.obia-bar   { height: 100%; border-radius: 3px; transition: width .4s ease; }
 
 /* ───────────────────────────────────────────────────────��─────────
    Terrain SVG wrapper (Phase 1)
@@ -707,3 +816,328 @@
 .tsb-alerts:hover {
   background: rgba(245,158,11,.1);
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   DROPDOWN PROJETS (btn-login)
+───────────────────────────────────────────────────────────────── */
+.tb-right { position: relative; }
+
+.pm-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 300px;
+  max-height: 420px;
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.12);
+  z-index: 200;
+  display: none;
+  scrollbar-width: thin;
+}
+.pm-dropdown.open { display: block; }
+
+/* En-tête session courante */
+.pm-current {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 6px 6px 0 0;
+}
+.pm-current-label {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  margin-bottom: 4px;
+}
+.pm-current-loc {
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.pm-current-meta {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--muted);
+  margin-top: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.pm-current-bar {
+  width: 60px;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.pm-current-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width .3s ease;
+}
+
+/* Séparateur titre */
+.pm-section {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  padding: 10px 14px 4px;
+}
+
+/* Liste projets */
+.pm-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background var(--tx-fast);
+  border-bottom: 1px solid var(--border);
+}
+.pm-item:hover { background: var(--raised); }
+.pm-item:last-child { border-bottom: none; }
+.pm-item-info { flex: 1; min-width: 0; }
+.pm-item-loc {
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pm-item-sub {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--faint);
+}
+.pm-item-pct {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.pm-item-del {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  font-size: 0.7rem;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--tx-fast);
+}
+.pm-item-del:hover { background: var(--danger); color: #fff; }
+
+/* Actions basses */
+.pm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 0 0 6px 6px;
+}
+.pm-action-btn {
+  flex: 1;
+  min-width: 80px;
+  padding: 6px 10px;
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  background: var(--card);
+  color: var(--text2);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  cursor: pointer;
+  text-align: center;
+  transition: background .2s, color .2s;
+  white-space: nowrap;
+}
+.pm-action-btn:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+.pm-action-btn.pm-btn-new {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.pm-action-btn.pm-btn-new:hover {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+/* Empty state */
+.pm-empty {
+  text-align: center;
+  padding: 16px 14px;
+  color: var(--faint);
+  font-style: italic;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+}
+
+/* Active indicator on btn-login when dropdown open */
+.btn-login.active {
+  background: var(--accent2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   POINTS D'ATTENTION — Régime d'autorisation d'urbanisme (P07)
+───────────────────────────────────────────────────────────────── */
+
+.autorisation-regime {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.regime-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.regime-libre {
+  background: rgba(34,197,94,.15);
+  color: #22c55e;
+  border: 1px solid rgba(34,197,94,.3);
+}
+
+.regime-dp {
+  background: rgba(245,158,11,.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245,158,11,.3);
+}
+
+.regime-pc {
+  background: rgba(239,68,68,.15);
+  color: #ef4444;
+  border: 1px solid rgba(239,68,68,.3);
+}
+
+.regime-cerfa {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: .05em;
+}
+
+.autorisation-points {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.autorisation-point {
+  border-radius: 4px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--border2);
+  background: rgba(255,255,255,.02);
+}
+
+.autorisation-point.pt-ok {
+  border-left-color: #22c55e;
+  background: rgba(34,197,94,.05);
+}
+
+.autorisation-point.pt-info {
+  border-left-color: #3b82f6;
+  background: rgba(59,130,246,.05);
+}
+
+.autorisation-point.pt-attention {
+  border-left-color: #f59e0b;
+  background: rgba(245,158,11,.05);
+}
+
+.autorisation-point.pt-important {
+  border-left-color: #ef4444;
+  background: rgba(239,68,68,.08);
+}
+
+.autorisation-point.pt-conseil {
+  border-left-color: #a855f7;
+  background: rgba(168,85,247,.05);
+}
+
+.ap-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.ap-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+}
+
+.ap-titre {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: .02em;
+}
+
+.ap-texte {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.45;
+  padding-left: 22px;
+}
+
+.ap-ref {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--faint);
+  padding-left: 22px;
+  margin-top: 2px;
+  font-style: italic;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   VEGETATION BPF — Stats panel
+───────────────────────────────────────────────────────────────── */
+.veg-stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.veg-stat-row span { font-size: 10px; color: var(--text-dim, #8a9aaa); }
+.veg-stat-row strong { font-size: 11px; color: var(--accent, #c0943a); }
+.veg-stat-strate {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;
+}
+.veg-badge {
+  font-size: 9px; padding: 1px 6px; border-radius: 8px;
+  background: rgba(42,102,42,0.15); color: #4a9a4a;
+}
+.veg-badge-canopee { background: rgba(30,80,30,0.2); color: #2a8a2a; }
+.veg-badge-arbustif { background: rgba(60,120,40,0.15); color: #5aaa3a; }
+.veg-badge-couvre_sol { background: rgba(80,140,60,0.12); color: #6aba4a; }

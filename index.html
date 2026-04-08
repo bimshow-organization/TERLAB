@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
 <meta name="description" content="TERLAB — Laboratoire d'analyse de terrain · ENSA La Réunion · Île de La Réunion"/>
 <title>TERLAB · Analyse de Terrain · ENSA La Réunion</title>
+<link rel="icon" type="image/png" href="assets/logo-giep.png"/>
 
 <!-- Import Map — résout les bare specifiers "three" pour les addons Three.js -->
 <script type="importmap">
@@ -52,14 +53,19 @@
     storageBucket: "terlab-reunion.appspot.com"
   };
 
-  try {
-    const app = initializeApp(firebaseConfig);
-    window.TERLAB_DB = getDatabase(app);
-    window.TERLAB_FB_REF = ref;
-    window.TERLAB_FB_SET = set;
-    window.TERLAB_FB_GET = get;
-  } catch(e) {
-    console.warn('TERLAB: Firebase init failed (stub config) — session locale seulement', e.message);
+  if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('TERLAB_')) {
+    try {
+      const app = initializeApp(firebaseConfig);
+      window.TERLAB_DB = getDatabase(app);
+      window.TERLAB_FB_REF = ref;
+      window.TERLAB_FB_SET = set;
+      window.TERLAB_FB_GET = get;
+    } catch(e) {
+      console.warn('TERLAB: Firebase init failed — session locale seulement', e.message);
+      window.TERLAB_DB = null;
+    }
+  } else {
+    console.info('TERLAB: Firebase stub config — session locale seulement');
     window.TERLAB_DB = null;
   }
 </script>
@@ -73,6 +79,7 @@
 <link rel="stylesheet" href="assets/terrain-3d.css"/>
 <link rel="stylesheet" href="assets/terlab-3d-viewer.css"/>
 <link rel="stylesheet" href="assets/envirobat-cards.css"/>
+<link rel="stylesheet" href="assets/sun-gizmo.css"/>
 </head>
 <body>
 
@@ -85,11 +92,7 @@
 
     <!-- Logo -->
     <div class="tb-logo" aria-label="TERLAB">
-      <svg viewBox="0 0 28 28" fill="none" aria-hidden="true">
-        <path d="M14 3L4 8.5v11L14 25l10-5.5V8.5z" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round"/>
-        <path d="M14 3v22M4 8.5l10 5.5 10-5.5" stroke="var(--accent)" stroke-width="1" opacity=".4"/>
-        <circle cx="14" cy="14" r="2.5" fill="var(--accent)" opacity=".8"/>
-      </svg>
+      <img src="assets/logo-giep.png" alt="TERLAB" width="48" height="48" style="object-fit:contain"/>
     </div>
 
     <!-- Marque + session -->
@@ -112,6 +115,31 @@
       <!-- Généré dynamiquement par index.js depuis phases-meta.json -->
     </nav>
     <button class="phase-arrow" id="phase-next" onclick="TerlabRouter.goto(TerlabRouter.currentPhase + 1)" title="Phase suivante" aria-label="Phase suivante">▶</button>
+
+    <!-- Phase player -->
+    <div class="phase-player" id="phase-player" role="toolbar" aria-label="Lecteur de phases" style="display:none">
+      <button class="pp-btn" id="pp-prev" onclick="PhasePlayer.prev()" title="Phase précédente" aria-label="Phase précédente">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M8 1L3 6l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button class="pp-btn pp-play" id="pp-play" onclick="PhasePlayer.toggle()" title="Lecture automatique" aria-label="Lecture automatique">
+        <svg class="pp-icon-play" width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 1.5v11l9-5.5z" fill="currentColor"/></svg>
+        <svg class="pp-icon-pause" width="14" height="14" viewBox="0 0 14 14" fill="none" style="display:none"><rect x="2" y="1" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="8.5" y="1" width="3.5" height="12" rx="1" fill="currentColor"/></svg>
+      </button>
+      <button class="pp-btn" id="pp-next" onclick="PhasePlayer.next()" title="Phase suivante" aria-label="Phase suivante">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4 1l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <span class="pp-counter" id="pp-counter">0/12</span>
+      <select class="pp-speed" id="pp-speed" title="Vitesse" aria-label="Vitesse de lecture" onchange="PhasePlayer.setSpeed(this.value)">
+        <option value="3000">3s</option>
+        <option value="5000" selected>5s</option>
+        <option value="8000">8s</option>
+        <option value="12000">12s</option>
+      </select>
+      <button class="pp-btn pp-skip" id="pp-skip" onclick="PhasePlayer.toggleSkipVisited()" title="Sauter les phases déjà vues" aria-label="Sauter les phases déjà vues">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="display:none"><path d="M1 1l10 10M1 11L11 1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        <svg class="pp-skip-eye" width="12" height="12" viewBox="0 0 12 12" fill="none"><ellipse cx="6" cy="6" rx="5" ry="3" stroke="currentColor" stroke-width="1.1"/><circle cx="6" cy="6" r="1.5" fill="currentColor"/></svg>
+      </button>
+    </div>
 
     <!-- Actions droite -->
     <div class="tb-right" role="toolbar" aria-label="Actions">
@@ -205,14 +233,7 @@
       <!-- Écran de chargement initial -->
       <div class="splash-screen" id="splash">
         <div class="splash-inner">
-          <svg class="splash-logo" viewBox="0 0 60 60" fill="none" aria-hidden="true">
-            <path d="M30 5L6 18v24L30 55l24-13V18z" stroke="#9a7820" stroke-width="2" stroke-linejoin="round" opacity=".8"/>
-            <path d="M30 5v50M6 18l24 13 24-13" stroke="#9a7820" stroke-width="1.2" opacity=".3"/>
-            <circle cx="30" cy="30" r="5" fill="#9a7820" opacity=".9">
-              <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite"/>
-              <animate attributeName="opacity" values="0.9;0.5;0.9" dur="2s" repeatCount="indefinite"/>
-            </circle>
-          </svg>
+          <img class="splash-logo" src="assets/logo-giep.png" alt="TERLAB" style="animation:splash-pulse 2s ease-in-out infinite"/>
           <div class="splash-title">TERLAB</div>
           <div class="splash-sub">Laboratoire d'analyse de terrain · ENSA La Réunion</div>
           <div class="splash-sub" style="font-size:.75rem;margin-top:4px;opacity:.5">Île de La Réunion · Master 1 Semestre 8</div>

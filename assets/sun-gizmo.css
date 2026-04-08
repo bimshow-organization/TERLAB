@@ -1,0 +1,207 @@
+/* TERLAB · sun-gizmo.css · Styles partagés hélidon/diagramme solaire */
+/* Préfixe .sg- · Accent gold #f59e0b */
+
+/* ═══ TIMELINE SCRUB BAR ═══════════════════════════════════════ */
+.sg-timeline {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 0;
+}
+.sg-scrub {
+  flex: 1; height: 4px; min-width: 60px;
+  -webkit-appearance: none; appearance: none;
+  background: linear-gradient(to right, rgba(245,158,11,.15), #f59e0b, rgba(245,158,11,.15));
+  border-radius: 2px; outline: none; cursor: pointer;
+}
+.sg-scrub::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 14px; height: 14px;
+  border-radius: 50%; background: #f59e0b;
+  border: 2px solid var(--card, #fcf9f3);
+  box-shadow: 0 1px 4px rgba(0,0,0,.25); cursor: grab;
+}
+.sg-scrub::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #f59e0b; border: 2px solid var(--card, #fcf9f3);
+  box-shadow: 0 1px 4px rgba(0,0,0,.25); cursor: grab;
+}
+.sg-scrub:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.15); }
+.sg-scrub:active::-moz-range-thumb     { cursor: grabbing; transform: scale(1.15); }
+
+.sg-time-label {
+  font-family: var(--font-mono, monospace); font-size: 9px;
+  color: var(--muted, #6b5c3e); min-width: 32px; white-space: nowrap;
+}
+.sg-current-time {
+  font-family: var(--font-mono, monospace); font-size: 13px;
+  font-weight: 600; color: #f59e0b; text-align: center; padding: 2px 0;
+}
+
+/* ═══ PRESETS ═══════════════════════════════════════════════════ */
+.sg-presets {
+  display: flex; gap: 3px; flex-wrap: wrap; margin-top: 4px;
+}
+.sg-preset-btn {
+  font-family: var(--font-mono, monospace); font-size: 8px;
+  padding: 3px 7px; border-radius: 3px; cursor: pointer;
+  background: var(--card, #fcf9f3); color: var(--text2, #5a4e3a);
+  border: 1px solid var(--border, rgba(154,120,32,.18));
+  transition: all .15s ease;
+}
+.sg-preset-btn:hover {
+  background: rgba(245,158,11,.12); color: #f59e0b;
+  border-color: rgba(245,158,11,.4);
+}
+.sg-preset-btn.sg-active {
+  background: rgba(245,158,11,.15); color: #f59e0b;
+  border-color: #f59e0b;
+}
+
+/* ═══ INFO ROW ═════════════════════════════════════════════════ */
+.sg-info-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 0;
+  font-family: var(--font-mono, monospace); font-size: 9px;
+}
+.sg-info-label { color: var(--muted, #6b5c3e); }
+.sg-info-val   { color: #f59e0b; font-weight: 600; }
+
+/* ═══ BADGE ════════════════════════════════════════════════════ */
+.sg-badge {
+  font-size: 7.5px; padding: 1px 5px; border-radius: 3px;
+  background: rgba(245,158,11,.1); color: #f59e0b;
+  border: 1px solid rgba(245,158,11,.3);
+  font-family: var(--font-mono, monospace); vertical-align: middle;
+}
+
+/* ═══ MANUAL AZ/EL INPUTS (P07) ═══════════════════════════════ */
+.sg-manual {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px;
+}
+.sg-manual-row { display: flex; flex-direction: column; gap: 2px; }
+.sg-label {
+  font-family: var(--font-mono, monospace); font-size: 8px;
+  color: var(--muted, #6b5c3e); text-transform: uppercase; letter-spacing: .08em;
+}
+.sg-num-input {
+  width: 100%; text-align: center; padding: 4px 6px;
+  font-family: var(--font-mono, monospace); font-size: 11px;
+  background: var(--card, #fcf9f3); color: var(--text, #3d3525);
+  border: 1px solid var(--border, rgba(154,120,32,.18));
+  border-radius: var(--r-sm, 4px); outline: none;
+}
+.sg-num-input:focus { border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245,158,11,.15); }
+
+/* ═══ SVG SOLAR DIAGRAM (P04) ═════════════════════════════════ */
+.sg-solar-wrap {
+  position: relative; padding: 8px 0;
+}
+.sg-solar-svg {
+  width: 100%; max-width: 320px; margin: 0 auto; display: block;
+}
+.sg-solar-svg .sg-grid-circle {
+  fill: none; stroke: var(--border, rgba(154,120,32,.18)); stroke-width: 0.5;
+}
+.sg-solar-svg .sg-grid-line {
+  stroke: var(--border, rgba(154,120,32,.12)); stroke-width: 0.3;
+}
+.sg-solar-svg .sg-grid-label {
+  font-family: var(--font-mono, monospace); font-size: 4.5px;
+  fill: var(--muted, #6b5c3e); text-anchor: middle;
+}
+.sg-solar-svg .sg-arc {
+  fill: none; stroke-width: 1.5; stroke-linecap: round;
+}
+.sg-solar-svg .sg-arc-summer  { stroke: #e74c3c; }
+.sg-solar-svg .sg-arc-equinox { stroke: #2ecc71; }
+.sg-solar-svg .sg-arc-winter  { stroke: #3498db; }
+.sg-solar-svg .sg-hour-dot {
+  r: 1.5; fill: var(--text2, #5a4e3a);
+}
+.sg-solar-svg .sg-hour-label {
+  font-family: var(--font-mono, monospace); font-size: 4px;
+  fill: var(--text2, #5a4e3a); text-anchor: middle;
+}
+.sg-solar-svg .sg-sun-dot {
+  r: 4; fill: #f59e0b; stroke: #fff; stroke-width: 1;
+  filter: drop-shadow(0 0 3px rgba(245,158,11,.5));
+  transition: cx .2s ease, cy .2s ease;
+}
+.sg-solar-svg .sg-cardinal {
+  font-family: var(--font-mono, monospace); font-size: 6px; font-weight: 700;
+  fill: var(--text, #3d3525); text-anchor: middle;
+}
+
+/* Légende arcs */
+.sg-legend {
+  display: flex; gap: 10px; justify-content: center;
+  padding: 4px 0; flex-wrap: wrap;
+}
+.sg-legend-item {
+  display: flex; align-items: center; gap: 4px;
+  font-family: var(--font-mono, monospace); font-size: 8px;
+  color: var(--text2, #5a4e3a);
+}
+.sg-legend-dot {
+  width: 10px; height: 3px; border-radius: 1px;
+}
+
+/* ═══ OVERHANG CALCULATOR (P04) ════════════════════════════════ */
+.sg-overhang-calc {
+  margin-top: 8px; padding: 8px 10px;
+  background: var(--card, #fcf9f3);
+  border: 1px solid var(--border, rgba(154,120,32,.18));
+  border-radius: var(--r-sm, 4px);
+}
+.sg-overhang-title {
+  font-family: var(--font-mono, monospace); font-size: 8px;
+  color: #f59e0b; text-transform: uppercase; letter-spacing: .1em;
+  margin-bottom: 6px;
+}
+.sg-overhang-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+}
+.sg-overhang-row label { flex-shrink: 0; }
+.sg-overhang-result {
+  font-family: var(--font-mono, monospace); font-size: 11px;
+  color: var(--text, #3d3525); margin-top: 6px;
+  padding: 6px 8px; background: var(--raised, rgba(0,0,0,.03));
+  border-radius: var(--r-sm, 4px); line-height: 1.6;
+}
+
+/* ═══ SUN SECTION HEADER ══════════════════════════════════════ */
+.sg-section-head {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono, monospace); font-size: 10px;
+  font-weight: 600; color: var(--text, #3d3525);
+  text-transform: uppercase; letter-spacing: .06em;
+  padding-bottom: 6px; margin-bottom: 4px;
+  border-bottom: 1px solid var(--border, rgba(154,120,32,.12));
+}
+.sg-section-head .sg-sun-icon {
+  font-size: 14px; filter: drop-shadow(0 0 2px rgba(245,158,11,.4));
+}
+
+/* ═══ DAY SLIDER (P07) ════════════════════════════════════════ */
+.sg-day-row {
+  display: flex; align-items: center; gap: 6px; padding: 4px 0;
+}
+.sg-day-row input[type="range"] {
+  flex: 1; height: 3px;
+  -webkit-appearance: none; appearance: none;
+  background: linear-gradient(to right, #3498db, #2ecc71, #e74c3c, #3498db);
+  border-radius: 2px; outline: none; cursor: pointer;
+}
+.sg-day-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 12px; height: 12px;
+  border-radius: 50%; background: #fff;
+  border: 2px solid var(--text2, #5a4e3a);
+  box-shadow: 0 1px 3px rgba(0,0,0,.2); cursor: grab;
+}
+.sg-day-row input[type="range"]::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--text2, #5a4e3a);
+  box-shadow: 0 1px 3px rgba(0,0,0,.2); cursor: grab;
+}
+.sg-day-val {
+  font-family: var(--font-mono, monospace); font-size: 9px;
+  color: var(--text2, #5a4e3a); min-width: 44px; text-align: right;
+}

@@ -18,6 +18,29 @@
 /* ── Accueil-specific styles ─────────────────────────────── */
 html, body { overflow: auto; }
 
+/* ── Rain animation (from GIEP) ───────────────────────────── */
+.rain-layer{
+  position:fixed; inset:0;
+  pointer-events:none; z-index:1; overflow:hidden;
+}
+.raindrop{
+  position:absolute; top:-12vh;
+  left:calc(var(--x) * 1vw);
+  width:1px; height:var(--h);
+  background:linear-gradient(to bottom,rgba(154,120,32,.5),rgba(154,120,32,0));
+  transform:translateY(-12vh);
+  animation:fall var(--d) linear var(--delay) infinite;
+  opacity:var(--alpha,.1);
+  filter:blur(.2px);
+}
+@keyframes fall{
+  0%   { transform:translateY(-12vh); opacity:0; }
+  6%   { opacity:var(--alpha,.1); }
+  85%  { transform:translateY(100vh); }
+  100% { transform:translateY(100vh); opacity:0; }
+}
+@media(prefers-reduced-motion:reduce){ .rain-layer{display:none;} }
+
 .accueil-app {
   min-height: 100vh;
   display: flex;
@@ -262,14 +285,16 @@ html, body { overflow: auto; }
 </head>
 <body>
 
+<div class="rain-layer" aria-hidden="true"></div>
+
 <div class="accueil-app">
 
   <!-- En-tête -->
   <header class="accueil-header">
-    <svg class="accueil-logo" viewBox="0 0 60 60" fill="none" aria-hidden="true">
-      <path d="M30 5L6 18v24L30 55l24-13V18z" stroke="#9a7820" stroke-width="2" stroke-linejoin="round" opacity=".8"/>
-      <path d="M30 5v50M6 18l24 13 24-13" stroke="#9a7820" stroke-width="1.2" opacity=".3"/>
-      <circle cx="30" cy="30" r="5" fill="#9a7820" opacity=".9"/>
+    <svg class="accueil-logo" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" stroke="#9a7820" stroke-width="1.5" stroke-linejoin="round"/>
+      <polyline points="3.27 6.96 12 12.01 20.73 6.96" stroke="#9a7820" stroke-width="1.2" opacity=".5"/>
+      <line x1="12" y1="22.08" x2="12" y2="12" stroke="#9a7820" stroke-width="1.2" opacity=".5"/>
     </svg>
     <h1 class="accueil-title">TERLAB</h1>
     <p class="accueil-sub">Laboratoire d'analyse de terrain</p>
@@ -501,6 +526,47 @@ if (prefs.groupe)   document.getElementById('input-groupe').value = prefs.groupe
 });
 
 render();
+</script>
+
+<!-- Rain animation -->
+<script>
+(function(){
+  const layer = document.querySelector('.rain-layer');
+  if(!layer || window.matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+
+  const COUNT=70, MIN_D=2.4, MAX_D=4.0, MIN_H=10, MAX_H=22;
+  const drops=[];
+
+  for(let i=0;i<COUNT;i++){
+    const d=document.createElement('span');
+    d.className='raindrop';
+    const x=Math.random()*100;
+    const dur=(MIN_D+Math.random()*(MAX_D-MIN_D)).toFixed(2)+'s';
+    const h=(MIN_H+Math.random()*(MAX_H-MIN_H)).toFixed(0)+'px';
+    const delay=(-Math.random()*parseFloat(dur)).toFixed(2)+'s';
+    d.style.setProperty('--x',x);
+    d.style.setProperty('--d',dur);
+    d.style.setProperty('--h',h);
+    d.style.setProperty('--delay',delay);
+    layer.appendChild(d);
+    drops.push({el:d,x});
+  }
+
+  // Balayage d'intensité gaussien
+  let sweep=-20;
+  const speed=0.2, sigma=10;
+  function tick(){
+    sweep+=speed;
+    if(sweep>120) sweep=-20;
+    for(const d of drops){
+      const dx=d.x-sweep;
+      const a=Math.exp(-(dx*dx)/(2*sigma*sigma));
+      d.el.style.setProperty('--alpha',(0.05+0.95*a).toFixed(3));
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
 </script>
 
 </body>

@@ -133,7 +133,7 @@ body {
   border-right: 1px solid var(--border);
   flex-shrink: 0;
 }
-.tb-logo svg { width: 26px; height: 26px; }
+.tb-logo svg, .tb-logo img { width: 48px; height: 48px; object-fit: contain; }
 
 /* Marque */
 .tb-brand {
@@ -1133,7 +1133,11 @@ body {
 }
 .splash-screen.hidden { opacity: 0; pointer-events: none; }
 .splash-inner { text-align: center; }
-.splash-logo { width: 60px; height: 60px; margin: 0 auto 16px; display: block; }
+.splash-logo { width: 128px; height: 128px; margin: 0 auto 20px; display: block; object-fit: contain; }
+@keyframes splash-pulse {
+  0%, 100% { opacity: .9; transform: scale(1); }
+  50%      { opacity: .5; transform: scale(1.05); }
+}
 .splash-title {
   font-family: var(--font-serif);
   font-size: 28px;

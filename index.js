@@ -38,13 +38,18 @@ import RTAAPanel         from './components/rtaa-panel.js';
 // ─── Services utilisés par les phases (esquisse / analyse) ──────
 import SlopesService     from './services/slopes-service.js';
 import SunCalcService    from './services/sun-calc-service.js';
+import SunState          from './services/sun-state.js';
 import TerrainSVG        from './services/terrain-svg-service.js';
 import LidarService      from './services/lidar-service.js';
 import EnvelopeGenerator from './services/envelope-generator.js';
+import PlanMasseEngine   from './services/plan-masse-engine.js';
+import TerrainProfile    from './services/terrain-profile.js';
 import ParetoScorer      from './services/pareto-scorer.js';
 import ViewDetector      from './services/view-detector.js';
 import BpfGardenAdvisor  from './services/bpf-garden-advisor.js';
+import BpfBridge         from './services/bpf-bridge.js';
 import RTAAAnalyzer      from './services/rtaa-analyzer.js';
+import UrbanismeAutorisations from './services/urbanisme-autorisations.js';
 
 // ─── Module aéraulique (Sprints 1-4) ────────────────────────
 import ParcelSelector     from './components/parcel-selector.js';
@@ -55,13 +60,21 @@ import AeraulicMapTools   from './components/aeraulic-map-tools.js';
 import WindNavigator      from './components/wind-navigator.js';
 import AeraulicPlanner    from './components/aeraulic-planner.js';
 import RtaaVentilationSim from './components/rtaa-ventilation-sim.js';
+import AtlasModal         from './components/atlas-modal.js';
 import * as MatUtils      from './utils/terlab-mat-utils.js';
+
+// ─── Utilitaires réseau ─────────────────────────────────────
+import resilientFetch, { resilientJSON, resilientFetchFirst } from './utils/resilient-fetch.js';
+
+// ─── Export 3D centralisé ────────────────────────────────────
+import GLBExporter       from './utils/glb-exporter.js';
 
 // ─── Mini-viewer 3D intégré (remplace popup BIMSHOW) ────────
 import BimshowViewer     from './components/bimshow-viewer.js';
 
 // ─── Éditeur GeoJSON 3 niveaux (GPU + import + dessin) ──────
 import CoordConverter        from './utils/coord-converter.js';
+import UTM40S               from './utils/utm40s.js';
 import GPUFetcher            from './services/gpu-fetcher.js';
 import GeoJsonLayerService   from './services/geojson-layer-service.js';
 import GeoJsonPanel          from './components/geojson-panel.js';
@@ -134,6 +147,9 @@ async function init() {
       AppState.sessionId = SessionManager.init();
     }
 
+    // État solaire partagé (après SessionManager)
+    SunState.init();
+
     // Activer l'auto-save multi-sessions
     TerlabStorage.attachAutoSave();
 
@@ -160,6 +176,11 @@ async function init() {
     window.SessionManager   = SessionManager;
     window.BimshowViewer    = BimshowViewer;
 
+    // Utilitaires réseau (disponibles dans les scripts inline des phases)
+    window.resilientFetch     = resilientFetch;
+    window.resilientJSON      = resilientJSON;
+    window.resilientFetchFirst = resilientFetchFirst;
+
     // Services géo/terrain
     window.BRGMService          = BRGMService;
     window.BuildingsService     = BuildingsService;
@@ -173,13 +194,18 @@ async function init() {
     // Services esquisse/analyse
     window.SlopesService     = SlopesService;
     window.SunCalcService    = SunCalcService;
+    window.SunState          = SunState;
     window.TerrainSVG        = TerrainSVG;
     window.LidarService      = LidarService;
     window.EnvelopeGenerator = EnvelopeGenerator;
+    window.PlanMasseEngine   = PlanMasseEngine;
+    window.TerrainProfile    = TerrainProfile;
     window.ParetoScorer      = ParetoScorer;
     window.ViewDetector      = ViewDetector;
     window.BpfGardenAdvisor  = BpfGardenAdvisor;
+    window.BpfBridge         = BpfBridge;
     window.RTAAAnalyzer      = RTAAAnalyzer;
+    window.UrbanismeAutorisations = UrbanismeAutorisations;
 
     // Composants phases
     window.RiskPlayer    = RiskPlayer;
@@ -200,9 +226,12 @@ async function init() {
     window.BILTerrain         = BILTerrain;
     window.BackgroundTerrain  = BackgroundTerrain;
     window.TerlabMU           = MatUtils;
+    window.AtlasModal         = AtlasModal;
 
-    // GeoJSON editor (3 niveaux)
+    // GeoJSON editor (3 niveaux) + projection UTM + export 3D
     window.CoordConverter      = CoordConverter;
+    window.UTM40S              = UTM40S;
+    window.GLBExporter         = GLBExporter;
     window.GPUFetcher          = GPUFetcher;
     window.GeoJsonLayerService = GeoJsonLayerService;
     window.GeoJsonPanel        = GeoJsonPanel;
@@ -216,6 +245,13 @@ async function init() {
     setSplash('Navigation…', 65);
     buildPhaseNav();
     initDemoBtns();
+
+    // Afficher le player si le terrain est déjà confirmé
+    const terrain = SessionManager.getTerrain();
+    if (terrain?.terrain_confirmed) {
+      const player = document.getElementById('phase-player');
+      if (player) player.style.display = '';
+    }
 
     setSplash('Chargement phase…', 80);
     await route();
@@ -232,8 +268,15 @@ async function init() {
     updateToplevelScore();
     window.addEventListener('terlab:session-changed', updateToplevelScore);
 
+    // Project menu dropdown (btn-login)
+    ProjectMenu.init();
+
     window.addEventListener('hashchange', route);
     window.addEventListener('message', BIMSHOWBridge.handleMessage.bind(BIMSHOWBridge));
+    window.addEventListener('terlab:terrain-confirmed', () => {
+      const player = document.getElementById('phase-player');
+      if (player) player.style.display = '';
+    });
     window.addEventListener('beforeunload', () => SessionManager.syncFirebase());
 
     // Toggle 3D viewer panel
@@ -329,6 +372,15 @@ async function route() {
 
   await loadPhase(phaseId);
   AppState.loading = false;
+
+  // Marquer la phase comme "vue" (sauf phase 0, toujours obligatoire)
+  if (phaseId > 0) {
+    const sess = SessionManager.getPhase(phaseId);
+    if (!sess?.visitedAt) {
+      const prev = sess?.data ?? {};
+      SessionManager.savePhase(phaseId, { ...prev, visitedAt: new Date().toISOString() }, sess?.validations, sess?.completed ?? false);
+    }
+  }
 }
 
 // ═════════════════════════════════════════════════════════════════
@@ -428,22 +480,69 @@ async function loadPhase(id) {
   // 4. Carte
   if (AppState.mapboxToken) {
     try {
+      const terrain = SessionManager.getTerrain();
+      const hasTerrain = terrain?.lat && terrain?.lng;
+
+      // Phase 0 sans terrain → vue île entière (zoom 10) pour inviter l'utilisateur à naviguer
+      const targetZoom = meta.map_zoom_default ?? 15;
+      const targetPitch = meta.map_pitch ?? 0;
+      const targetBearing = meta.map_bearing ?? 0;
+
+      // Si terrain connu et phase > 0 : démarrer à la verticale du projet (pitch 0, zoom reculé)
+      // puis animer vers le zoom/pitch/bearing cible de la phase
+      const startAboveProject = hasTerrain && id > 0;
+      const initCenter = startAboveProject ? [parseFloat(terrain.lng), parseFloat(terrain.lat)] : undefined;
+      const initZoom   = (id === 0 && !hasTerrain) ? 10 : (startAboveProject ? Math.max(targetZoom - 3, 10) : targetZoom);
+      const initPitch  = startAboveProject ? 0 : targetPitch;
+
       await MapViewer.init({
         containerId: 'map',
         token:       AppState.mapboxToken,
         mode:        meta.map_mode,
-        pitch:       meta.map_pitch ?? 0,
-        bearing:     meta.map_bearing ?? 0,
-        zoom:        meta.map_zoom_default ?? 15
+        pitch:       initPitch,
+        bearing:     0,
+        zoom:        initZoom,
+        center:      initCenter
       });
       // Init ParcelSelector dès que la carte est prête
       const _map = MapViewer.getMap();
       if (_map) ParcelSelector.init(_map);
 
-      const terrain = SessionManager.getTerrain();
-      if (terrain?.lat && terrain?.lng) {
-        MapViewer.flyTo(parseFloat(terrain.lng), parseFloat(terrain.lat), meta.map_zoom_default ?? 15);
-        _showTerrainOnMap(terrain);
+      // Overlay d'instruction pour P00 nouveau projet
+      const mapHint = document.getElementById('map-hint-overlay');
+      if (mapHint) mapHint.style.display = hasTerrain ? 'none' : 'flex';
+
+      if (hasTerrain) {
+        // Attendre que la carte soit idle pour que le flyTo fonctionne correctement
+        const _doFly = () => {
+          _showTerrainOnMap(terrain);
+
+          if (startAboveProject) {
+            // Animation : plonger depuis la verticale vers la vue cible de la phase
+            const lng = parseFloat(terrain.lng);
+            const lat = parseFloat(terrain.lat);
+            _map.flyTo({
+              center:   [lng, lat],
+              zoom:     targetZoom,
+              pitch:    targetPitch,
+              bearing:  targetBearing,
+              duration: 2000,
+              essential: true
+            });
+          } else if (terrain.parcelle_geojson) {
+            // Phase 0 avec terrain : fitBounds classique
+            try {
+              const bbox = turf.bbox({ type: 'Feature', geometry: terrain.parcelle_geojson });
+              _map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 80, duration: 1200 });
+            } catch {
+              MapViewer.flyTo(parseFloat(terrain.lng), parseFloat(terrain.lat), targetZoom);
+            }
+          } else {
+            MapViewer.flyTo(parseFloat(terrain.lng), parseFloat(terrain.lat), targetZoom);
+          }
+        };
+        if (_map.isStyleLoaded()) { setTimeout(_doFly, 300); }
+        else { _map.once('idle', _doFly); }
       }
     } catch (e) {
       console.warn('[Map] Init failed:', e.message);
@@ -541,6 +640,7 @@ function buildPhaseNav() {
     const isDone   = sess?.completed ?? false;
     const progress = sess?.data ? Object.keys(sess.data).length > 0 : false;
     const isBlocking = p.blocking ?? false;
+    const isVisited = !!(sess?.data?.visitedAt);
 
     let state = 'empty';
     if (isDone)     state = 'done';
@@ -550,7 +650,7 @@ function buildPhaseNav() {
     const label = PHASE_LABELS_SHORT[p.id] ?? String(p.id);
 
     return `
-      <button class="phase-card ${state}" data-phaseid="${p.id}"
+      <button class="phase-card ${state}${isVisited ? ' visited' : ''}" data-phaseid="${p.id}"
               onclick="TerlabRouter.goto(${p.id})"
               title="Phase ${p.id} — ${p.title}"
               aria-label="Phase ${p.id} : ${p.title}">
@@ -567,10 +667,12 @@ function updatePhaseNav(activeId) {
   document.querySelectorAll('.phase-card').forEach(btn => {
     const id   = parseInt(btn.dataset.phaseid);
     const sess = SessionManager.getPhase(id);
-    btn.classList.remove('active', 'done', 'progress');
+    btn.classList.remove('active', 'done', 'progress', 'visited');
     if (id === activeId)      btn.classList.add('active');
     else if (sess?.completed) btn.classList.add('done');
     else if (sess?.data && Object.keys(sess.data).length > 0) btn.classList.add('progress');
+    // Marqueur "déjà vu" (phase 0 exclue — toujours obligatoire)
+    if (id > 0 && sess?.data?.visitedAt) btn.classList.add('visited');
   });
 
   // Démo buttons uniquement visibles en phase 0
@@ -582,7 +684,196 @@ function updatePhaseNav(activeId) {
   const nextBtn = document.getElementById('phase-next');
   if (prevBtn) prevBtn.disabled = (activeId <= 0);
   if (nextBtn) nextBtn.disabled = (activeId >= 13);
+
+  // Phase player counter
+  if (typeof PhasePlayer !== 'undefined') PhasePlayer.updateCounter();
 }
+
+// ═════════════════════════════════════════════════════════════════
+// PHASE PLAYER — lecture progressive des phases
+// Utilisé aussi par l'export PDF pour parcourir phase par phase
+// ═════════════════════════════════════════════════════════════════
+const PhasePlayer = {
+  playing: false,
+  timer: null,
+  speed: 5000,
+  maxPhase: 12, // 0–12 (world 13 masquée)
+  /** Zoom réduit pendant la lecture auto — moins de tuiles à charger */
+  liteZoom: true,
+  _savedZoom: null,
+  /** Sauter les phases déjà visitées (sauf phase 0 toujours jouée) */
+  skipVisited: false,
+  /** Phases avec couches lourdes (WMS PEIGEO, BRGM, IGN raster) */
+  _heavyPhases: new Set([0, 1, 2, 3, 4, 6, 7, 12]),
+  /** Max timeout pour attendre les tuiles (ms) */
+  _tileTimeout: 8000,
+
+  /** Vérifie si une phase a déjà été vue */
+  isVisited(id) {
+    if (id === 0) return false; // phase 0 = toujours obligatoire
+    const sess = SessionManager.getPhase(id);
+    return !!(sess?.data?.visitedAt);
+  },
+
+  /** Trouve la prochaine phase non-vue après `from`, ou la prochaine tout court */
+  _nextUnvisited(from) {
+    for (let i = from + 1; i <= this.maxPhase; i++) {
+      if (!this.isVisited(i)) return i;
+    }
+    return -1; // toutes vues
+  },
+
+  /** Trouve la phase non-vue précédente avant `from` */
+  _prevUnvisited(from) {
+    for (let i = from - 1; i >= 0; i--) {
+      if (!this.isVisited(i)) return i;
+    }
+    return -1;
+  },
+
+  toggle() {
+    this.playing ? this.stop() : this.start();
+  },
+
+  start() {
+    this.playing = true;
+    if (this.liteZoom) this._reduceZoom();
+    this._updateUI();
+    this._tick();
+  },
+
+  stop() {
+    this.playing = false;
+    clearTimeout(this.timer);
+    this.timer = null;
+    if (this._savedZoom !== null) this._restoreZoom();
+    this._updateUI();
+  },
+
+  next() {
+    const cur = Router.currentPhase;
+    const target = this.skipVisited ? this._nextUnvisited(cur) : cur + 1;
+    if (target >= 0 && target <= this.maxPhase) TerlabRouter.goto(target);
+    else if (this.playing) this.stop();
+  },
+
+  prev() {
+    const cur = Router.currentPhase;
+    const target = this.skipVisited ? this._prevUnvisited(cur) : cur - 1;
+    if (target >= 0) TerlabRouter.goto(target);
+  },
+
+  toggleSkipVisited() {
+    this.skipVisited = !this.skipVisited;
+    this._updateUI();
+  },
+
+  setSpeed(ms) {
+    this.speed = parseInt(ms) || 5000;
+    if (this.playing) {
+      clearTimeout(this.timer);
+      this._tick();
+    }
+  },
+
+  /** Attendre que la carte ait fini de charger ses tuiles, avec fallback timeout */
+  _waitForMap(timeoutMs) {
+    const map = window.MapViewer?.getMap?.() ?? window.TerlabMap?._map;
+    if (!map) return Promise.resolve();
+    if (map.areTilesLoaded?.()) return new Promise(r => setTimeout(r, 300));
+    return new Promise(resolve => {
+      const onIdle = () => { map.off('idle', onIdle); clearTimeout(fallback); resolve(); };
+      map.once('idle', onIdle);
+      const fallback = setTimeout(() => { map.off('idle', onIdle); resolve(); }, timeoutMs || this._tileTimeout);
+    });
+  },
+
+  /** Appelé par l'export PDF pour avancer automatiquement (toutes les phases, ignore skipVisited) */
+  async playAll(onPhase) {
+    for (let i = 0; i <= this.maxPhase; i++) {
+      TerlabRouter.goto(i);
+      await new Promise(r => setTimeout(r, 400));
+      if (this._heavyPhases.has(i)) {
+        await this._waitForMap(this._tileTimeout);
+      }
+      if (onPhase) await onPhase(i);
+    }
+  },
+
+  updateCounter() {
+    const el = document.getElementById('pp-counter');
+    if (!el) return;
+    if (this.skipVisited) {
+      const unseen = Array.from({ length: this.maxPhase + 1 }, (_, i) => i).filter(i => !this.isVisited(i)).length;
+      el.textContent = `${Router.currentPhase}/${this.maxPhase} (${unseen} new)`;
+    } else {
+      el.textContent = `${Router.currentPhase}/${this.maxPhase}`;
+    }
+  },
+
+  _tick() {
+    if (!this.playing) return;
+    this._waitForMap(this._tileTimeout).then(() => {
+      if (!this.playing) return;
+      this.timer = setTimeout(() => {
+        if (!this.playing) return;
+        const cur = Router.currentPhase;
+        const target = this.skipVisited ? this._nextUnvisited(cur) : cur + 1;
+        if (target >= 0 && target <= this.maxPhase) {
+          TerlabRouter.goto(target);
+          this._tick();
+        } else {
+          this.stop();
+        }
+      }, this.speed);
+    });
+  },
+
+  /** Recule le zoom de ~1.5 niveaux pour charger moins de tuiles */
+  _reduceZoom() {
+    const map = window.MapViewer?.getMap?.() ?? window.TerlabMap?._map;
+    if (!map) return;
+    this._savedZoom = map.getZoom();
+    const lite = Math.max(this._savedZoom - 1.5, 12);
+    if (lite < this._savedZoom) {
+      map.easeTo({ zoom: lite, duration: 600 });
+    }
+  },
+
+  _restoreZoom() {
+    const map = window.MapViewer?.getMap?.() ?? window.TerlabMap?._map;
+    if (!map || this._savedZoom === null) return;
+    map.easeTo({ zoom: this._savedZoom, duration: 600 });
+    this._savedZoom = null;
+  },
+
+  _updateUI() {
+    const btn = document.getElementById('pp-play');
+    const iconPlay  = btn?.querySelector('.pp-icon-play');
+    const iconPause = btn?.querySelector('.pp-icon-pause');
+    if (this.playing) {
+      btn?.classList.add('playing');
+      if (iconPlay)  iconPlay.style.display  = 'none';
+      if (iconPause) iconPause.style.display = '';
+    } else {
+      btn?.classList.remove('playing');
+      if (iconPlay)  iconPlay.style.display  = '';
+      if (iconPause) iconPause.style.display = 'none';
+    }
+    // Toggle skip-visited button state
+    const skipBtn = document.getElementById('pp-skip');
+    if (skipBtn) {
+      skipBtn.classList.toggle('active', this.skipVisited);
+      skipBtn.title = this.skipVisited ? 'Montrer toutes les phases' : 'Sauter les phases déjà vues';
+      const iconX   = skipBtn.querySelector('svg:first-child');
+      const iconEye = skipBtn.querySelector('.pp-skip-eye');
+      if (iconX)   iconX.style.display   = this.skipVisited ? '' : 'none';
+      if (iconEye) iconEye.style.display = this.skipVisited ? 'none' : '';
+    }
+    this.updateCounter();
+  }
+};
+window.PhasePlayer = PhasePlayer;
 
 // ═════════════════════════════════════════════════════════════════
 // ACTEURS — FIX INJECTION
@@ -621,6 +912,16 @@ function injectActors(phaseId) {
     // Essai avec acteurs multi-phases non filtrés (acteurs globaux)
     const globals = ACTEURS.acteurs_globaux ?? ACTEURS.global ?? [];
     if (globals.length) list = globals;
+  }
+
+  // Phase 4 (PLU) : ne garder que la collectivité de l'intercommunalité du projet
+  if (phaseId === 4) {
+    const interco = SessionManager.getTerrain()?.intercommunalite;
+    if (interco) {
+      list = list.filter(a =>
+        a.type !== 'collectivité' || a.nom?.toUpperCase() === interco.toUpperCase()
+      );
+    }
   }
 
   if (!list.length) {
@@ -1054,6 +1355,232 @@ const Toast = {
       toast.classList.add('fade-out');
       toast.addEventListener('animationend', () => toast.remove(), { once: true });
     }, duration);
+  }
+};
+
+// ═════════════════════════════════════════════════════════════════
+// PROJECT MENU (dropdown btn-login)
+// ═════════════════════════════════════════════════════════════════
+const ProjectMenu = {
+  _dropdown: null,
+  _open: false,
+
+  init() {
+    const btn = document.getElementById('btn-login');
+    if (!btn) return;
+
+    // Create dropdown container
+    const dd = document.createElement('div');
+    dd.className = 'pm-dropdown';
+    dd.id = 'pm-dropdown';
+    btn.parentElement.appendChild(dd);
+    this._dropdown = dd;
+
+    // Hidden file input for import
+    const fi = document.createElement('input');
+    fi.type = 'file';
+    fi.accept = '.terlab,.json';
+    fi.hidden = true;
+    fi.id = 'pm-file-import';
+    fi.addEventListener('change', (e) => this._handleImport(e));
+    btn.parentElement.appendChild(fi);
+
+    // Toggle on click
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.toggle();
+    });
+
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+      if (this._open && !this._dropdown.contains(e.target)) {
+        this.close();
+      }
+    });
+
+    // Refresh on session change
+    window.addEventListener('terlab:session-changed', () => {
+      if (this._open) this.render();
+    });
+  },
+
+  toggle() {
+    this._open ? this.close() : this.open();
+  },
+
+  open() {
+    this._open = true;
+    this.render();
+    this._dropdown.classList.add('open');
+    document.getElementById('btn-login')?.classList.add('active');
+  },
+
+  close() {
+    this._open = false;
+    this._dropdown.classList.remove('open');
+    document.getElementById('btn-login')?.classList.remove('active');
+  },
+
+  render() {
+    const sessions = TerlabStorage.listSessions();
+    const currentId = SessionManager._sessionId;
+    const t = SessionManager.getTerrain();
+    const pct = SessionManager.getCompletionPct();
+    const loc = t?.commune ? `${t.commune} ${t.parcelle ?? ''}`.trim() : 'Aucune parcelle';
+    const col = pct < 30 ? 'var(--danger)' : pct < 60 ? 'var(--warning)' : 'var(--success)';
+
+    let html = '';
+
+    // Current session header
+    html += `
+      <div class="pm-current">
+        <div class="pm-current-label">Session active</div>
+        <div class="pm-current-loc">${loc}</div>
+        <div class="pm-current-meta">
+          <span>${pct}% completé</span>
+          <div class="pm-current-bar"><div class="pm-current-bar-fill" style="width:${pct}%;background:${col}"></div></div>
+        </div>
+      </div>`;
+
+    // Other projects
+    const others = sessions.filter(s => s.id !== currentId);
+    if (others.length > 0) {
+      html += `<div class="pm-section">Autres projets</div>`;
+      for (const s of others) {
+        const sLoc = s.terrain?.commune || 'Sans commune';
+        const sParcelle = s.terrain?.parcelle || s.terrain?.section || '';
+        const sPct = s.completion ?? TerlabStorage._computeCompletion(s);
+        const sAgo = this._timeAgo(s.updatedAt);
+        html += `
+          <div class="pm-item" data-id="${s.id}">
+            <div class="pm-item-info">
+              <div class="pm-item-loc">${sLoc} ${sParcelle}</div>
+              <div class="pm-item-sub">${sAgo}</div>
+            </div>
+            <div class="pm-item-pct">${sPct}%</div>
+            <button class="pm-item-del" data-del="${s.id}" title="Supprimer">✕</button>
+          </div>`;
+      }
+    } else {
+      html += `<div class="pm-empty">Aucun autre projet sauvegardé</div>`;
+    }
+
+    // Action buttons
+    html += `
+      <div class="pm-actions">
+        <button class="pm-action-btn pm-btn-new" id="pm-btn-new">+ Nouveau</button>
+        <button class="pm-action-btn" id="pm-btn-export">Exporter</button>
+        <button class="pm-action-btn" id="pm-btn-import">Importer</button>
+        <button class="pm-action-btn" id="pm-btn-accueil">Accueil</button>
+      </div>`;
+
+    this._dropdown.innerHTML = html;
+    this._attachEvents();
+  },
+
+  _attachEvents() {
+    // Switch to other project
+    this._dropdown.querySelectorAll('.pm-item[data-id]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('.pm-item-del')) return;
+        this._switchSession(el.dataset.id);
+      });
+    });
+
+    // Delete
+    this._dropdown.querySelectorAll('.pm-item-del[data-del]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.del;
+        const s = TerlabStorage.getSession(id);
+        const name = s?.terrain?.commune || 'ce projet';
+        if (confirm(`Supprimer ${name} ?`)) {
+          TerlabStorage.deleteSession(id);
+          this.render();
+          Toast.show('Projet supprimé', 'info');
+        }
+      });
+    });
+
+    // New project
+    this._dropdown.querySelector('#pm-btn-new')?.addEventListener('click', () => {
+      this._createNew();
+    });
+
+    // Export current
+    this._dropdown.querySelector('#pm-btn-export')?.addEventListener('click', () => {
+      TerlabStorage.export(SessionManager._sessionId);
+      Toast.show('Export .terlab téléchargé', 'success');
+      this.close();
+    });
+
+    // Import
+    this._dropdown.querySelector('#pm-btn-import')?.addEventListener('click', () => {
+      document.getElementById('pm-file-import')?.click();
+    });
+
+    // Accueil
+    this._dropdown.querySelector('#pm-btn-accueil')?.addEventListener('click', () => {
+      window.location.href = 'accueil.html';
+    });
+  },
+
+  _switchSession(id) {
+    const loaded = TerlabStorage.loadSession(id);
+    if (!loaded) {
+      Toast.show('Session introuvable', 'warning');
+      return;
+    }
+    AppState.sessionId = id;
+    updateSessionBadge();
+    updateToplevelScore();
+    Toast.show(`Projet chargé : ${loaded.terrain?.commune ?? 'session'}`, 'success');
+    this.close();
+    // Re-route to current phase with new data
+    route();
+  },
+
+  _createNew() {
+    // Save current session first
+    SessionManager.syncFirebase();
+    // Create new
+    const sess = TerlabStorage.createSession();
+    SessionManager._loadFromObject(sess);
+    AppState.sessionId = sess.id;
+    updateSessionBadge();
+    updateToplevelScore();
+    Toast.show('Nouveau projet créé', 'success');
+    this.close();
+    // Go to phase 0
+    window.location.hash = '#phase/0';
+    route();
+  },
+
+  async _handleImport(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const sess = await TerlabStorage.import(file);
+      this._switchSession(sess.id);
+      Toast.show('Projet importé', 'success');
+    } catch {
+      Toast.show('Erreur import fichier', 'danger');
+    }
+    e.target.value = '';
+  },
+
+  _timeAgo(dateStr) {
+    if (!dateStr) return '';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'À l\'instant';
+    if (mins < 60) return `${mins} min`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h`;
+    const days = Math.floor(hours / 24);
+    if (days === 1) return 'Hier';
+    if (days < 7) return `${days}j`;
+    return new Date(dateStr).toLocaleDateString('fr-FR');
   }
 };
 
