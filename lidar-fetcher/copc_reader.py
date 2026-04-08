@@ -24,6 +24,51 @@ from tile_index import TileInfo, utm40s_to_wgs84
 
 logger = logging.getLogger(__name__)
 
+
+# ── Patch laspy pour gerer le rate-limit IGN (429) ──────────────────────
+# IGN Geoplateforme limite a ~1 req/s. Laspy fait des dizaines de range
+# requests en parallele via HttpRangeStream.read() → requests.get().
+# On patche directement la methode read() pour retrier sur 429.
+
+def _patch_laspy_for_ign():
+    """Patch HttpRangeStream.read et limite a 1 thread."""
+    try:
+        import laspy.copc as copc_mod
+
+        _orig_read = copc_mod.HttpRangeStream.read
+
+        def _read_with_retry(self, size=-1):
+            import requests as _rq
+            for attempt in range(6):
+                try:
+                    return _orig_read(self, size)
+                except _rq.exceptions.HTTPError as e:
+                    if e.response is not None and e.response.status_code == 429:
+                        wait = 1.5 * (2 ** attempt)
+                        logger.info("IGN 429 retry %d/6 (%.1fs)", attempt + 1, wait)
+                        time.sleep(wait)
+                        continue
+                    raise
+            return _orig_read(self, size)
+
+        copc_mod.HttpRangeStream.read = _read_with_retry
+
+        # Force 1 thread au lieu de N pour reduire le debit de requetes
+        _orig_strategy = copc_mod.http_queue_strategy
+
+        def _single_thread_strategy(source, byte_queries, out_compressed_bytes,
+                                    num_threads=1):
+            return _orig_strategy(source, byte_queries, out_compressed_bytes,
+                                  num_threads=1)
+
+        copc_mod.http_queue_strategy = _single_thread_strategy
+
+        logger.info("Patch laspy COPC : retry 429 + single thread actif")
+    except Exception as e:
+        logger.warning("Patch laspy echoue : %s", e)
+
+_patch_laspy_for_ign()
+
 # ── Detection des backends disponibles ───────────────────────────────────
 
 HAS_PDAL = False
@@ -134,75 +179,96 @@ def _read_with_laspy(
     min_x: float, min_y: float, max_x: float, max_y: float,
     classes: set[int] | None,
     max_points: int,
+    _max_retries: int = 4,
 ) -> list[list]:
-    """Lit les points via laspy CopcReader (HTTP range requests)."""
+    """Lit les points via laspy CopcReader (HTTP range requests).
+
+    Gere le rate-limit IGN (429) avec retry + backoff exponentiel.
+    """
     from laspy import CopcReader
     from laspy.copc import Bounds
+    import requests as _req
 
-    with CopcReader.open(url) as reader:
-        bounds = Bounds(
-            mins=np.array([min_x, min_y, -1000.0]),
-            maxs=np.array([max_x, max_y, 10000.0]),
-        )
-        points_data = reader.query(bounds=bounds)
+    bounds = Bounds(
+        mins=np.array([min_x, min_y, -1000.0]),
+        maxs=np.array([max_x, max_y, 10000.0]),
+    )
 
-        if points_data is None or len(points_data.x) == 0:
-            return []
-
-        x = np.array(points_data.x)
-        y = np.array(points_data.y)
-        z = np.array(points_data.z)
-        classification = np.array(points_data.classification)
-
-        # Filtrer par classification
-        if classes:
-            mask = np.isin(classification, list(classes))
-            x, y, z = x[mask], y[mask], z[mask]
-            classification = classification[mask]
-        else:
-            mask = None
-
-        if len(x) == 0:
-            return []
-
-        # Sous-echantillonnage
-        subsample = None
-        if len(x) > max_points:
-            subsample = np.random.choice(len(x), max_points, replace=False)
-            subsample.sort()
-            x, y, z = x[subsample], y[subsample], z[subsample]
-            classification = classification[subsample]
-
-        # Couleurs RGB (16 bits -> 8 bits)
+    points_data = None
+    for attempt in range(_max_retries):
         try:
-            r_all = np.array(points_data.red)
-            g_all = np.array(points_data.green)
-            b_all = np.array(points_data.blue)
-            if mask is not None:
-                r_all, g_all, b_all = r_all[mask], g_all[mask], b_all[mask]
-            if subsample is not None:
-                r_all, g_all, b_all = r_all[subsample], g_all[subsample], b_all[subsample]
-            r = (r_all >> 8).astype(np.uint8)
-            g = (g_all >> 8).astype(np.uint8)
-            b = (b_all >> 8).astype(np.uint8)
-        except (AttributeError, TypeError):
-            r = np.zeros(len(x), dtype=np.uint8)
-            g = np.zeros(len(x), dtype=np.uint8)
-            b = np.zeros(len(x), dtype=np.uint8)
+            with CopcReader.open(url) as reader:
+                points_data = reader.query(bounds=bounds)
+                break
+        except _req.exceptions.HTTPError as e:
+            if e.response is not None and e.response.status_code == 429:
+                wait = 2.0 * (2 ** attempt)
+                logger.warning("IGN 429 — retry %d/%d apres %.0fs",
+                               attempt + 1, _max_retries, wait)
+                time.sleep(wait)
+                continue
+            raise
+    else:
+        logger.error("IGN 429 persistant apres %d tentatives", _max_retries)
+        return []
 
-        # UTM40S -> WGS84
-        lngs, lats = utm40s_to_wgs84(x, y)
+    if points_data is None or len(points_data.x) == 0:
+        return []
 
-        points = []
-        for i in range(len(x)):
-            points.append([
-                round(float(lngs[i]), 7),
-                round(float(lats[i]), 7),
-                round(float(z[i]), 2),
-                int(r[i]), int(g[i]), int(b[i]),
-                int(classification[i]),
-            ])
-        return points
+    x = np.array(points_data.x)
+    y = np.array(points_data.y)
+    z = np.array(points_data.z)
+    classification = np.array(points_data.classification)
+
+    # Filtrer par classification
+    if classes:
+        mask = np.isin(classification, list(classes))
+        x, y, z = x[mask], y[mask], z[mask]
+        classification = classification[mask]
+    else:
+        mask = None
+
+    if len(x) == 0:
+        return []
+
+    # Sous-echantillonnage
+    subsample = None
+    if len(x) > max_points:
+        subsample = np.random.choice(len(x), max_points, replace=False)
+        subsample.sort()
+        x, y, z = x[subsample], y[subsample], z[subsample]
+        classification = classification[subsample]
+
+    # Couleurs RGB (16 bits -> 8 bits)
+    try:
+        r_all = np.array(points_data.red)
+        g_all = np.array(points_data.green)
+        b_all = np.array(points_data.blue)
+        if mask is not None:
+            r_all, g_all, b_all = r_all[mask], g_all[mask], b_all[mask]
+        if subsample is not None:
+            r_all, g_all, b_all = r_all[subsample], g_all[subsample], b_all[subsample]
+        r = (r_all >> 8).astype(np.uint8)
+        g = (g_all >> 8).astype(np.uint8)
+        b = (b_all >> 8).astype(np.uint8)
+    except (AttributeError, TypeError):
+        r = np.zeros(len(x), dtype=np.uint8)
+        g = np.zeros(len(x), dtype=np.uint8)
+        b = np.zeros(len(x), dtype=np.uint8)
+
+    # UTM40S -> WGS84
+    lngs, lats = utm40s_to_wgs84(x, y)
+
+    points = []
+    for i in range(len(x)):
+        points.append([
+            round(float(lngs[i]), 7),
+            round(float(lats[i]), 7),
+            round(float(z[i]), 2),
+            int(r[i]), int(g[i]), int(b[i]),
+            int(classification[i]),
+        ])
+    return points
 
 
 # ── API publique ─────────────────────────────────────────────────────────
