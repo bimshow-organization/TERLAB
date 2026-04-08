@@ -1,12 +1,12 @@
-<!-- TERLAB · Phase 3 · Risques Naturels PPRN · ENSA La Réunion v1.0 -->
+<!-- TERLAB · Phase 3 · Hydrologie · ENSA La Réunion v1.0 -->
 <!-- Thème : risk · Bloquante · Géorisques + slider eau + cyclones -->
 
 <div class="left-panel" id="left-panel-p03">
 
   <div class="lp-head anim-slide-up">
     <div class="phase-label" style="color:var(--danger)">Phase 3 · Critique · Obligatoire</div>
-    <h1 class="phase-title">🌊 <em>Risques Naturels</em> — PPRN</h1>
-    <p class="phase-desc">Phase la plus critique du projet. Identifier tous les aléas réglementairement reconnus. Le PPRN est une servitude d'utilité publique — il prime sur le PLU en cas de contradiction.</p>
+    <h1 class="phase-title">🌊 <em>Hydrologie</em></h1>
+    <p class="phase-desc">Comprendre les flux hydrauliques du site. Identifier les aléas inondation, submersion et ruissellement. Le PPRN est une servitude d'utilité publique — il prime sur le PLU en cas de contradiction.</p>
   </div>
 
   <div class="terrain-strip">
@@ -34,15 +34,20 @@
 
     <!-- Auto-détection PPRN multi-points -->
     <div class="pprn-autodetect">
-      <button class="risk-fetch-btn" id="btn-pprn-scan" onclick="P03.scanPPRN()" title="Scanner les zones PPRN sur la parcelle (pixel sampling)">
+      <!-- Spinner auto-scan (visible au chargement) -->
+      <div id="pprn-auto-spinner" class="pprn-spinner-wrap" style="display:none">
+        <div class="pprn-spinner"></div>
+        <span class="pprn-spinner-text">Analyse PPRN de la parcelle en cours…</span>
+      </div>
+      <div id="pprn-scan-result" style="display:none"></div>
+      <button class="risk-fetch-btn" id="btn-pprn-scan" onclick="P03.scanPPRN()" style="display:none">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="10" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M4 4h4v4H4z" fill="currentColor" opacity=".3"/></svg>
-        Scanner le PPRN sur la parcelle
+        Re-scanner le PPRN
       </button>
       <button class="risk-fetch-btn" id="btn-pprn-planview" onclick="P03.planViewPPRN()" title="Vue plan 2D zoomée sur la parcelle avec PPRN" style="margin-top:4px">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="2" y="2" width="8" height="8" stroke="currentColor" stroke-width="1.2"/><circle cx="6" cy="6" r="2" stroke="currentColor" stroke-width="1"/></svg>
         Vue plan PPRN (zoom parcelle)
       </button>
-      <div id="pprn-scan-result" style="display:none"></div>
     </div>
 
     <div class="field-row" style="margin-top:8px">
@@ -120,32 +125,6 @@
     <p class="field-note">En saison cyclonique (nov-avril), prévoir un protocole de mise en sécurité du chantier. Cyclone Belal (janv. 2024) = rafales > 200km/h mesurées.</p>
   </div>
 
-  <!-- SDIS -->
-  <div class="form-section anim-slide-up">
-    <div class="fs-head">Défense incendie — SDIS 974</div>
-    <div class="sdis-grid">
-      <div class="field-row">
-        <label class="field-label" for="sdis-hydrant">Hydrant à moins de 150m</label>
-        <div class="radio-group">
-          <label class="radio-option" onclick="P03.selectSdis(this,'hydrant','oui')"><input type="radio" name="sdis-hydrant" value="oui"/>Oui</label>
-          <label class="radio-option" onclick="P03.selectSdis(this,'hydrant','non')"><input type="radio" name="sdis-hydrant" value="non"/>Non</label>
-          <label class="radio-option" onclick="P03.selectSdis(this,'hydrant','verif')"><input type="radio" name="sdis-hydrant" value="verif"/>À vérifier</label>
-        </div>
-      </div>
-      <div class="field-row">
-        <label class="field-label">Accès pompiers conforme (voie ≥ 3m)</label>
-        <div class="radio-group">
-          <label class="radio-option" onclick="P03.selectSdis(this,'acces','oui')"><input type="radio" name="sdis-acces" value="oui"/>Oui</label>
-          <label class="radio-option danger-opt" onclick="P03.selectSdis(this,'acces','non')"><input type="radio" name="sdis-acces" value="non"/>Non ⚠</label>
-          <label class="radio-option" onclick="P03.selectSdis(this,'acces','verif')"><input type="radio" name="sdis-acces" value="verif"/>À vérifier</label>
-        </div>
-      </div>
-    </div>
-    <div class="sdis-alert" id="sdis-alert" style="display:none">
-      🚒 Accès SDIS non conforme — refus de permis de construire possible. Prévoir voie ≥ 3m, hauteur libre ≥ 3.5m, portance ≥ 13t.
-    </div>
-    <div class="stub-warning">⚠️ STUB — Données hydrants SDIS 974 non open data. Vérification manuelle requise.</div>
-  </div>
 
   <!-- Encadrés pédagogiques -->
   <div class="form-section anim-slide-up">
@@ -185,14 +164,11 @@
     <div class="check-item blocking" role="checkbox" aria-checked="false" tabindex="0">
       <div class="check-box"></div><span>Cote NGR de référence saisie (ou "non concerné")</span>
     </div>
-    <div class="check-item blocking" role="checkbox" aria-checked="false" tabindex="0">
-      <div class="check-box"></div><span>Accès SDIS et hydrant vérifiés</span>
-    </div>
     <div class="check-item" role="checkbox" aria-checked="false" tabindex="0">
       <div class="check-box"></div><span>PPRL vérifié si zone littorale (< 500m mer)</span>
     </div>
     <div class="val-progress"><div class="val-bar"></div></div>
-    <div class="val-footer"><span>3 validations bloquantes</span><span class="val-pct">0/4</span></div>
+    <div class="val-footer"><span>2 validations bloquantes</span><span class="val-pct">0/3</span></div>
     <button class="next-btn">Phase 4 — Réglementation PLU →</button>
   </div>
 
@@ -307,7 +283,6 @@
 .ci-label { font-family:var(--font-mono); font-size:8.5px; color:var(--faint); }
 .ci-val { font-family:var(--font-mono); font-size:10px; color:var(--warning); font-weight:700; }
 
-.sdis-alert { background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.3); border-left:3px solid var(--danger); border-radius:var(--r-sm); padding:8px 10px; font-size:11px; color:var(--danger); margin-top:8px; }
 .danger-opt.selected { background:var(--danger2)!important; border-color:var(--danger)!important; color:var(--danger)!important; }
 
 .ped-accordion { display:flex; flex-direction:column; gap:4px; }
@@ -330,6 +305,10 @@
 .alea-item.detected .alea-status { color:var(--danger); }
 
 .pprn-autodetect { margin-bottom:6px; }
+.pprn-spinner-wrap { display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); }
+.pprn-spinner { width:14px; height:14px; border:2px solid rgba(154,120,32,.2); border-top-color:#9a7820; border-radius:50%; animation:pprn-spin .8s linear infinite; }
+@keyframes pprn-spin { to { transform:rotate(360deg); } }
+.pprn-spinner-text { font-family:var(--font-mono); font-size:10px; color:var(--muted); }
 .pprn-scan-zones { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
 .pprn-scan-zone { display:flex; align-items:center; gap:5px; padding:4px 8px; border-radius:var(--r-sm); font-family:var(--font-mono); font-size:10px; color:var(--text2); border:1px solid var(--border2); }
 .pprn-scan-zone .sz-bar { height:4px; border-radius:2px; min-width:20px; }
@@ -503,32 +482,18 @@ const P03 = {
     SessionManager.saveTerrain({ zone_rtaa: zone, vent_ref_kmh: data.vent });
   },
 
-  selectSdis(label, field, val) {
-    document.querySelectorAll(`[name="sdis-${field}"]`).forEach(r => r.closest('.radio-option')?.classList.remove('selected'));
-    label.classList.add('selected');
-    const alertEl = document.getElementById('sdis-alert');
-    if (field === 'acces' && val === 'non') {
-      alertEl.style.display = 'block';
-    } else if (field === 'acces') {
-      alertEl.style.display = 'none';
-    }
-    SessionManager.saveTerrain({ [`sdis_${field}`]: val });
-  },
-
   // ── Auto-détection PPRN multi-points ──────────────────────────
-  async scanPPRN() {
+  // isAuto = true quand appelé automatiquement au chargement de P03
+  async scanPPRN(isAuto = false) {
     const terrain = SessionManager.getTerrain();
     const parcelGeo = terrain?.parcelle_geojson;
     if (!parcelGeo) {
-      window.TerlabToast?.show('Parcelle non définie — complétez la Phase 0', 'warning');
+      if (!isAuto) window.TerlabToast?.show('Parcelle non définie — complétez la Phase 0', 'warning');
+      this._hideSpinnerShowRescan();
       return;
     }
 
     const map = MapViewer?.getMap();
-    if (!map) {
-      window.TerlabToast?.show('Carte non disponible', 'warning');
-      return;
-    }
 
     // Extraire le ring WGS84
     let ring = parcelGeo.type === 'Polygon'
@@ -540,31 +505,62 @@ const P03 = {
       ring = ring.slice(0, -1);
     }
     if (ring.length < 3) {
-      window.TerlabToast?.show('Géométrie parcelle invalide', 'warning');
+      if (!isAuto) window.TerlabToast?.show('Géométrie parcelle invalide', 'warning');
+      this._hideSpinnerShowRescan();
       return;
     }
 
+    // UI : spinner pour auto, disable bouton pour re-scan
+    const spinner = document.getElementById('pprn-auto-spinner');
     const btn = document.getElementById('btn-pprn-scan');
-    btn.disabled = true;
-    btn.textContent = 'Scanning PPRN…';
+    if (isAuto) {
+      spinner.style.display = 'flex';
+      btn.style.display = 'none';
+    } else {
+      btn.disabled = true;
+      btn.textContent = 'Analyse PPRN…';
+    }
 
-    // S'assurer que la couche PPR est visible et qu'on est bien zoomé
+    // S'assurer que la couche PPR est visible
     try {
-      if (map.getLayer('ppr-layer')) {
+      if (map?.getLayer('ppr-layer')) {
         map.setLayoutProperty('ppr-layer', 'visibility', 'visible');
         map.setPaintProperty('ppr-layer', 'raster-opacity', 0.8);
       }
     } catch {}
 
-    // Attendre un rendu stable
-    await new Promise(r => { map.once('idle', r); setTimeout(r, 2000); });
-
     const result = await PPRSamplingService.sampleParcel(ring, map);
 
-    btn.disabled = false;
-    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="10" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M4 4h4v4H4z" fill="currentColor" opacity=".3"/></svg> Re-scanner le PPRN';
+    // Masquer spinner, afficher bouton re-scan
+    this._hideSpinnerShowRescan();
 
     // Afficher les résultats
+    this._displayScanResults(result);
+
+    // Sauvegarder les résultats du scan en session pour l'esquisse
+    SessionManager.saveTerrain({
+      pprn_scan: result,
+      pprn_zones_detected: result.zones,
+      pprn_has_inconstructible: result.hasInconstructible,
+    });
+
+    if (!isAuto) {
+      window.TerlabToast?.show(`Scan PPRN terminé — ${Object.keys(result.zones).length} zone(s) détectée(s)`, 'success');
+    }
+  },
+
+  _hideSpinnerShowRescan() {
+    const spinner = document.getElementById('pprn-auto-spinner');
+    const btn = document.getElementById('btn-pprn-scan');
+    if (spinner) spinner.style.display = 'none';
+    if (btn) {
+      btn.style.display = '';
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="10" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M4 4h4v4H4z" fill="currentColor" opacity=".3"/></svg> Re-scanner le PPRN';
+    }
+  },
+
+  _displayScanResults(result) {
     const resultDiv = document.getElementById('pprn-scan-result');
     resultDiv.style.display = 'block';
 
@@ -590,6 +586,8 @@ const P03 = {
         html += `<div class="pprn-scan-alert danger">ZONE INCONSTRUCTIBLE détectée : ${incZones} — le PPRN prime sur le PLU</div>`;
       } else if (Object.keys(result.zones).some(z => z.startsWith('B'))) {
         html += '<div class="pprn-scan-alert info">Zone bleue détectée — construction sous prescriptions (plancher surélevé, matériaux résistants)</div>';
+      } else {
+        html += '<div class="pprn-scan-alert success">Zone de vigilance : aléa faible. Recommandations d\'adaptation (surélévation conseillée). Pas d\'interdiction spécifique.</div>';
       }
 
       resultDiv.innerHTML = html;
@@ -598,15 +596,6 @@ const P03 = {
       const dominantBtn = document.querySelector(`[data-zone="${result.dominant}"]`);
       if (dominantBtn) this.selectZone(dominantBtn, result.dominant);
     }
-
-    // Sauvegarder les résultats du scan en session pour l'esquisse
-    SessionManager.saveTerrain({
-      pprn_scan: result,
-      pprn_zones_detected: result.zones,
-      pprn_has_inconstructible: result.hasInconstructible,
-    });
-
-    window.TerlabToast?.show(`Scan PPRN terminé — ${Object.keys(result.zones).length} zone(s) détectée(s)`, 'success');
   },
 
   // ── Vue plan PPRN zoomée ───────────────────────────────────────
@@ -659,4 +648,17 @@ window.P03 = P03;
 
 // enviroBAT cards
 if (window.EnvirobatCards) EnvirobatCards.render('eb-cards-p03', 'p03');
+
+// ── Auto-scan PPRN au premier chargement ────────────────────────
+// Si un scan précédent existe en session, restaurer l'affichage ;
+// sinon lancer le scan automatiquement (spinner visible)
+const existingScan = terrain?.pprn_scan;
+if (existingScan && Object.keys(existingScan.zones ?? {}).length >= 0 && existingScan.totalPoints) {
+  // Restaurer les résultats du scan précédent
+  P03._displayScanResults(existingScan);
+  P03._hideSpinnerShowRescan();
+} else if (terrain?.parcelle_geojson) {
+  // Premier arrivée sur P03 avec une parcelle → auto-scan
+  P03.scanPPRN(true);
+}
 </script>

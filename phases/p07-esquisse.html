@@ -69,44 +69,54 @@
     <div class="prog-grid" style="gap:6px">
       <div class="field-row">
         <label class="field-label">Type</label>
-        <div style="display:flex;gap:3px">
-          <button class="tg-btn active" id="pm-type-maison" onclick="window.P07?.setProg('type','maison')">Maison</button>
-          <button class="tg-btn" id="pm-type-collectif" onclick="window.P07?.setProg('type','collectif')">Collectif</button>
+        <div style="display:flex;gap:3px;flex-wrap:wrap">
+          <button class="tg-btn active" id="pm-type-maison" onclick="window.P07?.setProg('type','maison');window.PlanMasseCanvas?.setProg('type','maison')">Maison</button>
+          <button class="tg-btn" id="pm-type-collectif" onclick="window.P07?.setProg('type','collectif');window.PlanMasseCanvas?.setProg('type','collectif')">Collectif</button>
+          <button class="tg-btn" id="pm-type-bureau" onclick="window.P07?.setProg('type','bureau')">Bureau</button>
+          <button class="tg-btn" id="pm-type-erp" onclick="window.P07?.setProg('type','erp')">ERP</button>
+          <button class="tg-btn" id="pm-type-commerce" onclick="window.P07?.setProg('type','commerce')">Commerce</button>
         </div>
       </div>
       <div class="field-row">
         <label class="field-label">Niv. max</label>
         <input type="range" id="pm-nvmax" min="1" max="3" value="2" step="1"
-               oninput="window.P07?.setProg('nvMax',+this.value);document.getElementById('pm-nvmax-lbl').textContent=['','R+0','R+1','R+2','R+3'][+this.value]"/>
+               oninput="window.P07?.setProg('nvMax',+this.value);window.PlanMasseCanvas?.setProg('nvMax',+this.value);document.getElementById('pm-nvmax-lbl').textContent=['','R+0','R+1','R+2','R+3'][+this.value]"/>
         <span id="pm-nvmax-lbl" style="font-size:10px;color:var(--accent);min-width:30px">R+1</span>
       </div>
       <div class="field-row">
         <label class="field-label">Prof. max N-S</label>
         <input type="range" id="pm-profmax" min="5" max="25" value="15" step="0.5"
-               oninput="window.P07?.setProg('profMax',+this.value);document.getElementById('pm-profmax-lbl').textContent=this.value+'m'"/>
+               oninput="window.P07?.setProg('profMax',+this.value);window.PlanMasseCanvas?.setProg('profMax',+this.value);document.getElementById('pm-profmax-lbl').textContent=this.value+'m'"/>
         <span id="pm-profmax-lbl" style="font-size:10px;color:var(--accent);min-width:30px">15m</span>
       </div>
       <div class="field-row" id="pm-maxunits-row" style="display:none">
         <label class="field-label">Max lgts/bloc</label>
         <input type="range" id="pm-maxunits" min="0" max="40" value="20" step="1"
-               oninput="window.P07?.setProg('maxUnits',+this.value);document.getElementById('pm-maxunits-lbl').textContent=this.value===0?'∞':this.value"/>
+               oninput="window.P07?.setProg('maxUnits',+this.value);window.PlanMasseCanvas?.setProg('maxUnits',+this.value);document.getElementById('pm-maxunits-lbl').textContent=this.value===0?'∞':this.value"/>
         <span id="pm-maxunits-lbl" style="font-size:10px;color:var(--accent);min-width:30px">20</span>
+      </div>
+      <div class="field-row" id="pm-effectif-row" style="display:none">
+        <label class="field-label">Effectif public</label>
+        <input type="number" id="pm-effectif" class="field-input" placeholder="200" min="1"
+               oninput="window.P07?.setProg('effectifERP',+this.value)"
+               style="width:70px"/>
+        <span id="pm-effectif-cat" style="font-size:9px;color:var(--faint);margin-left:4px"></span>
       </div>
       <div class="field-row">
         <label class="field-label">Parking</label>
         <div style="display:flex;gap:3px">
-          <button class="tg-btn active" id="pm-park-ext" onclick="window.P07?.setProg('parkMode','ext')">Ext</button>
-          <button class="tg-btn" id="pm-park-rdc" onclick="window.P07?.setProg('parkMode','rdc')">RdC</button>
-          <button class="tg-btn" id="pm-park-ss" onclick="window.P07?.setProg('parkMode','ss')">Sous-sol</button>
+          <button class="tg-btn active" id="pm-park-ext" onclick="window.P07?.setProg('parkMode','ext');window.PlanMasseCanvas?.setProg('parkMode','ext')">Ext</button>
+          <button class="tg-btn" id="pm-park-rdc" onclick="window.P07?.setProg('parkMode','rdc');window.PlanMasseCanvas?.setProg('parkMode','rdc')">RdC</button>
+          <button class="tg-btn" id="pm-park-ss" onclick="window.P07?.setProg('parkMode','ss');window.PlanMasseCanvas?.setProg('parkMode','ss')">Sous-sol</button>
         </div>
       </div>
       <div class="field-row">
         <label class="field-label">Côté PK</label>
         <div style="display:flex;gap:3px">
-          <button class="tg-btn" id="pm-side-est" onclick="window.P07?.setParkSide('est')">E</button>
-          <button class="tg-btn active" id="pm-side-nord" onclick="window.P07?.setParkSide('nord')">N</button>
-          <button class="tg-btn" id="pm-side-ouest" onclick="window.P07?.setParkSide('ouest')">O</button>
-          <button class="tg-btn" id="pm-side-sud" onclick="window.P07?.setParkSide('sud')">S</button>
+          <button class="tg-btn" id="pm-side-est" onclick="window.P07?.setParkSide('est');window.PlanMasseCanvas?.setParkSide('est')">E</button>
+          <button class="tg-btn active" id="pm-side-nord" onclick="window.P07?.setParkSide('nord');window.PlanMasseCanvas?.setParkSide('nord')">N</button>
+          <button class="tg-btn" id="pm-side-ouest" onclick="window.P07?.setParkSide('ouest');window.PlanMasseCanvas?.setParkSide('ouest')">O</button>
+          <button class="tg-btn" id="pm-side-sud" onclick="window.P07?.setParkSide('sud');window.PlanMasseCanvas?.setParkSide('sud')">S</button>
         </div>
       </div>
     </div>
@@ -135,87 +145,7 @@
     <div class="struct-advice" id="struct-advice" style="display:none"></div>
   </div>
 
-  <!-- Checks PLU -->
-  <div class="form-section anim-slide-up">
-    <div class="fs-head">Vérifications PLU automatiques</div>
-    <div class="plu-checks" id="plu-checks">
-      <div class="plu-check" id="chk-emprise">
-        <span class="plu-label">Emprise au sol</span>
-        <span class="plu-val" id="chk-emprise-val">—</span>
-      </div>
-      <div class="plu-check" id="chk-hauteur">
-        <span class="plu-label">Hauteur</span>
-        <span class="plu-val" id="chk-hauteur-val">—</span>
-      </div>
-      <div class="plu-check" id="chk-recul-voie">
-        <span class="plu-label">Recul voie</span>
-        <span class="plu-val" id="chk-recul-voie-val">—</span>
-      </div>
-      <div class="plu-check" id="chk-sep">
-        <span class="plu-label">Recul sep.</span>
-        <span class="plu-val" id="chk-sep-val">—</span>
-      </div>
-    </div>
-    <div class="emprise-calc" id="emprise-calc" style="display:none">
-      <span class="ec-label">Emprise calculée</span>
-      <span class="ec-val" id="ec-val">—</span>
-    </div>
-    <div class="rtaa-note" id="rtaa-note" style="display:none"></div>
-  </div>
-
-  <!-- Conformité 7 points PLU / RTAA / SCoT -->
-  <div class="form-section anim-slide-up" id="p07-compliance-v5" style="display:none">
-    <div class="fs-head">Conformité — 7 points</div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-      <span class="compliance-badge" id="p07-compliance-badge">—</span>
-      <span style="font-size:10px;color:var(--faint)" id="p07-capacity-lbl">Capacité max : —</span>
-    </div>
-    <table style="width:100%;font-size:10px;border-collapse:collapse" id="p07-checks-tbl">
-      <thead>
-        <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
-          <th style="text-align:left;padding:2px 4px;color:var(--faint)">Vérif.</th>
-          <th style="text-align:right;padding:2px 4px;color:var(--faint)">Projet</th>
-          <th style="text-align:right;padding:2px 4px;color:var(--faint)">Règle</th>
-          <th style="width:20px"></th>
-        </tr>
-      </thead>
-      <tbody id="p07-ck-body"></tbody>
-    </table>
-    <div style="font-size:9px;color:var(--faint);margin-top:6px" id="p07-metrics-summary"></div>
-  </div>
-
-  <!-- Points d'attention — Régime d'autorisation d'urbanisme -->
-  <div class="form-section anim-slide-up" id="p07-autorisation-section" style="display:none">
-    <div class="fs-head">Régime d'autorisation d'urbanisme</div>
-    <div class="autorisation-regime" id="autorisation-regime-badge"></div>
-    <div class="autorisation-points" id="autorisation-points"></div>
-  </div>
-
-  <!-- Synthèse topographique 3D (auto depuis session) -->
-  <div class="form-section anim-slide-up" id="topo-3d-section">
-    <div class="fs-head">Topographie &mdash; Synth&egrave;se auto</div>
-    <div class="detected-grid">
-      <div class="det-cell">
-        <span class="det-label">Pente max</span>
-        <span class="det-val" id="p07-pente-val">&mdash;</span>
-      </div>
-      <div class="det-cell">
-        <span class="det-label">Exposition</span>
-        <span class="det-val" id="p07-expo-val">&mdash;</span>
-      </div>
-      <div class="det-cell">
-        <span class="det-label">Ensoleillement</span>
-        <span class="det-val" id="p07-sun-val">&mdash;</span>
-      </div>
-      <div class="det-cell">
-        <span class="det-label">Zone RTAA</span>
-        <span class="det-val" id="p07-rtaa-val">&mdash;</span>
-      </div>
-    </div>
-    <div id="p07-slope-alert" class="stub-warning" style="display:none">
-      Pente &gt; 15% &mdash; &Eacute;tude g&eacute;otechnique G1 obligatoire (RTAA DOM)
-    </div>
-  </div>
+  <!-- (Checks PLU, Conformité, Autorisation, SDIS, Topo → déplacés dans le right panel) -->
 
   <!-- Végétation automatique BPF -->
   <div class="form-section anim-slide-up">
@@ -235,6 +165,21 @@
     <div id="p07-vegetation-stats" style="font-size:10px;color:var(--text-dim)"></div>
     <div id="p07-garden-hint" style="font-size:10px;margin-top:4px;color:var(--accent)"></div>
   </div>
+
+  <!-- Bâtiments existants -->
+  <div class="form-section anim-slide-up" id="panel-existing" style="display:none">
+    <div class="fs-head">Bâtiments existants</div>
+    <div id="existing-stats" style="font-size:10px;color:var(--text-dim);margin-bottom:6px"></div>
+    <div class="existing-mode-toggle" role="group" style="display:flex;gap:4px;margin-bottom:6px">
+      <button class="em-btn active" data-mode="demolition" style="flex:1;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--card);color:var(--text);font-size:10px;cursor:pointer">⛏ Démolition</button>
+      <button class="em-btn" data-mode="conservation" style="flex:1;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--card);color:var(--text);font-size:10px;cursor:pointer">◻ Conservation</button>
+      <button class="em-btn" data-mode="extension" style="flex:1;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:var(--card);color:var(--text);font-size:10px;cursor:pointer">⊕ Extension</button>
+    </div>
+    <div id="existing-note" style="font-size:9px;color:var(--faint)"></div>
+  </div>
+
+
+  <!-- (Résultats étude de capacité → déplacés dans le right panel) -->
 
   <!-- Export BIMSHOW -->
   <div class="form-section anim-slide-up">
@@ -272,13 +217,6 @@
       <div class="risk-label">🔒 Métadonnées BIM</div>
       <div class="risk-text">Les fichiers GLB et DXF exportés contiennent des métadonnées (auteur, date, coords GPS). Établir un BIM Execution Plan. Purger avant dépôt de PC.</div>
     </div>
-  </div>
-
-  <!-- Atlas Composition Psychédélique -->
-  <div class="form-section anim-slide-up">
-    <div class="fs-head">Atlas — Compositions Psychédéliques</div>
-    <p class="field-note" style="margin-bottom:6px">Phyllotaxie, spirales, fractales, champs de Perlin — patterns génératifs pour nourrir l'esquisse de formes organiques et mathématiques.</p>
-    <div id="atlas-preview-psyche"></div>
   </div>
 
   <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
@@ -399,31 +337,57 @@
 <!-- ═══════════════════ CARTE / VIEWER 3D ═══════════════════════ -->
 <div class="map-area" id="map-area-p07">
   <!-- Toggle Carte / 3D -->
-  <div id="p07-view-tabs" style="position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:0;border-radius:6px;overflow:hidden;border:1px solid rgba(154,120,32,.35);background:rgba(30,28,24,.85);backdrop-filter:blur(6px);box-shadow:0 2px 8px rgba(0,0,0,.3)">
+  <div id="p07-view-tabs" style="position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:0;border-radius:6px;overflow:hidden;border:1px solid var(--border2);background:rgba(237,232,220,.94);backdrop-filter:blur(6px);box-shadow:var(--sh)">
+    <button id="p07-toggle-planmasse" class="p07-vtab" data-view="planmasse"
+      style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:var(--accent2);color:var(--accent);border:none;cursor:pointer;font-weight:600;transition:all .15s">
+      Plan masse
+    </button>
+    <button id="p07-toggle-plancoupe" class="p07-vtab" data-view="plancoupe"
+      style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:none;color:var(--muted,#6b5c3e);border:none;cursor:pointer;transition:all .15s">
+      Coupe
+    </button>
     <button id="p07-toggle-map" class="p07-vtab" data-view="map"
-      style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:none;color:rgba(200,180,140,.6);border:none;cursor:pointer;transition:all .15s">
+      style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:none;color:var(--muted,#6b5c3e);border:none;cursor:pointer;transition:all .15s">
       Carte
     </button>
     <button id="p07-toggle-esquisse" class="p07-vtab" data-view="esquisse"
-      style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:rgba(154,120,32,.25);color:#c0943a;border:none;cursor:pointer;font-weight:600;transition:all .15s">
+      style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:none;color:var(--muted,#6b5c3e);border:none;cursor:pointer;transition:all .15s">
       Esquisse
     </button>
     <button id="p07-toggle-3d" class="p07-vtab" data-view="3d"
-      style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:none;color:rgba(200,180,140,.6);border:none;cursor:pointer;transition:all .15s">
+      style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:none;color:var(--muted,#6b5c3e);border:none;cursor:pointer;transition:all .15s">
       Vue 3D
     </button>
-    <button id="p07-toggle-coupe" class="p07-vtab" data-view="coupe"
-      style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:none;color:rgba(200,180,140,.6);border:none;cursor:pointer;transition:all .15s">
-      Coupe
-    </button>
     <button id="p07-toggle-gabarit" class="p07-vtab" data-view="gabarit"
-      style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:none;color:rgba(200,180,140,.6);border:none;cursor:pointer;transition:all .15s">
+      style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:none;color:var(--muted,#6b5c3e);border:none;cursor:pointer;transition:all .15s">
       Gabarit
     </button>
   </div>
 
-  <!-- Carte Mapbox (visible par défaut) -->
-  <div id="map" style="width:100%;height:100%;position:absolute;inset:0"></div>
+  <!-- ═══ TOOLBAR PLAN MASSE (ivoire) ═══ -->
+  <div id="pmc-toolbar" style="position:absolute;top:52px;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:4px;align-items:center;font-family:var(--font-mono);font-size:9px">
+    <div style="display:flex;gap:2px;background:rgba(237,232,220,.92);border:1px solid var(--border);border-radius:4px;padding:2px;backdrop-filter:blur(6px);box-shadow:var(--sh)">
+      <button class="pmc-sc-btn active" data-sc="B1" style="padding:3px 8px;border:1px solid var(--border2);border-radius:3px;background:var(--accent2);color:var(--accent);font:600 9px var(--font-mono);cursor:pointer">B1</button>
+      <button class="pmc-sc-btn" data-sc="A1" style="padding:3px 8px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 9px var(--font-mono);cursor:pointer">A1</button>
+      <button class="pmc-sc-btn" data-sc="B2" style="padding:3px 8px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 9px var(--font-mono);cursor:pointer">B2</button>
+      <button class="pmc-sc-btn" data-sc="C1" style="padding:3px 8px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 9px var(--font-mono);cursor:pointer">C1</button>
+    </div>
+    <button id="pmc-btn-auto" style="padding:3px 10px;border:1px solid var(--success);border-radius:4px;background:rgba(61,107,46,.12);color:var(--success);font:600 9px var(--font-mono);cursor:pointer" title="Placement automatique PIR">◎ Auto</button>
+    <button id="pmc-btn-reset" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--card);color:var(--muted);font:600 9px var(--font-mono);cursor:pointer" title="Recentrer">⌂</button>
+    <button id="pmc-btn-svg" style="padding:3px 10px;border:1px solid var(--border2);border-radius:4px;background:var(--accent2);color:var(--accent);font:600 9px var(--font-mono);cursor:pointer">↓ SVG</button>
+  </div>
+
+  <!-- ═══ PLAN MASSE CANVAS (visible par défaut — fond ivoire) ═══ -->
+  <div id="pmc-wrap" style="position:absolute;inset:0;z-index:4;background:var(--bg,#ede8dc)">
+    <div id="pmc-container" style="width:100%;height:100%"></div>
+    <div style="position:absolute;bottom:0;left:0;right:0;height:22px;background:var(--raised,#e2dbcd);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 10px;gap:20px;font:10px var(--font-mono);color:var(--muted)">
+      <span id="pmc-terrain-info">—</span>
+      <span style="flex:1;text-align:center;color:var(--accent)" id="pmc-cursor">Cliquer arête → changer type · Drag bat → déplacer · Handles → redimensionner</span>
+    </div>
+  </div>
+
+  <!-- Carte Mapbox (cachée par défaut) -->
+  <div id="map" style="width:100%;height:100%;position:absolute;inset:0;display:none"></div>
   <div id="map-stub-banner" style="display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(245,158,11,.85);color:#000;padding:5px 14px;border-radius:4px;font-family:monospace;font-size:10px"></div>
 
   <!-- Vue Coupe N-S (cachée par défaut) -->
@@ -443,6 +407,7 @@
       <div style="height:4px"></div>
       <button class="t3d-btn" id="t3d-btn-slopes" onclick="window.P07?.toggleSlopes()">Pentes</button>
       <button class="t3d-btn" id="t3d-btn-dims" onclick="window.P07?.toggleDims()">Cotes</button>
+      <button class="t3d-btn active" id="t3d-btn-contours" onclick="window.P07?.toggleContours()">Contours</button>
       <button class="t3d-btn" id="t3d-btn-sun" onclick="window.P07?.toggleSun()">Soleil</button>
       <div style="height:4px"></div>
       <button class="t3d-btn" onclick="window.P07?.exportGLB3D()">GLB</button>
@@ -546,6 +511,114 @@
 
 <!-- ═══════════════════ COLONNE DROITE ══════════════════════════ -->
 <div class="right-panel">
+
+  <!-- ═══ RÉSULTATS ÉTUDE DE CAPACITÉ (top priority) ═══ -->
+  <div class="rp-section" id="pmc-metrics-section">
+    <div class="rp-head">Étude de capacité</div>
+    <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
+      <span style="font-size:9px;color:var(--muted)">Cap. max PLU</span>
+      <span id="pmc-maxlgts" style="font:700 22px var(--font-mono);color:var(--accent)">—</span>
+      <span style="font-size:8px;color:var(--faint)" id="pmc-maxniv">—</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+      <span id="pmc-status" class="pmc-pill ok" style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font:600 9px var(--font-mono)">Conforme</span>
+      <span id="pmc-lgts" style="font:700 24px var(--font-mono);color:var(--text)">0</span>
+      <span id="pmc-lgts-sub" style="font-size:9px;color:var(--muted)">logements</span>
+    </div>
+    <div style="margin-bottom:5px">
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><span style="font-size:9px;color:var(--muted);flex:1">Emprise</span><span id="pmc-gv-emp" style="font:600 9px var(--font-mono);color:var(--accent)">—</span></div>
+      <div style="height:4px;background:var(--raised);border-radius:2px;overflow:hidden"><div id="pmc-gf-emp" style="height:100%;border-radius:2px;width:0;transition:width .4s"></div></div>
+      <div id="pmc-gl-emp" style="font-size:7px;color:var(--faint);text-align:right">max —%</div>
+    </div>
+    <div style="margin-bottom:5px">
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><span style="font-size:9px;color:var(--muted);flex:1">Perméabilité</span><span id="pmc-gv-perm" style="font:600 9px var(--font-mono);color:var(--success)">—</span></div>
+      <div style="height:4px;background:var(--raised);border-radius:2px;overflow:hidden"><div id="pmc-gf-perm" style="height:100%;border-radius:2px;width:0;background:var(--success);transition:width .4s"></div></div>
+      <div id="pmc-gl-perm" style="font-size:7px;color:var(--faint);text-align:right">min —%</div>
+    </div>
+    <div style="font-size:9px">
+      <div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">SP totale</span><span id="pmc-sp" style="font:600 9px var(--font-mono);color:var(--text)">—</span></div>
+      <div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Niveaux</span><span id="pmc-nv" style="font:600 9px var(--font-mono);color:var(--text)">—</span></div>
+      <div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Enveloppe</span><span id="pmc-envarea" style="font:600 9px var(--font-mono);color:var(--text)">—</span></div>
+      <div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Parking</span><span id="pmc-park" style="font:600 9px var(--font-mono);color:var(--text)">—</span></div>
+      <div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Densité</span><span id="pmc-dens" style="font:600 9px var(--font-mono);color:var(--text)">—</span></div>
+    </div>
+    <div style="margin-top:4px;display:flex;gap:6px;justify-content:center">
+      <span id="pmc-bpos" style="font-size:8px;color:var(--accent)">—</span>
+      <span id="pmc-bdim" style="font-size:8px;color:var(--accent)">—</span>
+    </div>
+  </div>
+
+  <!-- ═══ VÉRIF. PLU / RTAA ═══ -->
+  <div class="rp-section">
+    <div class="rp-head">Vérif. PLU / RTAA</div>
+    <table style="width:100%;border-collapse:collapse;font-size:9px"><thead><tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:2px;color:var(--faint);font-weight:500">Vérif.</th><th style="text-align:right;color:var(--faint);font-weight:500">Projet</th><th style="text-align:right;color:var(--faint);font-weight:500">Règle</th><th style="width:14px"></th></tr></thead>
+    <tbody id="pmc-ck-body"></tbody></table>
+    <!-- Checks PLU classiques (EsquisseCanvas) -->
+    <div class="plu-checks" id="plu-checks" style="margin-top:6px">
+      <div class="plu-check" id="chk-emprise"><span class="plu-label">Emprise au sol</span><span class="plu-val" id="chk-emprise-val">—</span></div>
+      <div class="plu-check" id="chk-hauteur"><span class="plu-label">Hauteur</span><span class="plu-val" id="chk-hauteur-val">—</span></div>
+      <div class="plu-check" id="chk-recul-voie"><span class="plu-label">Recul voie</span><span class="plu-val" id="chk-recul-voie-val">—</span></div>
+      <div class="plu-check" id="chk-sep"><span class="plu-label">Recul sep.</span><span class="plu-val" id="chk-sep-val">—</span></div>
+    </div>
+    <div class="emprise-calc" id="emprise-calc" style="display:none"><span class="ec-label">Emprise calculée</span><span class="ec-val" id="ec-val">—</span></div>
+    <div class="rtaa-note" id="rtaa-note" style="display:none"></div>
+    <div id="plu-notes-contextuelles" style="display:none;margin-top:4px;padding:4px 6px;border-radius:3px;font-size:8px;color:var(--faint);background:var(--raised);border:1px solid var(--border)"></div>
+  </div>
+
+  <!-- ═══ GIEP ═══ -->
+  <div class="rp-section">
+    <div class="rp-head">GIEP pré-dim.</div>
+    <div style="font-size:9px;color:var(--muted);line-height:1.7">
+      Q : <span style="color:var(--warning);font-weight:600" id="pmc-Q">—</span> m³/s ·
+      Vol. noue : <span style="color:var(--warning);font-weight:600" id="pmc-vg">—</span> m³ ·
+      S. noue : <span style="color:var(--warning);font-weight:600" id="pmc-sn">—</span> m²
+    </div>
+  </div>
+
+  <!-- ═══ TOPOGRAPHIE ═══ -->
+  <div class="rp-section" id="topo-3d-section">
+    <div class="rp-head">Topographie</div>
+    <div class="detected-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+      <div class="det-cell"><span class="det-label">Pente max</span><span class="det-val" id="p07-pente-val">&mdash;</span></div>
+      <div class="det-cell"><span class="det-label">Exposition</span><span class="det-val" id="p07-expo-val">&mdash;</span></div>
+      <div class="det-cell"><span class="det-label">Ensoleillement</span><span class="det-val" id="p07-sun-val">&mdash;</span></div>
+      <div class="det-cell"><span class="det-label">Zone RTAA</span><span class="det-val" id="p07-rtaa-val">&mdash;</span></div>
+    </div>
+    <div id="p07-slope-alert" class="stub-warning" style="display:none">Pente &gt; 15% — G1 obligatoire</div>
+  </div>
+
+  <!-- ═══ CONFORMITÉ 7 POINTS (hidden until data) ═══ -->
+  <div class="rp-section" id="p07-compliance-v5" style="display:none">
+    <div class="rp-head">Conformité — 7 points</div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+      <span class="compliance-badge" id="p07-compliance-badge">—</span>
+      <span style="font-size:9px;color:var(--faint)" id="p07-capacity-lbl">Capacité max : —</span>
+    </div>
+    <table style="width:100%;font-size:9px;border-collapse:collapse" id="p07-checks-tbl">
+      <thead><tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:2px;color:var(--faint)">Vérif.</th><th style="text-align:right;color:var(--faint)">Projet</th><th style="text-align:right;color:var(--faint)">Règle</th><th style="width:16px"></th></tr></thead>
+      <tbody id="p07-ck-body"></tbody>
+    </table>
+    <div style="font-size:8px;color:var(--faint);margin-top:4px" id="p07-metrics-summary"></div>
+  </div>
+
+  <!-- ═══ AUTORISATION URBANISME (hidden until data) ═══ -->
+  <div class="rp-section" id="p07-autorisation-section" style="display:none">
+    <div class="rp-head">Autorisation d'urbanisme</div>
+    <div class="autorisation-regime" id="autorisation-regime-badge"></div>
+    <div class="autorisation-points" id="autorisation-points"></div>
+  </div>
+
+  <!-- ═══ SDIS 974 (hidden until data) ═══ -->
+  <div class="rp-section" id="panel-sdis" style="display:none">
+    <div class="rp-head" style="display:flex;justify-content:space-between;align-items:center">
+      <span>SDIS 974</span>
+      <span id="sdis-famille" style="font-size:9px;padding:1px 5px;border-radius:3px;background:var(--card);color:var(--accent)"></span>
+    </div>
+    <div id="sdis-checks"></div>
+    <div id="sdis-conseil" style="display:none;margin-top:4px;padding:4px 6px;border-radius:3px;font-size:9px;background:rgba(239,68,68,0.06);color:#8b2a3a;border:1px solid rgba(139,42,58,0.15)"></div>
+  </div>
+
+  <!-- ═══ RÉFÉRENCES (après les résultats) ═══ -->
   <div class="rp-section">
     <div class="rp-head">Références projets locaux</div>
     <div class="ref-projects">
@@ -597,9 +670,16 @@
     <div class="rp-head">Exemples enviroBAT-Réunion</div>
     <div id="eb-cards-p07"></div>
   </div>
+  <div class="rp-section">
+    <div class="rp-head">Atlas — Compositions Psychédéliques</div>
+    <p style="font-size:10px;color:var(--muted);line-height:1.5;margin-bottom:6px">Phyllotaxie, spirales, fractales, Perlin — patterns génératifs pour l'esquisse.</p>
+    <div id="atlas-preview-psyche"></div>
+  </div>
 </div>
 
 <style>
+.pmc-pill.nok { background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);color:#F87171; }
+.pmc-pill.ok  { background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.25);color:#4ADE80; }
 .prog-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .gabarit-inputs { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
 
@@ -667,11 +747,16 @@ const SlopesService  = window.SlopesService;
 const SunCalcService = window.SunCalcService;
 
 // ── Adapters PLU réel + Terrain cadastral ────────────────────────────
-import { PLUP07Adapter }     from '../services/plu-p07-adapter.js';
-import { TerrainP07Adapter } from '../services/terrain-p07-adapter.js';
+import { PLUP07Adapter }          from '../services/plu-p07-adapter.js';
+import { TerrainP07Adapter }     from '../services/terrain-p07-adapter.js';
+import { AutoPlanEngine }        from '../services/auto-plan-engine.js';
+import { ExistingBuildings }     from '../services/existing-buildings.js';
+import { CapacityStudyRenderer } from '../services/capacity-study-renderer.js';
+import { PlanMasseCanvas }       from '../services/plan-masse-canvas.js';
+import { SdisChecker }           from '../services/sdis-checker.js';
 
 const pluAdapter     = new PLUP07Adapter();
-const terrainAdapter = new TerrainP07Adapter();
+const terrainAdapter = TerrainP07Adapter;  // object literal v2 (plus de class)
 let   TERRAIN_REEL   = null;
 
 async function initP07Real() {
@@ -691,27 +776,35 @@ async function initP07Real() {
 
     const pluConfig = pluAdapter.resolve(codeInsee, zonePlu, zoneRtaa);
 
-    // Afficher warnings si données dégradées
-    if (pluConfig._meta.confidence < 0.8) {
-      showStubWarning(`PLU incomplet pour ${pluConfig.commune} zone ${zonePlu} — confiance ${Math.round(pluConfig._meta.confidence * 100)}%`);
-    }
-    if (pluConfig._meta.warnings.length > 0) {
-      console.warn('[p07] PLU warnings:', pluConfig._meta.warnings);
+    // Afficher warnings si données dégradées ou ambiguës
+    if (pluConfig._meta.warnings.length > 0 || pluConfig._meta.confidence < 0.8) {
+      const warns = pluConfig._meta.warnings;
+      const conf  = Math.round(pluConfig._meta.confidence * 100);
+      showStubWarning(`PLU ${pluConfig.commune} zone ${zonePlu} — confiance ${conf}%`);
+      if (warns.length) {
+        window.TerlabToast?.show(
+          `PLU ${pluConfig.commune} : ${warns.length} point(s) à vérifier — corrigez dans le panneau latéral`,
+          'warning', 6000);
+        console.warn('[p07] PLU warnings:', warns);
+      }
     }
 
     // 4. Transformer le polygone cadastral si disponible
     if (ter.parcelle_geojson) {
-      const terrainGeom = terrainAdapter.transform(
-        ter.parcelle_geojson,
-        parseFloat(ter.lat  ?? -21.0),
-        parseFloat(ter.lng  ?? 55.3),
-        parseFloat(ter.bearing_voie_deg ?? 0),
-      );
-      pluConfig.poly      = terrainGeom.poly;
-      pluConfig.edgeTypes = terrainGeom.edgeTypes;
-      pluConfig.area      = terrainGeom.area;
-      pluConfig.origin    = terrainGeom.origin;
-      pluConfig.bearing   = terrainGeom.bearing;
+      const bearingVoie = parseFloat(ter.bearing_voie_deg ?? 0);
+      const terrainGeom = terrainAdapter.process(ter.parcelle_geojson, { bearing: bearingVoie });
+      if (terrainGeom.valid) {
+        pluConfig.poly      = terrainGeom.poly;
+        pluConfig.edgeTypes = terrainAdapter.inferEdgeTypes(terrainGeom.poly, session);
+        pluConfig.area      = terrainGeom.area;
+        pluConfig.origin    = terrainGeom.origin;
+        pluConfig.bearing   = terrainGeom.bearing;
+      } else {
+        console.warn('[p07] Parcelle invalide :', terrainGeom.errors);
+        pluConfig.poly      = [[0,0],[30,0],[30,25],[0,25]];
+        pluConfig.edgeTypes = ['voie','lat','fond','lat'];
+        pluConfig.area      = 750;
+      }
     } else {
       // ⚠️ STUB — Polygone cadastral — effort XS : lecture session.terrain.parcelle_geojson
       showStubWarning('Polygone cadastral manquant — terrain rectangulaire approximatif');
@@ -785,6 +878,92 @@ function showStubWarning(msg) {
 
 // Lancer le chargement PLU réel
 initP07Real();
+
+// ── BÂTIMENTS EXISTANTS — toggle mode ──────────────────────────────
+document.querySelectorAll('.em-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.em-btn').forEach(b => {
+      b.classList.remove('active');
+      b.style.background = 'var(--card)';
+    });
+    btn.classList.add('active');
+    btn.style.background = 'var(--accent,#f59e0b)';
+    btn.style.color = '#000';
+    window.EsquisseCanvas?.setExistingMode(btn.dataset.mode);
+  });
+});
+
+// Afficher le panel si bâtiments détectés
+setTimeout(() => {
+  const eb = window.EsquisseCanvas?._existingBuildings;
+  if (eb?.footprints?.length) {
+    const panel = document.getElementById('panel-existing');
+    if (panel) panel.style.display = '';
+    const stats = document.getElementById('existing-stats');
+    if (stats) stats.textContent = `${eb.footprints.length} bâtiment(s) · ${Math.round(eb.totalArea)} m²`;
+  }
+}, 2000);
+
+// ── SDIS 974 — listener résultats ────────────────────────────────────
+window.addEventListener('terlab:sdis-update', (e) => {
+  const result = e.detail;
+  if (!result) return;
+
+  // Afficher le panel
+  const panel = document.getElementById('panel-sdis');
+  if (panel) panel.style.display = '';
+
+  // Badge famille avec h_PE
+  const famEl = document.getElementById('sdis-famille');
+  if (famEl) {
+    const hPE = result.famille?.h_PE ?? result.h_PE ?? 0;
+    famEl.textContent = `${result.famille?.nom ?? '—'} · h plancher ${hPE.toFixed(0)}m`;
+    const code = result.famille?.code ?? '';
+    famEl.style.color = ['F3A','F3B','F4','IGH'].includes(code) ? '#EF4444' : 'var(--accent)';
+  }
+
+  // Tableau checks via texteHtml()
+  const checksEl = document.getElementById('sdis-checks');
+  if (checksEl && window.SdisChecker) {
+    checksEl.innerHTML = window.SdisChecker.texteHtml(result);
+  }
+
+  // Conseil global
+  const conseilEl = document.getElementById('sdis-conseil');
+  if (conseilEl && result.summary?.conseil) {
+    conseilEl.textContent = result.summary.conseil;
+    conseilEl.style.display = '';
+    if (result.hasWarnings) {
+      conseilEl.style.background = 'rgba(239,68,68,0.08)';
+      conseilEl.style.color = '#EF4444';
+      conseilEl.style.borderColor = 'rgba(239,68,68,0.2)';
+    } else {
+      conseilEl.style.background = 'rgba(34,197,94,0.08)';
+      conseilEl.style.color = '#22C55E';
+      conseilEl.style.borderColor = 'rgba(34,197,94,0.2)';
+    }
+  }
+});
+
+// Exposer SdisChecker pour usage global
+window.SdisChecker = SdisChecker;
+
+// ── MODAL ÉTUDE DE CAPACITÉ — tabs ──────────────────────────────────
+document.querySelectorAll('.mtab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.mtab').forEach(t => {
+      t.classList.remove('active');
+      t.style.background = 'transparent';
+      t.style.color = 'var(--text,#ccc)';
+    });
+    tab.classList.add('active');
+    tab.style.background = 'var(--accent,#f59e0b)';
+    tab.style.color = '#000';
+    document.querySelectorAll('.cap-panel').forEach(p => p.style.display = 'none');
+    const panel = document.getElementById('panel-' + tab.dataset.panel);
+    if (panel) panel.style.display = '';
+  });
+});
 
 const STRUCT_ADVICE = {
   maconnerie: 'Maçonnerie blocs parpaing — chaînage horizontal et vertical obligatoire (séisme zone 2 + cyclone). Traitement anti-termites de toute charpente en contact avec la structure.',
@@ -1080,8 +1259,7 @@ document.querySelectorAll('.p07-vtab[data-view]').forEach(btn => {
   btn.addEventListener('click', () => P07.setView(btn.dataset.view));
 });
 
-// Auto-init esquisse (vue par défaut)
-P07.setView('esquisse');
+// NOTE: P07.setView('esquisse') déplacé APRÈS Object.assign + gabarit wrap (fin de fichier)
 
 if (typeof P07._initSunPanel === 'function') P07._initSunPanel();
 
@@ -1108,25 +1286,33 @@ window.addEventListener('terlab:planner-score', ({ detail }) => {
 
 // ═══════════════════ TERRAIN 3D — Extension P07 ═══════════════════
 let _viewIs3D     = false;
-let _viewMode     = 'esquisse'; // 'map' | '3d' | 'esquisse' | 'coupe' | 'gabarit'
+let _viewMode     = 'planmasse'; // 'planmasse' | 'plancoupe' | 'map' | '3d' | 'esquisse' | 'coupe' | 'gabarit'
+let _pmcReady     = false;
 let _sunVisible   = false;
 let _slopesOn     = true;
 let _dimsOn       = true;
+let _contoursOn   = true;
 let _3dReady      = false;
 let _esquisseReady = false;
 
 Object.assign(P07, {
 
-  // Toggle carte / vue 3D / esquisse
+  // Toggle carte / vue 3D / esquisse / plan masse
   async setView(mode) {
-    const mapEl    = document.getElementById('map');
-    const wrap3d   = document.getElementById('p07-3d-wrap');
+    const mapEl     = document.getElementById('map');
+    const wrap3d    = document.getElementById('p07-3d-wrap');
     const wrapCoupe = document.getElementById('p07-coupe-wrap');
+    const pmcWrap   = document.getElementById('pmc-wrap');
+    const pmcTB     = document.getElementById('pmc-toolbar');
     _viewMode = mode;
     _viewIs3D = mode === '3d';
 
+    const isPMC = mode === 'planmasse' || mode === 'plancoupe';
+
     // Visibilité des vues
-    mapEl.style.display    = (mode === '3d' || mode === 'coupe') ? 'none' : 'block';
+    if (pmcWrap)   pmcWrap.style.display   = isPMC ? 'flex' : 'none';
+    if (pmcTB)     pmcTB.style.display     = isPMC ? 'flex' : 'none';
+    mapEl.style.display    = (!isPMC && mode !== '3d' && mode !== 'coupe') ? 'block' : 'none';
     wrap3d.style.display   = mode === '3d' ? 'block' : 'none';
     if (wrapCoupe) wrapCoupe.style.display = mode === 'coupe' ? 'flex' : 'none';
 
@@ -1134,17 +1320,28 @@ Object.assign(P07, {
     document.querySelectorAll('.p07-vtab').forEach(btn => {
       const btnMode = btn.id.replace('p07-toggle-', '');
       const active = btnMode === mode || (btnMode === 'map' && mode === 'esquisse');
-      btn.style.background = active ? 'rgba(154,120,32,.25)' : 'none';
-      btn.style.color = active ? '#c0943a' : 'rgba(200,180,140,.6)';
+      btn.style.background = active ? 'rgba(154,120,32,.18)' : 'none';
+      btn.style.color = active ? '#9a7820' : '#6b5c3e';
       btn.style.fontWeight = active ? '600' : '400';
     });
-    // Esquisse = map visible + SVG overlay, but only esquisse tab highlighted
     if (mode === 'esquisse') {
       const btnMap = document.getElementById('p07-toggle-map');
       if (btnMap) { btnMap.style.background = 'none'; btnMap.style.fontWeight = '400'; }
     }
 
-    // ── Vue Coupe ────────────────────────────────────────────────
+    // ── Plan Masse Canvas (vue par défaut) ────────────────────────
+    if (isPMC) {
+      const PMC = window.PlanMasseCanvas;
+      if (PMC && !_pmcReady) {
+        PMC.init('pmc-container', SessionManager._data);
+        _pmcReady = true;
+      }
+      if (PMC?._ready) {
+        PMC.setView(mode === 'plancoupe' ? 'coupe' : 'plan');
+      }
+    }
+
+    // ── Vue Coupe (ancienne) ─────────────────────────────────────
     if (mode === 'coupe') {
       window.EsquisseCanvas?.renderCoupe('coupe-svg');
     }
@@ -1153,7 +1350,6 @@ Object.assign(P07, {
     if (mode === 'esquisse' && !_esquisseReady) {
       const EC = window.EsquisseCanvas;
       if (EC?.init) {
-        // Create or reuse SVG overlay
         let svg = document.getElementById('p07-esquisse-svg');
         if (!svg) {
           svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -1165,7 +1361,6 @@ Object.assign(P07, {
         _esquisseReady = true;
       }
     }
-    // Show/hide esquisse SVG
     const esqSvg = document.getElementById('p07-esquisse-svg');
     if (esqSvg) esqSvg.style.display = mode === 'esquisse' ? 'block' : 'none';
 
@@ -1182,7 +1377,7 @@ Object.assign(P07, {
       const parcelGeo = t?.parcelle_geojson?.coordinates?.[0] ?? [];
       if (BG?.build && parcelGeo.length > 2 && Terrain3D._scene) {
         BG.build(parcelGeo, { gridRes: 64, expansionFactor: 2.5 }).then(mesh => {
-          if (mesh) { Terrain3D._scene.add(mesh); Terrain3D._renderer?.render?.(Terrain3D._scene, Terrain3D._camera); }
+          if (mesh) { Terrain3D._scene.add(mesh); Terrain3D._renderer?.render?.(Terrain3D._scene, Terrain3D._cam); }
         }).catch(e => console.warn('[P07] BackgroundTerrain failed:', e.message));
       }
 
@@ -1197,6 +1392,22 @@ Object.assign(P07, {
           }
         }).catch(() => {});
       }
+    }
+
+    // Courbes de niveau 2D sur la carte Mapbox
+    const _parcelGeo2D = SessionManager.getTerrain()?.parcelle_geojson?.coordinates?.[0] ?? [];
+    if (_parcelGeo2D.length > 2 && MapViewer?.getMap?.()) {
+      const lngs = _parcelGeo2D.map(c => c[0]), lats = _parcelGeo2D.map(c => c[1]);
+      const margin = 0.002;
+      const contourBounds = {
+        west:  Math.min(...lngs) - margin,
+        east:  Math.max(...lngs) + margin,
+        south: Math.min(...lats) - margin,
+        north: Math.max(...lats) + margin,
+      };
+      MapViewer.addContourLines(contourBounds).catch(e =>
+        console.warn('[P07] Courbes de niveau 2D indisponibles:', e.message)
+      );
     }
 
     if (!_viewIs3D && MapViewer?.getMap()) {
@@ -1258,6 +1469,16 @@ Object.assign(P07, {
     Terrain3D.toggleDims(_dimsOn);
     const btn = document.getElementById('t3d-btn-dims');
     if (btn) btn.textContent = _dimsOn ? 'Cotes' : 'Cotes \u25cb';
+  },
+
+  // Courbes de niveau
+  toggleContours() {
+    _contoursOn = !_contoursOn;
+    Terrain3D.toggleContours(_contoursOn);
+    MapViewer?.toggleContourLines?.(_contoursOn);
+    const btn = document.getElementById('t3d-btn-contours');
+    if (btn) btn.classList.toggle('active', _contoursOn);
+    if (btn) btn.textContent = _contoursOn ? 'Contours' : 'Contours \u25cb';
   },
 
   // ── Panneau soleil (SunState synchro) ──────────────────
@@ -1525,10 +1746,19 @@ Object.assign(P07, {
 
     // UI toggles
     if (key === 'type') {
-      document.getElementById('pm-type-maison')?.classList.toggle('active', value === 'maison');
-      document.getElementById('pm-type-collectif')?.classList.toggle('active', value === 'collectif');
+      ['maison', 'collectif', 'bureau', 'erp', 'commerce'].forEach(t => {
+        document.getElementById(`pm-type-${t}`)?.classList.toggle('active', value === t);
+      });
       const muRow = document.getElementById('pm-maxunits-row');
-      if (muRow) muRow.style.display = value === 'collectif' ? '' : 'none';
+      if (muRow) muRow.style.display = ['collectif', 'bureau', 'erp'].includes(value) ? '' : 'none';
+      // Afficher effectif ERP si type ERP/commerce/bureau
+      const effRow = document.getElementById('pm-effectif-row');
+      if (effRow) effRow.style.display = ['erp', 'commerce', 'enseignement', 'sante', 'bureau'].includes(value) ? '' : 'none';
+    }
+    if (key === 'effectifERP' && window.SdisChecker) {
+      const cat = window.SdisChecker.getCategorieERP(value);
+      const catEl = document.getElementById('pm-effectif-cat');
+      if (catEl) catEl.textContent = cat ? `→ ${cat.nom}` : '';
     }
     if (key === 'parkMode') {
       ['ext', 'rdc', 'ss'].forEach(m => {
@@ -1615,7 +1845,74 @@ window.addEventListener('terlab:metrics-updated', (e) => {
       m.parkRequired > 0 ? `${m.parkExt} PK ext + ${m.parkSS} PK ss` : '',
     ].filter(Boolean).join(' · ');
   }
+
+  // ── Notes PLU contextuelles (affichées selon la situation) ──
+  _updatePluNotes(m);
 });
+
+/** Affiche les notes PLU pertinentes selon l'état des checks */
+function _updatePluNotes(metrics) {
+  const notesEl = document.getElementById('plu-notes-contextuelles');
+  if (!notesEl) return;
+
+  const plu = window.TERLAB_PLU_CONFIG?.plu ?? {};
+  const notes = plu.notes ?? {};
+  const fragments = [];
+
+  // Note hauteur : si hauteur non conforme OU si on est proche du seuil 8m SDIS
+  const hPE = ((metrics?.nvEff ?? 1) - 1) * 3.0;
+  if (notes.hauteur) {
+    if (!metrics?.checks?.find(c => c.lbl?.includes('Hauteur'))?.ok || hPE > 6) {
+      fragments.push(`<strong>Hauteur PLU :</strong> ${notes.hauteur}`);
+    }
+  }
+
+  // Note emprise : si emprise non conforme
+  if (notes.emprise && metrics?.checks?.some(c => c.lbl?.includes('Emprise') && !c.ok)) {
+    fragments.push(`<strong>Emprise PLU :</strong> ${notes.emprise}`);
+  }
+
+  // Note perméabilité : si perméabilité insuffisante
+  if (notes.permeabilite && metrics?.checks?.some(c => c.lbl?.includes('Perm') && !c.ok)) {
+    fragments.push(`<strong>Perméabilité PLU :</strong> ${notes.permeabilite}`);
+  }
+
+  // Note reculs voie : si recul voie non conforme OU si alignement voie autorisé
+  if (notes.reculs_voie) {
+    if (plu.voie_alignement || metrics?.checks?.some(c => c.lbl?.includes('voie') && !c.ok)) {
+      fragments.push(`<strong>Recul voie :</strong> ${notes.reculs_voie}`);
+    }
+  }
+
+  // Note reculs latéraux : si limites séparatives concernées
+  if (notes.reculs_lat && metrics?.checks?.some(c => c.lbl?.includes('sep') && !c.ok)) {
+    fragments.push(`<strong>Limites séparatives :</strong> ${notes.reculs_lat}`);
+  }
+
+  // Bonification logement social visible si programme aidé
+  if (plu.bonus_logement_social) {
+    const prog = window.EsquisseCanvas?._prog?.type;
+    if (prog === 'social' || prog === 'aide') {
+      fragments.push(`<strong>Bonification :</strong> hauteur majorée +50% pour logement social (PLU art. 10)`);
+    }
+  }
+
+  // COS si défini et proche de la limite
+  if (plu.cos && metrics?.spTot) {
+    const parcelArea = window.TERLAB_PLU_CONFIG?.area ?? 0;
+    const cosMax = plu.cos * parcelArea;
+    if (metrics.spTot > cosMax * 0.8) {
+      fragments.push(`<strong>COS :</strong> SP max = ${cosMax.toFixed(0)} m² (COS ${plu.cos} × ${parcelArea.toFixed(0)} m²) — projet : ${metrics.spTot.toFixed(0)} m²`);
+    }
+  }
+
+  if (fragments.length > 0) {
+    notesEl.innerHTML = fragments.join('<br style="margin:4px 0">');
+    notesEl.style.display = '';
+  } else {
+    notesEl.style.display = 'none';
+  }
+}
 
 // Gabarit : re-render quand les dimensions changent
 ['gabarit_l_m','gabarit_w_m','gabarit_h_m'].forEach(key => {
@@ -1889,11 +2186,15 @@ P07.setView = async function(mode) {
   const btnGabarit = document.getElementById('p07-toggle-gabarit');
 
   if (mode === 'gabarit') {
-    // Hide map, 3D, coupe — show gabarit
+    // Hide map, 3D, coupe, plan masse — show gabarit
     document.getElementById('map').style.display = 'none';
     document.getElementById('p07-3d-wrap').style.display = 'none';
     const wrapCoupe = document.getElementById('p07-coupe-wrap');
     if (wrapCoupe) wrapCoupe.style.display = 'none';
+    const pmcW = document.getElementById('pmc-wrap');
+    if (pmcW) pmcW.style.display = 'none';
+    const pmcTB = document.getElementById('pmc-toolbar');
+    if (pmcTB) pmcTB.style.display = 'none';
     if (gabaritWrap) gabaritWrap.style.display = 'block';
     const esqSvg = document.getElementById('p07-esquisse-svg');
     if (esqSvg) esqSvg.style.display = 'none';
@@ -1901,8 +2202,8 @@ P07.setView = async function(mode) {
     // Highlight tabs (même style que setView principal)
     document.querySelectorAll('.p07-vtab').forEach(btn => {
       const active = btn.id === 'p07-toggle-gabarit';
-      btn.style.background = active ? 'rgba(154,120,32,.25)' : 'none';
-      btn.style.color = active ? '#c0943a' : 'rgba(200,180,140,.6)';
+      btn.style.background = active ? 'rgba(154,120,32,.18)' : 'none';
+      btn.style.color = active ? '#9a7820' : '#6b5c3e';
       btn.style.fontWeight = active ? '600' : '400';
     });
 
@@ -1913,4 +2214,27 @@ P07.setView = async function(mode) {
     await _origSetView(mode);
   }
 };
+
+// Auto-init plan masse (vue par défaut) — doit être APRÈS Object.assign + gabarit wrap
+P07.setView('planmasse');
+
+// ── Bind Plan Masse Canvas toolbar ────────────────────────────────
+document.querySelectorAll('.pmc-sc-btn[data-sc]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (!window.PlanMasseCanvas?._ready) return;
+    document.querySelectorAll('.pmc-sc-btn').forEach(b => {
+      b.style.background = 'var(--card)'; b.style.color = 'var(--muted)'; b.style.borderColor = 'var(--border)';
+    });
+    btn.style.background = 'var(--accent2)'; btn.style.color = 'var(--accent)'; btn.style.borderColor = 'var(--border2)';
+    window.PlanMasseCanvas.setScenario(btn.dataset.sc);
+  });
+});
+document.getElementById('pmc-btn-auto')?.addEventListener('click', () => {
+  if (!window.PlanMasseCanvas?._ready) return;
+  window.PlanMasseCanvas.autoPlace();
+  const b = document.getElementById('pmc-btn-auto');
+  b.textContent = '✓ Auto'; setTimeout(() => { b.textContent = '◎ Auto'; }, 800);
+});
+document.getElementById('pmc-btn-reset')?.addEventListener('click', () => window.PlanMasseCanvas?.resetView());
+document.getElementById('pmc-btn-svg')?.addEventListener('click', () => window.PlanMasseCanvas?.exportSVG());
 </script>

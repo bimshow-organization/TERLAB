@@ -800,8 +800,9 @@ const P01 = {
         return;
       }
 
-      // Cacher les points pour le profil
+      // Cacher les points pour le profil + cache global (survit au changement de phase)
       this._lidarPoints = result.points;
+      LidarService.setRawPoints(result.points, '2');
 
       // Analyser pente / exposition / altitudes
       const analysis = LidarService.analyzeTerrain(result.points, terrain.parcelle_geojson);
@@ -993,8 +994,9 @@ const P01 = {
         return;
       }
 
-      // Mettre à jour le cache
+      // Mettre à jour le cache local + global (toutes classes pour la 3D)
       this._lidarPoints = result.points;
+      LidarService.setRawPoints(result.points, '2,3,4,5,6,9');
       this._showLidarViz(result.points, result.count);
       this.setLidarView(this._lidarViewMode ?? 'classification');
 
@@ -1406,11 +1408,31 @@ window.addEventListener('terlab:parcelle-found', async (e) => {
 
 // ─── AUTO-ANALYSE : lancer l'altimétrie automatiquement si terrain connu ──
 if (terrain?.lat && terrain?.lng) {
-  // Petit délai pour laisser la carte Mapbox charger le DEM
-  setTimeout(() => {
+  // Attendre que la carte soit idle (DEM chargé) avant d'analyser
+  const _autoAnalyze = () => {
     console.log('[P01] Auto-analyse altimétrie…');
     P01.analyzeAltitude();
-  }, 1200);
+  };
+  const _map = MapViewer.getMap();
+  if (_map) {
+    const _tryWhenReady = () => {
+      if (_map.isStyleLoaded() && _map.areTilesLoaded()) {
+        setTimeout(_autoAnalyze, 400);
+      } else {
+        _map.once('idle', () => setTimeout(_autoAnalyze, 400));
+      }
+    };
+    _tryWhenReady();
+  } else {
+    // Carte pas encore créée — fallback polling léger
+    const _wait = setInterval(() => {
+      const m = MapViewer.getMap();
+      if (m) {
+        clearInterval(_wait);
+        m.once('idle', () => setTimeout(_autoAnalyze, 400));
+      }
+    }, 300);
+  }
 }
 
 // ─── LiDAR : vérifier disponibilité serveur au chargement ──────

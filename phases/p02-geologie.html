@@ -102,12 +102,14 @@
       <div class="sc-zone">Zone sismique 2</div>
       <div class="sc-note">La Réunion — aléa modéré. L'Eurocode 8 s'applique à toute construction neuve. Chaînage horizontal et vertical obligatoire en maçonnerie. Pas de dérogation possible.</div>
     </div>
-    <div class="field-row" style="margin-top:8px">
-      <label class="field-label" for="chainages">Chaînages prévus</label>
-      <div class="checkbox-group">
-        <label class="checkbox-option"><input type="checkbox" data-key="chainages_hz"/>Chainages horizontaux</label>
-        <label class="checkbox-option"><input type="checkbox" data-key="chainages_vt"/>Chainages verticaux</label>
-        <label class="checkbox-option"><input type="checkbox" data-key="fondations_special"/>Fondations spéciales</label>
+    <div style="margin-top:8px">
+      <div class="fs-head">Fondations selon le sol</div>
+      <div class="ped-note" style="padding:8px 10px;font-size:.72rem;line-height:1.6;color:var(--ink3,#6b5c3e)">
+        <div style="margin-bottom:4px"><strong>Basalte sain</strong> — Semelles filantes sur roche. Portance élevée, fondations superficielles suffisantes.</div>
+        <div style="margin-bottom:4px"><strong>Basalte altéré / scories</strong> — Sol hétérogène. Étude G2 recommandée, semelles renforcées ou radier selon profondeur d'altération.</div>
+        <div style="margin-bottom:4px"><strong>Alluvions / colluvions</strong> — Sol compressible. Risque de tassement différentiel → radier général ou pieux si épaisseur &gt; 3 m.</div>
+        <div style="margin-bottom:4px"><strong>Remblai</strong> — ⚠️ Portance nulle en l'état. Fondations profondes (pieux, micropieux) obligatoires jusqu'au substratum sain.</div>
+        <div><strong>Zone sismique 2</strong> — Chaînages horizontaux et verticaux obligatoires (EC8). Liaison fondation–structure continue exigée.</div>
       </div>
     </div>
   </div>
@@ -124,7 +126,7 @@
     <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Captage AEP à moins de 100m vérifié</span></div>
     <div class="val-progress"><div class="val-bar"></div></div>
     <div class="val-footer"><span>3 validations bloquantes</span><span class="val-pct">0/4</span></div>
-    <button class="next-btn">Phase 3 — Risques Naturels →</button>
+    <button class="next-btn">Phase 3 — Hydrologie →</button>
   </div>
 </div>
 

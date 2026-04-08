@@ -63,9 +63,18 @@
     </div>
   </div>
 
+  <!-- Alerte ambiguïtés PLU -->
+  <div id="plu-ambig-alert" style="display:none" class="form-section" style="padding:0">
+    <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-left:3px solid #f59e0b;border-radius:var(--r-sm);padding:8px 11px;font-family:var(--font-mono);font-size:.72rem;line-height:1.6;color:#8a6d1b">
+      <div style="font-weight:600;margin-bottom:4px">Données PLU incomplètes — vérification requise</div>
+      <div id="plu-ambig-list"></div>
+      <div style="margin-top:6px;font-size:.65rem;color:var(--muted)">Corrigez les valeurs directement dans les champs ci-dessous. Les valeurs affichées sont des estimations par défaut.</div>
+    </div>
+  </div>
+
   <!-- Reculs -->
   <div class="form-section anim-slide-up">
-    <div class="fs-head">Reculs & gabarits</div>
+    <div class="fs-head">Reculs & gabarits <span id="plu-rules-badge" style="display:none;font-size:8px;background:var(--success2);color:var(--success);padding:2px 6px;border-radius:3px;margin-left:6px;font-family:var(--font-mono)">AUTO</span></div>
     <div class="reculs-grid">
       <div class="field-row">
         <label class="field-label">Recul voie principale (m)</label>
@@ -573,6 +582,40 @@ P04._onOverhang = function(azVal) {
   el.style.display = 'block';
 };
 
+/** Affiche les ambiguïtés / warnings PLU pour que l'utilisateur puisse vérifier et corriger */
+P04._showPluAmbiguites = function(cfg) {
+  const alertEl = document.getElementById('plu-ambig-alert');
+  const listEl  = document.getElementById('plu-ambig-list');
+  if (!alertEl || !listEl) return;
+
+  const warnings = cfg?._meta?.warnings ?? [];
+  if (!warnings.length && cfg?._meta?.confidence >= 0.9) {
+    alertEl.style.display = 'none';
+    // Retirer les bordures d'alerte sur les champs
+    document.querySelectorAll('.field-input.plu-uncertain').forEach(el => el.classList.remove('plu-uncertain'));
+    return;
+  }
+
+  // Afficher la bannière
+  listEl.innerHTML = warnings.map(w => `<div style="padding:2px 0;border-top:1px solid rgba(245,158,11,.15)">• ${w}</div>`).join('');
+  alertEl.style.display = 'block';
+
+  // Mettre en surbrillance les champs dont la valeur est incertaine
+  const uncertain = [];
+  if (warnings.some(w => /hauteur/i.test(w)))  uncertain.push('h-max');
+  if (warnings.some(w => /emprise/i.test(w)))  uncertain.push('emp-max');
+  if (warnings.some(w => /recul|voie/i.test(w))) uncertain.push('r-voie', 'r-voie2', 'r-sep', 'r-fond');
+
+  document.querySelectorAll('.field-input.plu-uncertain').forEach(el => el.classList.remove('plu-uncertain'));
+  uncertain.forEach(id => document.getElementById(id)?.classList.add('plu-uncertain'));
+
+  // Toast
+  window.TerlabToast?.show(
+    `PLU ${cfg.commune} — ${warnings.length} point(s) à vérifier`,
+    'warning', 5000
+  );
+};
+
 window.P04 = P04;
 P04._initSolarDiagram();
 
@@ -690,6 +733,143 @@ P04._initSolarDiagram();
 
   } catch (e) {
     console.warn('[P04] Règlement GPU fetch failed:', e.message);
+  }
+})();
+
+// ─── Auto-fill Reculs & Gabarits via PLU adapter ────────────
+(async () => {
+  const t = SessionManager.getTerrain();
+  if (!t?.code_insee) return;
+  // Attendre que la zone PLU soit connue (WFS ou manuelle)
+  const waitZone = () => new Promise(resolve => {
+    const z = t.zone_plu ?? document.getElementById('zone-plu')?.value;
+    if (z) return resolve(z);
+    // Écouter le changement de zone
+    const sel = document.getElementById('zone-plu');
+    if (!sel) return resolve(null);
+    const handler = () => { resolve(sel.value); sel.removeEventListener('change', handler); };
+    sel.addEventListener('change', handler);
+    // Timeout 3s — le WFS a peut-être déjà rempli la session
+    setTimeout(() => resolve(t.zone_plu ?? sel.value ?? null), 3000);
+  });
+  const zonePlu = await waitZone();
+  if (!zonePlu) return;
+
+  try {
+    const { PLUP07Adapter } = await import('../services/plu-p07-adapter.js');
+    const adapter = new PLUP07Adapter();
+    await adapter.loadRules('../data/plu-rules-reunion.json');
+    const cfg = adapter.resolve(t.code_insee, zonePlu, t.zone_rtaa ?? '1');
+
+    if (cfg._meta?.status === 'FALLBACK' && cfg._meta?.confidence < 0.2) return;
+
+    // Auto-fill seulement si les champs sont vides (ne pas écraser les saisies)
+    const fill = (id, val, sessionKey) => {
+      const el = document.getElementById(id);
+      if (!el || el.value) return; // déjà rempli
+      if (val == null || val === 0) return;
+      el.value = val;
+      if (sessionKey) SessionManager.saveTerrain({ [sessionKey]: val });
+    };
+    fill('r-voie',  cfg.reculs?.voie,  'recul_voie_principale_m');
+    fill('r-voie2', cfg.reculs?.voie_secondaire ?? cfg.reculs?.voie, 'recul_voie_secondaire_m');
+    fill('r-sep',   cfg.reculs?.lat,   'recul_limite_sep_m');
+    fill('r-fond',  cfg.reculs?.fond,  'recul_fond_m');
+    fill('h-max',   cfg.plu?.heMax,    'hauteur_max_m');
+    fill('emp-max', cfg.plu?.emprMax,  'emprise_sol_max_pct');
+
+    // Badge + visualisation
+    document.getElementById('plu-rules-badge').style.display = 'inline';
+    P04.updateReculs();
+
+    // Afficher les ambiguïtés / warnings pour que l'utilisateur vérifie
+    P04._showPluAmbiguites(cfg);
+
+    console.info(`[P04] PLU auto-fill: ${cfg.label} (confiance ${(cfg._meta?.confidence * 100).toFixed(0)}%)`);
+  } catch (e) {
+    console.warn('[P04] PLU adapter auto-fill failed:', e.message);
+  }
+})();
+
+// Relancer l'auto-fill quand l'utilisateur change la zone manuellement
+document.getElementById('zone-plu')?.addEventListener('change', async function() {
+  const t = SessionManager.getTerrain();
+  const zone = this.value;
+  if (!zone || !t?.code_insee) return;
+  try {
+    const { PLUP07Adapter } = await import('../services/plu-p07-adapter.js');
+    const adapter = new PLUP07Adapter();
+    await adapter.loadRules('../data/plu-rules-reunion.json');
+    const cfg = adapter.resolve(t.code_insee, zone, t.zone_rtaa ?? '1');
+    if (cfg._meta?.status === 'FALLBACK' && cfg._meta?.confidence < 0.2) return;
+    const fill = (id, val, sk) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (val == null) return;
+      el.value = val;
+      if (sk) SessionManager.saveTerrain({ [sk]: val });
+    };
+    fill('r-voie',  cfg.reculs?.voie,  'recul_voie_principale_m');
+    fill('r-voie2', cfg.reculs?.voie_secondaire ?? cfg.reculs?.voie, 'recul_voie_secondaire_m');
+    fill('r-sep',   cfg.reculs?.lat,   'recul_limite_sep_m');
+    fill('r-fond',  cfg.reculs?.fond,  'recul_fond_m');
+    fill('h-max',   cfg.plu?.heMax,    'hauteur_max_m');
+    fill('emp-max', cfg.plu?.emprMax,  'emprise_sol_max_pct');
+    document.getElementById('plu-rules-badge').style.display = 'inline';
+    P04.updateReculs();
+    P04._showPluAmbiguites(cfg);
+  } catch (e) { console.warn('[P04] PLU re-fill failed:', e); }
+});
+
+// ─── Auto-detect ABF / OAP / SUP HT ────────────────────────────
+(async () => {
+  const t = SessionManager.getTerrain();
+  if (!t?.lat || !t?.lng || !PLUService?.detectConstraints) return;
+  try {
+    const docId = t.plu_document_id ?? null;
+    const c = await PLUService.detectConstraints(
+      parseFloat(t.lat), parseFloat(t.lng), docId
+    );
+
+    // Helper : pré-sélectionne un radio et sauvegarde (ne pas écraser si déjà rempli)
+    const autoSel = (name, val, label) => {
+      const current = t[name];
+      if (current && current !== 'verif' && current !== 'inconnu') return; // déjà décidé
+      const radio = document.querySelector(`input[name="${name}"][value="${val}"]`);
+      if (!radio) return;
+      radio.checked = true;
+      const opt = radio.closest('.radio-option');
+      if (opt) {
+        document.querySelectorAll(`[name="${name}"]`).forEach(r =>
+          r.closest('.radio-option')?.classList.remove('selected'));
+        opt.classList.add('selected');
+      }
+      SessionManager.saveTerrain({ [name]: val });
+      // Ajouter un indicateur "auto-détecté"
+      if (label) {
+        const row = radio.closest('.field-row');
+        if (row && !row.querySelector('.auto-detect-tag')) {
+          const tag = document.createElement('span');
+          tag.className = 'auto-detect-tag';
+          tag.style.cssText = 'display:inline-block;margin-left:8px;padding:1px 6px;border-radius:3px;font-size:9px;font-family:var(--font-mono);background:rgba(20,184,166,0.12);color:#14b8a6';
+          tag.textContent = `auto — ${label}`;
+          row.querySelector('.field-label')?.appendChild(tag);
+        }
+      }
+    };
+
+    if (c.abf.detected)    autoSel('abf', 'oui', c.abf.label);
+    else                   autoSel('abf', 'non', null);
+
+    if (c.oap.detected)    autoSel('oap', 'oui', `${c.oap.files.length} fichier(s) OAP`);
+    else                   autoSel('oap', 'non', null);
+
+    if (c.sup_ht.detected) autoSel('sup_ht', 'oui', c.sup_ht.label);
+    else                   autoSel('sup_ht', 'non', null);
+
+    console.info('[P04] Contraintes auto-détectées :', c);
+  } catch (e) {
+    console.warn('[P04] Contraintes auto-detect failed:', e.message);
   }
 })();
 
