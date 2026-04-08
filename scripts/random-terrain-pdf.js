@@ -33,7 +33,7 @@ const args = process.argv.slice(2);
 const COUNT     = parseInt(args.find((_, i, a) => a[i - 1] === '--count') ?? '1');
 const HEADED    = args.includes('--headed');
 const NO_LIDAR  = args.includes('--no-lidar');
-const PORT      = parseInt(args.find((_, i, a) => a[i - 1] === '--port') ?? '8787');
+const PORT      = parseInt(args.find((_, i, a) => a[i - 1] === '--port') ?? String(8787 + Math.floor(Math.random() * 100)));
 const OUT_DIR   = path.resolve(__dirname, '..', 'docs', 'random-pdf');
 
 // Token Mapbox — depuis .env, CLI, ou fallback embarqué
@@ -250,8 +250,7 @@ async function processOneTerrain(browser, runIndex) {
             });
             if (!valid.length) continue;
 
-            // Vérifier zone PLU — préférer zone urbaine (U*)
-            // Tester rapidement si la parcelle est en zone constructible
+            // Vérifier zone PLU via API Carto IGN — préférer zone urbaine (U*)
             let selectedFeature = null;
             for (const feat of valid) {
               try {
@@ -259,11 +258,11 @@ async function processOneTerrain(browser, runIndex) {
                 const flat = Array.isArray(fCoords[0][0]) ? fCoords[0] : fCoords;
                 const ctr = flat.reduce((a, p) => [a[0]+p[0], a[1]+p[1]], [0,0]).map(v => v/flat.length);
                 const pluResp = await fetch(
-                  `https://data.geopf.fr/wfs/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature`
-                  + `&TYPENAMES=wfs_du:zone_urba&OUTPUTFORMAT=application/json&SRSNAME=EPSG:4326&COUNT=1`
-                  + `&CQL_FILTER=INTERSECTS(geom,POINT(${ctr[1]} ${ctr[0]}))`,
+                  `https://apicarto.ign.fr/api/gpu/zone-urba?geom=`
+                  + encodeURIComponent(JSON.stringify({ type: 'Point', coordinates: [ctr[0], ctr[1]] })),
                   { signal: AbortSignal.timeout(5000) }
                 );
+                if (!pluResp.ok) continue;
                 const pluData = await pluResp.json();
                 const zoneType = pluData?.features?.[0]?.properties?.typezone ?? '';
                 // Préférer U (urbain) — accepter AU (à urbaniser)
@@ -408,7 +407,8 @@ async function processOneTerrain(browser, runIndex) {
       window.__enrichDone = false;
       (async () => {
         try {
-          const t = window.SessionManager.getTerrain();
+          const SM = window.SessionManager;
+          const t = SM.getTerrain();
           const lat = parseFloat(t.lat), lng = parseFloat(t.lng);
           if (!lat || !lng) { window.__enrichDone = true; return; }
 
@@ -840,14 +840,24 @@ async function processOneTerrain(browser, runIndex) {
                 const ph = session?.getPhase?.(i);
                 if (ph) sessionData.phases[i] = ph;
               }
+
+              // Recalculer la géométrie locale pour BpfBridge
+              const TA = window.TerrainP07Adapter;
+              if (TA?.process && terrain.parcelle_geojson) {
+                const adapted = TA.process(terrain.parcelle_geojson, { bearing: 0 });
+                if (adapted.valid) {
+                  sessionData._parcelLocal = adapted.poly?.map(([x, y]) => ({ x, y })) ?? [];
+                  sessionData._edgeTypes = TA.inferEdgeTypes?.(adapted.poly, sessionData) ?? [];
+                }
+              }
+
               let svgStr = CSR.renderPlanMasse(sessionData, proposal, null, null, null);
 
               // Enrichir le SVG avec la végétation BpfBridge
               if (svgStr && svgStr.length > 100) {
                 try {
                   const BPF = window.BpfBridge;
-                  const TA = window.TerrainP07Adapter;
-                  if (BPF?.generate && TA && sessionData._parcelLocal?.length >= 3) {
+                  if (BPF?.generate && sessionData._parcelLocal?.length >= 3) {
                     const buildingPoly = [
                       { x: proposal.bat.x, y: proposal.bat.y },
                       { x: proposal.bat.x + proposal.bat.w, y: proposal.bat.y },
@@ -950,6 +960,129 @@ async function processOneTerrain(browser, runIndex) {
                 }
               }
             } catch (e) { console.warn('[PDF] Sections terrain:', e.message); }
+          }
+
+          // ── Terrain 3D (Three.js headless via SwiftShader, fallback SVG isométrique) ──
+          if (window.LidarService?._lastPoints?.length > 10) {
+            try {
+              const points = window.LidarService._lastPoints;
+              // Tenter Three.js headless
+              let terrain3dOk = false;
+              const T3D = window.Terrain3D;
+              if (T3D?.init && terrain.parcelle_geojson) {
+                try {
+                  // Créer un conteneur temporaire pour le rendu 3D
+                  const t3dDiv = document.createElement('div');
+                  t3dDiv.id = 'terrain3d-headless';
+                  t3dDiv.style.cssText = 'position:absolute;left:-9999px;width:800px;height:500px';
+                  document.body.appendChild(t3dDiv);
+                  await T3D.init({ containerId: 'terrain3d-headless', session: window.SessionManager });
+                  // Attendre un frame de rendu
+                  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+                  const snap = T3D.capture?.();
+                  if (snap && snap.length > 100) {
+                    visuals.terrain3d = snap;
+                    terrain3dOk = true;
+                    console.log('[PDF] Terrain 3D Three.js headless : ' + Math.round(snap.length / 1024) + 'K');
+                  }
+                  t3dDiv.remove();
+                } catch (e) { console.warn('[PDF] Three.js headless:', e.message); }
+              }
+
+              // Fallback : SVG isométrique depuis points LiDAR
+              // Points LiDAR = tableaux [lng, lat, z] (pas d'objets)
+              if (!terrain3dOk) {
+                const groundPts = points.filter(p => Array.isArray(p) && p.length >= 3);
+                if (groundPts.length > 5) {
+                  // Calculer bbox et normaliser
+                  let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity, zMin = Infinity, zMax = -Infinity;
+                  for (const p of groundPts) {
+                    if (p[0] < xMin) xMin = p[0]; if (p[0] > xMax) xMax = p[0];
+                    if (p[1] < yMin) yMin = p[1]; if (p[1] > yMax) yMax = p[1];
+                    if (p[2] < zMin) zMin = p[2]; if (p[2] > zMax) zMax = p[2];
+                  }
+                  const dx = xMax - xMin || 1, dy = yMax - yMin || 1, dz = zMax - zMin || 1;
+                  const W = 600, H = 400;
+                  const scale = Math.min(W * 0.6 / dx, H * 0.6 / dy);
+                  const zScale = Math.min(80 / dz, scale * 3); // exagération verticale
+
+                  // Grille de sous-échantillonnage pour un rendu propre
+                  const gridN = 30;
+                  const grid = Array.from({ length: gridN }, () => Array(gridN).fill(null));
+                  for (const p of groundPts) {
+                    const gx = Math.min(gridN - 1, Math.floor((p[0] - xMin) / dx * gridN));
+                    const gy = Math.min(gridN - 1, Math.floor((p[1] - yMin) / dy * gridN));
+                    if (!grid[gy][gx] || p[2] > grid[gy][gx]) grid[gy][gx] = p[2];
+                  }
+                  // Interpoler les trous
+                  for (let y = 0; y < gridN; y++) {
+                    for (let x = 0; x < gridN; x++) {
+                      if (grid[y][x] === null) {
+                        let sum = 0, cnt = 0;
+                        for (let dy2 = -2; dy2 <= 2; dy2++) for (let dx2 = -2; dx2 <= 2; dx2++) {
+                          const ny = y + dy2, nx = x + dx2;
+                          if (ny >= 0 && ny < gridN && nx >= 0 && nx < gridN && grid[ny][nx] !== null) {
+                            sum += grid[ny][nx]; cnt++;
+                          }
+                        }
+                        grid[y][x] = cnt > 0 ? sum / cnt : zMin;
+                      }
+                    }
+                  }
+
+                  // Projection isométrique (30°)
+                  const iso = (gx, gy, z) => {
+                    const wx = (gx / gridN) * dx * scale;
+                    const wy = (gy / gridN) * dy * scale;
+                    const wz = (z - zMin) * zScale;
+                    const ix = (wx - wy) * 0.866 + W / 2;
+                    const iy = (wx + wy) * 0.5 - wz + H * 0.7;
+                    return [ix, iy];
+                  };
+
+                  // Générer les facettes + calculer la bounding box réelle
+                  let facets = '';
+                  let fxMin = Infinity, fxMax = -Infinity, fyMin = Infinity, fyMax = -Infinity;
+                  for (let y = 0; y < gridN - 1; y++) {
+                    for (let x = 0; x < gridN - 1; x++) {
+                      const z00 = grid[y][x], z10 = grid[y][x + 1], z01 = grid[y + 1][x], z11 = grid[y + 1][x + 1];
+                      const pts = [iso(x, y, z00), iso(x+1, y, z10), iso(x+1, y+1, z11), iso(x, y+1, z01)];
+                      for (const [px, py] of pts) {
+                        if (px < fxMin) fxMin = px; if (px > fxMax) fxMax = px;
+                        if (py < fyMin) fyMin = py; if (py > fyMax) fyMax = py;
+                      }
+                      // Couleur hillshade basée sur la pente locale
+                      const slopeX = (z10 - z00 + z11 - z01) / 2;
+                      const slopeY = (z01 - z00 + z11 - z10) / 2;
+                      const shade = Math.max(0.15, Math.min(0.95, 0.5 + slopeX * 0.3 - slopeY * 0.2));
+                      const r = Math.round(46 + shade * 140), g = Math.round(80 + shade * 100), b = Math.round(38 + shade * 80);
+                      facets += `<polygon points="${pts.map(p => p.join(',')).join(' ')}" fill="rgb(${r},${g},${b})" stroke="rgb(${r-15},${g-15},${b-15})" stroke-width="0.3"/>`;
+                    }
+                  }
+
+                  // ViewBox ajusté à la bbox réelle des facettes + marge
+                  const pad = 20;
+                  const vbX = fxMin - pad, vbY = fyMin - pad;
+                  const vbW = (fxMax - fxMin) + pad * 2, vbH = (fyMax - fyMin) + pad * 2 + 20; // +20 pour texte
+
+                  const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vbX} ${vbY} ${vbW} ${vbH}" style="width:100%;height:100%" preserveAspectRatio="xMidYMid meet">
+                    <rect x="${vbX}" y="${vbY}" width="${vbW}" height="${vbH}" fill="#F5F0E8"/>
+                    ${facets}
+                    <text x="${(fxMin+fxMax)/2}" y="${fyMax+15}" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="8" fill="#6A6860">
+                      Terrain 3D · ${groundPts.length} pts LiDAR · denivele ${Math.round(dz)} m
+                    </text>
+                  </svg>`;
+
+                  const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+                  visuals.terrain3d = await new Promise(r => {
+                    const reader = new FileReader();
+                    reader.onload = () => r(reader.result);
+                    reader.readAsDataURL(blob);
+                  });
+                  console.log('[PDF] Terrain 3D SVG isometrique : ' + Math.round(svgStr.length / 1024) + 'K (' + groundPts.length + ' pts)');
+                }
+              }
+            } catch (e) { console.warn('[PDF] Terrain 3D:', e.message); }
           }
 
           // Injecter dans engine._visuals pour que _renderPlanche4 les trouve
@@ -1104,6 +1237,7 @@ async function processOneTerrain(browser, runIndex) {
       '--disable-web-security',            // CORS pour les APIs
       '--disable-features=IsolateOrigins',
       '--disable-site-isolation-trials',
+      '--enable-webgl',
       '--window-size=1400,900',
     ],
     defaultViewport: null,

@@ -23,6 +23,7 @@ const MapCapture = {
       { id: 'cover_situation',  center: [55.536, -21.115], zoom: 9,    pitch: 0,  bearing: 0  },
       { id: 'p01_cadastre',     center: coords,            zoom: 17.5, pitch: 0,  bearing: 0  },
       { id: 'p01_situation',    center: coords,            zoom: 14,   pitch: 0,  bearing: 0  },
+      { id: 'p01_situation_marked', center: coords,        zoom: 13,   pitch: 0,  bearing: 0  },
       { id: 'p03_ppr',          center: coords,            zoom: 14,   pitch: 45, bearing: 20 },
       { id: 'p05_context3d',    center: coords,            zoom: 16,   pitch: 60, bearing: -30},
     ];

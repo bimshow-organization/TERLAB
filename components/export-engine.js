@@ -239,26 +239,20 @@ const ExportEngine = {
 
   _renderAllPlanches(session, terrain, maps, mode) {
     const ref = `${terrain.section ?? ''}${terrain.parcelle ?? ''}`;
-    const tp = mode === 'projet' ? 9 : 8; // total pages
+    const tp = mode === 'projet' ? 7 : 6; // total pages (densifié)
 
     let html = '';
     html += this._renderCover(session, terrain, maps, mode, tp);
     html += this._renderPlanche1(session, terrain, maps, ref, tp);
-    html += this._renderPlanche2(session, terrain, maps, ref, tp);
-    html += this._renderPlanche3(session, terrain, maps, ref, tp);
+    html += this._renderPlanche2_3(session, terrain, maps, ref, tp); // Topo + Risques fusionnés
 
     if (mode === 'projet') {
       html += this._renderPlanche4(session, terrain, maps, ref, tp);
-      html += this._renderPlanche5(session, terrain, maps, ref, tp);
-      html += this._renderPlanche6(session, terrain, maps, ref, tp);
-      html += this._renderPlanche7(session, terrain, maps, ref, tp);
-      html += this._renderPlanche8(session, terrain, maps, ref, tp);
-    } else {
-      html += this._renderPlanche5(session, terrain, maps, ref, tp);
-      html += this._renderPlanche6(session, terrain, maps, ref, tp);
-      html += this._renderPlanche7(session, terrain, maps, ref, tp);
-      html += this._renderPlanche8(session, terrain, maps, ref, tp);
     }
+
+    html += this._renderPlanche5_6(session, terrain, maps, ref, tp); // Voisinage + Gabarit fusionnés
+    html += this._renderPlanche7(session, terrain, maps, ref, tp);
+    html += this._renderPlanche8(session, terrain, maps, ref, tp);
 
     return html;
   },
@@ -294,7 +288,7 @@ const ExportEngine = {
             ${row('Reference', uuid)}
           </div>
           <div>
-            ${mapImg(maps, 'cover_situation', 180, 'Situation', 'Mapbox · Satellite')}
+            ${mapImg(maps, 'p01_situation_marked', 180, 'Situation', 'Mapbox · Satellite', maps?.cover_situation ? `<img src="${maps.cover_situation}" alt="Situation">` : undefined)}
             ${score != null ? `
             <div class="pot-grid">
               <div class="pcrd">
@@ -359,11 +353,12 @@ const ExportEngine = {
   },
 
   // ═══════════════════════════════════════════════════════════════
-  //  PLANCHE 2 — Analyse du site (topo + geologie)
+  //  PLANCHE 2+3 — Analyse du site + Risques & PLU (fusionnée)
   // ═══════════════════════════════════════════════════════════════
 
-  _renderPlanche2(session, terrain, _maps, ref, tp) {
-
+  _renderPlanche2_3(session, terrain, maps, ref, tp) {
+    const p3 = this._getPhaseData(session, 3);
+    const p4 = this._getPhaseData(session, 4);
 
     const geoTypes = {
       basalte_recent: 'Basalte recent', basalte_ancien: 'Basalte ancien',
@@ -373,76 +368,15 @@ const ExportEngine = {
     const geoLabel = geoTypes[terrain.geologie_type] ?? terrain.geologie_type ?? null;
     const geoIsAuto = this._autoFields?.has('geologie_type');
 
-    // Profile chart image
-    const profileImg = this._visuals?.profileChart
-      ? `<div class="map-wrap" style="height:120px"><img src="${this._visuals.profileChart}" alt="Profil altimetrique"><span class="map-lbl">Profil altimetrique</span></div>`
-      : '';
-
-    // Terrain SVG
-    const terrainSvgImg = this._visuals?.terrainSvg
-      ? `<div class="map-wrap" style="height:100px"><img src="${this._visuals.terrainSvg}" alt="Coupe terrain"><span class="map-lbl">Coupe terrain</span></div>`
-      : '';
-
     // Coupes A/B
     const sectionAImg = this._visuals?.sectionA
-      ? `<div class="map-wrap" style="height:110px"><img src="${this._visuals.sectionA}" alt="Coupe A longitudinale"><span class="map-lbl">Coupe A — Longitudinale</span></div>`
+      ? `<div class="map-wrap" style="height:90px"><img src="${this._visuals.sectionA}" alt="Coupe A longitudinale"><span class="map-lbl">Coupe A — Longitudinale</span></div>`
       : '';
     const sectionBImg = this._visuals?.sectionB
-      ? `<div class="map-wrap" style="height:110px"><img src="${this._visuals.sectionB}" alt="Coupe B perpendiculaire"><span class="map-lbl">Coupe B — Perpendiculaire</span></div>`
+      ? `<div class="map-wrap" style="height:90px"><img src="${this._visuals.sectionB}" alt="Coupe B perpendiculaire"><span class="map-lbl">Coupe B — Perpendiculaire</span></div>`
       : '';
 
-    return `<div class="page">
-      ${plancheHead('Analyse du site', 3, tp, ref)}
-      <div class="pb pb2">
-        <div class="sec">
-          ${sec('TOPOGRAPHIE & MICROCLIMAT')}
-          ${row('Orientation', terrain.orientation ?? terrain.orientation_terrain)}
-          ${row('Alt. min DEM', terrain.alt_min_dem != null ? `${terrain.alt_min_dem} m NGR` : null)}
-          ${row('Alt. max DEM', terrain.alt_max_dem != null ? `${terrain.alt_max_dem} m NGR` : null)}
-          ${row('Zone pluvio.', terrain.zone_pluviometrique ?? terrain.zone_pluvio)}
-          ${row('Station meteo', terrain.station_meteo)}
-
-          ${sec('HYDROGRAPHIE')}
-          ${row('Ravine', terrain.nom_ravine)}
-          ${row('Distance', terrain.distance_ravine_m != null ? `${terrain.distance_ravine_m} m` : null)}
-
-          ${profileImg}
-          ${terrainSvgImg}
-          ${sectionAImg}
-          ${sectionBImg}
-        </div>
-        <div class="sec">
-          ${sec('GEOLOGIE & GEOTECHNIQUE')}
-          ${geoLabel ? `<div class="hbox"><p>Type geologique : <strong>${geoLabel}</strong>${geoIsAuto ? ' <span class="fv au"></span>' : ''}</p></div>` : ''}
-          ${row('Remblai', { non: 'Non', possible: 'Possible', oui: 'Oui' }[terrain.remblai])}
-          ${row('Etude geotechnique', { non: 'Non requise', g1: 'G1 requise', recommande: 'Recommandee' }[terrain.geotech])}
-          ${row('Captage < 100 m', { non: 'Non', oui: 'Oui', inconnu: 'Inconnu' }[terrain.captage])}
-
-          ${sec('DISPOSITIONS CONSTRUCTIVES')}
-          ${row('Chainages horizontaux', terrain.chainages_hz ? 'Oui' : 'Non')}
-          ${row('Chainages verticaux', terrain.chainages_vt ? 'Oui' : 'Non')}
-          ${row('Fondations speciales', terrain.fondations_special ? 'Oui' : 'Non')}
-
-          ${this._visuals?.phaseSnaps?.[2] ? `
-          <div class="map-wrap" style="height:140px">
-            <img src="${this._visuals.phaseSnaps[2]}" alt="Carte geologique BRGM">
-            <span class="map-lbl">Carte geologique</span>
-            <span class="map-src">BRGM</span>
-          </div>` : ''}
-        </div>
-      </div>
-      ${plancheFoot(terrain.commune, ref, 3, tp)}
-    </div>`;
-  },
-
-  // ═══════════════════════════════════════════════════════════════
-  //  PLANCHE 3 — Risques & PLU
-  // ═══════════════════════════════════════════════════════════════
-
-  _renderPlanche3(session, terrain, maps, ref, tp) {
-    const p3 = this._getPhaseData(session, 3);
-    const p4 = this._getPhaseData(session, 4);
-
+    // PPR
     const zone = p3.zone_pprn ?? terrain.zone_pprn ?? null;
     const zoneDesc = {
       R1: 'Rouge fort — Inconstructible', R2: 'Rouge — Inconstructible',
@@ -453,66 +387,70 @@ const ExportEngine = {
       R1: '#8B2020', R2: '#8B2020', B1: '#8B6A20', B2: '#8B6A20', J: '#8B6A20', W: '#2E5C2E',
     };
 
+    // PLU
     const zonePlu = terrain.zone_plu ?? p4.zone_plu ?? null;
     const pluDesc = {
       UA: 'Urbaine dense', UB: 'Urbaine residentielle', UC: 'Urbaine peripherique',
       AU: 'A urbaniser', AUs: 'A urbaniser strict', N: 'Naturelle', A: 'Agricole',
     };
 
-    // PPR snap
     const pprSnap = terrain.snap_ppr ?? this._visuals?.phaseSnaps?.[3] ?? null;
     const reculsSnap = this._visuals?.reculsCanvas ?? null;
 
+    // PPRN hors zone — message explicite
+    const pprnHorsZoneMsg = !zone
+      ? `<div class="hbox" style="background:#F5F0E8;padding:4px 8px;margin:2px 0;font-size:7.5pt">
+          <p style="margin:0">Parcelle hors zone PPR approuve — verifier PPRN en cours d'elaboration aupres de la DEAL 974</p>
+        </div>`
+      : '';
+
     return `<div class="page">
-      ${plancheHead('Risques & Reglementation', 4, tp, ref)}
-      <div class="pb pb2">
+      ${plancheHead('Analyse du site & Risques', 3, tp, ref)}
+      <div class="pb pb3">
+        <div class="sec">
+          ${sec('TOPOGRAPHIE')}
+          ${row('Orientation', terrain.orientation ?? terrain.orientation_terrain)}
+          ${row('Alt. min/max', terrain.alt_min_dem != null && terrain.alt_max_dem != null ? `${terrain.alt_min_dem} — ${terrain.alt_max_dem} m NGR` : null)}
+          ${row('Pente moy.', terrain.pente_moy_pct != null ? `${terrain.pente_moy_pct} %` : null)}
+          ${row('Zone pluvio.', terrain.zone_pluviometrique ?? terrain.zone_pluvio)}
+
+          ${sec('GEOLOGIE')}
+          ${geoLabel ? `<div class="hbox"><p>Type : <strong>${geoLabel}</strong>${geoIsAuto ? ' <span class="fv au"></span>' : ''}</p></div>` : ''}
+          ${row('Remblai', { non: 'Non', possible: 'Possible', oui: 'Oui' }[terrain.remblai])}
+          ${row('Geotechnique', { non: 'Non requise', g1: 'G1 requise', recommande: 'Recommandee' }[terrain.geotech])}
+
+          ${sectionAImg}
+          ${sectionBImg}
+        </div>
         <div class="sec">
           ${sec('RISQUES — PPRN')}
-          ${zone ? `<div class="hbox"><p>Zone <strong style="color:${zoneColor[zone] ?? '#C1652B'}">${zone}</strong> — ${zoneDesc[zone] ?? ''}</p></div>` : ''}
+          ${zone ? `<div class="hbox"><p>Zone <strong style="color:${zoneColor[zone] ?? '#C1652B'}">${zone}</strong> — ${zoneDesc[zone] ?? ''}</p></div>` : pprnHorsZoneMsg}
           ${row('Cote ref. NGR', p3.cote_reference_ngr != null ? `${p3.cote_reference_ngr} m NGR` : null)}
-          ${row('Simulation crue', p3.simulateur_flood_m != null ? `+${p3.simulateur_flood_m} m` : null)}
           ${row('Zone vent RTAA', p3.zone_rtaa_vent)}
-
-          ${sec('SECURITE INCENDIE — SDIS 974')}
           ${row('Hydrant < 150 m', { oui: 'Oui', non: 'Non', verif: 'A verifier' }[p3.hydrant_present])}
-          ${row('Acces SDIS', { oui: 'Conforme', non: 'Non conforme', verif: 'A verifier' }[p3.acces_sdis])}
 
           ${pprSnap ? `
-          <div class="map-wrap" style="height:200px">
+          <div class="map-wrap" style="height:140px">
             <img src="${pprSnap}" alt="Carte PPR">
             <span class="map-lbl">Carte PPR</span>
             <span class="map-src">AGORAH PEIGEO</span>
-          </div>` : mapImg(maps, 'p03_ppr', 200, 'PPR — Vue rapprochee', 'AGORAH PEIGEO')}
-          ${maps?.p03_ppr_context ? `
-          <div class="map-wrap" style="height:160px">
-            <img src="${maps.p03_ppr_context}" alt="Contexte PPR">
-            <span class="map-lbl">PPR — Contexte elargi</span>
-            <span class="map-src">AGORAH PEIGEO · Satellite</span>
-          </div>` : ''}
+          </div>` : mapImg(maps, 'p03_ppr', 140, 'PPR — Vue rapprochee', 'AGORAH PEIGEO')}
         </div>
         <div class="sec">
-          ${sec('REGLEMENTATION PLU & RTAA DOM')}
+          ${sec('PLU & RECULS')}
           ${zonePlu ? `<div class="hbox"><p>Zone <strong>${zonePlu}</strong> — ${pluDesc[zonePlu] ?? ''}</p></div>` : ''}
           ${row('Hauteur max', p4.hauteur_max_m ? `${p4.hauteur_max_m} m` : null)}
-          ${row('Emprise sol max', p4.emprise_sol_max_pct ? `${p4.emprise_sol_max_pct} %` : null)}
-          ${row('ABF', { non: 'Non', oui: 'Oui — Perimetre ABF', verif: 'A verifier' }[p4.abf])}
-          ${row('OAP', { non: 'Non', oui: 'Oui', inconnu: 'Inconnu' }[p4.oap])}
-          ${row('Servitude HT', { non: 'Non', oui: 'Oui — Ligne HT' }[p4.sup_ht])}
-
-          ${sec('RECULS REGLEMENTAIRES')}
-          ${row('Voie principale', p4.recul_voie_principale_m ? `${p4.recul_voie_principale_m} m` : null)}
-          ${row('Voie secondaire', p4.recul_voie_secondaire_m ? `${p4.recul_voie_secondaire_m} m` : null)}
-          ${row('Limite separative', p4.recul_limite_sep_m ? `${p4.recul_limite_sep_m} m` : null)}
-          ${row('Fond de parcelle', p4.recul_fond_m ? `${p4.recul_fond_m} m` : null)}
+          ${row('Emprise sol', p4.emprise_sol_max_pct ? `${p4.emprise_sol_max_pct} %` : null)}
+          ${row('Reculs V / L / F', [p4.recul_voie_principale_m, p4.recul_limite_sep_m, p4.recul_fond_m].filter(Boolean).join(' / ') || null)}
 
           ${reculsSnap ? `
-          <div class="map-wrap" style="height:180px">
+          <div class="map-wrap" style="height:130px">
             <img src="${reculsSnap}" alt="Schema reculs">
             <span class="map-lbl">Schema des reculs</span>
           </div>` : ''}
         </div>
       </div>
-      ${plancheFoot(terrain.commune, ref, 4, tp)}
+      ${plancheFoot(terrain.commune, ref, 3, tp)}
     </div>`;
   },
 
@@ -528,7 +466,7 @@ const ExportEngine = {
     const metrics = proposal?.metrics ?? {};
 
     return `<div class="page">
-      ${plancheHead('Plan masse & Conformite', 5, tp, ref)}
+      ${plancheHead('Plan masse & Conformite', 4, tp, ref)}
       <div class="pb pb2">
         <div class="sec">
           ${sec('METRIQUES CONFORMITE')}
@@ -557,37 +495,20 @@ const ExportEngine = {
           </div>`}
         </div>
       </div>
-      ${plancheFoot(terrain.commune, ref, 5, tp)}
+      ${plancheFoot(terrain.commune, ref, 4, tp)}
     </div>`;
   },
 
   // ═══════════════════════════════════════════════════════════════
-  //  PLANCHE 5 — Voisinage & Biodiversite
+  //  PLANCHE 5+6 — Voisinage & Esquisse (fusionnée)
   // ═══════════════════════════════════════════════════════════════
 
-  _renderPlanche5(session, terrain, _maps, ref, tp) {
+  _renderPlanche5_6(session, terrain, _maps, ref, tp) {
     const p6 = session?.getPhase?.(6)?.data ?? {};
-
-    const parcLabels = {
-      hors_parc: 'Hors parc', adhesion_500m: 'Zone adhesion < 500 m',
-      adhesion: 'Zone d\'adhesion', coeur: 'Coeur de parc',
-    };
-    const znieffLabels = {
-      aucune: 'Aucune', type2_500m: 'Type II < 500 m',
-      type1_500m: 'Type I < 500 m', terrain: 'Sur le terrain',
-    };
-
-    const especeNames = {
-      petrel: 'Petrel de Barau', papangue: 'Papangue', phelsuma: 'Phelsuma',
-      oiseau_blanc: 'Oiseau blanc', flore: 'Flore protegee', aucune: 'Aucune',
-    };
-
-    const snapBati = terrain.snap_bati3d ?? this._visuals?.phaseSnaps?.[5] ?? null;
-    const snapNature = terrain.snap_nature ?? this._visuals?.phaseSnaps?.[6] ?? null;
-
-    const especesHtml = (p6.especes_protegees ?? []).map(sp =>
-      `<span class="fv wa" style="margin-right:4px">${especeNames[sp] ?? sp}</span>`
-    ).join('');
+    const p7 = this._getPhaseData(session, 7);
+    const p8 = this._getPhaseData(session, 8);
+    const pluRules = terrain._pluRules;
+    const num = tp >= 7 ? (tp === 7 ? 5 : 6) : 5;
 
     const reseauLabels = {
       reseau_public: 'Reseau public', captage_prive: 'Captage prive', inconnu: 'Inconnu',
@@ -595,70 +516,14 @@ const ExportEngine = {
       extension: 'Extension necessaire', oui: 'Fibre optique', adsl: 'ADSL', zone_blanche: 'Zone blanche',
     };
 
-    // Compute planche number dynamically
-    const num = tp >= 9 ? 6 : 5;
+    const parcLabels = {
+      hors_parc: 'Hors parc', adhesion_500m: 'Zone adhesion < 500 m',
+      adhesion: 'Zone d\'adhesion', coeur: 'Coeur de parc',
+    };
 
-    return `<div class="page">
-      ${plancheHead('Voisinage & Biodiversite', num, tp, ref)}
-      <div class="pb pb3">
-        <div class="sec">
-          ${sec('VOISINAGE & NUISANCES')}
-          ${row('ICPE < 500 m', { non: 'Non', oui: 'Oui', verif: 'A verifier' }[terrain.icpe])}
-          ${row('BASOL / pollution', { non: 'Non', oui: 'Oui', verif: 'A verifier' }[terrain.basol])}
-          ${row('Bruit', { aucune: 'Aucune', faibles: 'Faibles', moderees: 'Moderees', importantes: 'Importantes' }[terrain.bruit])}
-          ${row('Hauteurs voisins', terrain.hauteurs_voisins)}
-
-          ${sec('RESEAUX & VRD')}
-          ${row('Eau potable', reseauLabels[terrain.eau_potable] ?? terrain.eau_potable)}
-          ${row('Assainissement', reseauLabels[terrain.assainissement] ?? terrain.assainissement)}
-          ${row('Electricite', reseauLabels[terrain.electricite] ?? terrain.electricite)}
-          ${row('Fibre / Internet', reseauLabels[terrain.fibre] ?? terrain.fibre)}
-
-          ${snapBati ? `
-          <div class="map-wrap" style="height:160px">
-            <img src="${snapBati}" alt="Batiments voisins">
-            <span class="map-lbl">Batiments voisins 3D</span>
-          </div>` : mapImg(_maps, 'p05_context3d', 160, 'Contexte 3D', 'Mapbox')}
-        </div>
-        <div class="sec">
-          ${sec('BIODIVERSITE & MILIEU NATUREL')}
-          ${row('Parc National', parcLabels[p6.parc_situation] ?? p6.parc_situation)}
-          ${row('ZNIEFF', znieffLabels[p6.znieff] ?? p6.znieff)}
-          ${row('Trame Verte/Bleue', { non: 'Non concerne', proche: 'Corridor proche', terrain: 'Sur corridor' }[p6.tvb] ?? p6.tvb)}
-          ${row('Vegetation', p6.vegetation_coverage_pct != null ? `${p6.vegetation_coverage_pct} %` : null)}
-
-          ${sec('ESPECES REMARQUABLES')}
-          ${especesHtml ? `<div class="fr"><span class="fl">Protegees</span><span>${especesHtml}</span></div>` : row('Protegees', 'Aucune identifiee')}
-          ${row('Defrichement', { non: 'Non requis', partiel: 'Partiel', autorisation: 'Autorisation requise' }[p6.defrichement])}
-          ${row('Brise-vent naturel', { oui: 'Oui', non: 'Non' }[p6.brise_vent])}
-
-          ${snapNature ? `
-          <div class="map-wrap" style="height:160px">
-            <img src="${snapNature}" alt="ZNIEFF milieux">
-            <span class="map-lbl">ZNIEFF & milieux naturels</span>
-          </div>` : ''}
-        </div>
-      </div>
-      ${plancheFoot(terrain.commune, ref, num, tp)}
-    </div>`;
-  },
-
-  // ═══════════════════════════════════════════════════════════════
-  //  PLANCHE 6 — Gabarit & Esquisse
-  // ═══════════════════════════════════════════════════════════════
-
-  _renderPlanche6(session, terrain, _maps, ref, tp) {
-    const p7 = this._getPhaseData(session, 7);
-    const p8 = this._getPhaseData(session, 8);
-    const pluRules = terrain._pluRules;
-    const num = tp >= 9 ? 7 : 6;
-
-    const structLabels = { maconnerie: 'Maconnerie', bois: 'Bois', metal: 'Metal', mixte: 'Mixte' };
-    const toitLabels = { '4pentes': '4 pentes', '2pentes': '2 pentes', terrasse: 'Terrasse' };
-
+    const snapBati = terrain.snap_bati3d ?? this._visuals?.phaseSnaps?.[5] ?? null;
     const snapshot3d = p7.glb_snapshot ?? this._visuals?.terrain3d ?? this._visuals?.bimshow ?? null;
     const coupeGabarit = this._visuals?.coupeGabarit ?? null;
-    const windNav = this._visuals?.windNav ?? null;
 
     // Pre-esquisse auto
     let preEsquisseHtml = '';
@@ -666,20 +531,10 @@ const ExportEngine = {
     if (!hasManualEsquisse && pluRules && terrain.contenance_m2) {
       const surface = parseFloat(terrain.contenance_m2);
       const emprMax = pluRules.plu?.emprMax ?? 60;
-      const permMin = pluRules.plu?.permMin ?? 30;
       const heMax   = pluRules.plu?.heMax ?? 9;
-      const rVoie   = pluRules.reculs?.voie ?? 3;
-      const rFond   = pluRules.reculs?.fond ?? 3;
-      const rLat    = pluRules.reculs?.lat ?? 1.5;
       const empriseEst = Math.round(surface * emprMax / 100);
       const sdpMax = empriseEst * Math.floor(heMax / 3);
-
       preEsquisseHtml = `
-        ${sec('PRE-ESQUISSE AUTOMATIQUE PLU')}
-        <div class="fr"><span class="fl">Emprise max PLU</span>${auto(`${emprMax} %`)}</div>
-        <div class="fr"><span class="fl">Permeabilite min</span>${auto(`${permMin} %`)}</div>
-        <div class="fr"><span class="fl">Hauteur max</span>${auto(`${heMax} m`)}</div>
-        <div class="fr"><span class="fl">Reculs V/F/L</span>${auto(`${rVoie} / ${rFond} / ${rLat} m`)}</div>
         <div class="fr"><span class="fl">Emprise constr. est.</span>${auto(`~${empriseEst} m2`)}</div>
         <div class="fr"><span class="fl">SDP max estimee</span>${auto(`~${sdpMax} m2`)}</div>
       `;
@@ -690,57 +545,55 @@ const ExportEngine = {
     let giepHtml = '';
     if (giep?.score != null) {
       const col = giep.score >= 70 ? '#2E5C2E' : giep.score >= 40 ? '#8B6A20' : '#C1652B';
-      giepHtml = `
-        <div class="hbox">
-          <p>Score GIEP : <strong style="color:${col}">${giep.score} / 100</strong>
-          ${giep.debitInit ? ` · Debit ${giep.debitInit} → ${giep.debitFinal} L/s` : ''}
-          ${giep.reduction_pct ? ` · Reduction ${giep.reduction_pct} %` : ''}</p>
-        </div>`;
+      giepHtml = `<div class="hbox"><p>GIEP : <strong style="color:${col}">${giep.score}/100</strong>
+        ${giep.reduction_pct ? ` · -${giep.reduction_pct}%` : ''}</p></div>`;
     }
 
     return `<div class="page">
-      ${plancheHead('Gabarit & Esquisse', num, tp, ref)}
-      <div class="pb pb2">
+      ${plancheHead('Voisinage & Esquisse', num, tp, ref)}
+      <div class="pb pb3">
+        <div class="sec">
+          ${sec('VOISINAGE & RESEAUX')}
+          ${row('ICPE < 500 m', { non: 'Non', oui: 'Oui', verif: 'A verifier' }[terrain.icpe])}
+          ${row('Parc National', parcLabels[p6.parc_situation] ?? p6.parc_situation)}
+          ${row('Eau potable', reseauLabels[terrain.eau_potable] ?? terrain.eau_potable)}
+          ${row('Assainissement', reseauLabels[terrain.assainissement] ?? terrain.assainissement)}
+          ${row('Electricite', reseauLabels[terrain.electricite] ?? terrain.electricite)}
+          ${row('Fibre', reseauLabels[terrain.fibre] ?? terrain.fibre)}
+
+          ${snapBati ? `
+          <div class="map-wrap" style="height:130px">
+            <img src="${snapBati}" alt="Batiments voisins">
+            <span class="map-lbl">Batiments voisins 3D</span>
+          </div>` : mapImg(_maps, 'p05_context3d', 130, 'Contexte 3D', 'Mapbox')}
+        </div>
         <div class="sec">
           ${sec('ESQUISSE DU PROJET')}
           ${row('Surface plancher', p7.surface_plancher_m2 ? `${p7.surface_plancher_m2} m2` : null)}
           ${row('Niveaux', p7.niveaux)}
           ${row('Gabarit L x l x h', (p7.gabarit_l_m && p7.gabarit_w_m && p7.gabarit_h_m) ?
             `${p7.gabarit_l_m} x ${p7.gabarit_w_m} x ${p7.gabarit_h_m} m` : null)}
-          ${row('Structure', structLabels[p7.type_structure] ?? p7.type_structure)}
-          ${row('Toiture', toitLabels[p7.type_toiture] ?? p7.type_toiture)}
-
           ${preEsquisseHtml}
 
-          ${snapshot3d ? `
-          <div class="map-wrap" style="height:160px">
-            <img src="${snapshot3d}" alt="Modele 3D">
-            <span class="map-lbl">Modele 3D — BIMSHOW</span>
+          ${coupeGabarit ? `
+          <div class="map-wrap" style="height:140px">
+            <img src="${coupeGabarit}" alt="Coupe gabarit">
+            <span class="map-lbl">Coupe N-S · Reculs</span>
           </div>` : ''}
 
-          ${windNav ? `
-          <div class="map-wrap" style="height:120px">
-            <img src="${windNav}" alt="Aeraulique">
-            <span class="map-lbl">Analyse aeraulique</span>
+          ${snapshot3d ? `
+          <div class="map-wrap" style="height:200px">
+            <img src="${snapshot3d}" alt="Modele 3D" style="object-fit:contain">
+            <span class="map-lbl">Terrain 3D · LiDAR</span>
           </div>` : ''}
         </div>
         <div class="sec">
-          ${coupeGabarit ? `
-          ${sec('COUPE GABARIT TRANSVERSALE')}
-          <div class="map-wrap" style="height:200px">
-            <img src="${coupeGabarit}" alt="Coupe gabarit">
-            <span class="map-lbl">Coupe N-S · Reculs · Niveaux</span>
-          </div>` : ''}
+          ${sec('CHANTIER & SDIS')}
+          ${row('Demarrage', { hors_cyclone: 'Hors cyclone', cyclone: 'Saison cyclonique' }[p8.saison_demarrage])}
+          ${row('Gestion eaux', { bassin: 'Bassin', cunettes: 'Cunettes', a_definir: 'A definir' }[p8.gestion_eaux_chantier])}
+          ${giepHtml || row('GIEP', null)}
 
-          ${sec('CHANTIER & CONSTRUCTION')}
-          ${row('Demarrage', { hors_cyclone: 'Hors saison cyclonique', cyclone: 'Saison cyclonique' }[p8.saison_demarrage])}
-          ${row('Gestion eaux', { bassin: 'Bassin temporaire', cunettes: 'Cunettes', ponton: 'Ponton', a_definir: 'A definir' }[p8.gestion_eaux_chantier])}
-          ${row('Ravine < 50 m', { non: 'Non', oui: 'Oui — Vigilance' }[p8.ravine_proche])}
-
-          ${sec('GESTION EAUX PLUVIALES — GIEP')}
-          ${giepHtml || row('Score GIEP', null)}
-
-          ${sec('ACCES POMPIERS — SDIS 974')}
+          ${sec('SDIS 974')}
           ${this._renderSdisChecklist(p8)}
         </div>
       </div>
@@ -767,7 +620,7 @@ const ExportEngine = {
   // ═══════════════════════════════════════════════════════════════
 
   _renderPlanche7(session, terrain, _maps, ref, tp) {
-    const num = tp >= 9 ? 8 : 7;
+    const num = tp - 1;
 
     // Phase progress
     const phases = [
