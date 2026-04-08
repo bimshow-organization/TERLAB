@@ -31,8 +31,22 @@
   <!-- Zonage PPRN -->
   <div class="form-section anim-slide-up">
     <div class="fs-head">Zonage PPRN — Inondation</div>
-    <div class="field-row">
-      <label class="field-label">Zone PPRN</label>
+
+    <!-- Auto-détection PPRN multi-points -->
+    <div class="pprn-autodetect">
+      <button class="risk-fetch-btn" id="btn-pprn-scan" onclick="P03.scanPPRN()" title="Scanner les zones PPRN sur la parcelle (pixel sampling)">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="10" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M4 4h4v4H4z" fill="currentColor" opacity=".3"/></svg>
+        Scanner le PPRN sur la parcelle
+      </button>
+      <button class="risk-fetch-btn" id="btn-pprn-planview" onclick="P03.planViewPPRN()" title="Vue plan 2D zoomée sur la parcelle avec PPRN" style="margin-top:4px">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="2" y="2" width="8" height="8" stroke="currentColor" stroke-width="1.2"/><circle cx="6" cy="6" r="2" stroke="currentColor" stroke-width="1"/></svg>
+        Vue plan PPRN (zoom parcelle)
+      </button>
+      <div id="pprn-scan-result" style="display:none"></div>
+    </div>
+
+    <div class="field-row" style="margin-top:8px">
+      <label class="field-label">Zone PPRN (manuelle ou auto-détectée)</label>
       <div class="pprn-zones">
         <button class="pprn-zone-btn" data-zone="R1" onclick="P03.selectZone(this,'R1')" title="Rouge fort — inconstructible">
           <span class="pz-color" style="background:#ef4444"></span>R1
@@ -314,9 +328,20 @@
 .alea-status { font-family:var(--font-mono); font-size:9px; color:var(--faint); margin-top:1px; }
 .alea-item.detected { border-color:var(--danger); background:var(--danger2); }
 .alea-item.detected .alea-status { color:var(--danger); }
+
+.pprn-autodetect { margin-bottom:6px; }
+.pprn-scan-zones { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+.pprn-scan-zone { display:flex; align-items:center; gap:5px; padding:4px 8px; border-radius:var(--r-sm); font-family:var(--font-mono); font-size:10px; color:var(--text2); border:1px solid var(--border2); }
+.pprn-scan-zone .sz-bar { height:4px; border-radius:2px; min-width:20px; }
+.pprn-scan-alert { margin-top:6px; padding:6px 10px; border-radius:var(--r-sm); font-size:11px; font-weight:600; border-left:3px solid; }
+.pprn-scan-alert.danger { background:rgba(239,68,68,.1); border-left-color:var(--danger); color:var(--danger); }
+.pprn-scan-alert.info { background:rgba(59,130,246,.1); border-left-color:#3b82f6; color:#3b82f6; }
+.pprn-scan-alert.success { background:rgba(34,197,94,.1); border-left-color:var(--success); color:var(--success); }
 </style>
 
 <script type="module">
+import PPRSamplingService from '../services/ppr-sampling-service.js';
+
 const SessionManager = window.SessionManager;
 const MapViewer      = window.TerlabMap;
 
@@ -488,6 +513,134 @@ const P03 = {
       alertEl.style.display = 'none';
     }
     SessionManager.saveTerrain({ [`sdis_${field}`]: val });
+  },
+
+  // ── Auto-détection PPRN multi-points ──────────────────────────
+  async scanPPRN() {
+    const terrain = SessionManager.getTerrain();
+    const parcelGeo = terrain?.parcelle_geojson;
+    if (!parcelGeo) {
+      window.TerlabToast?.show('Parcelle non définie — complétez la Phase 0', 'warning');
+      return;
+    }
+
+    const map = MapViewer?.getMap();
+    if (!map) {
+      window.TerlabToast?.show('Carte non disponible', 'warning');
+      return;
+    }
+
+    // Extraire le ring WGS84
+    let ring = parcelGeo.type === 'Polygon'
+      ? parcelGeo.coordinates[0]
+      : parcelGeo.type === 'MultiPolygon'
+        ? parcelGeo.coordinates[0][0]
+        : [];
+    if (ring.length > 0 && ring[0][0] === ring[ring.length - 1][0]) {
+      ring = ring.slice(0, -1);
+    }
+    if (ring.length < 3) {
+      window.TerlabToast?.show('Géométrie parcelle invalide', 'warning');
+      return;
+    }
+
+    const btn = document.getElementById('btn-pprn-scan');
+    btn.disabled = true;
+    btn.textContent = 'Scanning PPRN…';
+
+    // S'assurer que la couche PPR est visible et qu'on est bien zoomé
+    try {
+      if (map.getLayer('ppr-layer')) {
+        map.setLayoutProperty('ppr-layer', 'visibility', 'visible');
+        map.setPaintProperty('ppr-layer', 'raster-opacity', 0.8);
+      }
+    } catch {}
+
+    // Attendre un rendu stable
+    await new Promise(r => { map.once('idle', r); setTimeout(r, 2000); });
+
+    const result = await PPRSamplingService.sampleParcel(ring, map);
+
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="10" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M4 4h4v4H4z" fill="currentColor" opacity=".3"/></svg> Re-scanner le PPRN';
+
+    // Afficher les résultats
+    const resultDiv = document.getElementById('pprn-scan-result');
+    resultDiv.style.display = 'block';
+
+    if (!Object.keys(result.zones).length) {
+      resultDiv.innerHTML = '<div class="pprn-scan-alert success">Aucune zone PPRN détectée — terrain probablement hors zone inondation</div>';
+      this.selectZone(document.querySelector('[data-zone="W"]'), 'W');
+    } else {
+      let html = `<div style="font-family:var(--font-mono);font-size:9px;color:var(--faint);margin-bottom:4px">${result.totalPoints} points échantillonnés</div>`;
+      html += '<div class="pprn-scan-zones">';
+      for (const [zone, data] of Object.entries(result.zones)) {
+        html += `<div class="pprn-scan-zone">
+          <span class="sz-bar" style="background:${data.color};width:${Math.max(20, data.area_pct)}px"></span>
+          <strong>${zone}</strong> ${data.area_pct}%
+        </div>`;
+      }
+      html += '</div>';
+
+      if (result.hasInconstructible) {
+        const incZones = Object.entries(result.zones)
+          .filter(([, d]) => d.inconstructible)
+          .map(([z, d]) => `${z} (${d.area_pct}%)`)
+          .join(', ');
+        html += `<div class="pprn-scan-alert danger">ZONE INCONSTRUCTIBLE détectée : ${incZones} — le PPRN prime sur le PLU</div>`;
+      } else if (Object.keys(result.zones).some(z => z.startsWith('B'))) {
+        html += '<div class="pprn-scan-alert info">Zone bleue détectée — construction sous prescriptions (plancher surélevé, matériaux résistants)</div>';
+      }
+
+      resultDiv.innerHTML = html;
+
+      // Auto-sélectionner la zone dominante
+      const dominantBtn = document.querySelector(`[data-zone="${result.dominant}"]`);
+      if (dominantBtn) this.selectZone(dominantBtn, result.dominant);
+    }
+
+    // Sauvegarder les résultats du scan en session pour l'esquisse
+    SessionManager.saveTerrain({
+      pprn_scan: result,
+      pprn_zones_detected: result.zones,
+      pprn_has_inconstructible: result.hasInconstructible,
+    });
+
+    window.TerlabToast?.show(`Scan PPRN terminé — ${Object.keys(result.zones).length} zone(s) détectée(s)`, 'success');
+  },
+
+  // ── Vue plan PPRN zoomée ───────────────────────────────────────
+  planViewPPRN() {
+    const terrain = SessionManager.getTerrain();
+    const map = MapViewer?.getMap();
+    if (!map || !terrain?.lat) {
+      window.TerlabToast?.show('Carte ou terrain non disponible', 'warning');
+      return;
+    }
+
+    // Passer en vue plan (pitch=0, bearing=0) bien zoomé
+    map.flyTo({
+      center: [terrain.lng, terrain.lat],
+      zoom: 18,
+      pitch: 0,
+      bearing: 0,
+      duration: 1200,
+    });
+
+    // Forcer couche PPR visible et opacité forte
+    try {
+      if (map.getLayer('ppr-layer')) {
+        map.setLayoutProperty('ppr-layer', 'visibility', 'visible');
+        map.setPaintProperty('ppr-layer', 'raster-opacity', 0.85);
+      }
+    } catch {}
+
+    // Masquer le DEM/3D terrain pour une vue plan propre
+    try {
+      if (map.getTerrain()) map.setTerrain(null);
+    } catch {}
+
+    window.TerlabToast?.show('Vue plan PPRN — pitch 0°, zoom parcelle', 'info', 3000);
   },
 
   togglePed(btn) {

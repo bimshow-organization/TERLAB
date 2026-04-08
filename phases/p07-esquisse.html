@@ -17,6 +17,14 @@
     <span class="ts-item">Emp. max <strong id="ts-emprise-max">—%</strong></span>
   </div>
 
+  <div id="terrain-banner" class="terrain-banner" style="display:none">
+    <span id="tb-commune">—</span> ·
+    <span id="tb-zone">—</span> ·
+    <span id="tb-area">—</span> ·
+    <span id="tb-rtaa">—</span>
+    <span id="tb-plu-status" class="plu-badge"></span>
+  </div>
+
   <!-- Programme -->
   <div class="form-section anim-slide-up">
     <div class="fs-head">Programme du projet</div>
@@ -24,11 +32,11 @@
       <div class="field-row">
         <label class="field-label" for="sp-m2">Surface de plancher (m²)</label>
         <input type="number" id="sp-m2" class="field-input" data-session-key="surface_plancher_m2"
-               placeholder="150" min="10" oninput="P07.update()"/>
+               placeholder="150" min="10" oninput="window.P07?.update()"/>
       </div>
       <div class="field-row">
         <label class="field-label" for="sp-niveaux">Niveaux</label>
-        <select id="sp-niveaux" class="field-select" data-session-key="niveaux" onchange="P07.update()">
+        <select id="sp-niveaux" class="field-select" data-session-key="niveaux" onchange="window.P07?.update()">
           <option value="1">R+0 (plain-pied)</option>
           <option value="2">R+1</option>
           <option value="3">R+2</option>
@@ -40,17 +48,66 @@
       <div class="field-row">
         <label class="field-label" for="sp-l">Longueur L (m)</label>
         <input type="number" id="sp-l" class="field-input" data-session-key="gabarit_l_m"
-               placeholder="12" min="3" step="0.5" oninput="P07.update()"/>
+               placeholder="12" min="3" step="0.5" oninput="window.P07?.update()"/>
       </div>
       <div class="field-row">
         <label class="field-label" for="sp-w">Largeur l (m)</label>
         <input type="number" id="sp-w" class="field-input" data-session-key="gabarit_w_m"
-               placeholder="8" min="3" step="0.5" oninput="P07.update()"/>
+               placeholder="8" min="3" step="0.5" oninput="window.P07?.update()"/>
       </div>
       <div class="field-row">
         <label class="field-label" for="sp-h">Hauteur H (m)</label>
         <input type="number" id="sp-h" class="field-input" data-session-key="gabarit_h_m"
-               placeholder="7.2" min="2.5" step="0.1" oninput="P07.update()"/>
+               placeholder="7.2" min="2.5" step="0.1" oninput="window.P07?.update()"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- Programme Plan Masse v5 -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Programme plan masse</div>
+    <div class="prog-grid" style="gap:6px">
+      <div class="field-row">
+        <label class="field-label">Type</label>
+        <div style="display:flex;gap:3px">
+          <button class="tg-btn active" id="pm-type-maison" onclick="window.P07?.setProg('type','maison')">Maison</button>
+          <button class="tg-btn" id="pm-type-collectif" onclick="window.P07?.setProg('type','collectif')">Collectif</button>
+        </div>
+      </div>
+      <div class="field-row">
+        <label class="field-label">Niv. max</label>
+        <input type="range" id="pm-nvmax" min="1" max="3" value="2" step="1"
+               oninput="window.P07?.setProg('nvMax',+this.value);document.getElementById('pm-nvmax-lbl').textContent=['','R+0','R+1','R+2','R+3'][+this.value]"/>
+        <span id="pm-nvmax-lbl" style="font-size:10px;color:var(--accent);min-width:30px">R+1</span>
+      </div>
+      <div class="field-row">
+        <label class="field-label">Prof. max N-S</label>
+        <input type="range" id="pm-profmax" min="5" max="25" value="15" step="0.5"
+               oninput="window.P07?.setProg('profMax',+this.value);document.getElementById('pm-profmax-lbl').textContent=this.value+'m'"/>
+        <span id="pm-profmax-lbl" style="font-size:10px;color:var(--accent);min-width:30px">15m</span>
+      </div>
+      <div class="field-row" id="pm-maxunits-row" style="display:none">
+        <label class="field-label">Max lgts/bloc</label>
+        <input type="range" id="pm-maxunits" min="0" max="40" value="20" step="1"
+               oninput="window.P07?.setProg('maxUnits',+this.value);document.getElementById('pm-maxunits-lbl').textContent=this.value===0?'∞':this.value"/>
+        <span id="pm-maxunits-lbl" style="font-size:10px;color:var(--accent);min-width:30px">20</span>
+      </div>
+      <div class="field-row">
+        <label class="field-label">Parking</label>
+        <div style="display:flex;gap:3px">
+          <button class="tg-btn active" id="pm-park-ext" onclick="window.P07?.setProg('parkMode','ext')">Ext</button>
+          <button class="tg-btn" id="pm-park-rdc" onclick="window.P07?.setProg('parkMode','rdc')">RdC</button>
+          <button class="tg-btn" id="pm-park-ss" onclick="window.P07?.setProg('parkMode','ss')">Sous-sol</button>
+        </div>
+      </div>
+      <div class="field-row">
+        <label class="field-label">Côté PK</label>
+        <div style="display:flex;gap:3px">
+          <button class="tg-btn" id="pm-side-est" onclick="window.P07?.setParkSide('est')">E</button>
+          <button class="tg-btn active" id="pm-side-nord" onclick="window.P07?.setParkSide('nord')">N</button>
+          <button class="tg-btn" id="pm-side-ouest" onclick="window.P07?.setParkSide('ouest')">O</button>
+          <button class="tg-btn" id="pm-side-sud" onclick="window.P07?.setParkSide('sud')">S</button>
+        </div>
       </div>
     </div>
   </div>
@@ -61,18 +118,18 @@
     <div class="field-row">
       <label class="field-label">Type de structure</label>
       <div class="radio-group" style="flex-direction:column;gap:4px">
-        <label class="radio-option" onclick="P07.selectMat(this,'maconnerie')"><input type="radio" name="struct" value="maconnerie"/>🧱 Maçonnerie parpaings (le plus courant Réunion)</label>
-        <label class="radio-option" onclick="P07.selectMat(this,'bois')"><input type="radio" name="struct" value="bois"/>🪵 Charpente bois</label>
-        <label class="radio-option" onclick="P07.selectMat(this,'metal')"><input type="radio" name="struct" value="metal"/>⚙ Acier / métal</label>
-        <label class="radio-option" onclick="P07.selectMat(this,'mixte')"><input type="radio" name="struct" value="mixte"/>🔄 Mixte bois-maçonnerie</label>
+        <label class="radio-option" onclick="window.P07?.selectMat(this,'maconnerie')"><input type="radio" name="struct" value="maconnerie"/>🧱 Maçonnerie parpaings (le plus courant Réunion)</label>
+        <label class="radio-option" onclick="window.P07?.selectMat(this,'bois')"><input type="radio" name="struct" value="bois"/>🪵 Charpente bois</label>
+        <label class="radio-option" onclick="window.P07?.selectMat(this,'metal')"><input type="radio" name="struct" value="metal"/>⚙ Acier / métal</label>
+        <label class="radio-option" onclick="window.P07?.selectMat(this,'mixte')"><input type="radio" name="struct" value="mixte"/>🔄 Mixte bois-maçonnerie</label>
       </div>
     </div>
     <div class="field-row" style="margin-top:8px">
       <label class="field-label">Type de toiture</label>
       <div class="radio-group">
-        <label class="radio-option" onclick="P07.selectToiture(this,'4pentes')"><input type="radio" name="toit" value="4pentes"/>4 pentes 🏠</label>
-        <label class="radio-option" onclick="P07.selectToiture(this,'2pentes')"><input type="radio" name="toit" value="2pentes"/>2 pentes 🏠</label>
-        <label class="radio-option" onclick="P07.selectToiture(this,'terrasse')"><input type="radio" name="toit" value="terrasse"/>Terrasse ▭</label>
+        <label class="radio-option" onclick="window.P07?.selectToiture(this,'4pentes')"><input type="radio" name="toit" value="4pentes"/>4 pentes 🏠</label>
+        <label class="radio-option" onclick="window.P07?.selectToiture(this,'2pentes')"><input type="radio" name="toit" value="2pentes"/>2 pentes 🏠</label>
+        <label class="radio-option" onclick="window.P07?.selectToiture(this,'terrasse')"><input type="radio" name="toit" value="terrasse"/>Terrasse ▭</label>
       </div>
     </div>
     <div class="struct-advice" id="struct-advice" style="display:none"></div>
@@ -106,6 +163,34 @@
     <div class="rtaa-note" id="rtaa-note" style="display:none"></div>
   </div>
 
+  <!-- Conformité 7 points PLU / RTAA / SCoT -->
+  <div class="form-section anim-slide-up" id="p07-compliance-v5" style="display:none">
+    <div class="fs-head">Conformité — 7 points</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span class="compliance-badge" id="p07-compliance-badge">—</span>
+      <span style="font-size:10px;color:var(--faint)" id="p07-capacity-lbl">Capacité max : —</span>
+    </div>
+    <table style="width:100%;font-size:10px;border-collapse:collapse" id="p07-checks-tbl">
+      <thead>
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+          <th style="text-align:left;padding:2px 4px;color:var(--faint)">Vérif.</th>
+          <th style="text-align:right;padding:2px 4px;color:var(--faint)">Projet</th>
+          <th style="text-align:right;padding:2px 4px;color:var(--faint)">Règle</th>
+          <th style="width:20px"></th>
+        </tr>
+      </thead>
+      <tbody id="p07-ck-body"></tbody>
+    </table>
+    <div style="font-size:9px;color:var(--faint);margin-top:6px" id="p07-metrics-summary"></div>
+  </div>
+
+  <!-- Points d'attention — Régime d'autorisation d'urbanisme -->
+  <div class="form-section anim-slide-up" id="p07-autorisation-section" style="display:none">
+    <div class="fs-head">Régime d'autorisation d'urbanisme</div>
+    <div class="autorisation-regime" id="autorisation-regime-badge"></div>
+    <div class="autorisation-points" id="autorisation-points"></div>
+  </div>
+
   <!-- Synthèse topographique 3D (auto depuis session) -->
   <div class="form-section anim-slide-up" id="topo-3d-section">
     <div class="fs-head">Topographie &mdash; Synth&egrave;se auto</div>
@@ -132,6 +217,25 @@
     </div>
   </div>
 
+  <!-- Végétation automatique BPF -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">🌳 Végétation automatique — Plan de masse</div>
+    <p style="font-size:10px;color:var(--faint);margin:0 0 8px">
+      Placement automatique d'espèces adaptées au site (zone climatique, PLU, PPRN, OBIA).
+      Source : BIMSHOW Plant Factory · 35 espèces Réunion.
+    </p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+      <button class="bim-btn" onclick="window.P07?.generateVegetation()" style="flex:1;min-width:140px">
+        🌿 Générer la végétation
+      </button>
+      <button class="bim-btn" onclick="window.P07?.toggleVegetation()" style="min-width:80px">
+        👁 Afficher/Masquer
+      </button>
+    </div>
+    <div id="p07-vegetation-stats" style="font-size:10px;color:var(--text-dim)"></div>
+    <div id="p07-garden-hint" style="font-size:10px;margin-top:4px;color:var(--accent)"></div>
+  </div>
+
   <!-- Export BIMSHOW -->
   <div class="form-section anim-slide-up">
     <div class="fs-head">Export & Rendu BIMSHOW</div>
@@ -149,16 +253,16 @@
         </div>
       </div>
       <div class="bimshow-btns">
-        <button class="bim-btn primary" onclick="P07.generateGabarit()">
+        <button class="bim-btn primary" onclick="window.P07?.generateGabarit()">
           ⬆ Envoyer vers BIMSHOW
         </button>
-        <button class="bim-btn" onclick="P07.exportGLB()">
+        <button class="bim-btn" onclick="window.P07?.exportGLB()">
           📦 Export GLB
         </button>
-        <button class="bim-btn stub-btn" onclick="P07.exportIFC()">
+        <button class="bim-btn stub-btn" onclick="window.P07?.exportIFC()">
           🏗 Export IFC <span class="stub-tag">STUB</span>
         </button>
-        <button class="bim-btn" onclick="P07.exportDXFGabarit()">
+        <button class="bim-btn" onclick="window.P07?.exportDXFGabarit()">
           📐 Export DXF
         </button>
       </div>
@@ -168,6 +272,13 @@
       <div class="risk-label">🔒 Métadonnées BIM</div>
       <div class="risk-text">Les fichiers GLB et DXF exportés contiennent des métadonnées (auteur, date, coords GPS). Établir un BIM Execution Plan. Purger avant dépôt de PC.</div>
     </div>
+  </div>
+
+  <!-- Atlas Composition Psychédélique -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Atlas — Compositions Psychédéliques</div>
+    <p class="field-note" style="margin-bottom:6px">Phyllotaxie, spirales, fractales, champs de Perlin — patterns génératifs pour nourrir l'esquisse de formes organiques et mathématiques.</p>
+    <div id="atlas-preview-psyche"></div>
   </div>
 
   <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
@@ -260,7 +371,7 @@
     <div class="fs-head">Comparateur Variantes Plan-Masse</div>
     <div id="p07-aeraulic-planner" style="height:350px"></div>
     <div style="padding:4px 12px 8px">
-      <button class="source-btn" onclick="P07.exportPlannerSession()" style="padding:4px 10px;border:1px solid var(--accent);border-radius:var(--r-sm)">
+      <button class="source-btn" onclick="window.P07?.exportPlannerSession()" style="padding:4px 10px;border:1px solid var(--accent);border-radius:var(--r-sm)">
         Sauvegarder variantes
       </button>
     </div>
@@ -288,21 +399,25 @@
 <!-- ═══════════════════ CARTE / VIEWER 3D ═══════════════════════ -->
 <div class="map-area" id="map-area-p07">
   <!-- Toggle Carte / 3D -->
-  <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:0;border-radius:4px;overflow:hidden;border:1px solid rgba(154,120,32,.2)">
-    <button id="p07-toggle-map" onclick="P07.setView('map')"
-      style="padding:5px 16px;font-family:var(--font-mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;background:rgba(154,120,32,.12);color:var(--accent, #9a7820);border:none;cursor:pointer">
+  <div id="p07-view-tabs" style="position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:0;border-radius:6px;overflow:hidden;border:1px solid rgba(154,120,32,.35);background:rgba(30,28,24,.85);backdrop-filter:blur(6px);box-shadow:0 2px 8px rgba(0,0,0,.3)">
+    <button id="p07-toggle-map" class="p07-vtab" data-view="map"
+      style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:none;color:rgba(200,180,140,.6);border:none;cursor:pointer;transition:all .15s">
       Carte
     </button>
-    <button id="p07-toggle-3d" onclick="P07.setView('3d')"
-      style="padding:5px 16px;font-family:var(--font-mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;background:none;color:var(--muted, #6b5c3e);border:none;cursor:pointer">
-      Vue 3D
-    </button>
-    <button id="p07-toggle-esquisse" onclick="P07.setView('esquisse')"
-      style="padding:5px 16px;font-family:var(--font-mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;background:none;color:var(--muted, #6b5c3e);border:none;cursor:pointer">
+    <button id="p07-toggle-esquisse" class="p07-vtab" data-view="esquisse"
+      style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:rgba(154,120,32,.25);color:#c0943a;border:none;cursor:pointer;font-weight:600;transition:all .15s">
       Esquisse
     </button>
-    <button id="p07-toggle-gabarit" onclick="P07.setView('gabarit')"
-      style="padding:5px 16px;font-family:var(--font-mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;background:none;color:var(--muted, #6b5c3e);border:none;cursor:pointer">
+    <button id="p07-toggle-3d" class="p07-vtab" data-view="3d"
+      style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:none;color:rgba(200,180,140,.6);border:none;cursor:pointer;transition:all .15s">
+      Vue 3D
+    </button>
+    <button id="p07-toggle-coupe" class="p07-vtab" data-view="coupe"
+      style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:none;color:rgba(200,180,140,.6);border:none;cursor:pointer;transition:all .15s">
+      Coupe
+    </button>
+    <button id="p07-toggle-gabarit" class="p07-vtab" data-view="gabarit"
+      style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:none;color:rgba(200,180,140,.6);border:none;cursor:pointer;transition:all .15s">
       Gabarit
     </button>
   </div>
@@ -311,21 +426,26 @@
   <div id="map" style="width:100%;height:100%;position:absolute;inset:0"></div>
   <div id="map-stub-banner" style="display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(245,158,11,.85);color:#000;padding:5px 14px;border-radius:4px;font-family:monospace;font-size:10px"></div>
 
+  <!-- Vue Coupe N-S (cachée par défaut) -->
+  <div id="p07-coupe-wrap" style="display:none;position:absolute;inset:0;background:#F7F4EE;z-index:5;overflow:auto;padding:10px">
+    <svg id="coupe-svg" width="100%" height="100%" style="max-width:820px;margin:0 auto;display:block"></svg>
+  </div>
+
   <!-- Vue 3D (cachée par défaut) -->
   <div id="p07-3d-wrap" class="t3d-wrap" style="display:none;position:absolute;inset:0">
     <canvas id="t3d-canvas"></canvas>
 
     <!-- Toolbar -->
     <div class="t3d-toolbar">
-      <button class="t3d-btn active" onclick="P07.set3DView('orbit')">Orbite</button>
-      <button class="t3d-btn" onclick="P07.set3DView('top')">Dessus</button>
-      <button class="t3d-btn" onclick="P07.set3DView('front')">Facade</button>
+      <button class="t3d-btn active" onclick="window.P07?.set3DView('orbit')">Orbite</button>
+      <button class="t3d-btn" onclick="window.P07?.set3DView('top')">Dessus</button>
+      <button class="t3d-btn" onclick="window.P07?.set3DView('front')">Facade</button>
       <div style="height:4px"></div>
-      <button class="t3d-btn" id="t3d-btn-slopes" onclick="P07.toggleSlopes()">Pentes</button>
-      <button class="t3d-btn" id="t3d-btn-dims" onclick="P07.toggleDims()">Cotes</button>
-      <button class="t3d-btn" id="t3d-btn-sun" onclick="P07.toggleSun()">Soleil</button>
+      <button class="t3d-btn" id="t3d-btn-slopes" onclick="window.P07?.toggleSlopes()">Pentes</button>
+      <button class="t3d-btn" id="t3d-btn-dims" onclick="window.P07?.toggleDims()">Cotes</button>
+      <button class="t3d-btn" id="t3d-btn-sun" onclick="window.P07?.toggleSun()">Soleil</button>
       <div style="height:4px"></div>
-      <button class="t3d-btn" onclick="P07.exportGLB3D()">GLB</button>
+      <button class="t3d-btn" onclick="window.P07?.exportGLB3D()">GLB</button>
     </div>
 
     <!-- Info terrain -->
@@ -361,25 +481,48 @@
       <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:#ef4444"></div>&gt; 15 % &mdash; G1 requis</div>
     </div>
 
-    <!-- Contrôles soleil -->
+    <!-- Contrôles soleil (synchro SunState) -->
     <div class="t3d-sun-panel" id="t3d-sun-panel">
-      <div class="t3d-sun-title">Ensoleillement &mdash; La R&eacute;union</div>
-      <div class="t3d-sun-row">
-        <span class="t3d-sun-label">Heure</span>
-        <input type="range" min="5" max="20" step="0.5" value="12"
-          oninput="P07.setSunHour(this.value)">
-        <span class="t3d-sun-val" id="sun-hour-val">12h</span>
+      <div class="sg-section-head"><span class="sg-sun-icon">&#9788;</span> Ensoleillement &mdash; La R&eacute;union <span class="sg-badge">SunState</span></div>
+
+      <!-- Timeline scrub sunrise→sunset -->
+      <div class="sg-timeline" id="sg-timeline-p07">
+        <span class="sg-time-label" id="sg-sunrise-p07">06:00</span>
+        <input type="range" class="sg-scrub" id="sg-scrub-p07" min="0" max="1000" value="500"
+          oninput="window.P07?._onScrub(this.value)">
+        <span class="sg-time-label" id="sg-sunset-p07">18:00</span>
       </div>
-      <div class="t3d-sun-row">
-        <span class="t3d-sun-label">Jour</span>
-        <input type="range" min="1" max="365" step="1" value="172"
-          oninput="P07.setSunDay(this.value)">
-        <span class="t3d-sun-val" id="sun-day-val">21 juin</span>
+      <div class="sg-current-time" id="sg-current-p07">12:00</div>
+
+      <!-- Day slider -->
+      <div class="sg-day-row">
+        <span class="sg-label">Jour</span>
+        <input type="range" min="1" max="365" step="1" value="172" id="sg-day-p07"
+          oninput="window.P07?.setSunDay(this.value)">
+        <span class="sg-day-val" id="sg-day-val-p07">21 juin</span>
       </div>
-      <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:5px">
-        <button class="t3d-btn" onclick="P07.setSunPreset(172)">21 juin</button>
-        <button class="t3d-btn" onclick="P07.setSunPreset(355)">21 d&eacute;c.</button>
-        <button class="t3d-btn" onclick="P07.setSunPreset(80)">&Eacute;qx. mars</button>
+
+      <!-- Presets -->
+      <div class="sg-presets" id="sg-presets-p07"></div>
+
+      <!-- Manual Az / El -->
+      <div class="sg-manual" id="sg-manual-p07">
+        <div class="sg-manual-row">
+          <label class="sg-label">Azimut (&deg;)</label>
+          <input type="number" id="sg-az-p07" class="sg-num-input" min="0" max="360" step="1" value="180"
+            onchange="window.P07?._onManualAz(this.value)">
+        </div>
+        <div class="sg-manual-row">
+          <label class="sg-label">&Eacute;l&eacute;vation (&deg;)</label>
+          <input type="number" id="sg-el-p07" class="sg-num-input" min="0" max="90" step="1" value="45"
+            onchange="window.P07?._onManualEl(this.value)">
+        </div>
+      </div>
+
+      <!-- Info -->
+      <div class="sg-info-row">
+        <span class="sg-info-label">Dur&eacute;e ensoleillement</span>
+        <span class="sg-info-val" id="sg-hours-p07">&mdash;</span>
       </div>
     </div>
 
@@ -505,6 +648,13 @@
 .pareto-card-body .pc-ok { color:#2ecc71; }
 .pareto-card-body .pc-warn { color:var(--warning); }
 .pareto-card-violation { font-size:8px; color:#e74c3c; margin-top:2px; }
+
+/* Terrain banner PLU réel */
+.terrain-banner { display:flex; align-items:center; gap:6px; padding:5px 13px; background:var(--accent3, rgba(154,120,32,.06)); border-bottom:1px solid var(--border, #30363D); font-family:var(--font-mono, monospace); font-size:9.5px; color:var(--muted, #6b5c3e); flex-wrap:wrap; }
+.plu-badge { padding:2px 8px; border-radius:10px; font-size:8.5px; font-weight:600; margin-left:auto; }
+.plu-badge.plu-ok { background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.3); color:#4ADE80; }
+.plu-badge.plu-warn { background:rgba(245,158,11,.1); border:1px solid rgba(245,158,11,.3); color:#FBBF24; }
+.plu-badge.plu-err { background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.3); color:#EF4444; }
 </style>
 
 <script type="module">
@@ -515,6 +665,126 @@ const BIMSHOWBridge  = window.TerlabBIMSHOW;
 const Terrain3D      = window.Terrain3D;
 const SlopesService  = window.SlopesService;
 const SunCalcService = window.SunCalcService;
+
+// ── Adapters PLU réel + Terrain cadastral ────────────────────────────
+import { PLUP07Adapter }     from '../services/plu-p07-adapter.js';
+import { TerrainP07Adapter } from '../services/terrain-p07-adapter.js';
+
+const pluAdapter     = new PLUP07Adapter();
+const terrainAdapter = new TerrainP07Adapter();
+let   TERRAIN_REEL   = null;
+
+async function initP07Real() {
+  try {
+    // 1. Charger les règles PLU
+    await pluAdapter.loadRules('../data/plu-rules-reunion.json');
+
+    // 2. Lire la session TERLAB
+    const session = window.TERLAB_SESSION ?? SessionManager?._data ?? {};
+    const ter     = session.terrain ?? SessionManager?.getTerrain?.() ?? {};
+    const p4      = SessionManager?.getPhase?.(4)?.data ?? {};
+
+    // 3. Résoudre la config PLU pour cette session
+    const codeInsee = ter.code_insee ?? p4.code_insee ?? '97416';
+    const zonePlu   = p4.zone_plu?.split(' ')[0] ?? ter.zone_plu ?? 'U3b';
+    const zoneRtaa  = ter.zone_rtaa ?? '1';
+
+    const pluConfig = pluAdapter.resolve(codeInsee, zonePlu, zoneRtaa);
+
+    // Afficher warnings si données dégradées
+    if (pluConfig._meta.confidence < 0.8) {
+      showStubWarning(`PLU incomplet pour ${pluConfig.commune} zone ${zonePlu} — confiance ${Math.round(pluConfig._meta.confidence * 100)}%`);
+    }
+    if (pluConfig._meta.warnings.length > 0) {
+      console.warn('[p07] PLU warnings:', pluConfig._meta.warnings);
+    }
+
+    // 4. Transformer le polygone cadastral si disponible
+    if (ter.parcelle_geojson) {
+      const terrainGeom = terrainAdapter.transform(
+        ter.parcelle_geojson,
+        parseFloat(ter.lat  ?? -21.0),
+        parseFloat(ter.lng  ?? 55.3),
+        parseFloat(ter.bearing_voie_deg ?? 0),
+      );
+      pluConfig.poly      = terrainGeom.poly;
+      pluConfig.edgeTypes = terrainGeom.edgeTypes;
+      pluConfig.area      = terrainGeom.area;
+      pluConfig.origin    = terrainGeom.origin;
+      pluConfig.bearing   = terrainGeom.bearing;
+    } else {
+      // ⚠️ STUB — Polygone cadastral — effort XS : lecture session.terrain.parcelle_geojson
+      showStubWarning('Polygone cadastral manquant — terrain rectangulaire approximatif');
+      pluConfig.poly      = [[0,0],[30,0],[30,25],[0,25]];
+      pluConfig.edgeTypes = ['voie','lat','fond','lat'];
+      pluConfig.area      = 750;
+    }
+
+    TERRAIN_REEL = pluConfig;
+
+    // 5. Mettre à jour la terrain-strip avec données PLU réelles
+    if (pluConfig.area) {
+      const tsC = document.getElementById('ts-contenance');
+      if (tsC) tsC.textContent = `${Math.round(pluConfig.area)} m²`;
+    }
+    if (pluConfig.zone_plu) {
+      const tsZ = document.getElementById('ts-zone-plu');
+      if (tsZ) tsZ.textContent = pluConfig.zone_plu;
+    }
+    if (pluConfig.plu.emprMax) {
+      const tsE = document.getElementById('ts-emprise-max');
+      if (tsE) tsE.textContent = `${pluConfig.plu.emprMax}%`;
+    }
+
+    // 6. Bandeau terrain
+    updateTerrainBanner(pluConfig);
+
+    // Exposer pour usage par P07.update() et gabarit engine
+    window.TERLAB_PLU_CONFIG = pluConfig;
+
+    console.info('[p07] Terrain réel chargé :', pluConfig.label,
+      `(confiance ${Math.round(pluConfig._meta.confidence * 100)}%)`);
+  } catch (err) {
+    console.error('[p07] Erreur init PLU réel :', err);
+  }
+}
+
+function updateTerrainBanner(config) {
+  if (!config) return;
+  const banner = document.getElementById('terrain-banner');
+  if (!banner) return;
+  banner.style.display = 'flex';
+  document.getElementById('tb-commune').textContent = config.commune ?? '—';
+  document.getElementById('tb-zone').textContent    = `Zone ${config.zone_plu}`;
+  document.getElementById('tb-area').textContent    = `${config.area?.toFixed(0) ?? '—'} m²`;
+  document.getElementById('tb-rtaa').textContent    = `RTAA Z${config.plu?.rtaaZone ?? '—'}`;
+
+  const badge = document.getElementById('tb-plu-status');
+  if (!badge) return;
+  if (config._meta.status === 'FALLBACK') {
+    badge.textContent = 'PLU non disponible';
+    badge.className   = 'plu-badge plu-err';
+  } else if (config._meta.confidence >= 0.8) {
+    badge.textContent = 'PLU vérifié';
+    badge.className   = 'plu-badge plu-ok';
+  } else {
+    badge.textContent = `PLU partiel (${Math.round(config._meta.confidence * 100)}%)`;
+    badge.className   = 'plu-badge plu-warn';
+  }
+}
+
+function showStubWarning(msg) {
+  const banner = document.getElementById('map-stub-banner');
+  if (banner) {
+    banner.textContent = msg;
+    banner.style.display = 'block';
+    setTimeout(() => { banner.style.display = 'none'; }, 8000);
+  }
+  console.warn('[p07]', msg);
+}
+
+// Lancer le chargement PLU réel
+initP07Real();
 
 const STRUCT_ADVICE = {
   maconnerie: 'Maçonnerie blocs parpaing — chaînage horizontal et vertical obligatoire (séisme zone 2 + cyclone). Traitement anti-termites de toute charpente en contact avec la structure.',
@@ -536,12 +806,13 @@ const P07 = {
 
     const emprise      = L * W;
     const terrain      = SessionManager.getTerrain();
-    const contenance   = parseFloat(terrain?.contenance_m2 ?? 0);
+    const pluCfg       = window.TERLAB_PLU_CONFIG ?? null;
+    const contenance   = pluCfg?.area ?? parseFloat(terrain?.contenance_m2 ?? 0);
     const p4           = SessionManager.getPhase(4)?.data ?? {};
-    const empriseMax   = parseFloat(p4.emprise_sol_max_pct ?? 100);
-    const hauteurMax   = parseFloat(p4.hauteur_max_m ?? 999);
-    const recul_voie   = parseFloat(p4.recul_voie_principale_m ?? 0);
-    const recul_sep    = parseFloat(p4.recul_limite_sep_m ?? 0);
+    const empriseMax   = pluCfg?.plu?.emprMax ?? parseFloat(p4.emprise_sol_max_pct ?? 100);
+    const hauteurMax   = pluCfg?.plu?.heMax ?? parseFloat(p4.hauteur_max_m ?? 999);
+    const recul_voie   = pluCfg?.reculs?.voie ?? parseFloat(p4.recul_voie_principale_m ?? 0);
+    const recul_sep    = pluCfg?.reculs?.lat ?? parseFloat(p4.recul_limite_sep_m ?? 0);
 
     const emprisePct   = contenance > 0 ? (emprise / contenance * 100) : null;
 
@@ -581,8 +852,50 @@ const P07 = {
         'Zone RTAA 2 — ECS solaire ≥ 50%. Ventilation naturelle recommandée.';
     }
 
-    // Mise à jour gabarit carte
+    // Mise à jour gabarit carte — utilise le polygone esquisse si disponible
     this._updateMapGabarit(L, W, H);
+
+    // Points d'attention urbanisme
+    this._updateAutorisations();
+  },
+
+  _updateAutorisations() {
+    const UA = window.UrbanismeAutorisations;
+    const section = document.getElementById('p07-autorisation-section');
+    if (!UA || !section) return;
+
+    const result = UA.fromP07Inputs();
+    if (!result || !result.points.length) { section.style.display = 'none'; return; }
+
+    section.style.display = '';
+
+    // Badge régime
+    const badge = document.getElementById('autorisation-regime-badge');
+    const regimeLabels = {
+      LIBRE: { label: 'Aucune autorisation', cls: 'regime-libre' },
+      DP:    { label: 'Déclaration Préalable', cls: 'regime-dp' },
+      PCMI:  { label: 'Permis de Construire MI', cls: 'regime-pc' },
+      PC:    { label: 'Permis de Construire', cls: 'regime-pc' },
+    };
+    const r = regimeLabels[result.regime] ?? { label: result.regime, cls: '' };
+    badge.innerHTML = `<span class="regime-badge ${r.cls}">${r.label}</span>`
+      + (result.cerfa ? `<span class="regime-cerfa">CERFA ${result.cerfa}</span>` : '');
+
+    // Points d'attention
+    const container = document.getElementById('autorisation-points');
+    const typeIcons = { ok: '✓', info: 'ℹ', attention: '⚠', important: '🔴', conseil: '💡' };
+    const typeCls   = { ok: 'pt-ok', info: 'pt-info', attention: 'pt-attention', important: 'pt-important', conseil: 'pt-conseil' };
+
+    container.innerHTML = result.points.map(p => `
+      <div class="autorisation-point ${typeCls[p.type] ?? 'pt-info'}">
+        <div class="ap-head">
+          <span class="ap-icon">${typeIcons[p.type] ?? 'ℹ'}</span>
+          <span class="ap-titre">${p.titre}</span>
+        </div>
+        <div class="ap-texte">${p.texte}</div>
+        ${p.ref ? `<div class="ap-ref">${p.ref}</div>` : ''}
+      </div>
+    `).join('');
   },
 
   _setCheck(id, status, label) {
@@ -596,8 +909,19 @@ const P07 = {
   _updateMapGabarit(L, W, H) {
     const terrain = SessionManager.getTerrain();
     if (!terrain?.lat || !terrain?.lng) return;
+
+    // ── Priorité 1 : polygone de la proposition EsquisseCanvas ────
+    const canvas = window.EsquisseCanvas;
+    const prop = canvas?._proposals?.[canvas?._selected];
+    if (prop?.polygonGeo?.length >= 3) {
+      const ring = [...prop.polygonGeo.map(c => [c[0], c[1]]), [prop.polygonGeo[0][0], prop.polygonGeo[0][1]]];
+      const geom = { type: 'Polygon', coordinates: [ring] };
+      MapViewer.updateGabarit({ geometry: geom, height: H });
+      return;
+    }
+
+    // ── Fallback : rectangle L×W centré sur le centroide parcelle ──
     const lat = parseFloat(terrain.lat), lng = parseFloat(terrain.lng);
-    // Convertir L et W en degrés (approx)
     const dLng = L / (111320 * Math.cos(lat * Math.PI / 180));
     const dLat = W / 111320;
     const geom = {
@@ -732,12 +1056,14 @@ const P07 = {
   },
 };
 
-// Init terrain strip
+// Init terrain strip (fallback si initP07Real n'a pas encore rempli)
 const terrain = SessionManager.getTerrain();
-if (terrain?.contenance_m2) document.getElementById('ts-contenance').textContent = `${terrain.contenance_m2} m²`;
-const p4 = SessionManager.getPhase(4)?.data ?? {};
-if (p4.zone_plu) document.getElementById('ts-zone-plu').textContent = p4.zone_plu.split(' ')[0];
-if (p4.emprise_sol_max_pct) document.getElementById('ts-emprise-max').textContent = `${p4.emprise_sol_max_pct}%`;
+if (!window.TERLAB_PLU_CONFIG) {
+  if (terrain?.contenance_m2) document.getElementById('ts-contenance').textContent = `${terrain.contenance_m2} m²`;
+  const p4 = SessionManager.getPhase(4)?.data ?? {};
+  if (p4.zone_plu) document.getElementById('ts-zone-plu').textContent = p4.zone_plu.split(' ')[0];
+  if (p4.emprise_sol_max_pct) document.getElementById('ts-emprise-max').textContent = `${p4.emprise_sol_max_pct}%`;
+}
 
 // Pré-remplir si session existante
 const p7 = SessionManager.getPhase(7)?.data ?? {};
@@ -748,6 +1074,16 @@ if (p7.bimshowSnapshot) {
 }
 
 window.P07 = P07;
+
+// ─── Bind view tabs (après P07 défini — pas d'inline onclick) ────
+document.querySelectorAll('.p07-vtab[data-view]').forEach(btn => {
+  btn.addEventListener('click', () => P07.setView(btn.dataset.view));
+});
+
+// Auto-init esquisse (vue par défaut)
+P07.setView('esquisse');
+
+if (typeof P07._initSunPanel === 'function') P07._initSunPanel();
 
 // ─── Lazy-init aéraulique (IntersectionObserver) ──────────────────
 const _aeroSection = document.getElementById('p07-aeraulique-section');
@@ -772,7 +1108,7 @@ window.addEventListener('terlab:planner-score', ({ detail }) => {
 
 // ═══════════════════ TERRAIN 3D — Extension P07 ═══════════════════
 let _viewIs3D     = false;
-let _viewMode     = 'map'; // 'map' | '3d' | 'esquisse'
+let _viewMode     = 'esquisse'; // 'map' | '3d' | 'esquisse' | 'coupe' | 'gabarit'
 let _sunVisible   = false;
 let _slopesOn     = true;
 let _dimsOn       = true;
@@ -783,30 +1119,34 @@ Object.assign(P07, {
 
   // Toggle carte / vue 3D / esquisse
   async setView(mode) {
-    const mapEl   = document.getElementById('map');
-    const wrap3d  = document.getElementById('p07-3d-wrap');
-    const btnMap  = document.getElementById('p07-toggle-map');
-    const btn3d   = document.getElementById('p07-toggle-3d');
-    const btnEsq  = document.getElementById('p07-toggle-esquisse');
+    const mapEl    = document.getElementById('map');
+    const wrap3d   = document.getElementById('p07-3d-wrap');
+    const wrapCoupe = document.getElementById('p07-coupe-wrap');
     _viewMode = mode;
     _viewIs3D = mode === '3d';
 
-    mapEl.style.display  = mode === '3d' ? 'none'  : 'block';
-    wrap3d.style.display = mode === '3d' ? 'block' : 'none';
+    // Visibilité des vues
+    mapEl.style.display    = (mode === '3d' || mode === 'coupe') ? 'none' : 'block';
+    wrap3d.style.display   = mode === '3d' ? 'block' : 'none';
+    if (wrapCoupe) wrapCoupe.style.display = mode === 'coupe' ? 'flex' : 'none';
 
-    // Highlight active button
-    [btnMap, btn3d, btnEsq].forEach(btn => {
-      if (!btn) return;
-      const active = (btn === btnMap && mode === 'map')
-                  || (btn === btnMap && mode === 'esquisse')
-                  || (btn === btn3d && mode === '3d')
-                  || (btn === btnEsq && mode === 'esquisse');
-      btn.style.background = active ? 'rgba(154,120,32,.12)' : 'none';
-      btn.style.color      = active ? 'var(--accent, #9a7820)' : 'var(--muted, #6b5c3e)';
+    // Highlight active tab
+    document.querySelectorAll('.p07-vtab').forEach(btn => {
+      const btnMode = btn.id.replace('p07-toggle-', '');
+      const active = btnMode === mode || (btnMode === 'map' && mode === 'esquisse');
+      btn.style.background = active ? 'rgba(154,120,32,.25)' : 'none';
+      btn.style.color = active ? '#c0943a' : 'rgba(200,180,140,.6)';
+      btn.style.fontWeight = active ? '600' : '400';
     });
-    // Map stays visible in esquisse mode (SVG overlays on top)
-    if (btnMap && mode === 'esquisse') {
-      btnMap.style.background = 'none';
+    // Esquisse = map visible + SVG overlay, but only esquisse tab highlighted
+    if (mode === 'esquisse') {
+      const btnMap = document.getElementById('p07-toggle-map');
+      if (btnMap) { btnMap.style.background = 'none'; btnMap.style.fontWeight = '400'; }
+    }
+
+    // ── Vue Coupe ────────────────────────────────────────────────
+    if (mode === 'coupe') {
+      window.EsquisseCanvas?.renderCoupe('coupe-svg');
     }
 
     // ── Esquisse SVG overlay on Mapbox ───────────────────────────
@@ -920,42 +1260,128 @@ Object.assign(P07, {
     if (btn) btn.textContent = _dimsOn ? 'Cotes' : 'Cotes \u25cb';
   },
 
-  // Panneau soleil
+  // ── Panneau soleil (SunState synchro) ──────────────────
   toggleSun() {
     _sunVisible = !_sunVisible;
     const panel = document.getElementById('t3d-sun-panel');
     if (panel) panel.classList.toggle('visible', _sunVisible);
   },
 
-  setSunHour(h) {
-    const v = parseFloat(h);
-    Terrain3D.setSunHour(v);
-    const hh = Math.floor(v);
-    const mm = String(Math.round((v % 1) * 60)).padStart(2, '0');
-    const el = document.getElementById('sun-hour-val');
-    if (el) el.textContent = `${hh}h${mm}`;
-    P07._updateSunInfo();
+  _initSunPanel() {
+    // Build presets
+    const wrap = document.getElementById('sg-presets-p07');
+    if (wrap && SunCalcService?.DATES_CLES) {
+      wrap.innerHTML = '';
+      for (const [label, day] of Object.entries(SunCalcService.DATES_CLES)) {
+        const btn = document.createElement('button');
+        btn.className = 'sg-preset-btn';
+        btn.textContent = label.replace(/ \(.*\)/, '');
+        btn.onclick = () => P07._setSunPreset(day);
+        wrap.appendChild(btn);
+      }
+    }
+    // Listen for cross-phase sync
+    window.addEventListener('terlab:sun-changed', P07._onSunChanged);
+    // Sync initial state from SunState
+    P07._syncFromState();
+  },
+
+  _onScrub(val) {
+    SunState.setProgress(val / 1000, 'p07');
   },
 
   setSunDay(d) {
-    const v = parseInt(d);
-    Terrain3D.setSunDay(v);
-    const el = document.getElementById('sun-day-val');
-    if (el) el.textContent = SunCalcService.getDateLabel(v);
-    P07._updateSunInfo();
+    SunState.setDayOfYear(parseInt(d), 'p07');
   },
 
-  setSunPreset(day) {
-    const slider = document.querySelector('#t3d-sun-panel input[type=range]:last-of-type');
-    if (slider) { slider.value = day; P07.setSunDay(day); }
+  _setSunPreset(day) {
+    SunState.setDayOfYear(day, 'p07');
   },
 
-  _updateSunInfo() {
-    const h   = Terrain3D._sunHour ?? 12;
-    const d   = Terrain3D._sunDay  ?? 172;
-    const day = SunCalcService.getDaylight(d, -21.1);
-    const el  = document.getElementById('t3d-sun-hrs');
-    if (el) el.textContent = day.hours.toFixed(1) + ' h';
+  _onManualAz(val) {
+    // Manual azimuth: reverse-map to hour (approximate)
+    const az = parseFloat(val);
+    const d = SunState.getDayOfYear();
+    const lat = SunState.getLat();
+    let bestH = 12, bestErr = 999;
+    for (let h = 5; h <= 19; h += 0.1) {
+      const s = SunCalcService.getPosition(h, d, lat);
+      if (!s.aboveHorizon) continue;
+      const err = Math.abs(s.azimuth - az);
+      if (err < bestErr) { bestErr = err; bestH = h; }
+    }
+    SunState.setHour(bestH, 'p07');
+  },
+
+  _onManualEl(val) {
+    // Manual elevation: reverse-map to hour (approximate)
+    const el = parseFloat(val);
+    const d = SunState.getDayOfYear();
+    const lat = SunState.getLat();
+    let bestH = 12, bestErr = 999;
+    for (let h = 5; h <= 19; h += 0.1) {
+      const s = SunCalcService.getPosition(h, d, lat);
+      if (!s.aboveHorizon) continue;
+      const err = Math.abs(s.altitude - el);
+      if (err < bestErr) { bestErr = err; bestH = h; }
+    }
+    SunState.setHour(bestH, 'p07');
+  },
+
+  _onSunChanged(e) {
+    if (e.detail?.source === 'p07') return;
+    P07._syncFromState();
+  },
+
+  _syncFromState() {
+    const ss = window.SunState;
+    if (!ss) return;
+    const dl = ss.getDaylight();
+    const pos = ss.getPosition();
+
+    // Timeline scrub
+    const scrub = document.getElementById('sg-scrub-p07');
+    if (scrub) scrub.value = Math.round(ss.getProgress() * 1000);
+
+    // Time labels
+    const sr = document.getElementById('sg-sunrise-p07');
+    const st = document.getElementById('sg-sunset-p07');
+    const ct = document.getElementById('sg-current-p07');
+    if (sr) sr.textContent = ss.formatHour(dl.sunrise);
+    if (st) st.textContent = ss.formatHour(dl.sunset);
+    if (ct) ct.textContent = ss.formatHour();
+
+    // Day slider
+    const daySlider = document.getElementById('sg-day-p07');
+    const dayVal    = document.getElementById('sg-day-val-p07');
+    if (daySlider) daySlider.value = ss.getDayOfYear();
+    if (dayVal) dayVal.textContent = ss.formatDayLabel();
+
+    // Az / El inputs
+    const azIn = document.getElementById('sg-az-p07');
+    const elIn = document.getElementById('sg-el-p07');
+    if (azIn) azIn.value = Math.round(pos.azimuth);
+    if (elIn) elIn.value = Math.round(pos.altitude);
+
+    // Daylight hours
+    const hrs = document.getElementById('sg-hours-p07');
+    if (hrs) hrs.textContent = dl.hours.toFixed(1) + ' h';
+
+    // Active preset
+    document.querySelectorAll('#sg-presets-p07 .sg-preset-btn').forEach(btn => {
+      btn.classList.remove('sg-active');
+    });
+
+    // Sync Terrain3D
+    Terrain3D.setSunHour(ss.getHour());
+    Terrain3D.setSunDay(ss.getDayOfYear());
+
+    // Sync BimshowViewer
+    if (BimshowViewer?._inited && BimshowViewer._sunVisible) {
+      BimshowViewer._dayOfYear = ss.getDayOfYear();
+      BimshowViewer._sunProgress = ss.getProgress();
+      BimshowViewer._applySunFromProgress(ss.getProgress());
+    }
   },
 
   // Export GLB terrain 3D
@@ -969,11 +1395,227 @@ Object.assign(P07, {
     if (img) SessionManager.savePhase(7, { snapshot_3d: img });
     return img;
   },
+
+  // ─── Végétation automatique BPF ──────────────────────────────────
+  async generateVegetation() {
+    if (!window.EsquisseCanvas) {
+      window.TerlabToast?.show('EsquisseCanvas non initialisé', 'warning', 3000);
+      return;
+    }
+    window.TerlabToast?.show('Génération végétation…', 'info', 2000);
+    try {
+      await window.EsquisseCanvas.generateVegetation();
+      window.TerlabToast?.show('Végétation générée', 'success', 2000);
+
+      // Ajouter aussi les markers Mapbox si map disponible
+      const map = window.MapViewer?.getMap();
+      if (map && (window.EsquisseCanvas._vegetationPlants?.length || window.EsquisseCanvas._vegetationAmenities?.length)) {
+        const centGeo = window.EsquisseCanvas._centroidGeo(window.EsquisseCanvas._parcelGeo);
+        const geojson = window.BpfBridge.toGeoJSON(
+          window.EsquisseCanvas._vegetationPlants,
+          window.EsquisseCanvas._vegetationAmenities ?? [],
+          centGeo
+        );
+        P07._addVegetationMapLayer(map, geojson);
+      }
+    } catch (e) {
+      console.error('[P07] Vegetation error:', e);
+      window.TerlabToast?.show('Erreur végétation: ' + e.message, 'error', 4000);
+    }
+  },
+
+  toggleVegetation() {
+    if (!window.EsquisseCanvas) return;
+    window.EsquisseCanvas.toggleVegetation();
+    // Toggle Mapbox layer too
+    const map = window.MapViewer?.getMap();
+    if (map?.getLayer('bpf-vegetation-circles')) {
+      const vis = map.getLayoutProperty('bpf-vegetation-circles', 'visibility');
+      const next = vis === 'none' ? 'visible' : 'none';
+      map.setLayoutProperty('bpf-vegetation-circles', 'visibility', next);
+      if (map.getLayer('bpf-vegetation-labels'))
+        map.setLayoutProperty('bpf-vegetation-labels', 'visibility', next);
+    }
+  },
+
+  _addVegetationMapLayer(map, geojson) {
+    // Remove old layers
+    ['bpf-vegetation-labels', 'bpf-vegetation-circles', 'bpf-vegetation-canopy'].forEach(id => {
+      if (map.getLayer(id)) map.removeLayer(id);
+    });
+    if (map.getSource('bpf-vegetation')) map.removeSource('bpf-vegetation');
+
+    map.addSource('bpf-vegetation', { type: 'geojson', data: geojson });
+
+    // Canopy circles (transparent fill)
+    map.addLayer({
+      id: 'bpf-vegetation-canopy',
+      type: 'circle',
+      source: 'bpf-vegetation',
+      paint: {
+        'circle-radius': ['*', ['get', 'canopyRadius'], 2.5],
+        'circle-color': [
+          'match', ['get', 'svgSymbol'],
+          'palm', 'rgba(50,104,36,0.25)',
+          'conifer', 'rgba(56,108,42,0.2)',
+          'broadleaf_flower', 'rgba(42,102,42,0.25)',
+          'shrub_flower', 'rgba(180,50,120,0.2)',
+          'grass', 'rgba(70,120,50,0.2)',
+          'rgba(42,102,42,0.22)'
+        ],
+        'circle-stroke-width': 1,
+        'circle-stroke-color': 'rgba(30,80,30,0.35)',
+      },
+    });
+
+    // Core dots
+    map.addLayer({
+      id: 'bpf-vegetation-circles',
+      type: 'circle',
+      source: 'bpf-vegetation',
+      paint: {
+        'circle-radius': [
+          'interpolate', ['linear'], ['zoom'],
+          15, 3, 18, 6, 20, 10
+        ],
+        'circle-color': [
+          'match', ['get', 'svgSymbol'],
+          'palm', '#328a24',
+          'conifer', '#386c2a',
+          'broadleaf_flower', '#2a662a',
+          'shrub_flower', '#b4321a',
+          'bamboo', '#3a7828',
+          'grass', '#467832',
+          'tropical_shrub', '#2a6432',
+          '#2a662a'
+        ],
+        'circle-stroke-width': 1.5,
+        'circle-stroke-color': '#fff',
+        'circle-opacity': 0.85,
+      },
+    });
+
+    // Labels
+    map.addLayer({
+      id: 'bpf-vegetation-labels',
+      type: 'symbol',
+      source: 'bpf-vegetation',
+      minzoom: 18,
+      layout: {
+        'text-field': ['get', 'label'],
+        'text-size': 10,
+        'text-offset': [0, 1.5],
+        'text-anchor': 'top',
+        'text-font': ['Open Sans Regular'],
+      },
+      paint: {
+        'text-color': '#2a5a1a',
+        'text-halo-color': '#fff',
+        'text-halo-width': 1,
+      },
+    });
+  },
+
+  // ─── Programme plan masse v5 ─────────────────────────────────
+  setProg(key, value) {
+    const canvas = window.EsquisseCanvas;
+    if (!canvas) return;
+    canvas._prog[key] = value;
+    canvas._engineTerrain = null; // invalidate cache
+
+    // UI toggles
+    if (key === 'type') {
+      document.getElementById('pm-type-maison')?.classList.toggle('active', value === 'maison');
+      document.getElementById('pm-type-collectif')?.classList.toggle('active', value === 'collectif');
+      const muRow = document.getElementById('pm-maxunits-row');
+      if (muRow) muRow.style.display = value === 'collectif' ? '' : 'none';
+    }
+    if (key === 'parkMode') {
+      ['ext', 'rdc', 'ss'].forEach(m => {
+        document.getElementById(`pm-park-${m}`)?.classList.toggle('active', value === m);
+      });
+    }
+
+    // Re-render
+    canvas._updateEngineMetrics();
+    canvas._fullRedraw();
+  },
+
+  setParkSide(side) {
+    const canvas = window.EsquisseCanvas;
+    if (!canvas) return;
+    canvas._parkSide = side;
+    ['est', 'nord', 'ouest', 'sud'].forEach(s => {
+      document.getElementById(`pm-side-${s}`)?.classList.toggle('active', side === s);
+    });
+    canvas._updateEngineMetrics();
+    canvas._fullRedraw();
+  },
 });
 
-// Auto-update topographic panel on session change
-window.addEventListener('terlab:session-changed', () => P07._updateTopoPanel());
+// Auto-update topographic panel on terrain change (granulaire)
+window.addEventListener('terlab:terrain-updated', () => P07._updateTopoPanel());
+window.addEventListener('terlab:session-loaded', () => P07._updateTopoPanel());
 P07._updateTopoPanel();
+
+// Auto-init esquisse (vue par défaut)
+// Gabarit Mapbox : suivre les changements de proposition esquisse (drag, sélection)
+window.addEventListener('terlab:session-changed', () => {
+  const H = parseFloat(document.getElementById('sp-h')?.value ?? 7);
+  const L = parseFloat(document.getElementById('sp-l')?.value ?? 10);
+  const W = parseFloat(document.getElementById('sp-w')?.value ?? 8);
+  P07._updateMapGabarit(L, W, H);
+});
+
+// ── Conformité 7 points — mis à jour par PlanMasseEngine ────
+window.addEventListener('terlab:metrics-updated', (e) => {
+  const m = e.detail?.metrics;
+  if (!m) return;
+
+  const section = document.getElementById('p07-compliance-v5');
+  if (section) section.style.display = '';
+
+  // Badge conformité
+  const badge = document.getElementById('p07-compliance-badge');
+  if (badge) {
+    badge.textContent = m.allOk ? '✓ Conforme' : '⚠ Non conforme';
+    badge.style.cssText = `font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;${
+      m.allOk
+        ? 'background:rgba(34,197,94,0.15);color:#4ade80'
+        : 'background:rgba(239,68,68,0.15);color:#f87171'
+    }`;
+  }
+
+  // Capacité max
+  const cap = document.getElementById('p07-capacity-lbl');
+  if (cap) cap.textContent = `Capacité max : ${m.maxLgts} lgts`;
+
+  // Table checks
+  const tbody = document.getElementById('p07-ck-body');
+  if (tbody && m.checks) {
+    tbody.innerHTML = m.checks.map(c => `
+      <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+        <td style="padding:3px 4px;color:var(--text-dim)">${c.lbl}</td>
+        <td style="text-align:right;padding:3px 4px;font-weight:600;color:${c.ok ? '#4ade80' : '#f87171'}">${c.proj} ${c.unit}</td>
+        <td style="text-align:right;padding:3px 4px;color:var(--faint)">${c.rule} ${c.unit}</td>
+        <td style="text-align:center;font-size:12px">${c.ok ? '✓' : '✗'}</td>
+      </tr>
+    `).join('');
+  }
+
+  // Résumé métriques
+  const summary = document.getElementById('p07-metrics-summary');
+  if (summary) {
+    summary.innerHTML = [
+      `${m.nbLgts} lgts`,
+      `SP ${m.spTot?.toFixed(0) ?? '?'} m²`,
+      `Emprise ${m.empPct?.toFixed(1) ?? '?'}%`,
+      `Perm. ${m.permPct?.toFixed(1) ?? '?'}%`,
+      `Dens. ${m.dens?.toFixed(0) ?? '?'} l/ha`,
+      m.parkRequired > 0 ? `${m.parkExt} PK ext + ${m.parkSS} PK ss` : '',
+    ].filter(Boolean).join(' · ');
+  }
+});
 
 // Gabarit : re-render quand les dimensions changent
 ['gabarit_l_m','gabarit_w_m','gabarit_h_m'].forEach(key => {
@@ -1004,6 +1646,9 @@ if (isDemo && p7.gabarit_l_m && p7.gabarit_w_m) {
 
 // enviroBAT cards
 if (window.EnvirobatCards) EnvirobatCards.render('eb-cards-p07', 'p07');
+
+// Atlas preview
+if (window.AtlasModal) AtlasModal.injectPreview('atlas-preview-psyche', 'psychedelique');
 
 // ═══════════════════ GABARIT PLU ENGINE ═══════════════════════════
 // Lazy-loaded when user switches to "Gabarit" view
@@ -1052,11 +1697,13 @@ const GabaritUI = {
       });
     }
 
-    // Use zone from session P4 if available
+    // Use zone from PLU adapter or session P4 if available
+    const realZone = window.TERLAB_PLU_CONFIG?.zone_plu;
     const p4Zone = p4.zone_plu?.split(' ')[0]?.trim();
-    if (p4Zone && _gabaritRules.zones[p4Zone]) {
-      _gabaritZone = p4Zone;
-      if (select) select.value = p4Zone;
+    const targetZone = realZone ?? p4Zone;
+    if (targetZone && _gabaritRules.zones[targetZone]) {
+      _gabaritZone = targetZone;
+      if (select) select.value = targetZone;
     }
     _gabaritEngine.setZone(_gabaritZone);
 
@@ -1242,31 +1889,27 @@ P07.setView = async function(mode) {
   const btnGabarit = document.getElementById('p07-toggle-gabarit');
 
   if (mode === 'gabarit') {
-    // Hide map and 3D, show gabarit
+    // Hide map, 3D, coupe — show gabarit
     document.getElementById('map').style.display = 'none';
     document.getElementById('p07-3d-wrap').style.display = 'none';
+    const wrapCoupe = document.getElementById('p07-coupe-wrap');
+    if (wrapCoupe) wrapCoupe.style.display = 'none';
     if (gabaritWrap) gabaritWrap.style.display = 'block';
     const esqSvg = document.getElementById('p07-esquisse-svg');
     if (esqSvg) esqSvg.style.display = 'none';
 
-    // Highlight buttons
-    ['p07-toggle-map', 'p07-toggle-3d', 'p07-toggle-esquisse', 'p07-toggle-gabarit'].forEach(id => {
-      const btn = document.getElementById(id);
-      if (!btn) return;
-      const active = id === 'p07-toggle-gabarit';
-      btn.style.background = active ? 'rgba(154,120,32,.12)' : 'none';
-      btn.style.color = active ? 'var(--accent, #9a7820)' : 'var(--muted, #6b5c3e)';
+    // Highlight tabs (même style que setView principal)
+    document.querySelectorAll('.p07-vtab').forEach(btn => {
+      const active = btn.id === 'p07-toggle-gabarit';
+      btn.style.background = active ? 'rgba(154,120,32,.25)' : 'none';
+      btn.style.color = active ? '#c0943a' : 'rgba(200,180,140,.6)';
+      btn.style.fontWeight = active ? '600' : '400';
     });
 
-    // Init gabarit engine on first use
     await GabaritUI.init();
   } else {
-    // Hide gabarit view when switching to other modes
+    // Hide gabarit
     if (gabaritWrap) gabaritWrap.style.display = 'none';
-    if (btnGabarit) {
-      btnGabarit.style.background = 'none';
-      btnGabarit.style.color = 'var(--muted, #6b5c3e)';
-    }
     await _origSetView(mode);
   }
 };

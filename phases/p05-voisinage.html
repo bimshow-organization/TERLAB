@@ -139,6 +139,13 @@
     </div>
   </div>
 
+  <!-- Atlas Composition Urbaine -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Atlas — Composition Urbaine</div>
+    <p class="field-note" style="margin-bottom:6px">Référentiel des compositions spatiales et dispositifs urbains : axes, symétries, limites, parcours, jeux d'eau. Enrichir l'analyse du voisinage par les principes de composition.</p>
+    <div id="atlas-preview-urbain"></div>
+  </div>
+
   <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
     <button class="source-btn" onclick="TerlabSources.open(5)">→ Sources &amp; références voisinage</button>
   </div>
@@ -173,12 +180,21 @@
   <!-- Vue 3D bâtiments (cachée par défaut) -->
   <div id="p05-3d-wrap" class="t3d-wrap" style="display:none;position:absolute;inset:0">
     <canvas id="p05-3d-canvas"></canvas>
+    <!-- Stats bâtiments -->
+    <div id="p05-3d-stats" style="position:absolute;top:8px;right:10px;z-index:60;font-family:var(--font-mono);font-size:9px;letter-spacing:.06em;color:rgba(255,255,255,.7);background:rgba(0,0,0,.45);padding:4px 10px;border-radius:4px;display:none">
+      <span id="p05-bat-count">—</span>
+    </div>
     <!-- Toolbar 3D -->
     <div class="t3d-toolbar">
       <button class="t3d-btn active" onclick="P05.set3DView('orbit')">Orbite</button>
       <button class="t3d-btn" onclick="P05.set3DView('top')">Dessus</button>
       <button class="t3d-btn" onclick="P05.set3DView('north')">Nord</button>
       <button class="t3d-btn" onclick="P05.set3DView('east')">Est</button>
+      <span style="width:1px;background:rgba(255,255,255,.15);margin:2px 4px"></span>
+      <button class="t3d-btn" id="p05-color-type" onclick="P05.setColorMode('type')">Type</button>
+      <button class="t3d-btn" id="p05-color-dist" onclick="P05.setColorMode('distance')">Distance</button>
+      <button class="t3d-btn" id="p05-color-surf" onclick="P05.setColorMode('surface')">Surface</button>
+      <span style="width:1px;background:rgba(255,255,255,.15);margin:2px 4px"></span>
       <button class="t3d-btn" onclick="P05.exportGLB()">Export GLB</button>
     </div>
     <!-- Loader -->
@@ -309,6 +325,16 @@ const P05 = {
       await B3D.init('p05-3d-canvas', SessionManager._data);
       this._3dReady = true;
       if (loader) loader.classList.add('done');
+      // Show building count
+      const count = B3D._buildingsGroup?.children?.filter(c => c.isMesh)?.length ?? 0;
+      const statsEl = document.getElementById('p05-3d-stats');
+      const countEl = document.getElementById('p05-bat-count');
+      if (statsEl && countEl) {
+        countEl.textContent = count > 0 ? `${count} bâtiment${count > 1 ? 's' : ''} détecté${count > 1 ? 's' : ''}` : 'Aucun bâtiment';
+        statsEl.style.display = 'block';
+      }
+      // Default color mode = type (active)
+      document.getElementById('p05-color-type')?.classList.add('active');
     }
 
     // Resize map when switching back
@@ -331,6 +357,19 @@ const P05 = {
     const B3D = window.Buildings3DViewer;
     if (B3D?._inited) B3D.exportGLB();
   },
+
+  _colorMode: 'type',
+  setColorMode(mode) {
+    this._colorMode = mode;
+    const B3D = window.Buildings3DViewer;
+    if (!B3D?._inited) return;
+    B3D.applyColorMode(mode);
+    // Update active button
+    ['type', 'dist', 'surf'].forEach(k => {
+      const btn = document.getElementById(`p05-color-${k}`);
+      if (btn) btn.classList.toggle('active', k === mode.slice(0, 4));
+    });
+  },
 };
 const terrain = SessionManager.getTerrain();
 if (terrain?.commune) document.getElementById('ts-c-p5').textContent = terrain.commune;
@@ -346,4 +385,7 @@ window.addEventListener('terlab:rb-calculated', () => {
 
 // enviroBAT cards
 if (window.EnvirobatCards) EnvirobatCards.render('eb-cards-p05', 'p05');
+
+// Atlas preview
+if (window.AtlasModal) AtlasModal.injectPreview('atlas-preview-urbain', 'composition-urbaine');
 </script>

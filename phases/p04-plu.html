@@ -28,7 +28,7 @@
       <div><strong id="plu-auto-zone">—</strong> <span id="plu-auto-type" style="font-family:var(--font-mono);font-size:9px;color:var(--muted)">—</span></div>
       <div id="plu-auto-interp" style="color:var(--text2);margin-top:3px">—</div>
     </div>
-    <div class="field-row">
+    <div class="field-row" id="zone-plu-manual" style="display:none">
       <label class="field-label" for="zone-plu">Zone du Plan Local d'Urbanisme</label>
       <select id="zone-plu" class="field-select" data-session-key="zone_plu" onchange="P04.updateZone()">
         <option value="">-- Sélectionner après vérification --</option>
@@ -104,7 +104,7 @@
 
   <!-- SCoT — Armature urbaine & densité -->
   <div class="form-section anim-slide-up">
-    <div class="fs-head">SCoT intercommunal <span id="scot-badge" style="display:none;font-size:8px;background:var(--success2);color:var(--success);padding:2px 6px;border-radius:3px;margin-left:6px;font-family:var(--font-mono)">AUTO</span></div>
+    <div class="fs-head">SCoT intercommunal <span id="scot-badge" style="display:none;font-size:8px;background:var(--success2);color:var(--success);padding:2px 6px;border-radius:3px;margin-left:6px;font-family:var(--font-mono)">AUTO</span><span id="scot-statut-badge" style="display:none;font-size:8px;padding:2px 6px;border-radius:3px;margin-left:6px;font-family:var(--font-mono)"></span></div>
     <div id="scot-loading" style="padding:8px 10px;font-size:11px;color:var(--muted)">Chargement des données SCoT...</div>
     <div id="scot-unavailable" style="display:none;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:var(--r-sm);font-size:11px;color:var(--muted);line-height:1.6">
       <strong>SCoT non intégré</strong> pour cette intercommunalité. Les données de densité et d'armature urbaine ne sont pas encore disponibles dans TERLAB.
@@ -219,6 +219,49 @@
   <div class="rp-section">
     <div class="rp-head">Exemples enviroBAT-Réunion</div>
     <div id="eb-cards-p04"></div>
+  </div>
+
+  <!-- ═══ DIAGRAMME SOLAIRE POLAIRE ═══ -->
+  <div class="rp-section" id="p04-solar-section">
+    <div class="rp-head">Diagramme solaire &mdash; 21&deg;S <span class="sg-badge">SunCalc</span></div>
+
+    <!-- SVG diagram container -->
+    <div class="sg-solar-wrap" id="sg-solar-wrap-p04"></div>
+
+    <!-- Timeline scrub -->
+    <div class="sg-timeline" id="sg-timeline-p04">
+      <span class="sg-time-label" id="sg-sunrise-p04">06:00</span>
+      <input type="range" class="sg-scrub" id="sg-scrub-p04" min="0" max="1000" value="500"
+        oninput="P04._onSunScrub(this.value)">
+      <span class="sg-time-label" id="sg-sunset-p04">18:00</span>
+    </div>
+    <div class="sg-current-time" id="sg-current-p04">12:00</div>
+
+    <!-- Presets -->
+    <div class="sg-presets" id="sg-presets-p04"></div>
+
+    <!-- Info -->
+    <div class="sg-info-row">
+      <span class="sg-info-label">Dur&eacute;e ensoleillement</span>
+      <span class="sg-info-val" id="sg-hours-p04">&mdash;</span>
+    </div>
+
+    <!-- Overhang calculator -->
+    <div class="sg-overhang-calc" id="sg-overhang-calc">
+      <div class="sg-overhang-title">Calcul brise-soleil</div>
+      <div class="sg-overhang-row">
+        <label class="sg-label" style="flex-shrink:0">Orientation fa&ccedil;ade (&deg;)</label>
+        <input type="number" id="sg-facade-az" class="sg-num-input" style="width:70px"
+          min="0" max="360" step="5" value="0" onchange="P04._onOverhang(this.value)">
+      </div>
+      <div class="sg-presets" style="margin-top:4px">
+        <button class="sg-preset-btn" onclick="P04._onOverhang(0)">Nord</button>
+        <button class="sg-preset-btn" onclick="P04._onOverhang(90)">Est</button>
+        <button class="sg-preset-btn" onclick="P04._onOverhang(180)">Sud</button>
+        <button class="sg-preset-btn" onclick="P04._onOverhang(270)">Ouest</button>
+      </div>
+      <div class="sg-overhang-result" id="sg-overhang-result" style="display:none"></div>
+    </div>
   </div>
 
   <div class="rp-section">
@@ -338,6 +381,20 @@ const P04 = {
     document.getElementById('scot-result').style.display = 'block';
     document.getElementById('scot-badge').style.display = 'inline';
 
+    // Statut document (en_revision, en_elaboration, approuve)
+    const statut = result.statut_document ?? 'approuve';
+    if (statut !== 'approuve') {
+      const badge = document.getElementById('scot-statut-badge');
+      const labels = {
+        en_revision: 'EN RÉVISION',
+        en_elaboration: 'EN ÉLABORATION',
+      };
+      badge.textContent = labels[statut] ?? statut.toUpperCase();
+      badge.style.display = 'inline';
+      badge.style.background = statut === 'en_elaboration' ? 'var(--danger2)' : 'var(--warning2)';
+      badge.style.color = statut === 'en_elaboration' ? 'var(--danger)' : 'var(--warning)';
+    }
+
     // Rang
     const rang = result.rang;
     if (rang) {
@@ -377,8 +434,15 @@ const P04 = {
     }
 
     // Source
-    document.getElementById('scot-source-label').textContent =
-      `${result.scot_nom} — approuvé ${result.approbation}${result.modification ? ', modifié ' + result.modification : ''}`;
+    let sourceText = result.scot_nom;
+    if (statut === 'en_elaboration') {
+      sourceText += ` — en élaboration (pas de DOO opposable, règles SAR)`;
+    } else if (statut === 'en_revision') {
+      sourceText += ` — en révision (DOO projet, non approuvé)`;
+    } else {
+      sourceText += ` — approuvé ${result.approbation}${result.modification ? ', modifié ' + result.modification : ''}`;
+    }
+    document.getElementById('scot-source-label').textContent = sourceText;
 
     // Panneau droit — logement
     if (result.logement) {
@@ -402,6 +466,7 @@ const P04 = {
     // Sauvegarder en session
     SessionManager.saveTerrain({
       scot_interco: result.interco,
+      scot_statut: statut,
       scot_rang: rang?.rang_num ?? null,
       scot_rang_label: rang?.label ?? null,
       scot_place_urbaine: rang?.place_urbaine ?? null,
@@ -431,7 +496,85 @@ if (altitude) {
   const zone = altitude < 400 ? 1 : altitude < 800 ? 2 : 3;
   SessionManager.saveTerrain({ zone_rtaa: String(zone) });
 }
+// ── Sun diagram methods ──────────────────────────────────────
+P04._onSunScrub = function(val) {
+  window.SunState?.setProgress(val / 1000, 'p04');
+};
+
+P04._initSolarDiagram = async function() {
+  // Dynamic import of SVG diagram builder
+  try {
+    const mod = await import('../utils/sun-diagram-svg.js');
+    const SunDiagramSVG = mod.default;
+    window._P04Diagram = SunDiagramSVG;
+    SunDiagramSVG.build('sg-solar-wrap-p04');
+  } catch(e) { console.warn('[P04] Solar diagram failed:', e); }
+
+  // Build presets
+  const wrap = document.getElementById('sg-presets-p04');
+  if (wrap && window.SunCalcService?.DATES_CLES) {
+    wrap.innerHTML = '';
+    for (const [label, day] of Object.entries(SunCalcService.DATES_CLES)) {
+      const btn = document.createElement('button');
+      btn.className = 'sg-preset-btn';
+      btn.textContent = label.replace(/ \(.*\)/, '');
+      btn.onclick = () => window.SunState?.setDayOfYear(day, 'p04');
+      wrap.appendChild(btn);
+    }
+  }
+
+  window.addEventListener('terlab:sun-changed', P04._onSunChanged);
+  P04._syncSunUI();
+};
+
+P04._onSunChanged = function(e) {
+  if (e.detail?.source === 'p04') return;
+  P04._syncSunUI();
+};
+
+P04._syncSunUI = function() {
+  const ss = window.SunState;
+  if (!ss) return;
+  const dl = ss.getDaylight();
+
+  const scrub = document.getElementById('sg-scrub-p04');
+  if (scrub) scrub.value = Math.round(ss.getProgress() * 1000);
+
+  const sr = document.getElementById('sg-sunrise-p04');
+  const st = document.getElementById('sg-sunset-p04');
+  const ct = document.getElementById('sg-current-p04');
+  if (sr) sr.textContent = ss.formatHour(dl.sunrise);
+  if (st) st.textContent = ss.formatHour(dl.sunset);
+  if (ct) ct.textContent = ss.formatHour();
+
+  const hrs = document.getElementById('sg-hours-p04');
+  if (hrs) hrs.textContent = dl.hours.toFixed(1) + ' h';
+
+  // Update SVG dot
+  window._P04Diagram?.updateDot(ss.getHour(), ss.getDayOfYear());
+};
+
+P04._onOverhang = function(azVal) {
+  const az = parseFloat(azVal);
+  const input = document.getElementById('sg-facade-az');
+  if (input) input.value = az;
+
+  const result = window._P04Diagram?.computeOverhang(az);
+  const el = document.getElementById('sg-overhang-result');
+  if (!el) return;
+
+  if (!result || result.angle === 0) {
+    el.textContent = result?.message ?? 'Calcul impossible';
+  } else {
+    el.innerHTML =
+      `<strong>${result.message}</strong><br/>` +
+      `<span style="font-size:9px;color:var(--muted)">Heure critique : ${SunCalcService.getDateLabel(355)} ~${Math.floor(result.hour)}h${String(Math.round((result.hour%1)*60)).padStart(2,'0')}</span>`;
+  }
+  el.style.display = 'block';
+};
+
 window.P04 = P04;
+P04._initSolarDiagram();
 
 // ─── Auto-fetch SCOT ────────────────────────────────────────────
 (async () => {
@@ -463,10 +606,17 @@ window.P04 = P04;
 // ─── Auto-fetch PLU WFS depuis position terrain ─────────────
 (async () => {
   const t = SessionManager.getTerrain();
-  if (!t?.lat || !t?.lng || !PLUService?.fetch) return;
+  if (!t?.lat || !t?.lng || !PLUService?.fetch) {
+    document.getElementById('zone-plu-manual').style.display = '';
+    return;
+  }
   try {
     const plu = await PLUService.fetch(parseFloat(t.lng), parseFloat(t.lat));
-    if (!plu) return;
+    if (!plu) {
+      // Auto-détection échouée → afficher le sélecteur manuel
+      document.getElementById('zone-plu-manual').style.display = '';
+      return;
+    }
     // Remplir l'affichage auto
     document.getElementById('plu-auto-result').style.display = 'block';
     document.getElementById('plu-auto-zone').textContent = plu.zone;
@@ -474,7 +624,7 @@ window.P04 = P04;
     document.getElementById('plu-auto-interp').textContent = plu.interpretation;
     document.getElementById('plu-auto-badge').style.display = 'inline';
     document.getElementById('plu-stub-banner').style.display = 'none';
-    // Pré-sélectionner le select si possible
+    // Pré-sélectionner le select (masqué) pour que la session soit correcte
     const sel = document.getElementById('zone-plu');
     if (sel && plu.typeZone) {
       const opt = [...sel.options].find(o => o.value.startsWith(plu.typeZone));
@@ -488,6 +638,8 @@ window.P04 = P04;
     });
   } catch (e) {
     console.warn('[P04] PLU auto-fetch failed:', e.message);
+    // Auto-détection échouée → afficher le sélecteur manuel
+    document.getElementById('zone-plu-manual').style.display = '';
   }
 })();
 

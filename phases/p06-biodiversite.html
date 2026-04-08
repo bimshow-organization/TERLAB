@@ -194,6 +194,13 @@
     </div>
   </div>
 
+  <!-- Atlas Jardins, Parcs & Places -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Atlas — Jardins, Parcs & Places</div>
+    <p class="field-note" style="margin-bottom:6px">Le plan de paysage fait partie intégrante de la conception. Explorer les compositions historiques et contemporaines pour nourrir le projet végétal.</p>
+    <div id="atlas-preview-jardins"></div>
+  </div>
+
   <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
     <button class="source-btn" onclick="TerlabSources.open(6)">→ Sources &amp; références biodiversité</button>
   </div>
@@ -313,8 +320,6 @@ const PARC_ALERTS = {
 const P06 = {
   _selectedSpecies: new Set(),
   _currentFond: 'nature',
-  _obiaImageUrl: null,
-  _obiaBounds: null,
 
   // ── Basculer fond de carte ────────────────────────────────────
   async setFond(mode) {
@@ -337,8 +342,8 @@ const P06 = {
       await map.setStyle('mapbox://styles/mapbox/satellite-streets-v12');
       await new Promise(r => map.once('styledata', r));
       MapViewer._ensureParcelleLayer?.();
-    } else if (mode === 'obia' && this._obiaClassifiedPixels) {
-      // Satellite + canvas overlay OBIA
+    } else if (mode === 'obia' && this._obiaDataUrl) {
+      // Satellite + image source OBIA
       await map.setStyle('mapbox://styles/mapbox/satellite-streets-v12');
       await new Promise(r => map.once('styledata', r));
       MapViewer._ensureParcelleLayer?.();
@@ -346,93 +351,34 @@ const P06 = {
     }
   },
 
-  // ── Overlay OBIA via canvas HTML superposé (pixel-perfect) ─────
-  _obiaCanvas: null,
+  // ── Overlay OBIA via source image Mapbox (réactif nativement) ───
+  _obiaDataUrl: null,
+  _obiaBoundsCoords: null,
 
   _addObiaOverlay(map) {
-    if (!this._obiaImageUrl) return;
-    const mapCanvas = map.getCanvas();
-    const container = mapCanvas.parentElement;
-    if (!container) return;
+    if (!this._obiaDataUrl || !this._obiaBoundsCoords) return;
+    const coords = this._obiaBoundsCoords; // [[nw],[ne],[se],[sw]]
 
-    // Créer ou réutiliser le canvas overlay
-    let cv = this._obiaCanvas;
-    if (!cv) {
-      cv = document.createElement('canvas');
-      cv.id = 'obia-canvas-overlay';
-      cv.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:5;';
-      container.appendChild(cv);
-      this._obiaCanvas = cv;
-    }
-    cv.style.display = 'block';
+    // Supprimer l'ancienne source/layer si existante
+    if (map.getLayer('obia-layer')) map.removeLayer('obia-layer');
+    if (map.getSource('obia-source')) map.removeSource('obia-source');
 
-    this._renderObiaCanvas(map);
-
-    // Re-rendre quand la carte bouge
-    this._obiaRenderBound = this._obiaRenderBound || (() => {
-      if (this._currentFond === 'obia') this._renderObiaCanvas(map);
+    map.addSource('obia-source', {
+      type: 'image',
+      url: this._obiaDataUrl,
+      coordinates: coords,
     });
-    map.off('moveend', this._obiaRenderBound);
-    map.off('zoomend', this._obiaRenderBound);
-    map.on('moveend', this._obiaRenderBound);
-    map.on('zoomend', this._obiaRenderBound);
-    // Aussi sur move pour suivi temps réel (throttled)
-    if (!this._obiaMoveBound) {
-      let raf = null;
-      this._obiaMoveBound = () => {
-        if (this._currentFond !== 'obia' || raf) return;
-        raf = requestAnimationFrame(() => { raf = null; this._renderObiaCanvas(map); });
-      };
-    }
-    map.off('move', this._obiaMoveBound);
-    map.on('move', this._obiaMoveBound);
+    map.addLayer({
+      id: 'obia-layer',
+      type: 'raster',
+      source: 'obia-source',
+      paint: { 'raster-opacity': 0.75, 'raster-fade-duration': 0 },
+    });
   },
 
   _hideObiaOverlay() {
-    if (this._obiaCanvas) this._obiaCanvas.style.display = 'none';
-  },
-
-  _renderObiaCanvas(map) {
-    const cv = this._obiaCanvas;
-    if (!cv || !this._obiaClassifiedPixels) return;
-
-    const mapCanvas = map.getCanvas();
-    const dpr = window.devicePixelRatio || 1;
-    cv.width = mapCanvas.width;
-    cv.height = mapCanvas.height;
-
-    const ctx = cv.getContext('2d');
-    ctx.clearRect(0, 0, cv.width, cv.height);
-
-    const terrain = SessionManager.getTerrain();
-    const geojson = terrain?.parcelle_geojson;
-    if (!geojson) return;
-
-    const polyCoords = OBIAService._extractCoords(geojson);
-    if (polyCoords.length < 3) return;
-
-    // Clipper au polygone de la parcelle
-    ctx.save();
-    ctx.beginPath();
-    for (let i = 0; i < polyCoords.length; i++) {
-      const p = map.project(polyCoords[i]);
-      const px = p.x * dpr, py = p.y * dpr;
-      if (i === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    ctx.clip();
-
-    // Dessiner chaque point classifié à sa position géo projetée
-    const pts = this._obiaClassifiedPixels;
-    const sz = Math.max(3, 5 * dpr); // taille du point en pixels
-    for (const pt of pts) {
-      const p = map.project([pt.lng, pt.lat]);
-      ctx.fillStyle = pt.color;
-      ctx.fillRect(p.x * dpr - sz / 2, p.y * dpr - sz / 2, sz, sz);
-    }
-
-    ctx.restore();
+    // setStyle détruit toutes les sources/layers — pas besoin de supprimer manuellement
+    // La layer sera recréée par _addObiaOverlay quand on repassera en mode OBIA
   },
 
 
@@ -521,36 +467,27 @@ const P06 = {
       // Sauvegarder en session
       SessionManager.saveTerrain({ obia_surfaces: result.surfaces, obia_confidence: result.confidence });
 
-      // Convertir le raster en points géolocalisés classifiés
+      // Générer l'image classifiée et l'ajouter comme source Mapbox image
       if (result.raster && result.rasterW > 0) {
         const dpr = window.devicePixelRatio || 1;
-        const w = result.rasterW, h = result.rasterH;
         const ox = result.origin.minX, oy = result.origin.minY;
-        const COLORS = OBIAService.CLASS_COLORS;
-        const pts = [];
-        const stride = 2;
+        const w = result.rasterW, h = result.rasterH;
 
-        for (let y = 0; y < h; y += stride) {
-          const srcY = h - 1 - y; // flip vertical (OpenGL readPixels)
-          for (let x = 0; x < w; x += stride) {
-            const si = (srcY * w + x) * 4;
-            const a = result.raster[si + 3];
-            if (a < 128) continue;
-            const cls = OBIAService.classifyPixel(result.raster[si], result.raster[si+1], result.raster[si+2]);
-            if (!cls) continue;
-            const c = COLORS[cls];
-            if (!c) continue;
-            // Pixel écran → coordonnée géo
-            const lngLat = map.unproject([ox + x / dpr, oy + y / dpr]);
-            pts.push({
-              lng: lngLat.lng, lat: lngLat.lat,
-              color: `rgba(${c[0]},${c[1]},${c[2]},${(c[3]/255).toFixed(2)})`
-            });
-          }
-        }
+        // Coordonnées géo des 4 coins de la bbox (pour Mapbox image source)
+        const nw = map.unproject([ox, oy]);
+        const ne = map.unproject([ox + w / dpr, oy]);
+        const se = map.unproject([ox + w / dpr, oy + h / dpr]);
+        const sw = map.unproject([ox, oy + h / dpr]);
+        this._obiaBoundsCoords = [
+          [nw.lng, nw.lat], [ne.lng, ne.lat],
+          [se.lng, se.lat], [sw.lng, sw.lat],
+        ];
 
-        this._obiaClassifiedPixels = pts;
-        this._obiaImageUrl = true;
+        // Construire l'image classifiée colorée + masque polygone
+        const polyCoords = OBIAService._extractCoords(geojson);
+        this._obiaDataUrl = OBIAService.buildClassifiedImage(
+          result.raster, w, h, map, polyCoords, result.origin
+        );
 
         // Afficher l'overlay directement sur satellite
         this._addObiaOverlay(map);
@@ -585,4 +522,7 @@ window.P06 = P06;
 
 // enviroBAT cards
 if (window.EnvirobatCards) EnvirobatCards.render('eb-cards-p06', 'p06');
+
+// Atlas preview
+if (window.AtlasModal) AtlasModal.injectPreview('atlas-preview-jardins', 'jardins-parcs');
 </script>

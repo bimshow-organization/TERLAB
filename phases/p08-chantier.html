@@ -484,6 +484,8 @@ Object.assign(P08, {
 // Mettre à jour les badges au chargement si des données existent
 P08.updateSDISBadges();
 
-// Écouter les changements de session pour màj des badges
-window.addEventListener('terlab:session-changed', () => P08.updateSDISBadges());
+// Écouter les changements de phase/terrain pour màj des badges
+window.addEventListener('terlab:phase-updated', () => P08.updateSDISBadges());
+window.addEventListener('terlab:terrain-updated', () => P08.updateSDISBadges());
+window.addEventListener('terlab:session-loaded', () => P08.updateSDISBadges());
 </script>
