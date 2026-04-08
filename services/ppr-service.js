@@ -3,6 +3,8 @@
 // Pas de clé API requise — service public
 // ════════════════════════════════════════════════════════════════════
 
+import { resilientJSON } from '../utils/resilient-fetch.js';
+
 const PPRService = {
 
   WMS_URL: 'http://peigeo.re:8080/geoserver/peigeo/wms',
@@ -25,9 +27,7 @@ const PPRService = {
       + `&SRS=EPSG:3857&BBOX=${bbox}`;
 
     try {
-      const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (!resp.ok) throw new Error(`PEIGEO ${resp.status}`);
-      const data = await resp.json();
+      const data = await resilientJSON(url, { timeoutMs: 8000, retries: 2 });
       return {
         source: 'peigeo_wms',
         features: data.features ?? [],

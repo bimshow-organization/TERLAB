@@ -35,20 +35,13 @@ const TerrainAnalysis = {
         { lng: (bbox[0] + bbox[2]) / 2, lat: (bbox[1] + bbox[3]) / 2 }, // centre
       ];
 
-      // API IGN altimétrie batch
+      // API IGN altimétrie batch (GET, plus fiable que POST)
       const lons = corners.map(c => c.lng).join('|');
       const lats = corners.map(c => c.lat).join('|');
+      const altiUrl = `https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json`
+        + `?lon=${lons}&lat=${lats}&resource=ign_rge_alti_wld&delimiter=|&zonly=true`;
 
-      const res = await fetch('https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json', {
-        method: 'POST',
-        headers: { 'accept': 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lon: lons, lat: lats,
-          resource: 'ign_rge_alti_wld', delimiter: '|',
-          indent: 'false', measures: 'false', zonly: 'true'
-        })
-      });
-
+      const res = await fetch(altiUrl, { signal: AbortSignal.timeout(8000) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const elevations = data?.elevations?.map(e => e.z) ?? [];

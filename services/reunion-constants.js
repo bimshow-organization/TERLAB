@@ -170,24 +170,37 @@ export const RTAA_DOM_2016 = {
   },
 };
 
-// ── Intercommunalités La Réunion ────────────────────────────────────────────
+// ── Intercommunalités La Réunion (codes INSEE officiels) ────────────────────
 export const INTERCO_MAP = {
-  '97411': 'CINOR',  '97423': 'CINOR',  '97418': 'CINOR',  '97440': 'CINOR',  '97432': 'CINOR',
-  '97408': 'CIREST', '97403': 'CIREST', '97402': 'CIREST', '97427': 'CIREST',
-  '97416': 'CASUD',  '97425': 'CASUD',  '97413': 'CASUD',  '97422': 'CASUD',  '97419': 'CASUD',
-  '97420': 'TCO',    '97415': 'TCO',    '97424': 'TCO',    '97417': 'TCO',    '97436': 'TCO',
+  // CINOR (3)
+  '97411': 'CINOR',  '97418': 'CINOR',  '97420': 'CINOR',
+  // CIREST (6)
+  '97409': 'CIREST', '97402': 'CIREST', '97410': 'CIREST',
+  '97419': 'CIREST', '97421': 'CIREST', '97406': 'CIREST',
+  // TCO — Territoire de la Côte Ouest (5)
+  '97407': 'TCO',    '97408': 'TCO',    '97415': 'TCO',
+  '97423': 'TCO',    '97413': 'TCO',
+  // CIVIS (6)
+  '97416': 'CIVIS',  '97414': 'CIVIS',  '97404': 'CIVIS',
+  '97405': 'CIVIS',  '97424': 'CIVIS',  '97401': 'CIVIS',
+  // CASUD (4)
+  '97422': 'CASUD',  '97412': 'CASUD',  '97417': 'CASUD',  '97403': 'CASUD',
 };
 
-// ── Communes La Réunion ─────────────────────────────────────────────────────
+// ── Communes La Réunion (codes INSEE officiels) ────────────────────────────
 export const COMMUNES_REUNION = {
-  '97411': 'Saint-Denis',     '97423': 'Sainte-Marie',    '97418': 'Sainte-Suzanne',
-  '97440': 'Bras-Panon',     '97432': 'Saint-André',     '97408': 'Saint-Benoît',
-  '97403': 'Salazie',        '97402': 'Sainte-Rose',     '97427': 'Saint-Philippe',
-  '97416': 'Saint-Pierre',   '97425': 'Petite-Île',      '97413': 'Saint-Joseph',
-  '97422': 'Entre-Deux',     '97419': 'Le Tampon',       '97420': 'Étang-Salé',
-  '97415': 'Saint-Louis',    '97424': 'Cilaos',          '97417': 'Saint-Leu',
-  '97436': 'Trois-Bassins',  '97421': 'Saint-Paul',      '97414': 'La Possession',
-  '97410': 'Le Port',
+  '97401': 'Les Avirons',             '97402': 'Bras-Panon',
+  '97403': 'Entre-Deux',              '97404': "L'Étang-Salé",
+  '97405': 'Petite-Île',              '97406': 'La Plaine-des-Palmistes',
+  '97407': 'Le Port',                 '97408': 'La Possession',
+  '97409': 'Saint-André',             '97410': 'Saint-Benoît',
+  '97411': 'Saint-Denis',             '97412': 'Saint-Joseph',
+  '97413': 'Saint-Leu',               '97414': 'Saint-Louis',
+  '97415': 'Saint-Paul',              '97416': 'Saint-Pierre',
+  '97417': 'Saint-Philippe',          '97418': 'Sainte-Marie',
+  '97419': 'Sainte-Rose',             '97420': 'Sainte-Suzanne',
+  '97421': 'Salazie',                 '97422': 'Le Tampon',
+  '97423': 'Les Trois-Bassins',       '97424': 'Cilaos',
 };
 
 // ── Fonctions utilitaires Réunion ───────────────────────────────────────────

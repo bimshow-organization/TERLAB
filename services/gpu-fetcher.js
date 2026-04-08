@@ -4,6 +4,8 @@
 // Complète plu-service.js avec les endpoints non encore exploités
 // ════════════════════════════════════════════════════════════════════
 
+import resilientFetch from '../utils/resilient-fetch.js';
+
 const GPUFetcher = {
 
   BASE: 'https://apicarto.ign.fr/api/gpu',
@@ -31,13 +33,10 @@ const GPUFetcher = {
 
     const results = await Promise.allSettled(
       this.ENDPOINTS.map(ep =>
-        fetch(`${this.BASE}/${ep.path}?geom=${geom}`, {
-          signal: AbortSignal.timeout(this.TIMEOUT)
+        resilientFetch(`${this.BASE}/${ep.path}?geom=${geom}`, {
+          timeoutMs: this.TIMEOUT, retries: 1,
         })
-        .then(r => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.json();
-        })
+        .then(r => r.json())
         .then(data => ({ ...ep, geojson: data }))
       )
     );
@@ -54,10 +53,9 @@ const GPUFetcher = {
       type: 'Point', coordinates: [lng, lat]
     }));
 
-    const resp = await fetch(`${this.BASE}/${path}?geom=${geom}`, {
-      signal: AbortSignal.timeout(this.TIMEOUT)
+    const resp = await resilientFetch(`${this.BASE}/${path}?geom=${geom}`, {
+      timeoutMs: this.TIMEOUT, retries: 1,
     });
-    if (!resp.ok) throw new Error(`API Carto ${resp.status}`);
     return resp.json();
   },
 
@@ -68,13 +66,10 @@ const GPUFetcher = {
 
     const results = await Promise.allSettled(
       this.ENDPOINTS.map(ep =>
-        fetch(`${this.BASE}/${ep.path}?geom=${geom}`, {
-          signal: AbortSignal.timeout(this.TIMEOUT)
+        resilientFetch(`${this.BASE}/${ep.path}?geom=${geom}`, {
+          timeoutMs: this.TIMEOUT, retries: 1,
         })
-        .then(r => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.json();
-        })
+        .then(r => r.json())
         .then(data => ({ ...ep, geojson: data }))
       )
     );

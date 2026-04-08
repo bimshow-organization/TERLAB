@@ -4,6 +4,8 @@
 // Gratuite, stable, pas de clé API requise
 // ════════════════════════════════════════════════════════════════════
 
+import { resilientJSON } from '../utils/resilient-fetch.js';
+
 const PLUService = {
 
   // ─── Principales intercommunalités Réunion avec PLU info ────────
@@ -40,11 +42,7 @@ const PLUService = {
       + `?geom=${encodeURIComponent(JSON.stringify({
           type: 'Point', coordinates: [lng, lat]
         }))}`;
-
-    const resp = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if (!resp.ok) throw new Error(`API Carto ${resp.status}`);
-    const data = await resp.json();
-    return data;
+    return resilientJSON(url, { timeoutMs: 10000, retries: 2 });
   },
 
   // ─── Requête prescriptions réglementaires ───────────────────────
@@ -53,12 +51,8 @@ const PLUService = {
       + `?geom=${encodeURIComponent(JSON.stringify({
           type: 'Point', coordinates: [lng, lat]
         }))}`;
-    try {
-      const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (!resp.ok) return [];
-      const data = await resp.json();
-      return data.features ?? [];
-    } catch { return []; }
+    const data = await resilientJSON(url, { timeoutMs: 8000, retries: 1, fallback: null });
+    return data?.features ?? [];
   },
 
   // ─── Requête SUP (Servitudes d'Utilité Publique) ────────────────
@@ -67,12 +61,8 @@ const PLUService = {
       + `?geom=${encodeURIComponent(JSON.stringify({
           type: 'Point', coordinates: [lng, lat]
         }))}`;
-    try {
-      const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (!resp.ok) return [];
-      const data = await resp.json();
-      return data.features ?? [];
-    } catch { return []; }
+    const data = await resilientJSON(url, { timeoutMs: 8000, retries: 1, fallback: null });
+    return data?.features ?? [];
   },
 
   // ─── Requête complète avec fallback ────────────────────────────

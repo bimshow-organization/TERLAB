@@ -5,19 +5,20 @@
 
 const SCOTService = {
 
-  // ─── Mapping commune → intercommunalité ─────────────────────────
+  // ─── Mapping commune → intercommunalité (codes INSEE officiels) ──
   COMMUNE_INTERCO: {
-    // TCO — Territoire de la Côte Ouest
-    '97407': 'TCO', '97406': 'TCO', '97415': 'TCO', '97423': 'TCO', '97416': 'TCO',
-    // CINOR — Nord
+    // CINOR (3)
     '97411': 'CINOR', '97418': 'CINOR', '97420': 'CINOR',
-    // CIREST — Est
-    '97402': 'CIREST', '97410': 'CIREST', '97419': 'CIREST', '97421': 'CIREST',
-    '97405': 'CIREST', '97408': 'CIREST',
-    // CASUD — Sud
-    '97412': 'CASUD', '97403': 'CASUD', '97409': 'CASUD', '97413': 'CASUD',
-    // CIVIS — Grand Sud
-    '97414': 'CIVIS', '97422': 'CIVIS', '97404': 'CIVIS', '97401': 'CIVIS', '97424': 'CIVIS',
+    // CIREST (6)
+    '97409': 'CIREST', '97402': 'CIREST', '97410': 'CIREST',
+    '97419': 'CIREST', '97421': 'CIREST', '97406': 'CIREST',
+    // TCO — Territoire de la Côte Ouest (5)
+    '97407': 'TCO', '97408': 'TCO', '97415': 'TCO', '97423': 'TCO', '97413': 'TCO',
+    // CIVIS (6)
+    '97416': 'CIVIS', '97414': 'CIVIS', '97404': 'CIVIS',
+    '97405': 'CIVIS', '97424': 'CIVIS', '97401': 'CIVIS',
+    // CASUD (4)
+    '97422': 'CASUD', '97412': 'CASUD', '97417': 'CASUD', '97403': 'CASUD',
   },
 
   // Noms lisibles
@@ -110,6 +111,7 @@ const SCOTService = {
     return {
       source: 'scot-service',
       status: 'ok',
+      statut_document: rules.statut ?? 'approuve',
       interco,
       interco_nom: this.INTERCO_NOMS[interco] ?? interco,
       scot_nom: rules.scot ?? `SCoT ${interco}`,

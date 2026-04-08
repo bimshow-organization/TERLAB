@@ -1,10 +1,18 @@
 // TERLAB · services/buildings-service.js
-// Chargement des bâtiments OSM via API Overpass
+// Chargement des bâtiments : BDTOPO IGN (primaire) + Overpass OSM (fallback)
 // Utilisé pour afficher le contexte bâti autour du terrain
 // + Bâtiments des projets démo (rendu enrichi)
-// Aucune clé API requise — données OpenStreetMap
+// Aucune clé API requise
+// ════════════════════════════════════════════════════════════════════
+
+import resilientFetch, { resilientFetchFirst } from '../utils/resilient-fetch.js';
+import { resilientJSON } from '../utils/resilient-fetch.js';
 
 const BuildingsService = {
+
+  // ─── Sources de données ──────────────────────────────────────────
+  BDTOPO_WFS: 'https://data.geopf.fr/wfs/ows',
+  BDTOPO_LAYER: 'BDTOPO_V3:batiment',
 
   OVERPASS_ENDPOINTS: [
     'https://overpass-api.de/api/interpreter',
@@ -26,8 +34,86 @@ const BuildingsService = {
     _default:       { color: '#c4b396', height: 4,  label: 'Bâtiment' }
   },
 
-  // ─── CHARGER LES BÂTIMENTS OSM ─────────────────────────────────
+  // ─── CHARGER LES BÂTIMENTS (BDTOPO → Overpass → procédural) ─────
   async fetchBuildings(lat, lng, radiusMeters = 250) {
+    // 1. BDTOPO IGN (meilleure couverture DOM, données officielles)
+    try {
+      const bdtopo = await this._fetchBDTOPO(lat, lng, radiusMeters);
+      if (bdtopo?.features?.length) {
+        console.info(`[Buildings] BDTOPO: ${bdtopo.features.length} bâtiments`);
+        return bdtopo;
+      }
+    } catch (e) {
+      console.warn('[Buildings] BDTOPO failed:', e.message);
+    }
+
+    // 2. Overpass OSM (fallback communautaire)
+    try {
+      const osm = await this._fetchOverpass(lat, lng, radiusMeters);
+      if (osm?.features?.length) {
+        console.info(`[Buildings] Overpass: ${osm.features.length} bâtiments`);
+        return osm;
+      }
+    } catch (e) {
+      console.warn('[Buildings] Overpass failed:', e.message);
+    }
+
+    // 3. Génération procédurale (dernier recours)
+    console.warn('[Buildings] Toutes sources indisponibles — fallback procédural');
+    return this._proceduralBuildings(lat, lng, radiusMeters);
+  },
+
+  // ─── BDTOPO IGN WFS ────────────────────────────────────────────
+  async _fetchBDTOPO(lat, lng, radiusMeters) {
+    const deg  = radiusMeters / 111000;
+    const bbox = `${lng - deg},${lat - deg},${lng + deg},${lat + deg}`;
+    const url  = `${this.BDTOPO_WFS}?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature`
+      + `&TYPENAMES=${this.BDTOPO_LAYER}`
+      + `&OUTPUTFORMAT=application/json&SRSNAME=EPSG:4326`
+      + `&BBOX=${bbox},EPSG:4326&COUNT=200`;
+
+    const data = await resilientJSON(url, { timeoutMs: 10000, retries: 1 });
+    if (!data?.features?.length) return null;
+
+    // Normaliser les features BDTOPO vers le format TERLAB
+    return {
+      type: 'FeatureCollection',
+      source: 'bdtopo_ign',
+      features: data.features.map(f => {
+        const p = f.properties ?? {};
+        const usage  = (p.usage_1 ?? p.nature ?? '').toLowerCase();
+        const style  = this._bdtopoStyle(usage);
+        const height = parseFloat(p.hauteur ?? style.height);
+        return {
+          type: 'Feature',
+          geometry: f.geometry,
+          properties: {
+            source:      'bdtopo',
+            type:        usage || 'yes',
+            label:       style.label,
+            color:       style.color,
+            height:      height,
+            levels:      Math.max(1, Math.round(height / 3)),
+            distance_m:  this._distanceTo(lat, lng, f.geometry),
+          }
+        };
+      })
+    };
+  },
+
+  _bdtopoStyle(usage) {
+    if (usage.includes('résidentiel') || usage.includes('habitation'))
+      return this.BUILDING_STYLES.residential;
+    if (usage.includes('commercial'))  return this.BUILDING_STYLES.commercial;
+    if (usage.includes('industriel'))  return this.BUILDING_STYLES.industrial;
+    if (usage.includes('religieux'))   return this.BUILDING_STYLES.church;
+    if (usage.includes('sportif'))     return { color: '#a0b090', height: 6, label: 'Équipement sportif' };
+    if (usage.includes('agricole'))    return this.BUILDING_STYLES.shed;
+    return this.BUILDING_STYLES._default;
+  },
+
+  // ─── OVERPASS OSM ──────────────────────────────────────────────
+  async _fetchOverpass(lat, lng, radiusMeters) {
     const deg    = radiusMeters / 111000;
     const south  = lat - deg, north = lat + deg;
     const west   = lng - deg, east  = lng + deg;
@@ -39,25 +125,12 @@ const BuildingsService = {
 );
 out geom;`;
 
-    // Essayer les deux endpoints Overpass
-    for (const endpoint of this.OVERPASS_ENDPOINTS) {
-      try {
-        const resp = await fetch(endpoint, {
-          method: 'POST',
-          body: query,
-          signal: AbortSignal.timeout(12000)
-        });
-        if (!resp.ok) throw new Error(`Overpass ${resp.status}`);
-        const data = await resp.json();
-        return this._toGeoJSON(data, lat, lng);
-      } catch (e) {
-        console.warn(`[Buildings] ${endpoint} failed:`, e.message);
-        continue;
-      }
-    }
-
-    console.warn('[Buildings] Tous les endpoints Overpass indisponibles — fallback procédural');
-    return this._proceduralBuildings(lat, lng, radiusMeters);
+    const resp = await resilientFetchFirst(
+      this.OVERPASS_ENDPOINTS,
+      { method: 'POST', body: query, timeoutMs: 12000, retries: 1 }
+    );
+    const data = await resp.json();
+    return this._toGeoJSON(data, lat, lng);
   },
 
   // ─── CONVERTIR OVERPASS → GEOJSON ──────────────────────────────
@@ -111,6 +184,16 @@ out geom;`;
     features.sort((a,b) => a.properties.dist_m - b.properties.dist_m);
 
     return { type: 'FeatureCollection', features };
+  },
+
+  // ─── Distance centroïde géométrie → point ─────────────────────
+  _distanceTo(lat, lng, geometry) {
+    const coords = geometry?.coordinates?.[0] ?? geometry?.coordinates?.[0]?.[0] ?? [];
+    if (!coords.length) return 999;
+    const n = coords.length;
+    const midLng = coords.reduce((s, c) => s + c[0], 0) / n;
+    const midLat = coords.reduce((s, c) => s + c[1], 0) / n;
+    return Math.round(Math.hypot((midLat - lat) * 111000, (midLng - lng) * 111000 * Math.cos(lat * Math.PI / 180)));
   },
 
   // ─── FALLBACK : BÂTIMENTS PROCÉDURAUX ──────────────────────────

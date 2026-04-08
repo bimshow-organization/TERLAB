@@ -13,12 +13,12 @@ const EnvelopeGenerator = {
 
     // ── 1. Regles PLU ────────────────────────────────────────────
     const PLU = {
-      recul_voie:    parseFloat(p4.recul_voie_m  ?? p4.recul_avant_m ?? 3)  || 3,
+      recul_voie:    parseFloat(p4.recul_voie_principale_m ?? p4.recul_voie_m ?? p4.recul_avant_m ?? 3) || 3,
       recul_fond:    parseFloat(p4.recul_fond_m  ?? 3)                       || 3,
-      recul_lat:     parseFloat(p4.recul_lat_m   ?? 0)                       || 0,
-      h_egout:       parseFloat(p4.hauteur_egout_m ?? 7)                     || 7,
+      recul_lat:     parseFloat(p4.recul_limite_sep_m ?? p4.recul_lat_m ?? 0) || 0,
+      h_egout:       parseFloat(p4.hauteur_max_m ?? p4.hauteur_egout_m ?? 7) || 7,
       h_faitage:     parseFloat(p4.hauteur_faitage_m ?? 9)                   || 9,
-      ces_max:       parseFloat(p4.ces_max ?? 0.7)                           || 0.7,
+      ces_max:       parseFloat(p4.emprise_sol_max_pct ? p4.emprise_sol_max_pct / 100 : p4.ces_max ?? 0.7) || 0.7,
       cos_max:       parseFloat(p4.cos_max ?? 2.1)                           || 2.1,
       niveaux:       parseInt(p4.niveaux_max ?? 2)                           || 2,
     };
@@ -36,8 +36,54 @@ const EnvelopeGenerator = {
       edges = new Array(parcel.length).fill('lateral');
     }
 
-    const zone = this._setback(parcel, edges, PLU);
+    let zone = this._setback(parcel, edges, PLU);
     if (!zone.length) return [];
+
+    // ── 2b. Exclure les zones PPRN inconstructibles (R1/R2) ────
+    // Si le scan PPRN a détecté des zones R1/R2 sur la parcelle,
+    // soustraire ces zones de l'emprise constructible
+    const pprnZones = terrain.pprn_zones_detected;
+    if (pprnZones) {
+      const clat = parseFloat(terrain.lat ?? -21.15);
+      const clng = parseFloat(terrain.lng ?? 55.45);
+      const LNG_M = 111320 * Math.cos(clat * Math.PI / 180);
+      const LAT_M = 111320;
+
+      // Centroide parcelle geo (meme calcul que esquisse-canvas)
+      const parcelGeo = terrain.parcelle_geojson;
+      let geoRing = null;
+      if (parcelGeo) {
+        geoRing = parcelGeo.type === 'Polygon'
+          ? parcelGeo.coordinates[0]
+          : parcelGeo.type === 'MultiPolygon'
+            ? parcelGeo.coordinates[0][0] : null;
+      }
+      const cGeo = geoRing?.length
+        ? [geoRing.reduce((s, c) => s + c[0], 0) / geoRing.length,
+           geoRing.reduce((s, c) => s + c[1], 0) / geoRing.length]
+        : [clng, clat];
+
+      for (const [zKey, zData] of Object.entries(pprnZones)) {
+        if (!zData.inconstructible || !zData.pts?.length || zData.pts.length < 3) continue;
+
+        // Convertir les points PPRN WGS84 → local mètres (meme repere que parcelLocal)
+        const pprnLocal = zData.pts.map(p => ({
+          x:  (p.lng - cGeo[0]) * LNG_M,
+          y: -(p.lat - cGeo[1]) * LAT_M,
+        }));
+
+        // Soustraire : garder seulement les points de zone qui ne sont PAS
+        // dans le polygone PPRN inconstructible, puis recalculer le convex hull
+        const pprnHull = this._convexHull(pprnLocal);
+        const filtered = zone.filter(pt => !this._pointInPoly(pt, pprnHull));
+        if (filtered.length >= 3) {
+          zone = this._convexHull(filtered);
+        } else {
+          // Toute la zone est inconstructible
+          return [];
+        }
+      }
+    }
 
     const zoneArea = this._area(zone);
     if (zoneArea < 10) return [];
@@ -301,12 +347,34 @@ const EnvelopeGenerator = {
     const rtaaRisk   = surf * 0.30 / (surf + 1);
     const rtaaScore  = 1 - Math.min(1, rtaaRisk / rtaaThresh);
 
+    // 6. Densité SCoT — capacité logements vs minimum SCoT
+    const scotDensMin = parseFloat(session.terrain?.scot_densite_min ?? 0);
+    let densiteScotScore = 0.5; // neutre si pas de données SCoT
+    let lgtsEstimes = 0;
+    let lgtsMinScot = 0;
+    if (scotDensMin > 0 && parcelArea > 0) {
+      const ha = parcelArea / 10000;
+      lgtsMinScot = Math.ceil(ha * scotDensMin);
+      // Estimation logements possibles : emprise * niveaux / ~80m² SDP par logement
+      const niveaux = plu.niveaux || 2;
+      lgtsEstimes = Math.floor(surf * niveaux / 80);
+      if (lgtsMinScot > 0) {
+        const ratio = lgtsEstimes / lgtsMinScot;
+        // 1.0 si ratio >= 1 (conforme), décroit linéairement en dessous
+        densiteScotScore = Math.max(0, Math.min(1, ratio));
+      }
+    }
+
     return {
       orientationScore: orientScore,
       vueScore:         viewScore,
       pluScore,
       gardenScore,
       rtaaScore,
+      densiteScotScore,
+      lgtsEstimes,
+      lgtsMinScot,
+      scotDensMin,
       hauteur_egout:    plu.h_egout,
       niveaux:          plu.niveaux,
       viewType:         ctx.viewDir < 180 ? 'mer' : 'montagne',
@@ -315,6 +383,15 @@ const EnvelopeGenerator = {
   },
 
   _aggregateScore(sd) {
+    // Si densité SCoT dispo, elle prend 10% sur PLU et jardin
+    if (sd.scotDensMin > 0) {
+      return sd.orientationScore  * 0.25
+           + sd.vueScore          * 0.15
+           + sd.pluScore          * 0.20
+           + sd.gardenScore       * 0.10
+           + sd.rtaaScore         * 0.20
+           + sd.densiteScotScore  * 0.10;
+    }
     return sd.orientationScore * 0.25
          + sd.vueScore         * 0.15
          + sd.pluScore         * 0.25
@@ -396,9 +473,9 @@ const EnvelopeGenerator = {
         if (offsetEdges.length > 0) offsetEdges.push({ ...offsetEdges[offsetEdges.length - 1] });
         continue;
       }
-      // Normale interieure en espace Y-inverse pour polygon CW : (+dy/len, -dx/len)
-      const nx  =  dy / len;
-      const ny  = -dx / len;
+      // Normale interieure en espace Y-inverse pour polygon CW : (-dy/len, +dx/len)
+      const nx  = -dy / len;
+      const ny  =  dx / len;
       const type = et[i] ?? 'lateral';
       const r    = type === 'voie' ? reculs.voie : type === 'fond' ? reculs.fond : reculs.lateral;
       offsetEdges.push({
@@ -531,6 +608,40 @@ const EnvelopeGenerator = {
       minX: Math.min(...pts.map(p => p.x)), maxX: Math.max(...pts.map(p => p.x)),
       minY: Math.min(...pts.map(p => p.y)), maxY: Math.max(...pts.map(p => p.y)),
     };
+  },
+
+  // Point-in-polygon (ray casting) pour {x,y}
+  _pointInPoly(pt, polygon) {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const yi = polygon[i].y, yj = polygon[j].y;
+      if ((yi > pt.y) !== (yj > pt.y) &&
+          pt.x < (polygon[j].x - polygon[i].x) * (pt.y - yi) / (yj - yi) + polygon[i].x) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  },
+
+  // Convex hull (Andrew's monotone chain) pour [{x,y}]
+  _convexHull(pts) {
+    if (pts.length < 3) return [...pts];
+    const sorted = [...pts].sort((a, b) => a.x - b.x || a.y - b.y);
+    const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+    const lower = [];
+    for (const p of sorted) {
+      while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
+      lower.push(p);
+    }
+    const upper = [];
+    for (let i = sorted.length - 1; i >= 0; i--) {
+      const p = sorted[i];
+      while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
+      upper.push(p);
+    }
+    lower.pop();
+    upper.pop();
+    return lower.concat(upper);
   },
 };
 
