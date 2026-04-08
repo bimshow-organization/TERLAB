@@ -40,15 +40,21 @@ import SlopesService     from './services/slopes-service.js';
 import SunCalcService    from './services/sun-calc-service.js';
 import SunState          from './services/sun-state.js';
 import TerrainSVG        from './services/terrain-svg-service.js';
-import LidarService      from './services/lidar-service.js';
-import EnvelopeGenerator from './services/envelope-generator.js';
+import LidarService        from './services/lidar-service.js';
+import LidarContextService from './services/lidar-context-service.js';
+import EnvelopeGenerator   from './services/envelope-generator.js';
 import PlanMasseEngine   from './services/plan-masse-engine.js';
 import TerrainProfile    from './services/terrain-profile.js';
 import ParetoScorer      from './services/pareto-scorer.js';
 import ViewDetector      from './services/view-detector.js';
 import BpfGardenAdvisor  from './services/bpf-garden-advisor.js';
-import BpfBridge         from './services/bpf-bridge.js';
-import RTAAAnalyzer      from './services/rtaa-analyzer.js';
+import ContourService         from './services/contour-service.js';
+import BpfBridge              from './services/bpf-bridge.js';
+import AutoPlanEngine         from './services/auto-plan-engine.js';
+import ExistingBuildings      from './services/existing-buildings.js';
+import CapacityStudyRenderer  from './services/capacity-study-renderer.js';
+import SdisChecker            from './services/sdis-checker.js';
+import RTAAAnalyzer           from './services/rtaa-analyzer.js';
 import UrbanismeAutorisations from './services/urbanisme-autorisations.js';
 
 // ─── Module aéraulique (Sprints 1-4) ────────────────────────
@@ -196,15 +202,21 @@ async function init() {
     window.SunCalcService    = SunCalcService;
     window.SunState          = SunState;
     window.TerrainSVG        = TerrainSVG;
-    window.LidarService      = LidarService;
-    window.EnvelopeGenerator = EnvelopeGenerator;
+    window.LidarService        = LidarService;
+    window.LidarContextService = LidarContextService;
+    window.EnvelopeGenerator   = EnvelopeGenerator;
     window.PlanMasseEngine   = PlanMasseEngine;
     window.TerrainProfile    = TerrainProfile;
     window.ParetoScorer      = ParetoScorer;
     window.ViewDetector      = ViewDetector;
     window.BpfGardenAdvisor  = BpfGardenAdvisor;
-    window.BpfBridge         = BpfBridge;
-    window.RTAAAnalyzer      = RTAAAnalyzer;
+    window.ContourService         = ContourService;
+    window.BpfBridge              = BpfBridge;
+    window.AutoPlanEngine         = AutoPlanEngine;
+    window.ExistingBuildings      = ExistingBuildings;
+    window.CapacityStudyRenderer  = CapacityStudyRenderer;
+    window.SdisChecker            = SdisChecker;
+    window.RTAAAnalyzer           = RTAAAnalyzer;
     window.UrbanismeAutorisations = UrbanismeAutorisations;
 
     // Composants phases
@@ -255,6 +267,9 @@ async function init() {
 
     setSplash('Chargement phase…', 80);
     await route();
+
+    // Topbar — afficher le terrain si déjà chargé
+    updateTerrainStrips();
 
     // Init GeoJSON layer system
     GeoJsonLayerService.restore();
@@ -627,7 +642,7 @@ const PHASE_ICONS_SVG = [
   /* 12 SYNTH */ `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 2.5h7l3 3V13.5H3V2.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M10 2.5v3h3" stroke="currentColor" stroke-width="1"/><path d="M5.5 7h5M5.5 9.5h5M5.5 12h3" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity=".6"/></svg>`,
   /* 13 WORLD */ `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.2"/><ellipse cx="8" cy="8" rx="3" ry="6" stroke="currentColor" stroke-width="1" opacity=".5"/><path d="M2 8h12M2.8 5h10.4M2.8 11h10.4" stroke="currentColor" stroke-width=".8" opacity=".4"/></svg>`,
 ];
-const PHASE_LABELS_SHORT = ['IDENT','TOPO','GEO','RISQ','PLU','VOIS','BIO','ESQ','CHANT','CO2','ENT','FDV','SYNTH','WORLD'];
+const PHASE_LABELS_SHORT = ['IDENT','TOPO','GEO','HYDRO','PLU','VOIS','BIO','ESQ','CHANT','CO2','ENT','FDV','SYNTH','WORLD'];
 
 function buildPhaseNav() {
   const nav = document.getElementById('tb-phases');
@@ -1245,6 +1260,17 @@ function updateValidationProgress(phaseId) {
 function updateTerrainStrips() {
   const terrain = SessionManager.getTerrain();
   if (!terrain.commune) return;
+
+  // Topbar — afficher le nom du terrain
+  const tbName = document.getElementById('tb-terrain-name');
+  if (tbName) {
+    const parts = [terrain.commune];
+    const ref = [terrain.section, terrain.parcelle].filter(Boolean).join('');
+    if (ref) parts.push(ref);
+    tbName.textContent = parts.join(' · ');
+    tbName.title = [terrain.commune, ref, terrain.contenance_m2 ? terrain.contenance_m2 + ' m²' : ''].filter(Boolean).join(' · ');
+  }
+
   const mappings = {
     'ts-commune':     terrain.commune,
     'ts-commune-p2':  terrain.commune,

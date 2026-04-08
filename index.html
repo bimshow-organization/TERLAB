@@ -12,7 +12,8 @@
 {
   "imports": {
     "three": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.module.js",
-    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.182.0/examples/jsm/"
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.182.0/examples/jsm/",
+    "copc": "https://cdn.jsdelivr.net/npm/copc@0.0.8/+esm"
   }
 }
 </script>
@@ -95,18 +96,10 @@
       <img src="assets/logo-giep.png" alt="TERLAB" width="48" height="48" style="object-fit:contain"/>
     </div>
 
-    <!-- Marque + session -->
-    <div class="tb-brand">
+    <!-- Marque + terrain -->
+    <div class="tb-brand" id="tb-brand">
       <span class="tb-name">TERLAB</span>
-      <span class="tb-sep" aria-hidden="true">·</span>
-      <span class="tb-sub">Île de La Réunion</span>
-    </div>
-
-    <!-- Score bar (compact, masquée par défaut — visible dans tb-brand) -->
-    <div class="terlab-score-bar" id="terlab-score-bar" aria-label="Score de progression TERLAB" role="status" style="display:none">
-      <span class="tsb-loc">Aucune parcelle</span>
-      <div class="tsb-progress"><div class="tsb-bar" style="width:0%"></div></div>
-      <span class="tsb-pct">0%</span>
+      <span class="tb-terrain-name" id="tb-terrain-name"></span>
     </div>
 
     <!-- Navigation phases -->
@@ -322,10 +315,15 @@
     </div>
     <div class="modal-body">
       <div class="export-grid">
-        <button class="export-btn" data-format="pdf" onclick="TerlabExport.generatePDF()">
-          <span class="export-icon">📄</span>
-          <span class="export-label">PDF A3</span>
-          <span class="export-desc">Synthèse 6 pages</span>
+        <button class="export-btn" data-format="pdf-site" onclick="TerlabExport.generatePDF('site')">
+          <span class="export-icon">🗺️</span>
+          <span class="export-label">PDF Site</span>
+          <span class="export-desc">Analyse terrain — 6 planches</span>
+        </button>
+        <button class="export-btn" data-format="pdf-projet" onclick="TerlabExport.generatePDF('projet')">
+          <span class="export-icon">📐</span>
+          <span class="export-label">PDF Projet</span>
+          <span class="export-desc">Site + plan masse — 8 planches</span>
         </button>
         <button class="export-btn" data-format="dxf" onclick="TerlabExport.generateDXF()">
           <span class="export-icon">📐</span>

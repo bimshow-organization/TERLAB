@@ -144,16 +144,12 @@
       "validations": [
         { "id": "v03a", "texte": "Zonage PPRN confirmé (R1 / R2 / B1 / B2 / J / hors zone)", "bloquant": true },
         { "id": "v03b", "texte": "Cote NGR de référence saisie (ou 'non concerné')", "bloquant": true },
-        { "id": "v03c", "texte": "Présence SDIS / hydrant à moins de 150m vérifiée", "bloquant": true },
-        { "id": "v03d", "texte": "Accès pompiers conforme (largeur ≥ 3m, hauteur libre ≥ 3.5m)", "bloquant": false },
-        { "id": "v03e", "texte": "PPRL vérifié si zone littorale (distance mer < 500m)", "bloquant": false }
+        { "id": "v03c", "texte": "PPRL vérifié si zone littorale (distance mer < 500m)", "bloquant": false }
       ],
       "input_fields": [
         { "id": "zone_pprn", "label": "Zonage PPRN", "type": "select", "options": ["R1 — Rouge fort (inconstructible)", "R2 — Rouge modéré (inconstructible)", "B1 — Bleu fort (sous conditions strictes)", "B2 — Bleu modéré (sous conditions)", "J — Jaune (vigilance)", "W — Blanc (hors zone)", "Hors PPRN approuvé (PAC applicable)", "À vérifier"], "required": true },
         { "id": "cote_ngr", "label": "Cote de référence NGR (m)", "type": "number", "unit": "m NGR", "required": false },
         { "id": "distance_mer_m", "label": "Distance au trait de côte (m)", "type": "number", "unit": "m", "required": false },
-        { "id": "sdis_hydrant", "label": "Hydrant SDIS à moins de 150m", "type": "radio", "options": ["Oui", "Non", "À vérifier"], "required": true },
-        { "id": "acces_sdis", "label": "Accès sapeurs-pompiers conforme", "type": "radio", "options": ["Oui", "Non conforme", "À vérifier"], "required": true },
         { "id": "zone_feu_vegetation", "label": "Zone à risque feu de végétation", "type": "radio", "options": ["Oui", "Non", "À vérifier"], "required": false }
       ],
       "auto_detected": ["risques_georisques", "simulation_eau_dem"],

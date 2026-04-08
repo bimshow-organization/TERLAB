@@ -138,13 +138,23 @@ html, body { overflow: auto; }
   width: 100%;
   max-width: 720px;
 }
+.accueil-projects-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
 .accueil-projects-title {
   font-family: var(--font-mono);
   font-size: 0.7rem;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  margin-bottom: 16px;
+}
+.accueil-projects-count {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--faint);
 }
 .accueil-grid {
   display: grid;
@@ -156,14 +166,15 @@ html, body { overflow: auto; }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 16px;
+  overflow: hidden;
   cursor: pointer;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
   position: relative;
 }
 .project-card:hover {
   border-color: var(--accent);
   box-shadow: var(--sh);
+  transform: translateY(-2px);
 }
 .project-card-new {
   border-style: dashed;
@@ -171,12 +182,16 @@ html, body { overflow: auto; }
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 140px;
+  min-height: 220px;
   color: var(--muted);
 }
 .project-card-new:hover {
   color: var(--accent);
   border-color: var(--accent);
+}
+.project-card-new.pc-disabled {
+  opacity: 0.4;
+  pointer-events: none;
 }
 .pc-new-icon {
   font-size: 1.8rem;
@@ -188,54 +203,92 @@ html, body { overflow: auto; }
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
+.pc-new-limit {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--faint);
+  margin-top: 6px;
+}
 
+/* ── Thumbnail ──────────────────────────────────────────── */
+.pc-thumb {
+  width: 100%;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.pc-thumb-initials {
+  font-family: var(--font-serif);
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: rgba(255,255,255,0.85);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.2);
+}
+.pc-thumb-pattern {
+  position: absolute;
+  inset: 0;
+  opacity: 0.12;
+  background-image:
+    repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,.15) 8px, rgba(255,255,255,.15) 9px);
+}
+.pc-thumb-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  border-radius: 0 2px 0 0;
+  transition: width 0.4s ease;
+}
+
+/* ── Card body ──────────────────────────────────────────── */
+.pc-body {
+  padding: 12px 14px 14px;
+}
 .pc-loc {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   color: var(--accent);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.pc-parcelle {
+.pc-name {
   font-family: var(--font-serif);
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: var(--text);
-  margin-bottom: 8px;
-}
-.pc-progress-bar {
-  width: 100%;
-  height: 3px;
-  background: var(--border);
-  border-radius: 2px;
-  overflow: hidden;
   margin-bottom: 6px;
-}
-.pc-progress-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.4s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .pc-meta {
   display: flex;
   justify-content: space-between;
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   color: var(--faint);
+  margin-bottom: 8px;
 }
 .pc-actions {
   display: flex;
   gap: 6px;
-  margin-top: 10px;
 }
 .pc-btn {
   flex: 1;
-  padding: 6px 10px;
+  padding: 5px 8px;
   border: 1px solid var(--border2);
   border-radius: 4px;
   background: var(--card);
   color: var(--text2);
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   cursor: pointer;
   text-align: center;
   transition: background 0.2s, color 0.2s;
@@ -247,6 +300,94 @@ html, body { overflow: auto; }
 .pc-btn-danger:hover {
   background: var(--danger);
   color: #fff;
+}
+
+/* ── Modal de confirmation ──────────────────────────────── */
+.tl-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.tl-modal-overlay.tl-modal-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.tl-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px 32px 24px;
+  max-width: 380px;
+  width: 90%;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+  transform: scale(0.95);
+  transition: transform 0.2s;
+}
+.tl-modal-visible .tl-modal {
+  transform: scale(1);
+}
+.tl-modal-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(180,60,60,0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  font-size: 1.2rem;
+}
+.tl-modal-title {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.tl-modal-msg {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text2);
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+.tl-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.tl-modal-btn {
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: 1px solid var(--border2);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.tl-modal-btn-cancel {
+  background: var(--card);
+  color: var(--text2);
+}
+.tl-modal-btn-cancel:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.tl-modal-btn-danger {
+  background: var(--danger, #b43c3c);
+  color: #fff;
+  border-color: transparent;
+}
+.tl-modal-btn-danger:hover {
+  background: #932f2f;
 }
 
 /* ── Barre basse ─────────────────────────────────────────── */
@@ -331,11 +472,29 @@ html, body { overflow: auto; }
 
   <!-- Projets existants -->
   <section class="accueil-projects">
-    <div class="accueil-projects-title">Mes projets terrains</div>
+    <div class="accueil-projects-header">
+      <div class="accueil-projects-title">Mes projets terrains</div>
+      <div class="accueil-projects-count" id="projects-count"></div>
+    </div>
     <div class="accueil-grid" id="accueil-grid">
       <!-- Rempli dynamiquement -->
     </div>
   </section>
+
+  <!-- Modal de confirmation suppression -->
+  <div class="tl-modal-overlay" id="delete-modal">
+    <div class="tl-modal">
+      <div class="tl-modal-icon">🗑</div>
+      <div class="tl-modal-title">Supprimer ce projet ?</div>
+      <div class="tl-modal-msg" id="delete-modal-msg">
+        Cette action est irréversible. Toutes les données de ce terrain seront perdues.
+      </div>
+      <div class="tl-modal-actions">
+        <button class="tl-modal-btn tl-modal-btn-cancel" id="delete-modal-cancel">Annuler</button>
+        <button class="tl-modal-btn tl-modal-btn-danger" id="delete-modal-confirm">Supprimer</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Actions basses -->
   <footer class="accueil-footer">
@@ -356,7 +515,8 @@ html, body { overflow: auto; }
 import TerlabStorage from './components/terlab-storage.js';
 
 // ── État ────────────────────────────────────────────────────
-const PREFS_KEY = 'terlab_accueil_prefs';
+const PREFS_KEY   = 'terlab_accueil_prefs';
+const MAX_PROJETS = 8;
 
 function loadPrefs() {
   try {
@@ -374,41 +534,110 @@ function savePrefs() {
   return prefs;
 }
 
+// ── Thumbnails ─────────────────────────────────────────────
+// Palette de couleurs terrain (géologie / topographie)
+const THUMB_COLORS = [
+  ['#5b7553','#3d5a3a'], ['#6b5b4a','#4a3d32'], ['#4a6670','#2d4a54'],
+  ['#7a6b3a','#5a4d28'], ['#6a4a5a','#4d3344'], ['#3a6b5b','#285a4a'],
+  ['#7a5a3a','#5a3d28'], ['#4a5a7a','#2d3d5a']
+];
+
+function thumbColor(id) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = ((h << 5) - h + id.charCodeAt(i)) | 0;
+  return THUMB_COLORS[Math.abs(h) % THUMB_COLORS.length];
+}
+
+function thumbInitials(s) {
+  // Parcelle / section disponible → initiales
+  const parcelle = s.terrain?.parcelle || s.terrain?.section;
+  if (parcelle) return parcelle.slice(0, 2).toUpperCase();
+  // Commune → initiales
+  if (s.terrain?.commune) {
+    const words = s.terrain.commune.split(/[\s-]+/);
+    if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+    return s.terrain.commune.slice(0, 2).toUpperCase();
+  }
+  // Nom projet ou étudiant
+  if (s.nom) return s.nom.slice(0, 2).toUpperCase();
+  if (s.etudiant) return s.etudiant.slice(0, 2).toUpperCase();
+  return 'T' + (s.createdAt ? new Date(s.createdAt).getDate() : '?');
+}
+
+// ── Nom affiché (jamais vide) ──────────────────────────────
+function projectDisplayName(s) {
+  // 1) Nom explicite donné par l'utilisateur
+  if (s.nom) return s.nom;
+  // 2) Parcelle + section
+  const parcelle = s.terrain?.parcelle;
+  const section  = s.terrain?.section;
+  if (parcelle && section) return `${section} · ${parcelle}`;
+  if (parcelle) return parcelle;
+  if (section)  return `Section ${section}`;
+  // 3) Adresse / lieu-dit
+  if (s.terrain?.adresse) return s.terrain.adresse;
+  if (s.terrain?.lieuDit) return s.terrain.lieuDit;
+  // 4) Commune seule
+  if (s.terrain?.commune) return `Terrain ${s.terrain.commune}`;
+  // 5) Étudiant + date
+  const d = s.createdAt ? new Date(s.createdAt) : new Date();
+  const dateStr = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  if (s.etudiant) return `${s.etudiant} · ${dateStr}`;
+  // 6) Dernier recours
+  return `Projet du ${dateStr}`;
+}
+
 // ── Rendu grille ────────────────────────────────────────────
 function render() {
   const grid = document.getElementById('accueil-grid');
   const sessions = TerlabStorage.listSessions();
+  const atLimit = sessions.length >= MAX_PROJETS;
+
+  // Compteur
+  document.getElementById('projects-count').textContent =
+    `${sessions.length} / ${MAX_PROJETS}`;
 
   let html = '';
 
   // Carte "Nouveau terrain"
   html += `
-    <div class="project-card project-card-new" id="card-new" tabindex="0" role="button" aria-label="Créer un nouveau projet terrain">
+    <div class="project-card project-card-new ${atLimit ? 'pc-disabled' : ''}"
+         id="card-new" tabindex="0" role="button"
+         aria-label="Créer un nouveau projet terrain">
       <div class="pc-new-icon">+</div>
       <div class="pc-new-label">Nouveau terrain</div>
+      ${atLimit ? '<div class="pc-new-limit">Maximum 8 projets atteint</div>' : ''}
     </div>`;
 
   // Sessions existantes
   for (const s of sessions) {
-    const commune = s.terrain?.commune || 'Sans commune';
-    const parcelle = s.terrain?.parcelle || s.terrain?.section || '';
-    const pct = s.completion ?? TerlabStorage._computeCompletion(s);
-    const col = pct < 30 ? 'var(--danger)' : pct < 60 ? 'var(--warning)' : 'var(--success)';
-    const ago = timeAgo(s.updatedAt);
+    const commune = s.terrain?.commune || '';
+    const name    = projectDisplayName(s);
+    const pct     = s.completion ?? TerlabStorage._computeCompletion(s);
+    const col     = pct < 30 ? 'var(--danger)' : pct < 60 ? 'var(--warning)' : 'var(--success)';
+    const ago     = timeAgo(s.updatedAt);
+    const [bg1, bg2] = thumbColor(s.id);
+    const initials = thumbInitials(s);
 
     html += `
-    <div class="project-card" data-id="${s.id}" tabindex="0" role="button" aria-label="Ouvrir ${commune} ${parcelle}">
-      <div class="pc-loc">${commune}</div>
-      <div class="pc-parcelle">${parcelle || 'Parcelle non définie'}</div>
-      <div class="pc-progress-bar"><div class="pc-progress-fill" style="width:${pct}%;background:${col}"></div></div>
-      <div class="pc-meta">
-        <span>${pct}% complété</span>
-        <span>${ago}</span>
+    <div class="project-card" data-id="${s.id}" tabindex="0" role="button" aria-label="Ouvrir ${name}">
+      <div class="pc-thumb" style="background:linear-gradient(135deg,${bg1},${bg2})">
+        <div class="pc-thumb-pattern"></div>
+        <span class="pc-thumb-initials">${initials}</span>
+        <div class="pc-thumb-progress" style="width:${pct}%;background:${col}"></div>
       </div>
-      <div class="pc-actions">
-        <button class="pc-btn pc-btn-open" data-id="${s.id}">Continuer</button>
-        <button class="pc-btn pc-btn-export" data-id="${s.id}" title="Exporter .terlab">Export</button>
-        <button class="pc-btn pc-btn-danger pc-btn-delete" data-id="${s.id}" title="Supprimer">✕</button>
+      <div class="pc-body">
+        ${commune ? `<div class="pc-loc">${commune}</div>` : ''}
+        <div class="pc-name" title="${name}">${name}</div>
+        <div class="pc-meta">
+          <span>${pct}%</span>
+          <span>${ago}</span>
+        </div>
+        <div class="pc-actions">
+          <button class="pc-btn pc-btn-open" data-id="${s.id}">Continuer</button>
+          <button class="pc-btn pc-btn-export" data-id="${s.id}" title="Exporter .terlab">Export</button>
+          <button class="pc-btn pc-btn-danger pc-btn-delete" data-id="${s.id}" title="Supprimer">✕</button>
+        </div>
       </div>
     </div>`;
   }
@@ -434,6 +663,31 @@ function timeAgo(dateStr) {
   if (days < 7) return `Il y a ${days}j`;
   return new Date(dateStr).toLocaleDateString('fr-FR');
 }
+
+// ── Modal de confirmation ──────────────────────────────────
+let _deleteResolve = null;
+
+function showDeleteModal(projectName) {
+  const overlay = document.getElementById('delete-modal');
+  document.getElementById('delete-modal-msg').innerHTML =
+    `Le projet <strong>${projectName}</strong> sera supprimé définitivement.<br>Cette action est irréversible.`;
+  overlay.classList.add('tl-modal-visible');
+  return new Promise(resolve => { _deleteResolve = resolve; });
+}
+
+function hideDeleteModal(result) {
+  document.getElementById('delete-modal').classList.remove('tl-modal-visible');
+  if (_deleteResolve) { _deleteResolve(result); _deleteResolve = null; }
+}
+
+document.getElementById('delete-modal-cancel')?.addEventListener('click', () => hideDeleteModal(false));
+document.getElementById('delete-modal-confirm')?.addEventListener('click', () => hideDeleteModal(true));
+document.getElementById('delete-modal')?.addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) hideDeleteModal(false);
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && _deleteResolve) hideDeleteModal(false);
+});
 
 // ── Événements ──────────────────────────────────────────────
 function attachEvents() {
@@ -461,11 +715,14 @@ function attachEvents() {
     });
   });
 
-  // Supprimer
+  // Supprimer — modal TERLAB
   document.querySelectorAll('.pc-btn-delete').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      if (confirm('Supprimer ce projet terrain ? Cette action est irréversible.')) {
+      const sess = TerlabStorage.getSession(btn.dataset.id);
+      const name = sess ? projectDisplayName(sess) : 'ce projet';
+      const confirmed = await showDeleteModal(name);
+      if (confirmed) {
         TerlabStorage.deleteSession(btn.dataset.id);
         render();
       }
@@ -474,6 +731,9 @@ function attachEvents() {
 }
 
 function createNew() {
+  const sessions = TerlabStorage.listSessions();
+  if (sessions.length >= MAX_PROJETS) return;
+
   const prefs = savePrefs();
   if (!prefs.etudiant) {
     document.getElementById('input-prenom').focus();
@@ -494,6 +754,11 @@ function openSession(id) {
 
 // ── Import .terlab ──────────────────────────────────────────
 document.getElementById('btn-import')?.addEventListener('click', () => {
+  const sessions = TerlabStorage.listSessions();
+  if (sessions.length >= MAX_PROJETS) {
+    showDeleteModal('import impossible — maximum 8 projets atteint');
+    return;
+  }
   document.getElementById('file-import').click();
 });
 
