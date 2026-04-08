@@ -530,7 +530,7 @@ const BpfBridge = {
 
   MAX_AREA: MAX_PARCEL_AREA,
 
-  async generate(session, parcelLocal, edgeTypes, buildingPoly) {
+  async generate(session, parcelLocal, edgeTypes, buildingPoly, envZones = null) {
     const db = await _loadDb();
     const terrain = session?.terrain ?? {};
     const p4 = session?.phases?.[4]?.data ?? {};
@@ -611,7 +611,13 @@ const BpfBridge = {
     }
 
     // ══ VEGETATION ═══════════════════════════════════════════════════
-    const zones = _decomposeZones(parcelLocal, edges, buildingPoly, reculs, pprnLocal);
+    // Si envZones fourni, surcharger les zones calculées avec les zones inset réelles
+    let zones;
+    if (envZones) {
+      zones = this._zonesFromEnvZones(envZones, parcelLocal, buildingPoly);
+    } else {
+      zones = _decomposeZones(parcelLocal, edges, buildingPoly, reculs, pprnLocal);
+    }
     const plants = [];
 
     for (const zone of zones) {
@@ -833,7 +839,59 @@ const BpfBridge = {
       byStrate, byZone, bySpecies,
       speciesCount: Object.keys(bySpecies).length,
       protectedCount: plants.filter(p => p.status === 'protege').length,
+      // Stats enrichies pour Sprint 5 — connexion PLU/GIEP
+      arbres: plants.filter(p => !p.isPalm && (p.trunkH ?? 0) > 2).length,
+      strates: Object.keys(byStrate),
+      airesJeuxM2: (amenities ?? []).filter(a => a.type === 'aire_jeux').reduce((s, a) => s + (a.w ?? 0) * (a.h ?? 0), 0),
+      permVegetaliseeM2: Math.round(Math.max(0, gardenArea * (totalCanopy > 0 ? Math.min(1, totalCanopy / gardenArea) : 0.6))),
     };
+  },
+
+  /**
+   * Construit les zones de végétation depuis envZones (p07 capacity study)
+   * envZones = { voie: {poly, width, bearing}, lat: [{poly, side}], fond: {poly, width}, perm: {poly, area} }
+   */
+  _zonesFromEnvZones(envZones, parcelLocal, buildingPoly) {
+    const zones = [];
+
+    // Zone voie → arbres d'alignement
+    if (envZones.voie?.poly?.length >= 3) {
+      zones.push({
+        type: 'bande_voie',
+        poly: envZones.voie.poly.map(p => Array.isArray(p) ? { x: p[0], y: p[1] } : p),
+        width: envZones.voie.width ?? 3,
+      });
+    }
+
+    // Zones latérales → haies
+    for (const lat of (envZones.lat ?? [])) {
+      if (lat.poly?.length >= 3) {
+        zones.push({
+          type: 'lateral',
+          poly: lat.poly.map(p => Array.isArray(p) ? { x: p[0], y: p[1] } : p),
+          side: lat.side,
+        });
+      }
+    }
+
+    // Zone fond → arbres endémiques
+    if (envZones.fond?.poly?.length >= 3) {
+      zones.push({
+        type: 'fond_parcelle',
+        poly: envZones.fond.poly.map(p => Array.isArray(p) ? { x: p[0], y: p[1] } : p),
+        width: envZones.fond.width ?? 3,
+      });
+    }
+
+    // Zone perméable résiduelle → jardins
+    if (envZones.perm?.poly?.length >= 3) {
+      zones.push({
+        type: 'residuel',
+        poly: envZones.perm.poly.map(p => Array.isArray(p) ? { x: p[0], y: p[1] } : p),
+      });
+    }
+
+    return zones;
   },
 
   _checkPlantationCompliance(plants, rules, parcelArea, buildingPoly) {

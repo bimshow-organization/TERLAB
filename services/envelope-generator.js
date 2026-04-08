@@ -1,6 +1,7 @@
 // TERLAB · services/envelope-generator.js
-// Shape Grammar PLU v2 — Mueller et al. 2006 adapte RTAA DOM / Reunion
+// Shape Grammar PLU v2.1 — Mueller et al. 2006 adapte RTAA DOM / Reunion
 // Pipeline : Lot → SetBack → FootprintZone → ShapeRules → Volume → Score Pareto
+// v2.1 : utilise TerrainP07Adapter pour lineIsect, PIR et validate
 
 const EnvelopeGenerator = {
 
@@ -11,15 +12,26 @@ const EnvelopeGenerator = {
     const p4      = session?.phases?.[4]?.data ?? {};
     const terrain = session?.terrain ?? {};
 
-    // ── 1. Regles PLU ────────────────────────────────────────────
+    // ── 1. Regles PLU (session + TERLAB_PLU_CONFIG réel) ────────
+    const realPlu = (typeof window !== 'undefined' ? window.TERLAB_PLU_CONFIG?.plu : null) ?? {};
+    let reculVoie = parseFloat(p4.recul_voie_principale_m ?? p4.recul_voie_m ?? p4.recul_avant_m ?? 3) || 3;
+    // Alignement voie autorisé → recul voie = 0 (enveloppe agrandie côté voie)
+    if (realPlu.voie_alignement === true) reculVoie = 0;
+
+    let hFaitage = parseFloat(realPlu.heMax ?? p4.hauteur_faitage_m ?? 9) || 9;
+    // Cap absolu PLU
+    if (realPlu.hauteur_absolue_max_m) {
+      hFaitage = Math.min(hFaitage, realPlu.hauteur_absolue_max_m);
+    }
+
     const PLU = {
-      recul_voie:    parseFloat(p4.recul_voie_principale_m ?? p4.recul_voie_m ?? p4.recul_avant_m ?? 3) || 3,
+      recul_voie:    reculVoie,
       recul_fond:    parseFloat(p4.recul_fond_m  ?? 3)                       || 3,
       recul_lat:     parseFloat(p4.recul_limite_sep_m ?? p4.recul_lat_m ?? 0) || 0,
       h_egout:       parseFloat(p4.hauteur_max_m ?? p4.hauteur_egout_m ?? 7) || 7,
-      h_faitage:     parseFloat(p4.hauteur_faitage_m ?? 9)                   || 9,
+      h_faitage:     hFaitage,
       ces_max:       parseFloat(p4.emprise_sol_max_pct ? p4.emprise_sol_max_pct / 100 : p4.ces_max ?? 0.7) || 0.7,
-      cos_max:       parseFloat(p4.cos_max ?? 2.1)                           || 2.1,
+      cos_max:       parseFloat(realPlu.cos ?? p4.cos_max ?? 2.1) || 2.1,
       niveaux:       parseInt(p4.niveaux_max ?? 2)                           || 2,
     };
 
@@ -34,6 +46,16 @@ const EnvelopeGenerator = {
     if (!parcel || parcel.length < 3) return [];
     if (!edges || edges.length !== parcel.length) {
       edges = new Array(parcel.length).fill('lateral');
+    }
+
+    // Validation robuste via TerrainP07Adapter si disponible
+    const TA = typeof window !== 'undefined' ? window.TerrainP07Adapter : null;
+    if (TA) {
+      const polyArr = parcel.map(p => [p.x, p.y]);
+      const validation = TA.validate(polyArr, null, session);
+      if (validation?.warnings?.length) {
+        validation.warnings.forEach(w => console.warn('[EnvelopeGenerator]', w));
+      }
     }
 
     let zone = this._setback(parcel, edges, PLU);
@@ -154,8 +176,18 @@ const EnvelopeGenerator = {
     w = Math.min(w, W);
     h = Math.min(h, H);
 
-    const cx = (bbox.minX + bbox.maxX) / 2;
-    const cy = (bbox.minY + bbox.maxY) / 2;
+    // Centre optimal : PIR si disponible, sinon centroïde bbox
+    let cx, cy;
+    const TA2 = typeof window !== 'undefined' ? window.TerrainP07Adapter : null;
+    if (TA2?.poleOfInaccessibility) {
+      const polyArr = zone.map(p => [p.x, p.y]);
+      const [pirX, pirY] = TA2.poleOfInaccessibility(polyArr, 1.5);
+      cx = pirX;
+      cy = pirY;
+    } else {
+      cx = (bbox.minX + bbox.maxX) / 2;
+      cy = (bbox.minY + bbox.maxY) / 2;
+    }
 
     const polygon = [
       { x: cx - w/2, y: cy - h/2 },
@@ -551,6 +583,13 @@ const EnvelopeGenerator = {
   // ── UTILITAIRES GEOMETRIQUES ───────────────────────────────────
 
   _intersectLines(a, b, c, d) {
+    // Déléguer à TerrainP07Adapter.lineIsect si disponible (plus robuste : midpoint + spike guard)
+    const TA = typeof window !== 'undefined' ? window.TerrainP07Adapter : null;
+    if (TA?.lineIsect) {
+      const [ix, iy] = TA.lineIsect(a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y);
+      return { x: ix, y: iy };
+    }
+    // Fallback intersection classique
     const a1 = b.y - a.y, b1 = a.x - b.x, c1 = a1 * a.x + b1 * a.y;
     const a2 = d.y - c.y, b2 = c.x - d.x, c2 = a2 * c.x + b2 * c.y;
     const det = a1 * b2 - a2 * b1;

@@ -308,6 +308,90 @@ const PLUService = {
     };
   },
 
+  // ─── Détection auto ABF / OAP / SUP HT ─────────────────────────
+  /**
+   * Analyse les couches GPU pour détecter automatiquement :
+   *  - Secteur ABF (prescriptions AC1/AC2, assiettes MH)
+   *  - OAP sectorielle (fichiers document GPU)
+   *  - SUP lignes haute tension (assiettes I4, mots-clés énergie)
+   *
+   * @param {number} lat
+   * @param {number} lng
+   * @param {string|null} documentId — GPU document id (si déjà récupéré)
+   * @returns {{ abf: {detected:boolean, label:string|null},
+   *             oap: {detected:boolean, files:string[]},
+   *             sup_ht: {detected:boolean, label:string|null} }}
+   */
+  async detectConstraints(lat, lng, documentId = null) {
+    const result = {
+      abf:    { detected: false, label: null },
+      oap:    { detected: false, files: [] },
+      sup_ht: { detected: false, label: null },
+    };
+
+    const geom = encodeURIComponent(JSON.stringify({
+      type: 'Point', coordinates: [lng, lat]
+    }));
+
+    // Fetch prescriptions surfaciques + assiettes SUP en parallèle
+    const [prescSurf, assiettes, oapFiles] = await Promise.allSettled([
+      resilientJSON(`https://apicarto.ign.fr/api/gpu/prescription-surf?geom=${geom}`,
+        { timeoutMs: 8000, retries: 1, fallback: null }),
+      resilientJSON(`https://apicarto.ign.fr/api/gpu/assiette-sup-s?geom=${geom}`,
+        { timeoutMs: 8000, retries: 1, fallback: null }),
+      documentId ? this.getDocumentFiles(documentId) : Promise.resolve([]),
+    ]);
+
+    // ── ABF : prescriptions AC1/AC2 ou assiettes "monument historique" ──
+    const prescFeatures = prescSurf.status === 'fulfilled'
+      ? (prescSurf.value?.features ?? []) : [];
+    const abfPresc = prescFeatures.find(f => {
+      const code = (f.properties?.typepsc ?? '').toString();
+      // Codes GPU patrimoine : 05 (ER patrimoine), 07 (MH), AC1, AC2
+      return code === '07' || code.startsWith('AC');
+    });
+    if (abfPresc) {
+      result.abf.detected = true;
+      result.abf.label = abfPresc.properties?.libelle ?? 'Prescription patrimoine détectée';
+    }
+
+    const supFeatures = assiettes.status === 'fulfilled'
+      ? (assiettes.value?.features ?? []) : [];
+    if (!result.abf.detected) {
+      const abfSup = supFeatures.find(f => {
+        const lib = (f.properties?.libelle ?? '').toLowerCase();
+        const cat = (f.properties?.categorie ?? f.properties?.idgen ?? '').toString().toUpperCase();
+        return cat.startsWith('AC') || /monument.hist|abf|patrimoin|p[eé]rim[eè]tre.*protect/i.test(lib);
+      });
+      if (abfSup) {
+        result.abf.detected = true;
+        result.abf.label = abfSup.properties?.libelle ?? 'Servitude ABF détectée';
+      }
+    }
+
+    // ── SUP HT : assiettes I4 ou mots-clés énergie / haute tension ──
+    const htSup = supFeatures.find(f => {
+      const lib = (f.properties?.libelle ?? '').toLowerCase();
+      const cat = (f.properties?.categorie ?? f.properties?.idgen ?? '').toString().toUpperCase();
+      return cat.startsWith('I4')
+        || /haute.tension|ligne.*[eé]lectr|transport.*[eé]nergie|rte|edf.*ht/i.test(lib);
+    });
+    if (htSup) {
+      result.sup_ht.detected = true;
+      result.sup_ht.label = htSup.properties?.libelle ?? 'Servitude ligne HT détectée';
+    }
+
+    // ── OAP : fichiers OAP dans le document GPU ──
+    const files = oapFiles.status === 'fulfilled' ? (oapFiles.value ?? []) : [];
+    const oapMatches = files.filter(f => f.type === 'oap');
+    if (oapMatches.length) {
+      result.oap.detected = true;
+      result.oap.files = oapMatches.map(f => f.name);
+    }
+
+    return result;
+  },
+
   // ─── Lien direct Géoportail Urbanisme pour la commune ───────────
   getGPUUrl(commune, insee) {
     return `https://www.geoportail-urbanisme.gouv.fr/commune/${insee}/document/list`;

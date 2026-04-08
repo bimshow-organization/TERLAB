@@ -99,6 +99,19 @@ export class PLUP07Adapter {
     const parkVisit = this._parseParking(zoneData.stationnement?.visiteur_par_5lots
       ?? zoneData.stationnement?.visiteur_par_5logements, 1);
 
+    // Remonter les ambiguïtés déclarées dans le JSON
+    const ambiguites = zoneData?._meta?.ambiguites ?? [];
+    if (ambiguites.length) {
+      ambiguites.forEach(a => warnings.push(`⚠ ${a}`));
+    }
+    // Signaler les valeurs manquantes critiques pour que l'utilisateur vérifie
+    if (zoneData?.hauteurs?.hf_max_m == null && zoneData?.hauteurs?.he_max_m == null && zoneData?.hauteurs?.h_max_m == null) {
+      warnings.push('Hauteur max non chiffrée dans le PLU — vérifiez le document graphique');
+    }
+    if (zoneData?.emprise?.emprise_sol_max_pct == null) {
+      warnings.push('Emprise au sol non chiffrée dans le PLU — vérifiez le règlement');
+    }
+
     const confidence = this._computeConfidence(zoneData, warnings);
 
     return {
@@ -146,11 +159,34 @@ export class PLUP07Adapter {
         loi_littoral: zoneData.loi_littoral ?? false,
         usages:       zoneData.usages ?? {},
         versants_obligatoire: zoneData.toiture?.versants_obligatoire ?? true,
+        pente_toiture_min_pct: zoneData.toiture?.pente_min_pct ?? null,
+        pente_toiture_max_pct: zoneData.toiture?.pente_max_pct ?? null,
+        versants_pct_volume:   zoneData.toiture?.versants_pct_volume ?? null,
         ebc:          zoneData.contraintes_specifiques?.ebc ?? false,
-        // Stationnement réel
+        // COS
+        cos:          zoneData.emprise?.cos ?? null,
+        // Annexes
+        annexe_hf_max_m:       zoneData.hauteurs?.annexe_hf_max_m ?? null,
+        annexe_emprise_max_m2: zoneData.hauteurs?.annexe_emprise_max_m2 ?? null,
+        // Bonifications hauteur
+        bonus_logement_social: zoneData.hauteurs?.bonus_logement_social_50pct ?? null,
+        bonus_hotel:           zoneData.hauteurs?.bonus_hotel ?? null,
+        bonus_vide_sanitaire:  zoneData.hauteurs?.bonus_vide_sanitaire ?? null,
+        hauteur_absolue_max_m: zoneData.hauteurs?.hauteur_absolue_max_m ?? null,
+        // Reculs détaillés
+        voie_alignement:       zoneData.reculs?.voie_alignement ?? null,
+        sep_lat_longueur_max_m: zoneData.reculs?.sep_lat_longueur_max_m ?? null,
+        // Perméabilité détaillée
+        marge_recul_voie_permeable_pct: zoneData.permeabilite?.marge_recul_voie_permeable_pct ?? null,
+        // Stationnement réel — résidentiel
         park_logement_std:  parkStd,
         park_logement_aide: parkAide,
         park_visiteur_par5: parkVisit,
+        // Stationnement — non résidentiel
+        park_commerce_bureau:     zoneData.stationnement?.commerce_bureau ?? null,
+        park_hotel_par_2chambres: zoneData.stationnement?.hotel_par_2chambres ?? null,
+        park_enseignement:        zoneData.stationnement?.enseignement_par_classe ?? null,
+        park_erp:                 zoneData.stationnement?.erp_par_10personnes ?? null,
         // Logements aidés PLU
         aide_seuil_m2:  zoneData.logement_aide?.sdp_seuil_1_m2
                      ?? zoneData.logement_aide?.sdp_seuil_m2
@@ -158,6 +194,14 @@ export class PLUP07Adapter {
         aide_pct:       zoneData.logement_aide?.pct_seuil_1
                      ?? zoneData.logement_aide?.pct_aide
                      ?? regles.logement_aide_pct ?? null,
+        // Notes pédagogiques (textes PLU détaillés)
+        notes: {
+          hauteur:      zoneData.hauteurs?.hauteur_note ?? zoneData.hauteurs?.note ?? null,
+          emprise:      zoneData.emprise?.emprise_note ?? null,
+          permeabilite: zoneData.permeabilite?.permeable_note ?? null,
+          reculs_voie:  zoneData.reculs?.voie_note ?? null,
+          reculs_lat:   zoneData.reculs?.sep_lat_note ?? null,
+        },
       },
 
       _meta: {
@@ -184,8 +228,41 @@ export class PLUP07Adapter {
 
   /* ── Calcul parking PLU réel ─────────────────────────────── */
 
-  computeParking(nbLgts, nbAide, pluConfig) {
+  /**
+   * Calcul du stationnement PLU — résidentiel et non-résidentiel
+   * @param {number} nbLgts     — nombre logements (résidentiel)
+   * @param {number} nbAide     — nombre logements aidés
+   * @param {Object} pluConfig  — config PLU (plu.park_*)
+   * @param {Object} [options]  — { type, sp, effectif, nbChambres, nbClasses }
+   */
+  computeParking(nbLgts, nbAide, pluConfig, options = {}) {
     const p = pluConfig ?? {};
+    const { type, sp, effectif, nbChambres, nbClasses } = options;
+
+    // Non-résidentiel : règles spécifiques PLU
+    if (type === 'bureau' || type === 'commerce') {
+      const ratio = p.park_commerce_bureau;
+      if (ratio && sp) {
+        // ratio = "1 pour 50m² SP" → on parse le nombre
+        const r = typeof ratio === 'string' ? parseFloat(ratio.match(/(\d+)/)?.[1] ?? 50) : ratio;
+        return Math.ceil(sp / r);
+      }
+      return Math.ceil((sp ?? 0) / 50); // fallback 1 PK / 50 m² SP
+    }
+    if (type === 'hotel' || type === 'hebergement') {
+      const r = p.park_hotel_par_2chambres ?? 1;
+      return Math.ceil((nbChambres ?? 0) / 2 * r);
+    }
+    if (type === 'enseignement') {
+      const r = p.park_enseignement ?? 2;
+      return Math.ceil((nbClasses ?? 0) * r);
+    }
+    if (type === 'erp' || type === 'sante') {
+      const r = p.park_erp ?? 1;
+      return Math.ceil((effectif ?? 0) / 10 * r);
+    }
+
+    // Résidentiel (maison / collectif)
     const nbLibre = Math.max(0, nbLgts - nbAide);
     const plStd   = Math.ceil(nbLibre * (p.park_logement_std  ?? 2));
     const plAide  = Math.ceil(nbAide  * (p.park_logement_aide ?? 1));

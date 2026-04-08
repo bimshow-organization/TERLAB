@@ -1,14 +1,18 @@
-// TERLAB · lidar-service.js · Interface avec Lidar-fetcher (serveur Python local)
-// Données LiDAR HD IGN via COPC streaming — précision ±0.15m
+// TERLAB · lidar-service.js · LiDAR HD IGN client-side (COPC streaming navigateur)
+// Zéro serveur — lit directement les tuiles IGN via HTTP range requests
+// Fallback optionnel vers serveur Python local (LIDAR_CFG.USE_LOCAL_SERVER)
 // ENSA La Réunion · MGA Architecture
 
+import { tilesForBboxWgs84, bboxWgs84ToUtm } from '../utils/copc-tile-index.js';
+import { readPointsBbox } from '../utils/copc-reader.js';
+
 const LIDAR_CFG = {
+  USE_LOCAL_SERVER: false,           // true → fallback vers localhost:8000
   SERVER_URL: 'http://localhost:8000',
-  TIMEOUT_MS: 30000,
+  TIMEOUT_MS: 60000,                 // 60s pour le mode navigateur (range requests séquentielles)
   AVAILABILITY_CACHE_MS: 30000,
   DEFAULT_MARGIN_M: 50,
   DEFAULT_MAX_POINTS: 200000,
-  // 1° lat ≈ 111 320 m · 1° lng ≈ 103 900 m à La Réunion (lat ≈ -21°)
   M_PER_DEG_LAT: 111320,
   M_PER_DEG_LNG: 103900,
 };
@@ -18,54 +22,110 @@ const LidarService = {
   _availableCache: null,
   _availableCacheTs: 0,
 
-  // ── Vérifier si le serveur LiDAR local est accessible ───────────
+  // ── Cache mémoire des points bruts (persiste entre phases) ─────────
+  _rawPoints: null,
+  _rawPointsClasses: null,
+
+  setRawPoints(points, classes) {
+    this._rawPoints = points ?? null;
+    this._rawPointsClasses = classes ?? null;
+  },
+  getRawPoints()        { return this._rawPoints; },
+  getRawPointsClasses() { return this._rawPointsClasses; },
+  clearRawPoints()      { this._rawPoints = null; this._rawPointsClasses = null; },
+
+  // ── Vérifier la disponibilité ──────────────────────────────────────
   async isAvailable() {
     const now = Date.now();
     if (this._availableCache !== null && now - this._availableCacheTs < LIDAR_CFG.AVAILABILITY_CACHE_MS) {
       return this._availableCache;
     }
-    try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 3000);
-      const res = await fetch(`${LIDAR_CFG.SERVER_URL}/api/files`, { signal: ctrl.signal });
-      clearTimeout(timer);
-      this._availableCache = res.ok;
-    } catch {
-      this._availableCache = false;
+
+    if (LIDAR_CFG.USE_LOCAL_SERVER) {
+      // Mode serveur local
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 3000);
+        const res = await fetch(`${LIDAR_CFG.SERVER_URL}/api/files`, { signal: ctrl.signal });
+        clearTimeout(timer);
+        this._availableCache = res.ok;
+      } catch {
+        this._availableCache = false;
+      }
+    } else {
+      // Mode navigateur — vérifier qu'IGN répond aux range requests
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 5000);
+        const res = await fetch(
+          'https://data.geopf.fr/telechargement/download/LiDARHD-NUALID',
+          { method: 'HEAD', signal: ctrl.signal }
+        );
+        clearTimeout(timer);
+        // HEAD sur répertoire IGN peut retourner 404/405/403 — seul un timeout/erreur réseau signifie indisponible
+        this._availableCache = res.status < 500;
+      } catch {
+        this._availableCache = false;
+      }
     }
+
     this._availableCacheTs = now;
     return this._availableCache;
   },
 
-  // ── Récupérer les points LiDAR pour une bbox parcelle + marge ───
+  // ── Récupérer les points LiDAR pour une parcelle ───────────────────
   async getPointsForParcel(parcelleGeojson, marginMeters = LIDAR_CFG.DEFAULT_MARGIN_M, options = {}) {
     const bbox = this._bboxFromGeojson(parcelleGeojson, marginMeters);
     if (!bbox) throw new Error('Impossible de calculer la bbox depuis le GeoJSON');
 
     const classes = options.classes ?? '2';
     const maxPoints = options.maxPoints ?? LIDAR_CFG.DEFAULT_MAX_POINTS;
+    const onProgress = options.onProgress ?? null;
 
-    const url = `${LIDAR_CFG.SERVER_URL}/api/points-bbox`
-      + `?minLng=${bbox.minLng}&minLat=${bbox.minLat}`
-      + `&maxLng=${bbox.maxLng}&maxLat=${bbox.maxLat}`
-      + `&maxPoints=${maxPoints}&classes=${classes}`;
+    // ── Mode serveur local (fallback) ──────────────────────────────
+    if (LIDAR_CFG.USE_LOCAL_SERVER) {
+      const url = `${LIDAR_CFG.SERVER_URL}/api/points-bbox`
+        + `?minLng=${bbox.minLng}&minLat=${bbox.minLat}`
+        + `&maxLng=${bbox.maxLng}&maxLat=${bbox.maxLat}`
+        + `&maxPoints=${maxPoints}&classes=${classes}`;
 
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), LIDAR_CFG.TIMEOUT_MS);
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), LIDAR_CFG.TIMEOUT_MS);
+      const res = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(timer);
 
-    const res = await fetch(url, { signal: ctrl.signal });
-    clearTimeout(timer);
+      if (!res.ok) throw new Error(`Serveur LiDAR HTTP ${res.status}`);
+      const data = await res.json();
 
-    if (!res.ok) throw new Error(`Serveur LiDAR HTTP ${res.status}`);
-    const data = await res.json();
+      return {
+        points: data.points ?? [],
+        bounds: data.bounds ?? bbox,
+        count: data.count ?? data.points?.length ?? 0,
+        source: data.source ?? 'local_server',
+        tile_count: data.tile_count ?? 0,
+      };
+    }
 
-    return {
-      points: data.points ?? [],
-      bounds: data.bounds ?? bbox,
-      count: data.count ?? data.points?.length ?? 0,
-      source: data.source ?? 'unknown',
-      tile_count: data.tile_count ?? 0,
-    };
+    // ── Mode navigateur (COPC direct) ──────────────────────────────
+    if (onProgress) onProgress({ phase: 'tiles', message: 'Localisation des tuiles IGN…' });
+
+    // 1. Trouver les tuiles qui couvrent la bbox
+    const tiles = tilesForBboxWgs84(bbox.minLng, bbox.minLat, bbox.maxLng, bbox.maxLat);
+    if (tiles.length === 0) throw new Error('Aucune tuile LiDAR HD pour cette zone');
+
+    // 2. Convertir la bbox en UTM40S pour le filtrage spatial
+    const utmBbox = bboxWgs84ToUtm(bbox.minLng, bbox.minLat, bbox.maxLng, bbox.maxLat);
+
+    if (onProgress) onProgress({ phase: 'loading', message: `Chargement LiDAR HD (${tiles.length} tuile${tiles.length > 1 ? 's' : ''})…` });
+
+    // 3. Lire les points via COPC streaming
+    const result = await readPointsBbox(
+      tiles,
+      utmBbox.minX, utmBbox.minY, utmBbox.maxX, utmBbox.maxY,
+      { classes, maxPoints, onProgress },
+    );
+
+    return result;
   },
 
   // ── Analyse terrain (pente, exposition, altitudes) depuis points sol ──
@@ -75,14 +135,12 @@ const LidarService = {
       return { error: 'Pas assez de points sol dans la parcelle', count: groundPts.length };
     }
 
-    // Altitudes
     const alts = groundPts.map(p => p[2]);
     const altMin = Math.min(...alts);
     const altMax = Math.max(...alts);
     const denivele = altMax - altMin;
 
     // Plan de régression par moindres carrés : z = a*x + b*y + c
-    // x = lng en mètres, y = lat en mètres (relatif au centroïde)
     const cx = groundPts.reduce((s, p) => s + p[0], 0) / groundPts.length;
     const cy = groundPts.reduce((s, p) => s + p[1], 0) / groundPts.length;
 
@@ -98,14 +156,13 @@ const LidarService = {
     const det = sxx * syy - sxy * sxy;
     let slopeX = 0, slopeY = 0;
     if (Math.abs(det) > 1e-10) {
-      slopeX = (syy * sxz - sxy * syz) / det; // dz/dx
-      slopeY = (sxx * syz - sxy * sxz) / det; // dz/dy
+      slopeX = (syy * sxz - sxy * syz) / det;
+      slopeY = (sxx * syz - sxy * sxz) / det;
     }
 
     const slopePct = Math.sqrt(slopeX * slopeX + slopeY * slopeY) * 100;
 
-    // Exposition : direction de descente maximale (opposée au gradient)
-    const angle = Math.atan2(-slopeY, -slopeX) * 180 / Math.PI; // angle en degrés, 0 = Est
+    const angle = Math.atan2(-slopeY, -slopeX) * 180 / Math.PI;
     const expositions = ['E', 'NE', 'N', 'NO', 'O', 'SO', 'S', 'SE'];
     const idx = Math.round(((angle + 360) % 360) / 45) % 8;
 
@@ -122,27 +179,22 @@ const LidarService = {
 
   // ── Profil altimétrique HD depuis les points LiDAR ────────────────
   getProfileFromPoints(points, startLngLat, endLngLat, corridorWidth = 5) {
-    // Vecteur du profil
     const dx = (endLngLat[0] - startLngLat[0]) * LIDAR_CFG.M_PER_DEG_LNG;
     const dy = (endLngLat[1] - startLngLat[1]) * LIDAR_CFG.M_PER_DEG_LAT;
     const totalDist = Math.sqrt(dx * dx + dy * dy);
     if (totalDist < 1) return [];
 
-    // Vecteur unitaire du profil et normal
     const ux = dx / totalDist, uy = dy / totalDist;
 
-    // Projeter chaque point sol sur l'axe du profil
     const projected = [];
     for (const p of points) {
-      if (p.length >= 7 && p[6] !== 2) continue; // ne garder que le sol
+      if (p.length >= 7 && p[6] !== 2) continue;
       const px = (p[0] - startLngLat[0]) * LIDAR_CFG.M_PER_DEG_LNG;
       const py = (p[1] - startLngLat[1]) * LIDAR_CFG.M_PER_DEG_LAT;
 
-      // Distance perpendiculaire au corridor
       const perpDist = Math.abs(-uy * px + ux * py);
       if (perpDist > corridorWidth) continue;
 
-      // Distance le long de l'axe
       const alongDist = ux * px + uy * py;
       if (alongDist < -1 || alongDist > totalDist + 1) continue;
 
@@ -150,8 +202,6 @@ const LidarService = {
     }
 
     if (projected.length === 0) return [];
-
-    // Trier par distance et moyenner par tranches de 1m
     projected.sort((a, b) => a.distance_m - b.distance_m);
 
     const step = Math.max(1, Math.round(totalDist / 200));
@@ -169,7 +219,7 @@ const LidarService = {
     return profile;
   },
 
-  // ── Helpers internes ────────────────────────────────────────────
+  // ── Helpers internes ────────────────────────────────────────────────
 
   _bboxFromGeojson(geojson, marginMeters) {
     const coords = this._flatCoords(geojson);
@@ -205,11 +255,9 @@ const LidarService = {
     return [];
   },
 
-  // Point-in-polygon (ray casting) pour filtrer les points dans la parcelle
   _filterPointsInPolygon(points, geojson) {
     const ring = this._getOuterRing(geojson);
-    if (!ring) return points; // pas de polygone → on garde tout
-
+    if (!ring) return points;
     return points.filter(p => this._pointInRing(p[0], p[1], ring));
   },
 

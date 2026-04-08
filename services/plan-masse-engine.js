@@ -186,8 +186,20 @@ const PlanMasseEngine = {
     const maxSP = maxEmprise * (sc.eff ?? 0.82) * nvEffMax;
     const maxLgts = prog.type === 'maison' ? 1 : Math.floor(maxSP / SP_MOY);
 
-    // GIEP pré-dim (pour plus tard)
+    // GIEP pré-dim
     const Q = 0.9 * (80 / 3600) * impermeab;
+    const vGiep = Q * 600;
+    const sNoue = vGiep / 0.30;
+
+    // Surface perméable végétalisée (si stats BPF disponibles)
+    const bpfStats = state.bpfStats ?? null;
+    const permVeg = bpfStats?.permVegetaliseeM2 ?? (permPct * terrain.area / 100 * 0.6);
+    const giepIntegre = permVeg >= sNoue;
+
+    // Vérifications PLU plantations (si stats BPF disponibles)
+    const plantChecks = bpfStats
+      ? this._checkPlantations(state, terrain.area, nbLgts, bpfStats)
+      : [];
 
     return {
       // Scénario
@@ -205,7 +217,10 @@ const PlanMasseEngine = {
       // Subdivision
       nbBlocs, gapMin,
       // GIEP
-      Q, vGiep: Q * 600, sNoue: Q * 600 / 0.30,
+      Q, vGiep, sNoue,
+      giep: { Q, sNoue, permVeg, integre: giepIntegre },
+      // PLU Plantations
+      plantChecks,
     };
   },
 
@@ -311,6 +326,61 @@ const PlanMasseEngine = {
     if (plu.emprMax > 0 && plu.emprMax <= 1) plu.emprMax *= 100;
 
     return { poly, edgeTypes, reculs, area, plu, altitude: alt };
+  },
+
+  // ── VERIFICATION PLU PLANTATIONS ────────────────────────────
+  _checkPlantations(state, parcelArea, nLgts, bpfStats) {
+    const plu = state.terrain?.plu ?? {};
+    const pc = plu.plantations_communes ?? state.session?.pluConfig?.plantations_communes ?? {};
+    const checks = [];
+
+    // Ratio arbres / surface
+    const ratioArbresSol = parseInt(pc.ratio_espaces_libres?.match?.(/(\d+)/)?.[1] ?? 100);
+    const minArbres = Math.ceil(parcelArea / ratioArbresSol);
+
+    // Ratio arbres+arbustes / logements collectifs
+    const minArbresLgts = pc.ratio_collectif
+      ? Math.ceil(nLgts / 4)
+      : 0;
+
+    const minArbresTotal = Math.max(minArbres, minArbresLgts);
+    const actualArbres = bpfStats?.arbres ?? 0;
+
+    checks.push({
+      label: 'Arbres min. PLU',
+      ok: actualArbres >= minArbresTotal,
+      val: actualArbres,
+      rule: `≥ ${minArbresTotal}`,
+      unit: 'arbres',
+    });
+
+    // Aires de jeux
+    const ajLgt = parseFloat(pc.aires_jeux_m2_par_logement_collectif ?? 0);
+    if (ajLgt > 0 && nLgts > 0) {
+      const minAJ = ajLgt * nLgts;
+      const actualAJ = bpfStats?.airesJeuxM2 ?? 0;
+      checks.push({
+        label: 'Aires de jeux',
+        ok: actualAJ >= minAJ,
+        val: actualAJ.toFixed(0),
+        rule: `≥ ${minAJ.toFixed(0)}`,
+        unit: 'm²',
+      });
+    }
+
+    // 3 strates végétales
+    if (pc.minimum_3_strates) {
+      const strates = bpfStats?.strates ?? [];
+      checks.push({
+        label: '3 strates végétales',
+        ok: strates.length >= 3,
+        val: strates.join(', ') || '—',
+        rule: 'arbo + arbu + herbacé',
+        unit: '',
+      });
+    }
+
+    return checks;
   },
 
   // ── Utilitaires exportés ───────────────────────────────────

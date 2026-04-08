@@ -1,7 +1,7 @@
 // TERLAB · services/ppr-sampling-service.js
-// Multi-point PPR zone detection on parcel — pixel sampling + WMS fallback
+// Multi-point PPR zone detection on parcel — offscreen WMS image sampling
 // Détecte les zones PPRN (R1/R2/B1/B2/J/W) couvrant la parcelle
-// et retourne des polygones locaux pour overlay SVG esquisse
+// via une image WMS dédiée (PPR seul, fond transparent) sur canvas offscreen
 // ════════════════════════════════════════════════════════════════════
 
 import PPRService from './ppr-service.js';
@@ -18,9 +18,12 @@ const PPRSamplingService = {
     J:  { r: 240, g: 190, b: 40,  label: 'Jaune — vigilance',                  color: '#fbbf24', inconstructible: false },
   },
 
+  // Taille de l'image WMS dédiée pour l'échantillonnage
+  _WMS_IMG_SIZE: 512,
+
   // ── METHODE PRINCIPALE ─────────────────────────────────────────
   // parcelGeo : [[lng,lat], ...] — sommets parcelle WGS84
-  // map       : mapboxgl.Map instance (pour pixel sampling)
+  // map       : mapboxgl.Map instance (utilisé uniquement en dernier recours)
   // Returns   : { zones: { R1?: {pts, area_pct}, ... }, grid: [{lng,lat,zone}], dominant }
   async sampleParcel(parcelGeo, map) {
     if (!parcelGeo?.length || parcelGeo.length < 3) {
@@ -35,17 +38,29 @@ const PPRSamplingService = {
       return { zones: {}, grid: [], dominant: 'W', hasInconstructible: false };
     }
 
-    // 2. Échantillonner chaque point
-    const sampledGrid = [];
-    for (const pt of gridPoints) {
-      const zone = this._samplePoint(pt.lng, pt.lat, map);
-      sampledGrid.push({ ...pt, zone });
-    }
+    const sampledGrid = gridPoints.map(pt => ({ ...pt, zone: null }));
 
-    // 3. Si pixel sampling insuffisant (trop de null), fallback WMS sur quelques points
-    const nullCount = sampledGrid.filter(p => !p.zone).length;
-    if (nullCount > sampledGrid.length * 0.5) {
-      await this._wmsFallback(sampledGrid);
+    // 2. Méthode primaire : image WMS offscreen (PPR seul, fond transparent)
+    //    Une seule requête HTTP → canvas offscreen → sampling fiable
+    const offscreenOk = await this._sampleFromWMSImage(sampledGrid, bbox);
+
+    // 3. Fallback : WMS GetFeatureInfo sur quelques sondes si l'image a échoué
+    if (!offscreenOk) {
+      const wmsProbes = this._selectWMSProbes(gridPoints, 8);
+      for (const probe of wmsProbes) {
+        try {
+          const result = await PPRService.queryPoint(probe.lat, probe.lng);
+          if (result.features?.length) {
+            const props = result.features[0].properties ?? {};
+            const z = this._parseWMSZone(props);
+            if (z) {
+              const match = sampledGrid.find(p => p.lng === probe.lng && p.lat === probe.lat);
+              if (match) { match.zone = z; match.source = 'wms'; }
+              this._propagateZone(sampledGrid, probe, z, 0.00005);
+            }
+          }
+        } catch { /* WMS indisponible */ }
+      }
     }
 
     // 4. Agréger par zone
@@ -79,6 +94,83 @@ const PPRSamplingService = {
     const hasInconstructible = Object.values(zones).some(z => z.inconstructible);
 
     return { zones, grid: sampledGrid, dominant, hasInconstructible, totalPoints: sampledGrid.length };
+  },
+
+  // ── IMAGE WMS OFFSCREEN ────────────────────────────────────────
+  // Fetch une image GetMap PPR-only pour la bbox, dessine sur canvas
+  // offscreen, puis sample chaque point de la grille sur cette image isolée.
+  // Retourne true si succès, false si échec (CORS, réseau, etc.)
+  async _sampleFromWMSImage(sampledGrid, bbox) {
+    const SIZE = this._WMS_IMG_SIZE;
+
+    // Convertir bbox WGS84 → EPSG:3857
+    const toMerc = (lng, lat) => {
+      const mx = lng * 20037508.34 / 180;
+      const latR = lat * Math.PI / 180;
+      const my = Math.log(Math.tan(Math.PI / 4 + latR / 2)) / Math.PI * 20037508.34;
+      return [mx, my];
+    };
+
+    // Marge 20% autour de la parcelle pour capter les zones en bordure
+    const margin = 0.2;
+    const dLng = (bbox.maxLng - bbox.minLng) * margin;
+    const dLat = (bbox.maxLat - bbox.minLat) * margin;
+    const [mxMin, myMin] = toMerc(bbox.minLng - dLng, bbox.minLat - dLat);
+    const [mxMax, myMax] = toMerc(bbox.maxLng + dLng, bbox.maxLat + dLat);
+
+    const wmsUrl = `${PPRService.WMS_URL}?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap`
+      + `&LAYERS=ppr_approuve&FORMAT=image/png&TRANSPARENT=true`
+      + `&SRS=EPSG:3857&WIDTH=${SIZE}&HEIGHT=${SIZE}`
+      + `&BBOX=${mxMin},${myMin},${mxMax},${myMax}`;
+
+    try {
+      // Charger l'image
+      const img = await new Promise((resolve, reject) => {
+        const image = new Image();
+        image.crossOrigin = 'anonymous';
+        image.onload  = () => resolve(image);
+        image.onerror = () => reject(new Error('Image load failed'));
+        image.src = wmsUrl;
+      });
+
+      // Dessiner sur canvas offscreen
+      const cv  = document.createElement('canvas');
+      cv.width  = SIZE;
+      cv.height = SIZE;
+      const ctx = cv.getContext('2d');
+      ctx.drawImage(img, 0, 0, SIZE, SIZE);
+      const imageData = ctx.getImageData(0, 0, SIZE, SIZE);
+      const pixels = imageData.data; // RGBA flat array
+
+      // Mapper chaque point de la grille vers un pixel de l'image
+      for (const pt of sampledGrid) {
+        const [mx, my] = toMerc(pt.lng, pt.lat);
+
+        // Coordonnées pixel dans l'image (0..SIZE-1)
+        const px = Math.floor((mx - mxMin) / (mxMax - mxMin) * (SIZE - 1));
+        // WMS image: Y=0 est en haut (nord), Y inversé par rapport à Mercator
+        const py = Math.floor((myMax - my) / (myMax - myMin) * (SIZE - 1));
+
+        if (px < 0 || px >= SIZE || py < 0 || py >= SIZE) continue;
+
+        const idx = (py * SIZE + px) * 4;
+        const r = pixels[idx], g = pixels[idx + 1], b = pixels[idx + 2], a = pixels[idx + 3];
+
+        // Pixel transparent = pas de zone PPR ici
+        if (a < 50) continue;
+
+        const zone = this._classifyColor(r, g, b);
+        if (zone) {
+          pt.zone = zone;
+          pt.source = 'wms-image';
+        }
+      }
+
+      return true;
+    } catch (e) {
+      console.warn('[PPRSampling] Image WMS offscreen failed:', e.message);
+      return false;
+    }
   },
 
   // ── GRILLE D'ÉCHANTILLONNAGE ───────────────────────────────────
@@ -125,30 +217,6 @@ const PPRSamplingService = {
     return inside;
   },
 
-  // ── PIXEL SAMPLING (WebGL) ─────────────────────────────────────
-  // Lit la couleur du pixel sous le point sur le layer PPR raster
-  _samplePoint(lng, lat, map) {
-    if (!map?.loaded()) return null;
-    try {
-      const point = map.project([lng, lat]);
-      const gl = map.getCanvas().getContext('webgl2') || map.getCanvas().getContext('webgl');
-      if (!gl) return null;
-
-      const pixels = new Uint8Array(4);
-      const dpr = window.devicePixelRatio || 1;
-      const canvasH = map.getCanvas().height;
-      const x = Math.floor(point.x * dpr);
-      const y = Math.floor(canvasH - point.y * dpr);
-
-      gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-      if (pixels[3] < 50) return null; // transparent = pas de couche PPR
-
-      return this._classifyColor(pixels[0], pixels[1], pixels[2]);
-    } catch {
-      return null;
-    }
-  },
-
   // Classifier une couleur RGB vers une zone PPRN
   _classifyColor(r, g, b) {
     let best = null;
@@ -162,32 +230,6 @@ const PPRSamplingService = {
     // Seuil : si la couleur est trop éloignée, c'est du fond de carte
     if (bestDist > 100) return null;
     return best;
-  },
-
-  // ── WMS FALLBACK ───────────────────────────────────────────────
-  // Interroge PEIGEO WMS sur un sous-ensemble de points non classifiés
-  async _wmsFallback(grid) {
-    const unclassified = grid.filter(p => !p.zone);
-    // Limiter à 5 requêtes WMS pour ne pas surcharger le serveur
-    const sample = unclassified.length > 5
-      ? this._evenSample(unclassified, 5)
-      : unclassified;
-
-    for (const pt of sample) {
-      try {
-        const result = await PPRService.queryPoint(pt.lat, pt.lng);
-        if (result.features?.length) {
-          const props = result.features[0].properties ?? {};
-          const z = this._parseWMSZone(props);
-          if (z) {
-            pt.zone = z;
-            pt.source = 'wms';
-            // Propager aux points voisins non classifiés (rayon ~5m)
-            this._propagateZone(grid, pt, z, 0.00005);
-          }
-        }
-      } catch { /* silently skip */ }
-    }
   },
 
   _parseWMSZone(props) {
@@ -209,15 +251,23 @@ const PPRSamplingService = {
     }
   },
 
-  _evenSample(arr, n) {
-    const step = Math.floor(arr.length / n);
-    return Array.from({ length: n }, (_, i) => arr[i * step]);
+  // Sélectionner des points WMS stratégiques : centroïde + répartition spatiale
+  _selectWMSProbes(gridPoints, maxProbes) {
+    if (gridPoints.length <= maxProbes) return gridPoints;
+    const cx = gridPoints.reduce((s, p) => s + p.lng, 0) / gridPoints.length;
+    const cy = gridPoints.reduce((s, p) => s + p.lat, 0) / gridPoints.length;
+    const sorted = [...gridPoints].sort((a, b) =>
+      Math.hypot(a.lng - cx, a.lat - cy) - Math.hypot(b.lng - cx, b.lat - cy)
+    );
+    const probes = [sorted[0]];
+    const step = Math.floor(sorted.length / (maxProbes - 1));
+    for (let i = step; probes.length < maxProbes && i < sorted.length; i += step) {
+      probes.push(sorted[i]);
+    }
+    return probes;
   },
 
   // ── CONVERSION VERS POLYGONES LOCAUX ───────────────────────────
-  // Transforme la grille de points classifiés en polygones approximatifs
-  // par zone, en coordonnées locales (mètres) pour l'esquisse SVG
-  // Retourne { zone: [[{x,y},...]], ... } — convex hulls par zone
   toLocalPolygons(samplingResult, parcelGeo) {
     if (!samplingResult?.grid?.length) return {};
 
@@ -228,12 +278,10 @@ const PPRSamplingService = {
     const result = {};
     for (const [zone, data] of Object.entries(samplingResult.zones)) {
       if (!data.pts?.length || data.pts.length < 3) continue;
-      // Convertir en local
       const localPts = data.pts.map(p => ({
         x:  (p.lng - centroid[0]) * LNG_M,
         y: -(p.lat - centroid[1]) * LAT_M,
       }));
-      // Convex hull
       const hull = this._convexHull(localPts);
       if (hull.length >= 3) {
         result[zone] = {
