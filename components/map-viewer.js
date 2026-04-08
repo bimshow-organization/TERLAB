@@ -60,6 +60,9 @@ const MapViewer = {
 
     await new Promise(resolve => this._map.once('load', resolve));
 
+    // Patch Mapbox : coercer "len" en 0 pour éviter les erreurs d'expression sur les layers road
+    this._patchRoadLenFilters();
+
     // Injecter la map dans BRGMService pour le pixel sampling
     BRGMService.setMap(this._map);
 
@@ -135,7 +138,9 @@ const MapViewer = {
       'bimshow-extrusion':     'mapbox://styles/mapbox/satellite-streets-v12',
       'satellite':             'mapbox://styles/mapbox/satellite-streets-v12',
       'overview':              'mapbox://styles/mapbox/satellite-streets-v12',
-      'globe-koppen':          'mapbox://styles/mapbox/satellite-streets-v12'
+      'globe-koppen':          'mapbox://styles/mapbox/satellite-streets-v12',
+      'durabilite+filieres':   'mapbox://styles/mapbox/satellite-streets-v12',
+      'chantier+securite':     'mapbox://styles/mapbox/satellite-streets-v12'
     };
     return styles[mode] ?? 'mapbox://styles/mapbox/satellite-streets-v12';
   },
@@ -153,6 +158,32 @@ const MapViewer = {
       case 'bimshow-extrusion':      await this._addExtrusionLayer();       break;
       case 'overview':               await this._addOverviewLayers();       break;
       case 'globe-koppen':           await this._addKoppenMarkers();        break;
+      case 'durabilite+filieres':    await this._addDurabiliteLayers();     break;
+      case 'chantier+securite':     await this._addChantierLayers();      break;
+    }
+  },
+
+  // ── PATCH ROAD LEN — coercer "len" null → 0 dans les filtres road ──
+  _patchRoadLenFilters() {
+    const m = this._map;
+    if (!m) return;
+    try {
+      const style = m.getStyle();
+      if (!style?.layers) return;
+      for (const layer of style.layers) {
+        const filter = layer.filter;
+        if (!filter) continue;
+        const json = JSON.stringify(filter);
+        if (json.includes('"get","len"')) {
+          const patched = JSON.parse(json.replaceAll(
+            '["get","len"]',
+            '["coalesce",["get","len"],0]'
+          ));
+          m.setFilter(layer.id, patched);
+        }
+      }
+    } catch (e) {
+      // silently ignore — cosmetic fix only
     }
   },
 
@@ -685,6 +716,290 @@ const MapViewer = {
     }
   },
 
+  // ── CHANTIER + SECURITE (P08) ───────────────────────────────────
+  async _addChantierLayers() {
+    const m = this._map;
+    const terrain = window.SessionManager?.getTerrain() ?? {};
+    const lng = parseFloat(terrain.lng ?? 55.45);
+    const lat = parseFloat(terrain.lat ?? -21.11);
+    const center = [lng, lat];
+    const parcelleGeom = terrain.parcelle_geometry ?? terrain.parcelle_geojson;
+
+    // ── 1. Hydrant SDIS 150m radius ──
+    if (!m.getSource('hydrant-circle-src')) {
+      m.addSource('hydrant-circle-src', {
+        type: 'geojson',
+        data: { type: 'Feature', geometry: { type: 'Point', coordinates: center }, properties: {} }
+      });
+      m.addLayer({
+        id: 'hydrant-circle',
+        type: 'circle',
+        source: 'hydrant-circle-src',
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 15, 15, 80, 17, 250, 19, 600],
+          'circle-color': 'rgba(239, 68, 68, 0.08)',
+          'circle-stroke-width': 2,
+          'circle-stroke-color': 'rgba(239, 68, 68, 0.5)'
+        }
+      });
+    }
+
+    // ── 2. Zone d'Installation de Chantier (ZIC) ──
+    const p07data = window.SessionManager?.getPhase(7)?.data ?? {};
+    let zicGeojson = null;
+
+    if (parcelleGeom && window.turf) {
+      try {
+        const parcelleFeature = parcelleGeom.type === 'Feature' ? parcelleGeom
+          : parcelleGeom.type === 'FeatureCollection' ? parcelleGeom.features[0]
+          : { type: 'Feature', geometry: parcelleGeom, properties: {} };
+        const bbox = turf.bbox(parcelleFeature);
+        // ZIC = 1/3 de la parcelle côté voie (approximation : premier tiers en latitude)
+        const thirdH = (bbox[3] - bbox[1]) / 3;
+        zicGeojson = {
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[
+              [bbox[0], bbox[1]],
+              [bbox[2], bbox[1]],
+              [bbox[2], bbox[1] + thirdH],
+              [bbox[0], bbox[1] + thirdH],
+              [bbox[0], bbox[1]]
+            ]]
+          },
+          properties: { label: 'ZIC' }
+        };
+      } catch (e) {
+        console.warn('[Map] ZIC calc:', e.message);
+      }
+    }
+
+    if (zicGeojson && !m.getSource('zic-src')) {
+      m.addSource('zic-src', { type: 'geojson', data: zicGeojson });
+      m.addLayer({
+        id: 'zic-fill',
+        type: 'fill',
+        source: 'zic-src',
+        paint: { 'fill-color': 'rgba(59, 130, 246, 0.15)', 'fill-outline-color': 'rgba(59, 130, 246, 0.6)' }
+      });
+      m.addLayer({
+        id: 'zic-line',
+        type: 'line',
+        source: 'zic-src',
+        paint: { 'line-color': '#3b82f6', 'line-width': 2, 'line-dasharray': [6, 4] }
+      });
+      m.addLayer({
+        id: 'zic-label',
+        type: 'symbol',
+        source: 'zic-src',
+        layout: {
+          'text-field': 'Zone Installation Chantier (ZIC)',
+          'text-size': 11,
+          'text-anchor': 'center'
+        },
+        paint: { 'text-color': '#3b82f6', 'text-halo-color': 'rgba(0,0,0,0.6)', 'text-halo-width': 1 }
+      });
+    }
+
+    // ── 3. Cyclone badge overlay ──
+    // Managed by SVG overlay in phase script (not map layer)
+    const month = new Date().getMonth();
+    const isCyclone = month >= 10 || month <= 3;
+    window.TERLAB_CYCLONE_STATUS = { isCyclone, month };
+
+    // ── 4. Hydrant stub badge ──
+    // SDIS 974 non open data — indicatif seulement
+    window.TERLAB_HYDRANT_STUB = {
+      warning: 'Données hydrants SDIS 974 non open data — vérifier sur terrain',
+      radius_m: 150,
+      center
+    };
+  },
+
+  // ── DURABILITE + FILIERES (P10 fusionnée) ──────────────────────
+  async _addDurabiliteLayers() {
+    const m = this._map;
+    const terrain = window.SessionManager?.getTerrain() ?? {};
+    const lng = parseFloat(terrain.lng ?? 55.45);
+    const lat = parseFloat(terrain.lat ?? -21.11);
+    const center = [lng, lat];
+
+    // ── 1. Corrosion circles ──
+    // Approximation distance côte via centroïde île (fallback si coastline non chargée)
+    let corrosionLevel = 'modérée';
+    let distCoast_km = 5;
+
+    try {
+      if (!window.TERLAB_COASTLINE) {
+        const resp = await fetch('data/coastline-reunion-simplified.geojson');
+        if (resp.ok) window.TERLAB_COASTLINE = await resp.json();
+      }
+      if (window.TERLAB_COASTLINE && window.turf) {
+        const pt = turf.point(center);
+        const line = window.TERLAB_COASTLINE.geometry
+          ? window.TERLAB_COASTLINE
+          : turf.lineString(window.TERLAB_COASTLINE.geometry.coordinates);
+        const nearest = turf.nearestPointOnLine(line, pt);
+        distCoast_km = nearest.properties.dist ?? 5;
+      } else {
+        // Fallback : distance vol d'oiseau vers centroïde côtier
+        const dLat = lat - (-21.115);
+        const dLng = lng - 55.536;
+        distCoast_km = Math.sqrt(dLat * dLat + dLng * dLng) * 111;
+      }
+      if (distCoast_km < 0.5) corrosionLevel = 'forte';
+      else if (distCoast_km < 2.0) corrosionLevel = 'modérée';
+      else corrosionLevel = 'faible';
+    } catch (e) {
+      console.warn('[Map] Corrosion calc:', e.message);
+    }
+
+    // Store corrosion data for phase script
+    window.TERLAB_CORROSION = { level: corrosionLevel, dist_km: Math.round(distCoast_km * 10) / 10 };
+
+    // Add corrosion circle layers
+    const corrosionCircles = {
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature', geometry: { type: 'Point', coordinates: center }, properties: { radius: 2000, level: 'faible' } },
+        { type: 'Feature', geometry: { type: 'Point', coordinates: center }, properties: { radius: 500,  level: 'forte' } }
+      ]
+    };
+
+    if (!m.getSource('corrosion-src')) {
+      m.addSource('corrosion-src', { type: 'geojson', data: corrosionCircles });
+
+      // Outer ring (> 2km = faible)
+      m.addLayer({
+        id: 'corrosion-outer',
+        type: 'circle',
+        source: 'corrosion-src',
+        filter: ['==', ['get', 'level'], 'faible'],
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 30, 14, 200, 17, 800],
+          'circle-color': 'rgba(46, 184, 96, 0.08)',
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': 'rgba(46, 184, 96, 0.4)'
+        }
+      });
+
+      // Inner ring (< 500m = forte)
+      m.addLayer({
+        id: 'corrosion-inner',
+        type: 'circle',
+        source: 'corrosion-src',
+        filter: ['==', ['get', 'level'], 'forte'],
+        paint: {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 8, 14, 50, 17, 200],
+          'circle-color': 'rgba(239, 68, 68, 0.1)',
+          'circle-stroke-width': 1.5,
+          'circle-stroke-color': 'rgba(239, 68, 68, 0.5)'
+        }
+      });
+    }
+
+    // ── 2. Filières ILEVA / ressourceries ──
+    try {
+      if (!window.TERLAB_FILIERES) {
+        const resp = await fetch('data/filieres-reunion.geojson');
+        if (resp.ok) window.TERLAB_FILIERES = await resp.json();
+      }
+
+      const filieres = window.TERLAB_FILIERES;
+      if (filieres && !m.getSource('filieres-src')) {
+        m.addSource('filieres-src', { type: 'geojson', data: filieres });
+
+        // Points filières
+        m.addLayer({
+          id: 'filieres-points',
+          type: 'circle',
+          source: 'filieres-src',
+          paint: {
+            'circle-radius': 7,
+            'circle-color': [
+              'match', ['get', 'type'],
+              'ileva', '#3b82f6',
+              'ressourcerie', '#22c55e',
+              '#888'
+            ],
+            'circle-stroke-width': 2,
+            'circle-stroke-color': '#fff'
+          }
+        });
+
+        // Labels filières
+        m.addLayer({
+          id: 'filieres-labels',
+          type: 'symbol',
+          source: 'filieres-src',
+          layout: {
+            'text-field': ['get', 'nom'],
+            'text-size': 10,
+            'text-offset': [0, 1.5],
+            'text-anchor': 'top',
+            'text-max-width': 12
+          },
+          paint: {
+            'text-color': '#fff',
+            'text-halo-color': 'rgba(0,0,0,0.7)',
+            'text-halo-width': 1
+          }
+        });
+
+        // Find nearest filière and draw line
+        let nearestDist = Infinity;
+        let nearestCoords = null;
+        let nearestName = '';
+        for (const f of filieres.features) {
+          const fc = f.geometry.coordinates;
+          const d = Math.sqrt(Math.pow(fc[0] - lng, 2) + Math.pow(fc[1] - lat, 2)) * 111;
+          if (d < nearestDist) {
+            nearestDist = d;
+            nearestCoords = fc;
+            nearestName = f.properties.nom;
+          }
+        }
+
+        window.TERLAB_NEAREST_FILIERE = { nom: nearestName, dist_km: Math.round(nearestDist * 10) / 10 };
+
+        if (nearestCoords) {
+          m.addSource('filiere-line-src', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              geometry: { type: 'LineString', coordinates: [center, nearestCoords] }
+            }
+          });
+          m.addLayer({
+            id: 'filieres-line',
+            type: 'line',
+            source: 'filiere-line-src',
+            paint: {
+              'line-color': '#f59e0b',
+              'line-width': 2,
+              'line-dasharray': [4, 4]
+            }
+          });
+        }
+
+        // Popups on click
+        m.on('click', 'filieres-points', (e) => {
+          const props = e.features[0].properties;
+          const accepts = typeof props.accepts === 'string' ? JSON.parse(props.accepts) : props.accepts;
+          new mapboxgl.Popup({ maxWidth: '260px' })
+            .setLngLat(e.lngLat)
+            .setHTML(`<div style="font-size:12px"><strong>${props.nom}</strong><br/>Type : ${props.type}<br/>Accepte : ${(accepts || []).join(', ')}</div>`)
+            .addTo(m);
+        });
+        m.on('mouseenter', 'filieres-points', () => m.getCanvas().style.cursor = 'pointer');
+        m.on('mouseleave', 'filieres-points', () => m.getCanvas().style.cursor = '');
+      }
+    } catch (e) {
+      console.warn('[Map] Filières layers:', e.message);
+    }
+  },
+
   _startGlobeRotation() {
     const m = this._map;
     let rotating = true;
@@ -971,6 +1286,147 @@ const MapViewer = {
     const line = data.features[0];
     const dist = turf.length(line, { units: 'kilometers' });
     window.TerlabToast?.show(`Distance : ${(dist * 1000).toFixed(0)} m`, 'info', 4000);
+  },
+
+  // ── COUPES A/B — LIGNES DE SECTION SUR LA CARTE ──────────────
+  _sectionMarkers: [],
+
+  drawSectionLines(axes) {
+    if (!this._map || !axes) return;
+    const m = this._map;
+
+    const features = [];
+    const labelFeatures = [];
+
+    for (const id of ['A', 'B']) {
+      const axis = axes[id];
+      if (!axis) continue;
+
+      features.push({
+        type: 'Feature',
+        properties: { section: id },
+        geometry: { type: 'LineString', coordinates: [axis.start, axis.end] },
+      });
+
+      // Label at both ends
+      for (const [pos, coords] of [['start', axis.start], ['end', axis.end]]) {
+        labelFeatures.push({
+          type: 'Feature',
+          properties: { label: `${id}`, section: id },
+          geometry: { type: 'Point', coordinates: coords },
+        });
+      }
+    }
+
+    const lineData = { type: 'FeatureCollection', features };
+    const labelData = { type: 'FeatureCollection', features: labelFeatures };
+
+    // Section lines
+    if (m.getSource('section-lines')) {
+      m.getSource('section-lines').setData(lineData);
+    } else {
+      m.addSource('section-lines', { type: 'geojson', data: lineData });
+
+      m.addLayer({
+        id: 'section-lines-A',
+        type: 'line',
+        source: 'section-lines',
+        filter: ['==', ['get', 'section'], 'A'],
+        paint: {
+          'line-color': '#E8811A',
+          'line-width': 2.5,
+          'line-dasharray': [6, 3],
+          'line-opacity': 0.85,
+        },
+      });
+
+      m.addLayer({
+        id: 'section-lines-B',
+        type: 'line',
+        source: 'section-lines',
+        filter: ['==', ['get', 'section'], 'B'],
+        paint: {
+          'line-color': '#4A90D9',
+          'line-width': 2.5,
+          'line-dasharray': [6, 3],
+          'line-opacity': 0.85,
+        },
+      });
+    }
+
+    // Section labels at endpoints
+    if (m.getSource('section-labels')) {
+      m.getSource('section-labels').setData(labelData);
+    } else {
+      m.addSource('section-labels', { type: 'geojson', data: labelData });
+
+      m.addLayer({
+        id: 'section-labels-layer',
+        type: 'symbol',
+        source: 'section-labels',
+        layout: {
+          'text-field': ['get', 'label'],
+          'text-size': 14,
+          'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
+          'text-allow-overlap': true,
+          'text-offset': [0, -1],
+        },
+        paint: {
+          'text-color': ['match', ['get', 'section'], 'A', '#E8811A', 'B', '#4A90D9', '#fff'],
+          'text-halo-color': 'rgba(0,0,0,0.8)',
+          'text-halo-width': 1.5,
+        },
+      });
+    }
+
+    // Remove previous endpoint markers
+    this._sectionMarkers.forEach(mk => mk.remove());
+    this._sectionMarkers = [];
+
+    // Add circle markers at endpoints
+    for (const id of ['A', 'B']) {
+      const axis = axes[id];
+      if (!axis) continue;
+      const color = id === 'A' ? '#E8811A' : '#4A90D9';
+      for (const coords of [axis.start, axis.end]) {
+        const el = document.createElement('div');
+        el.className = 'section-endpoint-marker';
+        el.style.cssText = `width:12px;height:12px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 6px ${color}80;cursor:default;`;
+        el.title = `Coupe ${id}`;
+        const mk = new mapboxgl.Marker({ element: el }).setLngLat(coords).addTo(m);
+        this._sectionMarkers.push(mk);
+      }
+    }
+  },
+
+  highlightSectionLine(sectionId) {
+    if (!this._map) return;
+    // Brighten the selected section, dim the other
+    for (const id of ['A', 'B']) {
+      const layerId = `section-lines-${id}`;
+      if (!this._map.getLayer(layerId)) continue;
+      this._map.setPaintProperty(layerId, 'line-opacity', id === sectionId ? 1 : 0.35);
+      this._map.setPaintProperty(layerId, 'line-width', id === sectionId ? 3.5 : 1.5);
+    }
+  },
+
+  resetSectionHighlight() {
+    if (!this._map) return;
+    for (const id of ['A', 'B']) {
+      const layerId = `section-lines-${id}`;
+      if (!this._map.getLayer(layerId)) continue;
+      this._map.setPaintProperty(layerId, 'line-opacity', 0.85);
+      this._map.setPaintProperty(layerId, 'line-width', 2.5);
+    }
+  },
+
+  clearSectionLines() {
+    if (!this._map) return;
+    this._sectionMarkers.forEach(mk => mk.remove());
+    this._sectionMarkers = [];
+    const emptyFC = { type: 'FeatureCollection', features: [] };
+    if (this._map.getSource('section-lines')) this._map.getSource('section-lines').setData(emptyFC);
+    if (this._map.getSource('section-labels')) this._map.getSource('section-labels').setData(emptyFC);
   },
 
   // ── RECHERCHE PARCELLE (API IGN WFS) ─────────────────────────

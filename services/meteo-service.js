@@ -7,59 +7,80 @@
 const MeteoService = {
 
   // API Key Météo-France (portail-api.meteofrance.fr — gratuit)
-  // ⚠️ STUB — Remplacer par la vraie clé après inscription
+  // Configurable via config/meteo-france-config.js (exclu du git)
   API_KEY: 'METEO_FRANCE_API_KEY',
 
+  async _loadToken() {
+    if (this.API_KEY !== 'METEO_FRANCE_API_KEY') return;
+    try {
+      const mod = await import('../config/meteo-france-config.js');
+      if (mod.METEO_FRANCE_TOKEN && mod.METEO_FRANCE_TOKEN !== 'REMPLACER_PAR_TOKEN') {
+        this.API_KEY = mod.METEO_FRANCE_TOKEN;
+      }
+    } catch { /* config absente — normales 1991-2020 utilisées */ }
+  },
+
   // Stations Réunion avec normales climatologiques 1991–2020
+  // Sources : Météo-France fiches climatologiques (publiques)
   STATIONS: {
     'saint-denis-gillot': {
-      id: '97408001', label: 'Saint-Denis — Gillot',
-      lat: -20.887, lng: 55.526, alt: 12,
+      id: '97408270', label: 'Saint-Denis — Gillot',
+      lat: -20.887, lng: 55.519, alt: 9, zone_rtaa: 1,
       normales: { pluvio:800, tmoy:25.2, tmin:20.4, tmax:30.1, vent:18, hygro:76, amp:9.7 }
     },
     'saint-pierre': {
-      id: '97416001', label: 'Saint-Pierre',
-      lat: -21.321, lng: 55.484, alt: 75,
+      id: '97418490', label: 'Saint-Pierre — Pierrefonds',
+      lat: -21.326, lng: 55.422, alt: 23, zone_rtaa: 1,
       normales: { pluvio:600, tmoy:25.0, tmin:19.3, tmax:30.7, vent:20, hygro:74, amp:11.4 }
     },
     'le-port': {
       id: '97420001', label: 'Le Port — Réunion',
-      lat: -20.935, lng: 55.294, alt: 10,
+      lat: -20.935, lng: 55.294, alt: 10, zone_rtaa: 1,
       normales: { pluvio:540, tmoy:25.6, tmin:21.1, tmax:30.1, vent:22, hygro:72, amp:9.0 }
     },
     'sainte-rose': {
-      id: '97409001', label: 'Sainte-Rose',
-      lat: -21.128, lng: 55.793, alt: 20,
+      id: '97411490', label: 'Sainte-Rose',
+      lat: -21.145, lng: 55.786, alt: 28, zone_rtaa: 2,
       normales: { pluvio:3850, tmoy:23.8, tmin:18.2, tmax:29.4, vent:15, hygro:85, amp:11.2 }
     },
     'saint-benoit': {
       id: '97403001', label: 'Saint-Benoît',
-      lat: -21.029, lng: 55.714, alt: 22,
+      lat: -21.029, lng: 55.714, alt: 22, zone_rtaa: 2,
       normales: { pluvio:2500, tmoy:23.1, tmin:18.0, tmax:28.2, vent:14, hygro:82, amp:10.2 }
     },
     'plaine-cafres': {
       id: '97436001', label: 'Plaine des Cafres',
-      lat: -21.234, lng: 55.561, alt: 1620,
+      lat: -21.234, lng: 55.561, alt: 1620, zone_rtaa: 3,
       normales: { pluvio:2400, tmoy:14.2, tmin:3.4, tmax:22.1, vent:30, hygro:89, amp:18.7 }
     },
+    'plaine-palmistes': {
+      id: '97407490', label: 'Plaine des Palmistes',
+      lat: -21.110, lng: 55.599, alt: 1000, zone_rtaa: 2,
+      normales: { pluvio:3200, tmoy:17.5, tmin:11.2, tmax:23.8, vent:18, hygro:87, amp:12.6 }
+    },
     'cilaos': {
-      id: '97415001', label: 'Cilaos',
-      lat: -21.138, lng: 55.475, alt: 1210,
+      id: '97422490', label: 'Cilaos',
+      lat: -21.149, lng: 55.474, alt: 1195, zone_rtaa: 3,
       normales: { pluvio:1810, tmoy:17.8, tmin:7.8, tmax:24.6, vent:12, hygro:79, amp:16.8 }
     },
     'maido': {
       id: '97440001', label: 'Maido',
-      lat: -21.073, lng: 55.381, alt: 2205,
+      lat: -21.073, lng: 55.381, alt: 2205, zone_rtaa: 3,
       normales: { pluvio:3220, tmoy:10.8, tmin:1.6, tmax:19.8, vent:35, hygro:92, amp:18.2 }
     },
+    'saint-paul': {
+      id: '97416490', label: 'Saint-Paul',
+      lat: -21.007, lng: 55.274, alt: 44, zone_rtaa: 1,
+      normales: { pluvio:600, tmoy:25.4, tmin:20.0, tmax:30.8, vent:19, hygro:74, amp:10.8 }
+    },
     'saint-louis': {
-      id: '97414001', label: 'Saint-Louis',
-      lat: -21.279, lng: 55.426, alt: 54,
+      id: '97415490', label: 'Saint-Louis',
+      lat: -21.275, lng: 55.411, alt: 60, zone_rtaa: 1,
       normales: { pluvio:650, tmoy:24.4, tmin:18.8, tmax:30.0, vent:16, hygro:75, amp:11.2 }
     },
     'saint-leu': {
-      id: '97416002', label: 'Saint-Leu',
-      lat: -21.148, lng: 55.282, alt: 20,
+      id: '97414490', label: 'Saint-Leu',
+      lat: -21.154, lng: 55.286, alt: 9, zone_rtaa: 1,
       normales: { pluvio:570, tmoy:25.3, tmin:19.9, tmax:30.7, vent:21, hygro:73, amp:10.8 }
     }
   },
@@ -98,6 +119,9 @@ const MeteoService = {
   async getData(stationKey) {
     const station = this.STATIONS[stationKey];
     if (!station) return null;
+
+    // Charger le token si dispo
+    await this._loadToken();
 
     // Tenter l'API Hub
     const liveData = await this.fetchObservations(station.id);

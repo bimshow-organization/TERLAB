@@ -53,17 +53,19 @@ const LidarService = {
         this._availableCache = false;
       }
     } else {
-      // Mode navigateur — vérifier qu'IGN répond aux range requests
+      // Mode navigateur — vérifier qu'IGN répond via une tuile connue (HEAD sur la base renvoie 404)
       try {
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 5000);
-        const res = await fetch(
-          'https://data.geopf.fr/telechargement/download/LiDARHD-NUALID',
-          { method: 'HEAD', signal: ctrl.signal }
-        );
+        const testUrl = 'https://data.geopf.fr/telechargement/download/LiDARHD-NUALID/'
+          + 'NUALHD_1-0__LAZ_RGR92UTM40S_REU_2025-06-18/'
+          + 'LHD_REU_0356_7687_PTS_RGR92UTM40S_REUN89.copc.laz';
+        const res = await fetch(testUrl, {
+          method: 'HEAD',
+          signal: ctrl.signal,
+        });
         clearTimeout(timer);
-        // HEAD sur répertoire IGN peut retourner 404/405/403 — seul un timeout/erreur réseau signifie indisponible
-        this._availableCache = res.status < 500;
+        this._availableCache = res.ok;
       } catch {
         this._availableCache = false;
       }
@@ -71,6 +73,59 @@ const LidarService = {
 
     this._availableCacheTs = now;
     return this._availableCache;
+  },
+
+  // ── Tester si le serveur Python local est dispo ────────────────────
+  async _isLocalServerUp() {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 2000);
+      const res = await fetch(`${LIDAR_CFG.SERVER_URL}/api/files`, { signal: ctrl.signal });
+      clearTimeout(timer);
+      return res.ok;
+    } catch { return false; }
+  },
+
+  // ── Fetch via serveur Python local (PDAL range requests) ──────────
+  async _fetchViaServer(bbox, classes, maxPoints) {
+    const url = `${LIDAR_CFG.SERVER_URL}/api/points-bbox`
+      + `?minLng=${bbox.minLng}&minLat=${bbox.minLat}`
+      + `&maxLng=${bbox.maxLng}&maxLat=${bbox.maxLat}`
+      + `&maxPoints=${maxPoints}&classes=${classes}`;
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), LIDAR_CFG.TIMEOUT_MS);
+    const res = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(timer);
+
+    if (!res.ok) throw new Error(`Serveur LiDAR HTTP ${res.status}`);
+    const data = await res.json();
+
+    return {
+      points: data.points ?? [],
+      bounds: data.bounds ?? bbox,
+      count: data.count ?? data.points?.length ?? 0,
+      source: data.source ?? 'local_server',
+      tile_count: data.tile_count ?? 0,
+    };
+  },
+
+  // ── Fetch via COPC navigateur (copc.js range requests) ────────────
+  async _fetchViaBrowser(bbox, classes, maxPoints, onProgress) {
+    if (onProgress) onProgress({ phase: 'tiles', message: 'Localisation des tuiles IGN…' });
+
+    const tiles = tilesForBboxWgs84(bbox.minLng, bbox.minLat, bbox.maxLng, bbox.maxLat);
+    if (tiles.length === 0) throw new Error('Aucune tuile LiDAR HD pour cette zone');
+
+    const utmBbox = bboxWgs84ToUtm(bbox.minLng, bbox.minLat, bbox.maxLng, bbox.maxLat);
+
+    if (onProgress) onProgress({ phase: 'loading', message: `Chargement LiDAR HD (${tiles.length} tuile${tiles.length > 1 ? 's' : ''})…` });
+
+    return readPointsBbox(
+      tiles,
+      utmBbox.minX, utmBbox.minY, utmBbox.maxX, utmBbox.maxY,
+      { classes, maxPoints, onProgress },
+    );
   },
 
   // ── Récupérer les points LiDAR pour une parcelle ───────────────────
@@ -82,50 +137,33 @@ const LidarService = {
     const maxPoints = options.maxPoints ?? LIDAR_CFG.DEFAULT_MAX_POINTS;
     const onProgress = options.onProgress ?? null;
 
-    // ── Mode serveur local (fallback) ──────────────────────────────
+    // ── Mode serveur local forcé ───────────────────────────────────
     if (LIDAR_CFG.USE_LOCAL_SERVER) {
-      const url = `${LIDAR_CFG.SERVER_URL}/api/points-bbox`
-        + `?minLng=${bbox.minLng}&minLat=${bbox.minLat}`
-        + `&maxLng=${bbox.maxLng}&maxLat=${bbox.maxLat}`
-        + `&maxPoints=${maxPoints}&classes=${classes}`;
-
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), LIDAR_CFG.TIMEOUT_MS);
-      const res = await fetch(url, { signal: ctrl.signal });
-      clearTimeout(timer);
-
-      if (!res.ok) throw new Error(`Serveur LiDAR HTTP ${res.status}`);
-      const data = await res.json();
-
-      return {
-        points: data.points ?? [],
-        bounds: data.bounds ?? bbox,
-        count: data.count ?? data.points?.length ?? 0,
-        source: data.source ?? 'local_server',
-        tile_count: data.tile_count ?? 0,
-      };
+      return this._fetchViaServer(bbox, classes, maxPoints);
     }
 
-    // ── Mode navigateur (COPC direct) ──────────────────────────────
-    if (onProgress) onProgress({ phase: 'tiles', message: 'Localisation des tuiles IGN…' });
+    // ── Mode auto : COPC navigateur → fallback serveur Python ──────
+    try {
+      const result = await this._fetchViaBrowser(bbox, classes, maxPoints, onProgress);
+      if (result.count > 0) return result;
+      throw new Error('COPC navigateur : 0 points');
+    } catch (browserErr) {
+      console.warn(`[LiDAR] COPC navigateur échoué: ${browserErr.message} — tentative serveur local…`);
 
-    // 1. Trouver les tuiles qui couvrent la bbox
-    const tiles = tilesForBboxWgs84(bbox.minLng, bbox.minLat, bbox.maxLng, bbox.maxLat);
-    if (tiles.length === 0) throw new Error('Aucune tuile LiDAR HD pour cette zone');
+      // Fallback vers le serveur Python si disponible
+      const serverUp = await this._isLocalServerUp();
+      if (serverUp) {
+        console.log('[LiDAR] Serveur Python détecté — fallback PDAL');
+        if (onProgress) onProgress({ phase: 'fallback', message: 'Basculement vers serveur PDAL…' });
+        return this._fetchViaServer(bbox, classes, maxPoints);
+      }
 
-    // 2. Convertir la bbox en UTM40S pour le filtrage spatial
-    const utmBbox = bboxWgs84ToUtm(bbox.minLng, bbox.minLat, bbox.maxLng, bbox.maxLat);
-
-    if (onProgress) onProgress({ phase: 'loading', message: `Chargement LiDAR HD (${tiles.length} tuile${tiles.length > 1 ? 's' : ''})…` });
-
-    // 3. Lire les points via COPC streaming
-    const result = await readPointsBbox(
-      tiles,
-      utmBbox.minX, utmBbox.minY, utmBbox.maxX, utmBbox.maxY,
-      { classes, maxPoints, onProgress },
-    );
-
-    return result;
+      // Rien ne marche — propager l'erreur originale
+      throw new Error(
+        `LiDAR indisponible. COPC navigateur: ${browserErr.message}. `
+        + `Serveur Python (${LIDAR_CFG.SERVER_URL}) non détecté — lancer: cd Lidar-fetcher/lidar-server && python server.py`
+      );
+    }
   },
 
   // ── Analyse terrain (pente, exposition, altitudes) depuis points sol ──

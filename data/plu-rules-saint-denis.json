@@ -4,27 +4,37 @@
     "region": "La Réunion",
     "generated": "2026-04-07",
     "commune": "Saint-Denis",
-    "insee": "97412",
+    "insee": "97411",
     "intercommunalite": "CINOR",
     "plu_type": "PLU",
     "plu_date_approbation": "2004-12-01",
-    "plu_modifications": ["Modification simplifiée n°8 approuvée février 2024"],
+    "plu_modifications": [
+      "Modification simplifiée n°8 approuvée février 2024"
+    ],
     "source": "Règlement PLU Saint-Denis — GPU DU_97411 — 97411_reglement_20240220.pdf",
     "note": "PLU ancien (2004) modifié 8 fois. Prospect L≥H appliqué dans plusieurs zones. Hauteur H = faîtage ou acrotère."
   },
-
   "zones": {
-
     "Uavap": {
       "label": "Zone AVAP — patrimoine historique centre-ville",
       "type": "U",
       "sous_type": "patrimoine_avap",
-      "reculs": { "voie_note": "Régi par le règlement AVAP" },
-      "hauteurs": { "note": "Régi par le règlement AVAP" },
-      "emprise": { "note": "Régi par le règlement AVAP" },
-      "_meta": { "confidence": 0.7, "ambiguites": ["Règles renvoyées au règlement AVAP, non extractibles du PLU seul"] }
+      "reculs": {
+        "voie_note": "Régi par le règlement AVAP"
+      },
+      "hauteurs": {
+        "note": "Régi par le règlement AVAP"
+      },
+      "emprise": {
+        "note": "Régi par le règlement AVAP"
+      },
+      "_meta": {
+        "confidence": 0.7,
+        "ambiguites": [
+          "Règles renvoyées au règlement AVAP, non extractibles du PLU seul"
+        ]
+      }
     },
-
     "Up": {
       "label": "Zone urbaine de projet — cœur d'agglomération",
       "type": "U",
@@ -44,9 +54,13 @@
         "Up1_emprise_sol_max_pct": 80,
         "Up2_emprise_sol_max_pct": 70
       },
-      "_meta": { "confidence": 0.8, "ambiguites": ["Hauteurs Up variables par sous-secteur, renvoi aux dispositions générales §XV"] }
+      "_meta": {
+        "confidence": 0.8,
+        "ambiguites": [
+          "Hauteurs Up variables par sous-secteur, renvoi aux dispositions générales §XV"
+        ]
+      }
     },
-
     "Ud": {
       "label": "Zone urbaine dense — centre-ville élargi",
       "type": "U",
@@ -75,9 +89,13 @@
         "Ud2_note": "Non réglementée",
         "Ud4_emprise_sol_max_pct": 70
       },
-      "_meta": { "confidence": 0.9, "ambiguites": ["Hauteurs très variables par sous-secteur et par axe de rue"] }
+      "_meta": {
+        "confidence": 0.9,
+        "ambiguites": [
+          "Hauteurs très variables par sous-secteur et par axe de rue"
+        ]
+      }
     },
-
     "Uu": {
       "label": "Zone urbaine universitaire et services",
       "type": "U",
@@ -88,11 +106,18 @@
         "voie_alternative_m": 4,
         "voie_note": "Alignement ou retrait 4m. Prospect L≥H."
       },
-      "hauteurs": { "h_max_m": null, "note": "Non réglementée" },
-      "emprise": { "emprise_sol_max_pct": 80 },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "hauteurs": {
+        "h_max_m": null,
+        "note": "Non réglementée"
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 80
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "Ui": {
       "label": "Zone urbaine intermédiaire",
       "type": "U",
@@ -115,9 +140,11 @@
         "Ui2_emprise_sol_max_pct": 40,
         "Ui3_emprise_sol_max_pct": 60
       },
-      "_meta": { "confidence": 0.9, "ambiguites": [] }
+      "_meta": {
+        "confidence": 0.9,
+        "ambiguites": []
+      }
     },
-
     "Uj": {
       "label": "Zone urbaine jardins — résidentielle aérée",
       "type": "U",
@@ -134,10 +161,14 @@
         "Uj2_h_max_m": 13,
         "Uj2_h_terrasse_max_m": 11.8
       },
-      "emprise": { "emprise_sol_max_pct": 60 },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "emprise": {
+        "emprise_sol_max_pct": 60
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "Um": {
       "label": "Zone urbaine mi-pente — résidentielle modérée",
       "type": "U",
@@ -154,10 +185,14 @@
         "Um2_h_max_m": 6,
         "Um3_h_max_m": 9
       },
-      "emprise": { "emprise_sol_max_pct": 50 },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "emprise": {
+        "emprise_sol_max_pct": 50
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "Uh": {
       "label": "Zone urbaine des hauts — résidentielle basse",
       "type": "U",
@@ -172,10 +207,14 @@
         "h_max_m": 7,
         "h_terrasse_max_m": 4.5
       },
-      "emprise": { "emprise_sol_max_pct": 30 },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "emprise": {
+        "emprise_sol_max_pct": 30
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "Ua": {
       "label": "Zone d'activités économiques",
       "type": "U",
@@ -194,10 +233,14 @@
         "Ua3_h_max_m": 18,
         "Ua2_note": "Technor — 28m max, volumes en retrait au-dessus de 18m"
       },
-      "emprise": { "emprise_sol_max_pct": 70 },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "emprise": {
+        "emprise_sol_max_pct": 70
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "Uv": {
       "label": "Zone verte urbaine",
       "type": "U",
@@ -211,10 +254,15 @@
         "Uv2_h_max_m": 10,
         "Uv3_h_max_m": 10
       },
-      "emprise": { "emprise_sol_max_pct": null, "note": "Non explicitement réglementée" },
-      "_meta": { "confidence": 0.8, "ambiguites": [] }
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "note": "Non explicitement réglementée"
+      },
+      "_meta": {
+        "confidence": 0.8,
+        "ambiguites": []
+      }
     },
-
     "Uma": {
       "label": "Zone maison d'arrêt — Domenjod",
       "type": "U",
@@ -226,43 +274,66 @@
         "sep_lat_m": null,
         "sep_lat_note": "Max 18m longueur et 6m hauteur en limite"
       },
-      "hauteurs": { "h_max_m": null, "note": "Non explicitement réglementée" },
-      "emprise": { "emprise_sol_max_pct": 60 },
-      "_meta": { "confidence": 0.8, "ambiguites": ["Hauteur Uma non trouvée explicitement"] }
+      "hauteurs": {
+        "h_max_m": null,
+        "note": "Non explicitement réglementée"
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 60
+      },
+      "_meta": {
+        "confidence": 0.8,
+        "ambiguites": [
+          "Hauteur Uma non trouvée explicitement"
+        ]
+      }
     },
-
     "AUj": {
       "label": "Zone à urbaniser jardins",
-      "type": "AU", "ref": "Uj",
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "type": "AU",
+      "ref": "Uj",
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "AUm": {
       "label": "Zone à urbaniser mi-pente",
-      "type": "AU", "ref": "Um",
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "type": "AU",
+      "ref": "Um",
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "AUh": {
       "label": "Zone à urbaniser hauts",
-      "type": "AU", "ref": "Uh",
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "type": "AU",
+      "ref": "Uh",
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "AUa": {
       "label": "Zone à urbaniser activités",
-      "type": "AU", "ref": "Ua",
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "type": "AU",
+      "ref": "Ua",
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "AUx": {
       "label": "Zone à urbaniser — études préalables",
       "type": "AU",
       "sous_type": "strict",
       "construction_neuve_interdite": true,
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "A": {
       "label": "Zone agricole",
       "type": "A",
@@ -279,9 +350,11 @@
         "emprise_sol_max_pct": 20,
         "emprise_existant_max_pct": 25
       },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "N": {
       "label": "Zone naturelle et forestière",
       "type": "N",
@@ -301,10 +374,12 @@
         "N2_emprise_sol_max_pct": 10,
         "N2_existant_max_pct": 20
       },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     }
   },
-
   "regles_communes": {
     "ravine_recul_m": 10,
     "prospect_l_gte_h": true,

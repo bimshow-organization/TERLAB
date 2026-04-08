@@ -1,0 +1,224 @@
+{
+  "version": "1.0",
+  "generated": "2026-04-08",
+  "note": "Fournisseurs de données géographiques intégrés ou prévus dans TERLAB. Chaque provider est classé par catégorie et statut d'intégration.",
+  "acteurs_data_providers": [
+    {
+      "id": "ign-geoplateforme",
+      "nom": "IGN — Géoplateforme",
+      "type": "data_provider",
+      "categorie": "referentiel_geographique",
+      "url": "https://data.geopf.fr",
+      "contact": "geoservices.ign.fr",
+      "acces": "gratuit",
+      "auth": "aucune",
+      "format": ["WFS","WMTS","WMS","GeoJSON"],
+      "couches_terlab": [
+        "CADASTRALPARCELS.PARCELLAIRE_EXPRESS",
+        "BDTOPO_V3:batiment",
+        "BDTOPO_V3:cours_d_eau",
+        "ORTHOIMAGERY.ORTHOPHOTOS",
+        "Altimétrie"
+      ],
+      "phases_terlab": ["P00","P01","P02","P05"],
+      "integration_status": "actif",
+      "note_pedagogique": "Référentiel géographique national — IGN. Accès gratuit illimité via Géoplateforme. Cadastre, bâtiments 3D, cours d'eau, orthophotos et altimétrie."
+    },
+    {
+      "id": "gpu-geoportail-urbanisme",
+      "nom": "Géoportail National de l'Urbanisme",
+      "type": "data_provider",
+      "categorie": "urbanisme_reglementaire",
+      "url": "https://www.geoportail-urbanisme.gouv.fr",
+      "contact": "GPU — Ministère de la Transition Écologique",
+      "acces": "gratuit",
+      "auth": "aucune",
+      "format": ["WMS","WFS","GeoPackage","PDF"],
+      "couches_terlab": [
+        "zone_urba (APICarto)",
+        "prescription_surf",
+        "info_surf",
+        "acte-sup"
+      ],
+      "phases_terlab": ["P04","P07"],
+      "integration_status": "actif",
+      "note_pedagogique": "Documents PLU officiels numérisés. Permet d'obtenir le zonage PLU vectoriel de toutes les communes de La Réunion via APICarto."
+    },
+    {
+      "id": "edf-reunion-opendata",
+      "nom": "EDF Réunion — Open Data",
+      "type": "data_provider",
+      "categorie": "energie_reseaux",
+      "url": "https://opendata-reunion.edf.fr",
+      "contact": "sei-data-office@edf.fr",
+      "acces": "gratuit",
+      "auth": "aucune",
+      "format": ["GeoJSON","CSV","API REST"],
+      "couches_terlab": [
+        "postes-sources",
+        "registre-installations-production-stockage",
+        "prod-electricite-temps-reel-974"
+      ],
+      "phases_terlab": ["P05","P09"],
+      "integration_status": "nouveau_statique",
+      "note_pedagogique": "Données réseau électrique réunionnais. API ODS migrée (avr 2026) — données statiques intégrées : 14 postes sources géolocalisés, mix électrique 2024 (facteur émission 0.73 kg CO₂/kWh). Pertinent pour les études de faisabilité PV (P09)."
+    },
+    {
+      "id": "inpn-biodiversite",
+      "nom": "INPN — Inventaire National du Patrimoine Naturel",
+      "type": "data_provider",
+      "categorie": "biodiversite_milieux_naturels",
+      "url": "https://inpn.mnhn.fr",
+      "contact": "Muséum National d'Histoire Naturelle (MNHN) / Patrinat",
+      "acces": "gratuit",
+      "auth": "aucune",
+      "format": ["GeoJSON","WFS","téléchargement"],
+      "couches_terlab": [
+        "ZNIEFF type I",
+        "ZNIEFF type II",
+        "Parc National de La Réunion",
+        "Natura 2000"
+      ],
+      "phases_terlab": ["P06"],
+      "integration_status": "nouveau_statique",
+      "note_pedagogique": "Inventaire écologique national incluant les DOM. La Réunion possède de nombreuses ZNIEFF couvrant une part importante du territoire. Le Parc National couvre le massif central (105 000 ha). WFS Carmen parfois instable — fallback GeoJSON statiques."
+    },
+    {
+      "id": "meteofrance-api",
+      "nom": "Météo-France — API Hub",
+      "type": "data_provider",
+      "categorie": "climatologie_meteorologie",
+      "url": "https://portail-api.meteofrance.fr",
+      "contact": "portail-api.meteofrance.fr — inscription gratuite",
+      "acces": "gratuit_avec_token",
+      "auth": "token_api_key",
+      "auth_procedure": "Inscription sur portail-api.meteofrance.fr → Mon compte → Créer un jeton",
+      "format": ["JSON","CSV"],
+      "couches_terlab": [
+        "DPClim/v1 — climatologie mensuelle",
+        "DPObs/v1 — observations infrahoraires",
+        "DPPaquetObs — liste des stations"
+      ],
+      "phases_terlab": ["P01","P03"],
+      "stations_reunion_nb": 70,
+      "integration_status": "stub_actif",
+      "note_pedagogique": "70+ stations météorologiques couvrant toute La Réunion. Données de vent indispensables pour l'analyse bioclimatique RTAA DOM (P01) et les risques cycloniques (P03). Fallback normales 1991–2020 intégrées pour 12 stations."
+    },
+    {
+      "id": "peigeo-agorah",
+      "nom": "PEIGEO — AGORAH",
+      "type": "data_provider",
+      "categorie": "amenagement_urbanisme_reunion",
+      "url": "https://peigeo.re",
+      "contact": "agorah.com — Agence d'Urbanisme de La Réunion",
+      "acces": "gratuit",
+      "auth": "aucune",
+      "format": ["WFS","WMS","GeoServer"],
+      "serveur": "peigeo.re:8080/geoserver",
+      "couches_terlab": [
+        "PPR:zones_ppr",
+        "PLU:zonage",
+        "OCS:occupation_sol",
+        "BATI:emprise",
+        "HYDRO:ravines"
+      ],
+      "phases_terlab": ["P03","P04","P05","P06","P12"],
+      "integration_status": "actif",
+      "note_pedagogique": "Référence géographique principale pour La Réunion. PPR approuvés, PLU communaux, occupation des sols, hydrographie. Source AGORAH — Agence d'Urbanisme de La Réunion. CORS wildcard confirmé (avr 2026)."
+    },
+    {
+      "id": "georisques",
+      "nom": "Géorisques — Prévention des risques",
+      "type": "data_provider",
+      "categorie": "risques_naturels_technologiques",
+      "url": "https://georisques.gouv.fr",
+      "contact": "georisques.gouv.fr/api — BRGM / DGPR",
+      "acces": "gratuit",
+      "auth": "aucune",
+      "format": ["JSON","WFS","WMS"],
+      "couches_terlab": [
+        "gaspar/risques — multi-aléas par coordonnées",
+        "basol — sites pollués",
+        "mvt/argiles — mouvement de terrain"
+      ],
+      "phases_terlab": ["P03","P05"],
+      "integration_status": "actif",
+      "note_pedagogique": "Données officielles multi-risques. Couvre séismes, inondations, mouvements de terrain, cavités. API unifiée en un seul appel par coordonnées GPS. CORS wildcard confirmé (avr 2026) — intégration directe sans proxy."
+    },
+    {
+      "id": "saintdenis-sig",
+      "nom": "Open Data SIG — Ville de Saint-Denis",
+      "type": "data_provider",
+      "categorie": "donnees_communales",
+      "url": "https://opendata-sig.saintdenis.re",
+      "contact": "Ville de Saint-Denis — Direction SIG",
+      "acces": "gratuit",
+      "auth": "aucune",
+      "format": ["GeoJSON","ArcGIS REST","CSV","Shapefile"],
+      "couches_terlab": [
+        "hydrants_sdis — points d'eau incendie",
+        "reseau_electrique_hta",
+        "voirie_classement",
+        "espaces_verts",
+        "equipements_publics"
+      ],
+      "phases_terlab": ["P05","P08"],
+      "integration_status": "nouveau",
+      "note_pedagogique": "SIG complet de la capitale réunionnaise. Données hydrants SDIS (pertinentes P08 chantier), réseau électrique HTA, équipements publics. ArcGIS REST → GeoJSON natif. CORS manquant — proxy ou pré-téléchargement."
+    },
+    {
+      "id": "deal-reunion",
+      "nom": "DEAL Réunion — Données géographiques",
+      "type": "data_provider",
+      "categorie": "environnement_amenagement_etat",
+      "url": "https://www.reunion.developpement-durable.gouv.fr",
+      "contact": "DEAL Réunion — Direction de l'Environnement, de l'Aménagement et du Logement",
+      "acces": "gratuit",
+      "auth": "aucune",
+      "format": ["WMS","WFS","téléchargement"],
+      "couches_terlab": [
+        "PPRN approuvés",
+        "PPRL littoral",
+        "trait-de-cote",
+        "risques-alea-volcan"
+      ],
+      "phases_terlab": ["P03","P10"],
+      "integration_status": "nouveau",
+      "note_pedagogique": "Source officielle risques naturels Réunion. PPRn en cours de révision. Service cartographique dédié Réunion."
+    },
+    {
+      "id": "global-solar-atlas",
+      "nom": "Global Solar Atlas",
+      "type": "data_provider",
+      "categorie": "energie_solaire",
+      "url": "https://globalsolaratlas.info",
+      "contact": "World Bank Group / Solargis",
+      "acces": "gratuit",
+      "auth": "aucune_pour_API_simple",
+      "format": ["JSON","GeoTIFF"],
+      "couches_terlab": [
+        "GHI — Irradiation horizontale globale",
+        "DNI — Irradiation normale directe",
+        "PVOUT — Production PV estimée kWh/kWp"
+      ],
+      "phases_terlab": ["P07","P09"],
+      "integration_status": "nouveau",
+      "note_pedagogique": "Irradiation solaire par coordonnées GPS. La Réunion reçoit en moyenne 1900 kWh/m²/an en zone côtière. Données essentielles pour le calcul ACV photovoltaïque (P09) et l'orientation bioclimatique (P07). CORS OK, réponse JSON directe."
+    },
+    {
+      "id": "region-reuniondata",
+      "nom": "Open Data Région Réunion",
+      "type": "data_provider",
+      "categorie": "donnees_regionales",
+      "url": "https://data.regionreunion.com",
+      "contact": "Région Réunion — Direction du numérique",
+      "acces": "gratuit",
+      "auth": "aucune",
+      "format": ["GeoJSON","CSV","API REST"],
+      "couches_terlab": [],
+      "phases_terlab": ["P05","P11"],
+      "integration_status": "nouveau",
+      "note_pedagogique": "Catalogue complet de données ouvertes régionales. API OpenDataSoft. À explorer pour datasets spécifiques (transport, économie, environnement)."
+    }
+  ]
+}

@@ -2,6 +2,9 @@
 // Editeur SVG plan masse Phase 11 TERLAB v2.0
 // SVG overlay sur Mapbox GL JS live — re-projete sur map.on('render')
 // Bug fixes : CCW/winding, normales interieures, classifyEdges, centroide
+// v2.1 : intégration TopoCaseService — contraintes pente dans _prog + panel UI
+
+import TopoCaseService from '../services/topo-case-service.js';
 
 const EsquisseCanvas = {
 
@@ -29,13 +32,15 @@ const EsquisseCanvas = {
   _boundRender:  null,
   _boundDrag:    null,
   _boundDragEnd: null,
+  _parcelBearing: 0,   // angle (deg) du plus long côté de la parcelle vs horizontal
 
   // ── PLAN MASSE ENGINE (v5) ──────────────────────────────────────
   _buildingAABB: null,       // { x, y, w, l } en mètres locaux — AABB du bâtiment
   _editMode:     'aabb',     // 'aabb' (rectangle 8-handles) | 'polygon' (sommets libres)
   _engineMetrics: null,      // résultat PlanMasseEngine.metrics()
   _engineTerrain: null,      // terrain struct pour l'engine (cache)
-  _prog: { type: 'maison', nvMax: 2, profMax: 15, parkMode: 'ext', parkSS: false, maxUnits: 20 },
+  _prog: { type: 'maison', nvMax: 2, profMax: 15, parkMode: 'ext', parkSS: false, maxUnits: 20,
+           _topoCase: null, _topoConstraints: null },
   _parkSide: 'est',
 
   // ── VEGETATION BPF ─────────────────────────────────────────────
@@ -120,10 +125,20 @@ const EsquisseCanvas = {
       this._existingMode = window.ExistingBuildings.suggestMode(this._session, this._prog);
     }
 
+    // ── 3d. Contraintes topographiques ───────────────────────────
+    this._applyTopoConstraints();
+
+    // ── 3e. Auto-rotation : plus long côté parcellaire → horizontal ──
+    this._parcelBearing = this._computeParcelBearing();
+
     // ── 4. Fly-to sur la parcelle ────────────────────────────────
     if (this._map && this._parcelGeo.length > 0) {
       const [clng, clat] = this._centroidGeo(this._parcelGeo);
-      this._map.flyTo({ center: [clng, clat], zoom: 18, duration: 1200 });
+      // Appliquer le bearing pour que le plus long côté soit horizontal
+      this._map.flyTo({
+        center: [clng, clat], zoom: 18, duration: 1200,
+        bearing: -this._parcelBearing,
+      });
     } else if (!this._map) {
       this._autoFit();
     }
@@ -212,15 +227,40 @@ const EsquisseCanvas = {
       this._drawBackground();
     }
 
+    // ── Mode standalone : rotation de la vue pour aligner le plus long côté ──
+    // En mode Mapbox, le bearing est géré par map.flyTo/setBearing
+    const bearing = this._parcelBearing || 0;
+    if (!this._map && Math.abs(bearing) > 1) {
+      const W = this._svgW || 600;
+      const H = this._svgH || 500;
+      const rotG = this._el('g', {
+        transform: `rotate(${-bearing}, ${W / 2}, ${H / 2})`,
+        id: 'rotated-content',
+      });
+      // Reparenter : tout le contenu dessiné après sera dans ce groupe
+      this._svgRotGroup = rotG;
+    } else {
+      this._svgRotGroup = null;
+    }
+
+    // Cadastre vecteur : re-dessiner si visible (suit le zoom/pan)
+    if (this._cadastreVisible && this._cadastreVectorGeo) {
+      this._drawCadastreVector(this._cadastreVectorGeo);
+    }
+
     this._drawPPRNZones();
     this._drawContext();
     this._drawParcel();
     this._drawReculs();
-    this._drawNorthArrow();
-    this._drawScale();
     if (this._proposals.length > 0) {
       this._renderProposal(this._selected);
     }
+
+    // Fermer le groupe rotaté, puis dessiner N et échelle hors rotation
+    this._svgRotGroup = null;
+
+    this._drawNorthArrow();
+    this._drawScale();
   },
 
   // ── PROJECTION ─────────────────────────────────────────────────
@@ -343,6 +383,33 @@ const EsquisseCanvas = {
       coords.reduce((s, c) => s + c[0], 0) / n,
       coords.reduce((s, c) => s + c[1], 0) / n,
     ];
+  },
+
+  /**
+   * Calcule l'angle du plus long côté de la parcelle par rapport à l'horizontale.
+   * Retourne un angle en degrés [-90, 90] pour tourner la vue afin que
+   * le côté dominant soit horizontal (facilite le dessin parallèle).
+   */
+  _computeParcelBearing() {
+    const pts = this._parcelLocal;
+    if (!pts || pts.length < 3) return 0;
+    let maxLen = 0, bestAngle = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const j = (i + 1) % pts.length;
+      const dx = pts[j].x - pts[i].x;
+      const dy = pts[j].y - pts[i].y;
+      const len = Math.hypot(dx, dy);
+      if (len > maxLen) {
+        maxLen = len;
+        bestAngle = Math.atan2(dy, dx) * 180 / Math.PI;
+      }
+    }
+    // Normaliser pour que le côté soit horizontal : ramener dans [-45, 45]
+    // On veut l'angle minimum pour rendre ce côté horizontal
+    let a = bestAngle % 180;
+    if (a > 90) a -= 180;
+    if (a < -90) a += 180;
+    return a;
   },
 
   // ── CONTEXTE MAPBOX ────────────────────────────────────────────
@@ -476,6 +543,122 @@ const EsquisseCanvas = {
     }
   },
 
+  // ── CADASTRE VECTEUR (mode standalone) — cadastre.data.gouv.fr ─
+  // Charge les parcelles GeoJSON depuis l'API Etalab et les dessine en SVG
+  // Dynamique : suit le zoom/pan car dessiné dans le même repère SVG local
+  _cadastreVectorGeo: null,  // cache des parcelles GeoJSON
+  _cadastreVisible: false,
+
+  async _loadCadastreVector() {
+    if (this._cadastreVectorGeo) return this._cadastreVectorGeo;
+    if (!this._parcelGeo.length) return null;
+
+    // Centroïde parcelle pour la requête
+    const [clng, clat] = this._centroidGeo(this._parcelGeo);
+
+    // API geo.api.gouv.fr : reverse geocode → code commune
+    const codeInsee = this._session?.terrain?.code_insee
+      ?? this._session?.phases?.[0]?.data?.code_insee;
+
+    // Stratégie 1 : code INSEE connu → télécharger toute la section
+    // Stratégie 2 : bbox autour de la parcelle via WFS cadastre
+    const bbox = this._parcelGeoBBox(0.6); // élargir 60%
+    if (!bbox) return null;
+
+    try {
+      // WFS cadastre IGN Geoplateforme — parcelles vecteur dans la bbox
+      const [minLng, minLat, maxLng, maxLat] = bbox;
+      const wfsUrl = `https://data.geopf.fr/wfs/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature`
+        + `&TYPENAMES=CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle`
+        + `&OUTPUTFORMAT=application/json`
+        + `&BBOX=${minLat},${minLng},${maxLat},${maxLng},EPSG:4326`
+        + `&COUNT=200`;
+
+      console.info('[EsquisseCanvas] Cadastre vecteur WFS URL:', wfsUrl);
+      const resp = await fetch(wfsUrl);
+      if (!resp.ok) throw new Error(`WFS ${resp.status}`);
+      const geojson = await resp.json();
+
+      if (!geojson.features?.length) {
+        console.warn('[EsquisseCanvas] Cadastre vecteur : aucune parcelle dans la bbox');
+        return null;
+      }
+
+      this._cadastreVectorGeo = geojson.features;
+      console.info(`[EsquisseCanvas] Cadastre vecteur : ${geojson.features.length} parcelles chargées`);
+      return this._cadastreVectorGeo;
+    } catch (e) {
+      console.warn('[EsquisseCanvas] Echec cadastre vecteur WFS, fallback WMS:', e);
+      return null;
+    }
+  },
+
+  /** BBox WGS84 élargie autour de la parcelle [minLng, minLat, maxLng, maxLat] */
+  _parcelGeoBBox(pad = 0.4) {
+    if (!this._parcelGeo.length) return null;
+    let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+    for (const [lng, lat] of this._parcelGeo) {
+      if (lng < minLng) minLng = lng;
+      if (lng > maxLng) maxLng = lng;
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+    }
+    const padLng = (maxLng - minLng) * pad || 0.0003;
+    const padLat = (maxLat - minLat) * pad || 0.0003;
+    return [minLng - padLng, minLat - padLat, maxLng + padLng, maxLat + padLat];
+  },
+
+  /** Dessine les parcelles cadastrales en SVG vecteur (gris) */
+  _drawCadastreVector(features) {
+    if (!features?.length) return;
+    this._svg.querySelectorAll('#cadastre-vector-layer').forEach(el => el.remove());
+
+    const g = this._el('g', { id: 'cadastre-vector-layer', opacity: '0.55' });
+    // Insérer en premier enfant du SVG (derrière tout le reste)
+    if (this._svg.firstChild) {
+      this._svg.insertBefore(g, this._svg.firstChild);
+    }
+
+    for (const feat of features) {
+      const geom = feat.geometry;
+      if (!geom) continue;
+      const rings = geom.type === 'Polygon' ? geom.coordinates
+        : geom.type === 'MultiPolygon' ? geom.coordinates.flat()
+        : [];
+
+      for (const ring of rings) {
+        const localPts = this._geoToLocal(ring.map(c => [c[0], c[1]]));
+        const svgPts = this._map
+          ? this._projectAll(ring.map(c => [c[0], c[1]]))
+          : localPts.map(p => this._localToSvgPt(p));
+
+        this._el('polygon', {
+          points: this._polyPoints(svgPts),
+          fill: 'none',
+          stroke: '#8a8a8a', 'stroke-width': 1.2,
+          'stroke-linejoin': 'round',
+        }, null, g);
+      }
+
+      // Numéro de parcelle au centroïde
+      const numero = feat.properties?.numero ?? feat.properties?.idu ?? '';
+      if (numero && geom.coordinates?.[0]) {
+        const ring0 = geom.coordinates[0];
+        const cx = ring0.reduce((s, c) => s + c[0], 0) / ring0.length;
+        const cy = ring0.reduce((s, c) => s + c[1], 0) / ring0.length;
+        const svgC = this._map
+          ? this._project([cx, cy])
+          : this._localToSvgPt(this._geoToLocal([[cx, cy]])[0]);
+        this._el('text', {
+          x: svgC.x, y: svgC.y + 3,
+          'text-anchor': 'middle', 'font-size': 8,
+          fill: '#888', 'font-family': 'var(--font-mono, monospace)',
+          'pointer-events': 'none',
+        }, null, g).textContent = numero;
+      }
+    }
+  },
+
   // Trouver la premiere couche de type symbol (pour inserer en dessous)
   _findFirstSymbolLayer(map) {
     const layers = map.getStyle()?.layers ?? [];
@@ -486,7 +669,9 @@ const EsquisseCanvas = {
   },
 
   // Toggle visibilite couche cadastrale
-  toggleCadastre(visible) {
+  async toggleCadastre(visible) {
+    this._cadastreVisible = visible;
+
     // Mode Mapbox : toggle du layer raster
     const map = this._map;
     if (map) {
@@ -497,32 +682,36 @@ const EsquisseCanvas = {
       return;
     }
 
-    // Mode standalone : injecter/toggle une image WMS cadastre derriere le SVG
-    let img = document.getElementById('cadastre-standalone-img');
-    if (img) {
-      img.style.display = visible ? 'block' : 'none';
+    // Mode standalone : cadastre vecteur SVG (dynamique au zoom/pan)
+    if (!visible) {
+      this._svg.querySelectorAll('#cadastre-vector-layer').forEach(el => el.remove());
+      // Aussi masquer l'ancien WMS si présent
+      const img = document.getElementById('cadastre-standalone-img');
+      if (img) img.style.display = 'none';
       return;
     }
-    if (!visible) return;
 
-    // Construire la bbox WGS84 (EPSG:4326) depuis la parcelle
-    if (!this._parcelGeo.length) { console.warn('[EsquisseCanvas] Pas de parcelle pour le cadastre'); return; }
-    let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
-    for (const [lng, lat] of this._parcelGeo) {
-      if (lng < minLng) minLng = lng;
-      if (lng > maxLng) maxLng = lng;
-      if (lat < minLat) minLat = lat;
-      if (lat > maxLat) maxLat = lat;
+    // Charger les parcelles vecteur depuis WFS IGN
+    const features = await this._loadCadastreVector();
+    if (features) {
+      this._drawCadastreVector(features);
+      return;
     }
-    // Elargir de 40% pour voir le contexte autour
-    const padLng = (maxLng - minLng) * 0.4 || 0.0003;
-    const padLat = (maxLat - minLat) * 0.4 || 0.0003;
-    minLng -= padLng; maxLng += padLng;
-    minLat -= padLat; maxLat += padLat;
 
-    // Calculer la correspondance entre la bbox WGS84 et les pixels SVG standalone
-    // Local → SVG : svgX = W/2 + local.x * SCALE,  svgY = H/2 + local.y * SCALE
-    // Local → Geo : lng = clng + x / LNG_SCALE,     lat = clat - y / LAT_SCALE
+    // Fallback WMS raster si le vecteur échoue
+    this._loadCadastreWMSFallback();
+  },
+
+  /** Fallback WMS raster statique (ancien comportement) */
+  _loadCadastreWMSFallback() {
+    let img = document.getElementById('cadastre-standalone-img');
+    if (img) { img.style.display = 'block'; return; }
+
+    if (!this._parcelGeo.length) { console.warn('[EsquisseCanvas] Pas de parcelle pour le cadastre'); return; }
+    const bbox = this._parcelGeoBBox(0.4);
+    if (!bbox) return;
+    const [minLng, minLat, maxLng, maxLat] = bbox;
+
     const W = this._svgW || 600;
     const H = this._svgH || 500;
     const SCALE = this.SCALE || 5;
@@ -530,16 +719,13 @@ const EsquisseCanvas = {
     const LNG_SCALE = 111320 * Math.cos(clat * Math.PI / 180);
     const LAT_SCALE = 111320;
 
-    // Convertir la bbox GPS en pixels SVG
     const svgMinX = W / 2 + (minLng - clng) * LNG_SCALE * SCALE;
     const svgMaxX = W / 2 + (maxLng - clng) * LNG_SCALE * SCALE;
-    // Y inverse : lat+ = local y- = svg y-
     const svgMinY = H / 2 - (maxLat - clat) * LAT_SCALE * SCALE;
     const svgMaxY = H / 2 - (minLat - clat) * LAT_SCALE * SCALE;
     const imgW = svgMaxX - svgMinX;
     const imgH = svgMaxY - svgMinY;
 
-    // WMS GetMap — IGN Geoplateforme cadastre (EPSG:3857)
     const toMerc = (lng, lat) => {
       const x = lng * 20037508.34 / 180;
       const latRad = lat * Math.PI / 180;
@@ -548,14 +734,14 @@ const EsquisseCanvas = {
     };
     const [mMinX, mMinY] = toMerc(minLng, minLat);
     const [mMaxX, mMaxY] = toMerc(maxLng, maxLat);
-    const pxW = Math.round(Math.max(imgW * 2, 512));  // haute res
+    const pxW = Math.round(Math.max(imgW * 2, 512));
     const pxH = Math.round(Math.max(imgH * 2, 512));
     const url = `https://data.geopf.fr/wms-r/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap`
       + `&LAYERS=CADASTRALPARCELS.PARCELLAIRE_EXPRESS`
       + `&CRS=EPSG:3857&BBOX=${mMinX},${mMinY},${mMaxX},${mMaxY}`
       + `&WIDTH=${pxW}&HEIGHT=${pxH}&FORMAT=image/png&STYLES=&TRANSPARENT=true`;
 
-    console.info('[EsquisseCanvas] Cadastre WMS URL:', url);
+    console.info('[EsquisseCanvas] Cadastre WMS fallback URL:', url);
 
     img = document.createElement('img');
     img.id = 'cadastre-standalone-img';
@@ -575,9 +761,7 @@ const EsquisseCanvas = {
       wrap.insertBefore(img, wrap.firstChild);
     }
 
-    img.onload = () => {
-      console.info('[EsquisseCanvas] Cadastre WMS charge OK');
-    };
+    img.onload = () => console.info('[EsquisseCanvas] Cadastre WMS charge OK');
     img.onerror = () => {
       console.warn('[EsquisseCanvas] Echec WMS cadastre');
       img.style.display = 'none';
@@ -1222,16 +1406,27 @@ const EsquisseCanvas = {
     const g = this._el('g', { class: 'proposal-group', id: 'active-proposal' });
 
     // ── Initialiser AABB depuis la proposition si pas encore fait ──
-    if (!this._buildingAABB && prop.polygon?.length >= 3) {
-      const bb = this._bboxLocal(prop.polygon);
-      this._buildingAABB = {
-        x: bb.minX, y: bb.minY,
-        w: bb.maxX - bb.minX, l: bb.maxY - bb.minY,
-      };
+    if (!this._buildingAABB) {
+      if (prop.bat) {
+        // Préférer le bat calculé par AutoPlanEngine (déjà clampé profMax/rtaaW)
+        this._buildingAABB = { ...prop.bat };
+      } else if (prop.polygon?.length >= 3) {
+        const bb = this._bboxLocal(prop.polygon);
+        this._buildingAABB = {
+          x: bb.minX, y: bb.minY,
+          w: bb.maxX - bb.minX, l: bb.maxY - bb.minY,
+        };
+      }
     }
 
     // ── Calculer les métriques engine ──
     this._updateEngineMetrics();
+
+    // ── Écrire bat sur la proposal pour CapacityStudyRenderer / export ──
+    if (this._buildingAABB) {
+      prop.bat = { ...this._buildingAABB };
+      prop.niveaux = this._engineMetrics?.nvEff ?? this._prog.nvMax;
+    }
 
     // ── Vérifications SDIS après calcul métriques ──
     this._updateSdisChecks();
@@ -2128,6 +2323,39 @@ const EsquisseCanvas = {
   },
 
   // Mettre à jour les métriques engine depuis l'état courant
+  /**
+   * Source unique de vérité : synchronise _prog ↔ _buildingAABB ↔ métriques.
+   * @param {'prog'|'aabb'} source — qui vient de changer
+   */
+  _syncState(source = 'prog') {
+    if (source === 'prog' && this._buildingAABB) {
+      // _prog vient de changer → clamper l'AABB
+      if (this._prog.profMax && this._buildingAABB.l > this._prog.profMax) {
+        this._buildingAABB.l = this._prog.profMax;
+      }
+    }
+    if (source === 'aabb' && this._buildingAABB) {
+      // L'utilisateur a dragué → mettre à jour _prog pour cohérence
+      this._prog.profMax = parseFloat(this._buildingAABB.l.toFixed(1));
+      // Mettre à jour le slider DOM
+      const slider = document.getElementById('pm-profmax');
+      const label  = document.getElementById('pm-profmax-lbl');
+      if (slider) slider.value = this._prog.profMax;
+      if (label)  label.textContent = this._prog.profMax + 'm';
+    }
+
+    this._engineTerrain = null; // invalider cache terrain
+    this._updateEngineMetrics();
+
+    // Synchroniser le polygone de la proposition active
+    const prop = this._proposals[this._selected];
+    if (prop && this._buildingAABB) {
+      this._syncPolygonFromAABB(prop);
+    }
+
+    this._fullRedraw();
+  },
+
   _updateEngineMetrics() {
     const engine = window.PlanMasseEngine;
     if (!engine || !this._buildingAABB || !this._parcelLocal?.length) {
@@ -2482,11 +2710,15 @@ const EsquisseCanvas = {
       W = this._svgW || 600;
     }
     x = W - 45;
+    // En mode standalone avec rotation, la flèche nord pointe vers le vrai nord
+    const bearing = (!this._map && this._parcelBearing) ? this._parcelBearing : 0;
     const g = this._el('g', { transform: `translate(${x}, 45)` }, 'north');
-    this._el('polygon', { points: '0,-20 6,5 0,2 -6,5', fill: '#1e3a5f' }, null, g);
-    this._el('polygon', { points: '0,20 6,-5 0,-2 -6,-5', fill: '#c8d4dc', stroke: '#1e3a5f', 'stroke-width': 0.5 }, null, g);
+    // Groupe interne rotaté pour indiquer le vrai nord
+    const inner = this._el('g', { transform: `rotate(${bearing})` }, null, g);
+    this._el('polygon', { points: '0,-20 6,5 0,2 -6,5', fill: '#1e3a5f' }, null, inner);
+    this._el('polygon', { points: '0,20 6,-5 0,-2 -6,-5', fill: '#c8d4dc', stroke: '#1e3a5f', 'stroke-width': 0.5 }, null, inner);
     this._el('circle', { cx: 0, cy: 0, r: 22, fill: 'none', stroke: '#1e3a5f', 'stroke-width': 1 }, null, g);
-    this._el('text', { x: 0, y: -28, 'text-anchor': 'middle', 'font-size': 13, 'font-family': 'var(--font-mono)', fill: '#1e3a5f', 'font-weight': 700 }, null, g).textContent = 'N';
+    this._el('text', { x: 0, y: -28, 'text-anchor': 'middle', 'font-size': 13, 'font-family': 'var(--font-mono)', fill: '#1e3a5f', 'font-weight': 700, transform: `rotate(${bearing}, 0, -28)` }, null, g).textContent = 'N';
   },
 
   _drawScale() {
@@ -2519,6 +2751,119 @@ const EsquisseCanvas = {
   },
 
   // ── PANEL SCORE ────────────────────────────────────────────────
+  // ── TOPO CASE ────────────────────────────────────────────────
+  _applyTopoConstraints() {
+    const pente = this._session?.terrain?.pente_moy_pct;
+    const constraints = TopoCaseService.getProgConstraints(pente, this._prog);
+
+    this._prog.profMax          = constraints.profMax;
+    this._prog.parkMode         = constraints.parkMode;
+    this._prog.parkSS           = constraints.parkSS;
+    this._prog._topoCase        = constraints.topoCase;
+    this._prog._topoConstraints = constraints;
+
+    // Mettre à jour le slider profMax dans le DOM
+    const slider = document.getElementById('pm-profmax');
+    const label  = document.getElementById('pm-profmax-lbl');
+    if (slider) { slider.value = constraints.profMax; slider.max = constraints.topoCase.profMax; }
+    if (label)  label.textContent = constraints.profMax + 'm';
+
+    // Mettre à jour le parking si forcé par la pente
+    if (constraints.topoCase.parkingAere) {
+      document.querySelectorAll('[id^="pm-park-"]').forEach(b => b.classList.remove('active'));
+      document.getElementById('pm-park-ext')?.classList.add('active');
+    }
+
+    window.dispatchEvent(new CustomEvent('terlab:topo-case-applied', {
+      detail: { topoCase: constraints.topoCase, constraints }
+    }));
+
+    console.log(`[EsquisseCanvas] TopoCase appliqué : ${constraints.topoCase.label} (profMax=${constraints.profMax}m)`);
+    this._renderTopoCasePanel(constraints);
+  },
+
+  _renderTopoCasePanel(constraints) {
+    const tc = constraints.topoCase;
+    if (!tc) return;
+
+    const panel = document.getElementById('topo-case-panel');
+    if (!panel) return;
+    panel.style.display = 'block';
+
+    const badge = document.getElementById('topo-case-badge');
+    if (badge) {
+      badge.className = `topo-badge ${tc.id}`;
+      badge.textContent = tc.penteMax === Infinity
+        ? `>${tc.penteMin}%`
+        : `${tc.penteMin}–${tc.penteMax}%`;
+    }
+
+    const name = document.getElementById('topo-case-name');
+    if (name) name.textContent = tc.label;
+
+    const items = [
+      `Profondeur max : ${tc.profMax}m`,
+      `Système : ${tc.systemType.replace(/_/g, ' ')}`,
+      tc.pmrNaturelAmont ? '✓ PMR naturel depuis amont' : '⚠ Rampe PMR nécessaire',
+      tc.parkingAere ? '✓ Parking aéré SDIS' : '',
+      tc.pompesRelev ? '⚠ Pompes de relevage R-1' : '',
+      tc.bureauStructure ? '⚠ Bureau structure obligatoire' : '',
+      `Coût constructif : ×${tc.coutMultiplicateur}`,
+    ].filter(Boolean);
+
+    const list = document.getElementById('topo-constraints-list');
+    if (list) list.innerHTML = `<ul>${items.map(i => `<li>${i}</li>`).join('')}</ul>`;
+
+    const link = document.getElementById('topo-conseils-link');
+    if (link) {
+      link.href = TopoCaseService.conseilsURL('sC');
+      link.textContent = 'Voir conseils §C — Systèmes constructifs →';
+    }
+
+    this._loadCoupePreview(tc.coupeRef);
+  },
+
+  async _loadCoupePreview(coupeId) {
+    const container = document.getElementById('topo-coupe-svg-container');
+    const wrap = document.getElementById('topo-coupe-preview');
+    if (!container) return;
+
+    try {
+      const atlasPath = '.docs/terlab-v3/atlas-topographie-coupes-reunion.html';
+      const resp = await fetch(atlasPath);
+      if (!resp.ok) throw new Error('Atlas non trouvé');
+      const html = await resp.text();
+
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+
+      const casNumber = coupeId.replace('cas', '').padStart(2, '0');
+      const svgs = doc.querySelectorAll('svg');
+      let targetSvg = null;
+      for (const svg of svgs) {
+        const title = svg.querySelector('text');
+        if (title?.textContent?.includes(`CAS ${casNumber}`)) {
+          targetSvg = svg;
+          break;
+        }
+      }
+
+      if (targetSvg) {
+        const clone = targetSvg.cloneNode(true);
+        clone.style.width = '100%';
+        clone.style.height = 'auto';
+        clone.style.maxHeight = '160px';
+        clone.style.borderRadius = '3px';
+        clone.style.border = '1px solid rgba(154,120,32,.22)';
+        container.innerHTML = '';
+        container.appendChild(clone);
+        if (wrap) wrap.style.display = 'block';
+      }
+    } catch (e) {
+      console.warn('[EsquisseCanvas] Coupe preview non disponible :', e.message);
+    }
+  },
+
   _renderScorePanel() {
     const panel = document.getElementById('p07-score-panel')
                ?? document.getElementById('p11-score-panel');
@@ -2710,8 +3055,19 @@ const EsquisseCanvas = {
       this._dragging.prevX = currX;
       this._dragging.prevY = currY;
     } else {
-      dxM = (e.clientX - this._dragging.startX) / this.SCALE;
-      dyM = (e.clientY - this._dragging.startY) / this.SCALE;
+      let rawDx = (e.clientX - this._dragging.startX) / this.SCALE;
+      let rawDy = (e.clientY - this._dragging.startY) / this.SCALE;
+      // Compenser la rotation de la vue standalone
+      const bearing = this._parcelBearing || 0;
+      if (Math.abs(bearing) > 1) {
+        const rad = bearing * Math.PI / 180;
+        const cos = Math.cos(rad), sin = Math.sin(rad);
+        dxM =  cos * rawDx + sin * rawDy;
+        dyM = -sin * rawDx + cos * rawDy;
+      } else {
+        dxM = rawDx;
+        dyM = rawDy;
+      }
       this._dragging.startX = e.clientX;
       this._dragging.startY = e.clientY;
     }
@@ -2816,6 +3172,10 @@ const EsquisseCanvas = {
     this._dragging = null;
     document.removeEventListener('mousemove', this._boundDrag);
     document.removeEventListener('mouseup',   this._boundDragEnd);
+
+    // Sync AABB → _prog → métriques (sliders suivent le drag)
+    this._syncState('aabb');
+
     this._saveToSession();
     // Re-analyser RTAA
     const prop = this._proposals[this._selected];
@@ -2882,6 +3242,7 @@ const EsquisseCanvas = {
     if (!prop) return;
     window.SessionManager?.savePhase(11, {
       esquisse_svg: null,
+      building_aabb: this._buildingAABB ? { ...this._buildingAABB } : null,
       proposition_retenue: {
         family: prop.family,
         polygon: prop.polygon,
@@ -2889,6 +3250,8 @@ const EsquisseCanvas = {
         surface: prop.surface,
         score: prop.score,
         scoreData: prop.scoreData,
+        bat: prop.bat ?? null,
+        niveaux: prop.niveaux ?? null,
       },
     });
     window.dispatchEvent(new CustomEvent('terlab:session-changed'));
@@ -2900,7 +3263,7 @@ const EsquisseCanvas = {
     const el = document.createElementNS(ns, tag);
     Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
     if (id) el.id = id;
-    (parent ?? this._svg).appendChild(el);
+    (parent ?? this._svgRotGroup ?? this._svg).appendChild(el);
     return el;
   },
 

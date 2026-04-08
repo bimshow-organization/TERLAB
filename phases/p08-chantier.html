@@ -265,6 +265,47 @@
     </div>
   </div>
 
+  <!-- Accès chantier -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Accès chantier</div>
+    <div class="acces-checks">
+      <label class="acces-item"><input type="checkbox" data-session-key="acces_voie_publique"/>Accès depuis voie publique confirmé</label>
+      <label class="acces-item"><input type="checkbox" data-session-key="gabarit_verifie"/>Gabarit voie vérifié (camion toupie / grue)</label>
+      <label class="acces-item"><input type="checkbox" data-session-key="hydrant_verifie"/>Hydrant SDIS &lt; 150 m vérifié sur terrain</label>
+      <label class="acces-item"><input type="checkbox" data-session-key="basevie_positionnee"/>Base-vie positionnée hors emprise constructible</label>
+    </div>
+  </div>
+
+  <!-- Gestion temporelle -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Gestion temporelle</div>
+    <div class="field-row">
+      <label class="field-label">Démarrage prévu</label>
+      <select class="field-select" data-session-key="demarrage_mois">
+        <option value="">-- Mois/Année --</option>
+        <option value="2026-05">Mai 2026</option><option value="2026-06">Juin 2026</option>
+        <option value="2026-07">Juillet 2026</option><option value="2026-08">Août 2026</option>
+        <option value="2026-09">Septembre 2026</option><option value="2026-10">Octobre 2026</option>
+        <option value="2026-11">Novembre 2026</option><option value="2026-12">Décembre 2026</option>
+        <option value="2027-01">Janvier 2027</option><option value="2027-02">Février 2027</option>
+        <option value="2027-03">Mars 2027</option><option value="2027-04">Avril 2027</option>
+      </select>
+    </div>
+    <div class="field-row">
+      <label class="field-label">Durée estimée</label>
+      <select class="field-select" data-session-key="duree_chantier">
+        <option value="">-- Sélectionner --</option>
+        <option value="lt6">< 6 mois</option>
+        <option value="6_12">6–12 mois</option>
+        <option value="gt12">> 12 mois</option>
+      </select>
+    </div>
+    <div class="cyclone-auto-badge" id="cyclone-auto-badge">
+      <span class="cab-icon">🌀</span>
+      <span class="cab-text" id="cab-text">Saison cyclonique : NOV–AVR</span>
+    </div>
+  </div>
+
   <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
     <button class="source-btn" onclick="TerlabSources.open(8)">→ Sources &amp; références chantier</button>
     <a href="https://www.reunion.ars.sante.fr" target="_blank" rel="noopener" class="source-btn" style="margin-left:12px">→ ARS Réunion ↗</a>
@@ -283,7 +324,13 @@
   </div>
 </div>
 
-<div class="map-area"><div id="map" style="width:100%;height:100%"></div></div>
+<div class="map-area" style="position:relative">
+  <div id="map" style="width:100%;height:100%"></div>
+  <!-- SVG overlay chantier synchronisé avec la carte -->
+  <svg id="chantier-overlay" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:2"></svg>
+  <!-- Badge cyclone overlay -->
+  <div id="cyclone-map-badge" style="position:absolute;top:12px;right:12px;z-index:3;padding:6px 12px;border-radius:6px;font-family:var(--font-mono);font-size:10px;font-weight:700;letter-spacing:.03em;pointer-events:none"></div>
+</div>
 
 <div class="right-panel">
   <div class="rp-section">
@@ -299,6 +346,17 @@
       <strong>Alerte orange</strong> → sécuriser, évacuer le chantier<br/>
       <strong>Alerte rouge</strong> → confinement, aucune intervention<br/>
       <strong>Belal jan. 2024</strong> → rafales > 200 km/h à Sainte-Rose
+    </div>
+  </div>
+  <div class="rp-section">
+    <div class="rp-head">Accès chantier & SDIS</div>
+    <div class="ped-note" style="font-size:11px">
+      À La Réunion, toute construction doit résister à des vents de <strong>234 km/h
+      en rafales</strong> (Eurocode 1 — zone 4). Les structures provisoires de chantier
+      (palissades, grues, bungalows) doivent être sécurisées ou déposées
+      avant tout épisode cyclonique (vigilance orange).<br/><br/>
+      Le <strong>SDIS 974</strong> exige un hydrant normalisé à moins de 150 m de tout
+      bâtiment, accessible toute l'année par un engin de 13 tonnes.
     </div>
   </div>
   <div class="rp-section"><div class="rp-head">Acteurs & ressources</div><div id="actors-zone" class="stagger anim-fade-in"></div></div>
@@ -364,6 +422,13 @@
 .cc-row.warn .cc-mois   { color:var(--warning); }
 .cc-row.danger .cc-mois { color:var(--danger); }
 .cc-label { font-size:11px; color:var(--text2); }
+.acces-checks { display:flex; flex-direction:column; gap:4px; }
+.acces-item { display:flex; align-items:center; gap:8px; padding:6px 9px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); font-size:12px; color:var(--text2); cursor:pointer; }
+.acces-item input { accent-color:var(--success); }
+.cyclone-auto-badge { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:var(--r); margin-top:8px; font-family:var(--font-mono); font-size:10px; font-weight:700; }
+.cyclone-auto-badge.safe { background:var(--success2); color:var(--success); border:1px solid rgba(45,212,160,.3); }
+.cyclone-auto-badge.warn { background:var(--warning2); color:var(--warning); border:1px solid rgba(245,158,11,.3); }
+.cyclone-auto-badge.danger { background:var(--danger2); color:var(--danger); border:1px solid rgba(239,68,68,.3); }
 </style>
 
 <script type="module">
@@ -488,4 +553,85 @@ P08.updateSDISBadges();
 window.addEventListener('terlab:phase-updated', () => P08.updateSDISBadges());
 window.addEventListener('terlab:terrain-updated', () => P08.updateSDISBadges());
 window.addEventListener('terlab:session-loaded', () => P08.updateSDISBadges());
+
+// ─── Cyclone auto-badge (form + map overlay) ───────────────────
+function updateCycloneBadge() {
+  const month = new Date().getMonth(); // 0-11
+  const isCyclone = month >= 10 || month <= 3; // nov=10 à avr=3
+  const badge = document.getElementById('cyclone-auto-badge');
+  const mapBadge = document.getElementById('cyclone-map-badge');
+  const MOIS = ['JAN','FÉV','MAR','AVR','MAI','JUN','JUL','AOÛ','SEP','OCT','NOV','DÉC'];
+
+  if (badge) {
+    badge.className = `cyclone-auto-badge ${isCyclone ? 'danger' : 'safe'}`;
+    document.getElementById('cab-text').textContent =
+      isCyclone ? `Saison cyclonique active (${MOIS[month]}) — NOV à AVR`
+                : `Hors saison cyclonique (${MOIS[month]}) — MAI à OCT`;
+  }
+  if (mapBadge) {
+    mapBadge.style.background = isCyclone ? 'rgba(239,68,68,0.85)' : 'rgba(46,184,96,0.85)';
+    mapBadge.style.color = '#fff';
+    mapBadge.textContent = isCyclone ? `🌀 SAISON CYCLONIQUE — ${MOIS[month]}` : `☀ HORS SAISON — ${MOIS[month]}`;
+  }
+}
+updateCycloneBadge();
+
+// ─── SVG Overlay — hydrant 150m + ZIC label ────────────────────
+function updateChantierOverlay() {
+  const svg = document.getElementById('chantier-overlay');
+  const map = window.MapViewer?.getMap?.();
+  if (!svg || !map) return;
+
+  const terrain = SessionManager.getTerrain();
+  const parcelleGeojson = terrain?.parcelle_geometry ?? terrain?.parcelle_geojson;
+  if (!parcelleGeojson && !terrain?.lat) return;
+
+  const center = [parseFloat(terrain.lng), parseFloat(terrain.lat)];
+  const projected = map.project(center);
+  const px = projected.x;
+  const py = projected.y;
+
+  // Hydrant 150m ring in SVG
+  // Approximate pixel radius from meters at current zoom
+  const zoom = map.getZoom();
+  const metersPerPixel = 156543.03392 * Math.cos(center[1] * Math.PI / 180) / Math.pow(2, zoom);
+  const hydrantRadiusPx = 150 / metersPerPixel;
+
+  let svgContent = '';
+
+  // Hydrant circle
+  svgContent += `
+    <circle cx="${px}" cy="${py}" r="${hydrantRadiusPx}"
+      fill="rgba(239,68,68,0.06)" stroke="rgba(239,68,68,0.5)"
+      stroke-width="2" stroke-dasharray="8 4"/>
+    <text x="${px}" y="${py - hydrantRadiusPx - 6}"
+      text-anchor="middle" fill="rgba(239,68,68,0.8)"
+      font-family="var(--font-mono)" font-size="10" font-weight="700">
+      HYDRANT 150m SDIS
+    </text>
+  `;
+
+  // Stub warning text
+  svgContent += `
+    <text x="${px}" y="${py + hydrantRadiusPx + 14}"
+      text-anchor="middle" fill="rgba(245,158,11,0.7)"
+      font-family="var(--font-mono)" font-size="8">
+      ⚠ STUB — vérifier position hydrant sur terrain
+    </text>
+  `;
+
+  svg.innerHTML = svgContent;
+}
+
+// Sync overlay with map movement
+const _mapCheckTimer = setInterval(() => {
+  const map = window.MapViewer?.getMap?.();
+  if (map) {
+    clearInterval(_mapCheckTimer);
+    map.on('move', updateChantierOverlay);
+    map.on('zoom', updateChantierOverlay);
+    map.once('idle', updateChantierOverlay);
+  }
+}, 300);
+setTimeout(() => clearInterval(_mapCheckTimer), 15000);
 </script>

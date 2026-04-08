@@ -4,11 +4,18 @@
     "region": "La Réunion",
     "generated": "2026-04-07",
     "commune": "Saint-Paul",
-    "insee": "97416",
+    "insee": "97415",
     "intercommunalite": "TCO",
     "plu_type": "PLU",
     "plu_date_approbation": "2021-09-27",
-    "plu_modifications": ["2015-10-21","2017-10-05","2018-10-11","2022-06-30","2022-09-08","2024-06-27"],
+    "plu_modifications": [
+      "2015-10-21",
+      "2017-10-05",
+      "2018-10-11",
+      "2022-06-30",
+      "2022-09-08",
+      "2024-06-27"
+    ],
     "bassins_de_vie": [
       "Saint-Paul centre",
       "Saint-Gilles les Bains",
@@ -20,9 +27,7 @@
     "note": "Fichier de référence golden standard pour extraction PLU Réunion. Extrait manuellement depuis le règlement PLU Saint-Paul. Toutes les valeurs confidence=1.0 sauf mention contraire.",
     "source": "Règlement PLU Saint-Paul — Titres I à VI"
   },
-
   "zones": {
-
     "U1a": {
       "label": "Hyper-centre Saint-Paul",
       "bassin": "saint-paul-centre",
@@ -95,11 +100,30 @@
         "versants_pct_volume": 60,
         "pente_min_pct": 25,
         "pente_max_pct": 100,
-        "couleurs_autorisees": ["blanc cassé","gris","bleu","vert","rouge","matériaux naturels"],
-        "couleurs_interdites": ["bleu foncé","rouge foncé"],
-        "couleurs_mitoyen_zone_n": ["gris","vert","matériaux naturels"],
+        "couleurs_autorisees": [
+          "blanc cassé",
+          "gris",
+          "bleu",
+          "vert",
+          "rouge",
+          "matériaux naturels"
+        ],
+        "couleurs_interdites": [
+          "bleu foncé",
+          "rouge foncé"
+        ],
+        "couleurs_mitoyen_zone_n": [
+          "gris",
+          "vert",
+          "matériaux naturels"
+        ],
         "materiaux_non_reflechissants": true,
-        "exceptions": ["U1pru","équipements publics","bâtiments cultuels","annexes"]
+        "exceptions": [
+          "U1pru",
+          "équipements publics",
+          "bâtiments cultuels",
+          "annexes"
+        ]
       },
       "stationnement": {
         "logement_standard": 1,
@@ -133,15 +157,31 @@
       "logement_aide": {
         "sdp_seuil_1_m2": 1800,
         "pct_seuil_1": 30,
-        "types_seuil_1": ["LLTS","LLS","PLS"],
+        "types_seuil_1": [
+          "LLTS",
+          "LLS",
+          "PLS"
+        ],
         "nb_logements_seuil_2": 20,
         "sdp_seuil_2_min_m2": 1500,
         "sdp_seuil_2_max_m2": 1800,
         "pct_seuil_2": 30,
-        "types_seuil_2": ["LLTS","LLS","PLS","PTZ","PSLA"],
+        "types_seuil_2": [
+          "LLTS",
+          "LLS",
+          "PLS",
+          "PTZ",
+          "PSLA"
+        ],
         "terrain_seuil_3_m2": 6000,
         "pct_seuil_3": 30,
-        "types_seuil_3": ["LLTS","LLS","PLS","PTZ","PSLA"],
+        "types_seuil_3": [
+          "LLTS",
+          "LLS",
+          "PLS",
+          "PTZ",
+          "PSLA"
+        ],
         "arrondi": "entier supérieur"
       },
       "contraintes_specifiques": {
@@ -162,10 +202,24 @@
       "_meta": {
         "confidence": 1.0,
         "ambiguites": [],
-        "source_articles": [1,2,3,4,5,6,7,8,9,10,11,12,13,14]
+        "source_articles": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14
+        ]
       }
     },
-
     "U1b": {
       "label": "Zone résidentielle mixte — Caverne, Etang, Jacquot",
       "bassin": "saint-paul-centre",
@@ -218,7 +272,11 @@
           }
         ]
       },
-      "emprise": { "emprise_sol_max_pct": null, "emprise_sol_reglementee": false, "cos": null },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "emprise_sol_reglementee": false,
+        "cos": null
+      },
       "permeabilite": {
         "permeable_min_pct": 30,
         "permeable_ppri_fort_pct": 50,
@@ -246,9 +304,12 @@
         "restaurant_par_100m2": 6
       },
       "logement_aide": {
-        "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30,
-        "nb_logements_seuil_2": 20, "pct_seuil_2": 30,
-        "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30
       },
       "contraintes_specifiques": {
         "ravine_recul_m": 10,
@@ -257,13 +318,17 @@
         "mur_soutenement_max_m": 2.5,
         "mur_soutenement_pente_20pct_m": 3
       },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "U1c": {
       "label": "Zone résidentielle mixte densifiée — La Butte",
       "bassin": "saint-paul-centre",
-      "type": "U", "sous_type": "résidentielle_dense", "loi_littoral": false,
+      "type": "U",
+      "sous_type": "résidentielle_dense",
+      "loi_littoral": false,
       "reculs": {
         "voie_principale_m": 0,
         "voie_alternative_m": 3,
@@ -279,86 +344,239 @@
         "inter_batiments_m": 3
       },
       "hauteurs": {
-        "he_max_m": 15, "hf_max_m": 19,
-        "annexe_hf_max_m": 3.5, "annexe_emprise_max_m2": 25,
-        "mitoyen_zone_n_limite": "R+1", "mitoyen_zone_n_bande_m": 10
+        "he_max_m": 15,
+        "hf_max_m": 19,
+        "annexe_hf_max_m": 3.5,
+        "annexe_emprise_max_m2": 25,
+        "mitoyen_zone_n_limite": "R+1",
+        "mitoyen_zone_n_bande_m": 10
       },
-      "emprise": { "emprise_sol_max_pct": null, "cos": null },
-      "permeabilite": { "permeable_min_pct": 30, "permeable_ppri_fort_pct": 50 },
-      "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25, "pente_max_pct": 100 },
-      "stationnement": { "logement_standard": 1, "logement_aide": 1, "bureau_par_100m2": 1, "commerce_lt250_par_100m2": 1, "commerce_gte250_par_100m2": 1.5, "restaurant_par_100m2": 6 },
-      "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30 },
-      "contraintes_specifiques": { "ravine_recul_m": 10, "cloture_voie_hauteur_max_m": 2, "mur_soutenement_max_m": 2.5 },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 30,
+        "permeable_ppri_fort_pct": 50
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25,
+        "pente_max_pct": 100
+      },
+      "stationnement": {
+        "logement_standard": 1,
+        "logement_aide": 1,
+        "bureau_par_100m2": 1,
+        "commerce_lt250_par_100m2": 1,
+        "commerce_gte250_par_100m2": 1.5,
+        "restaurant_par_100m2": 6
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10,
+        "cloture_voie_hauteur_max_m": 2,
+        "mur_soutenement_max_m": 2.5
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "U1d": {
       "label": "Zone résidentielle littorale — Rue de la Baie",
       "bassin": "saint-paul-centre",
-      "type": "U", "sous_type": "résidentielle_littorale", "loi_littoral": true,
+      "type": "U",
+      "sous_type": "résidentielle_littorale",
+      "loi_littoral": true,
       "reculs": {
-        "voie_principale_m": 3, "voie_alignement": false,
-        "sep_lat_m": 3, "sep_lat_limite_autorisee": true, "sep_lat_longueur_max_m": null,
-        "sep_fond_m": 3, "inter_batiments_m": null
+        "voie_principale_m": 3,
+        "voie_alignement": false,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": null,
+        "sep_fond_m": 3,
+        "inter_batiments_m": null
       },
       "hauteurs": {
-        "he_max_m": 6, "hf_max_m": 9,
-        "annexe_hf_max_m": 3.5, "annexe_emprise_max_m2": 25,
-        "mitoyen_zone_n_limite": "R+1", "mitoyen_zone_n_bande_m": 10
+        "he_max_m": 6,
+        "hf_max_m": 9,
+        "annexe_hf_max_m": 3.5,
+        "annexe_emprise_max_m2": 25,
+        "mitoyen_zone_n_limite": "R+1",
+        "mitoyen_zone_n_bande_m": 10
       },
-      "emprise": { "emprise_sol_max_pct": null, "cos": null },
-      "permeabilite": { "permeable_min_pct": null, "permeable_ppri_fort_pct": 50 },
-      "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25, "pente_max_pct": 100 },
-      "stationnement": { "logement_standard": 1, "logement_aide": 1, "bureau_par_100m2": 1, "restaurant_par_100m2": 6 },
-      "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30 },
-      "contraintes_specifiques": { "ravine_recul_m": 10, "cloture_maritime_transparence": true, "cloture_type": "grille claire-voie + haie vive" },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": null,
+        "permeable_ppri_fort_pct": 50
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25,
+        "pente_max_pct": 100
+      },
+      "stationnement": {
+        "logement_standard": 1,
+        "logement_aide": 1,
+        "bureau_par_100m2": 1,
+        "restaurant_par_100m2": 6
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10,
+        "cloture_maritime_transparence": true,
+        "cloture_type": "grille claire-voie + haie vive"
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "U1f": {
       "label": "Zone résidentielle mixte — Grande Fontaine, Bouillon, Savanna",
       "bassin": "saint-paul-centre",
-      "type": "U", "sous_type": "résidentielle_mixte",
+      "type": "U",
+      "sous_type": "résidentielle_mixte",
       "reculs": {
-        "voie_principale_m": 3, "voie_alignement": false,
-        "sep_lat_m": 3, "sep_lat_limite_autorisee": true, "sep_lat_longueur_max_m": null,
+        "voie_principale_m": 3,
+        "voie_alignement": false,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": null,
         "sep_lat_hauteur_bande_m": 9,
-        "sep_fond_m": 3, "inter_batiments_m": 3
+        "sep_fond_m": 3,
+        "inter_batiments_m": 3
       },
-      "hauteurs": { "he_max_m": 9, "hf_max_m": 13, "annexe_hf_max_m": 3.5, "annexe_emprise_max_m2": 25, "mitoyen_zone_n_limite": "R+1", "mitoyen_zone_n_bande_m": 10 },
-      "emprise": { "emprise_sol_max_pct": null, "cos": null },
-      "permeabilite": { "permeable_min_pct": 30, "permeable_ppri_fort_pct": 50 },
-      "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25, "pente_max_pct": 100 },
-      "stationnement": { "logement_standard": 2, "logement_aide": 1, "bureau_par_100m2": 1, "restaurant_par_100m2": 6 },
-      "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30 },
-      "contraintes_specifiques": { "ravine_recul_m": 10, "cloture_voie_hauteur_max_m": 2, "cloture_type": "grille sur bahut 0.30-0.60m + haie vive OU grilles au sol + haie vive" },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "hauteurs": {
+        "he_max_m": 9,
+        "hf_max_m": 13,
+        "annexe_hf_max_m": 3.5,
+        "annexe_emprise_max_m2": 25,
+        "mitoyen_zone_n_limite": "R+1",
+        "mitoyen_zone_n_bande_m": 10
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 30,
+        "permeable_ppri_fort_pct": 50
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25,
+        "pente_max_pct": 100
+      },
+      "stationnement": {
+        "logement_standard": 2,
+        "logement_aide": 1,
+        "bureau_par_100m2": 1,
+        "restaurant_par_100m2": 6
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10,
+        "cloture_voie_hauteur_max_m": 2,
+        "cloture_type": "grille sur bahut 0.30-0.60m + haie vive OU grilles au sol + haie vive"
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "U1g": {
       "label": "Zone résidentielle préservée — Grand Pourpier, Cambaie, Laperrière",
       "bassin": "saint-paul-centre",
-      "type": "U", "sous_type": "résidentielle_préservée",
+      "type": "U",
+      "sous_type": "résidentielle_préservée",
       "reculs": {
-        "voie_principale_m": 3, "voie_alignement": false,
-        "sep_lat_m": 3, "sep_lat_limite_autorisee": true, "sep_lat_longueur_max_m": null,
+        "voie_principale_m": 3,
+        "voie_alignement": false,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": null,
         "sep_lat_hauteur_bande_m": 9,
-        "sep_fond_m": 3, "inter_batiments_m": 3
+        "sep_fond_m": 3,
+        "inter_batiments_m": 3
       },
-      "hauteurs": { "he_max_m": 6, "hf_max_m": 9, "annexe_hf_max_m": 3.5, "annexe_emprise_max_m2": 25, "mitoyen_zone_n_limite": "R+1", "mitoyen_zone_n_bande_m": 10 },
-      "emprise": { "emprise_sol_max_pct": null, "cos": null },
-      "permeabilite": { "permeable_min_pct": 30, "permeable_ppri_fort_pct": 50 },
-      "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25, "pente_max_pct": 100 },
-      "stationnement": { "logement_standard": 2, "logement_aide": 1, "bureau_par_100m2": 1, "restaurant_par_100m2": 6 },
-      "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30 },
-      "contraintes_specifiques": { "ravine_recul_m": 10 },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "hauteurs": {
+        "he_max_m": 6,
+        "hf_max_m": 9,
+        "annexe_hf_max_m": 3.5,
+        "annexe_emprise_max_m2": 25,
+        "mitoyen_zone_n_limite": "R+1",
+        "mitoyen_zone_n_bande_m": 10
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 30,
+        "permeable_ppri_fort_pct": 50
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25,
+        "pente_max_pct": 100
+      },
+      "stationnement": {
+        "logement_standard": 2,
+        "logement_aide": 1,
+        "bureau_par_100m2": 1,
+        "restaurant_par_100m2": 6
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "U1pru": {
       "label": "Pôle entrée de ville + Front de mer",
       "bassin": "saint-paul-centre",
-      "type": "U", "sous_type": "pole_strategique",
+      "type": "U",
+      "sous_type": "pole_strategique",
       "reculs": {
         "voie_principale_m": 0,
         "voie_alignement": true,
@@ -372,55 +590,159 @@
         "inter_batiments_m": null
       },
       "hauteurs": {
-        "he_max_m": 30, "hf_max_m": 34,
-        "annexe_hf_max_m": 3.5, "annexe_emprise_max_m2": 25,
-        "mitoyen_zone_n_limite": null, "mitoyen_zone_n_bande_m": null
+        "he_max_m": 30,
+        "hf_max_m": 34,
+        "annexe_hf_max_m": 3.5,
+        "annexe_emprise_max_m2": 25,
+        "mitoyen_zone_n_limite": null,
+        "mitoyen_zone_n_bande_m": null
       },
-      "emprise": { "emprise_sol_max_pct": null, "cos": null },
-      "permeabilite": { "permeable_min_pct": null, "permeable_ppri_fort_pct": 50, "aires_jeux_m2_par_lot": null },
-      "toiture": { "versants_obligatoire": false, "versants_pct_volume": null, "pente_min_pct": null, "pente_max_pct": null },
-      "stationnement": { "logement_standard": null, "note": "Pas de normes de stationnement en zone U1pru" },
-      "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30 },
-      "contraintes_specifiques": { "ravine_recul_m": 10, "cloture_voie_obligatoire": false },
-      "_meta": { "confidence": 1.0, "ambiguites": ["Stationnement non exigé mais règle floue pour grands programmes"] }
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": null,
+        "permeable_ppri_fort_pct": 50,
+        "aires_jeux_m2_par_lot": null
+      },
+      "toiture": {
+        "versants_obligatoire": false,
+        "versants_pct_volume": null,
+        "pente_min_pct": null,
+        "pente_max_pct": null
+      },
+      "stationnement": {
+        "logement_standard": null,
+        "note": "Pas de normes de stationnement en zone U1pru"
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10,
+        "cloture_voie_obligatoire": false
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": [
+          "Stationnement non exigé mais règle floue pour grands programmes"
+        ]
+      }
     },
-
     "U1pso": {
       "label": "Pôle Sanitaire Ouest — Grand Pourpier",
       "bassin": "saint-paul-centre",
-      "type": "U", "sous_type": "equipement_sante",
+      "type": "U",
+      "sous_type": "equipement_sante",
       "reculs": {
-        "voie_principale_m": 3, "voie_alignement": false,
-        "sep_lat_m": 3, "sep_lat_limite_autorisee": true, "sep_lat_hauteur_bande_m": 9,
-        "sep_fond_m": 3, "inter_batiments_m": 3
+        "voie_principale_m": 3,
+        "voie_alignement": false,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_hauteur_bande_m": 9,
+        "sep_fond_m": 3,
+        "inter_batiments_m": 3
       },
-      "hauteurs": { "he_max_m": 30, "hf_max_m": 34, "annexe_hf_max_m": 3.5 },
-      "emprise": { "emprise_sol_max_pct": null, "cos": null },
-      "permeabilite": { "permeable_min_pct": 30, "permeable_ppri_fort_pct": 50 },
-      "toiture": { "versants_obligatoire": false },
-      "stationnement": { "logement_standard": 1, "logement_aide": 1, "bureau_par_100m2": 1, "restaurant_par_100m2": 6 },
-      "contraintes_specifiques": { "ravine_recul_m": 10 },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "hauteurs": {
+        "he_max_m": 30,
+        "hf_max_m": 34,
+        "annexe_hf_max_m": 3.5
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 30,
+        "permeable_ppri_fort_pct": 50
+      },
+      "toiture": {
+        "versants_obligatoire": false
+      },
+      "stationnement": {
+        "logement_standard": 1,
+        "logement_aide": 1,
+        "bureau_par_100m2": 1,
+        "restaurant_par_100m2": 6
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "U1e": {
       "label": "Zone d'activités économiques",
       "bassin": "saint-paul-centre",
-      "type": "U", "sous_type": "activites",
-      "usages": { "habitation": false, "commerce": true, "bureau": true, "activite": true, "entrepot": true, "hotel": false, "camping": false, "agricole": false },
+      "type": "U",
+      "sous_type": "activites",
+      "usages": {
+        "habitation": false,
+        "commerce": true,
+        "bureau": true,
+        "activite": true,
+        "entrepot": true,
+        "hotel": false,
+        "camping": false,
+        "agricole": false
+      },
       "reculs": {
-        "voie_principale_m": 6, "voie_alignement": false,
+        "voie_principale_m": 6,
+        "voie_alignement": false,
         "sep_lat_m": 5,
         "sep_lat_limite_autorisee": true,
         "sep_lat_note": "Retrait obligatoire si limite jouxte zone U ou AU",
-        "sep_fond_m": 5, "inter_batiments_m": 3
+        "sep_fond_m": 5,
+        "inter_batiments_m": 3
       },
-      "hauteurs": { "he_max_m": null, "hf_max_m": 14, "annexe_hf_max_m": null },
-      "emprise": { "emprise_sol_max_pct": null, "cos": null },
-      "permeabilite": { "permeable_min_pct": 20, "permeable_ppri_fort_pct": 50 },
-      "toiture": { "versants_obligatoire": false, "couleurs_autorisees": ["blanc cassé","gris","matériaux naturels"], "couleurs_interdites": ["bleu foncé","vert foncé","rouge foncé"] },
-      "stationnement": { "logement_standard": 1, "hotel_par_2chambres": 1, "bureau_par_100m2": 1, "commerce_par_100m2": 2, "restaurant_par_100m2": 10, "stockage_places": 2, "erp_par_50m2": 1, "deux_roues_activite_par_100m2": 1 },
-      "contraintes_specifiques": { "ravine_recul_m": 10, "icpe_autorisees": true },
+      "hauteurs": {
+        "he_max_m": null,
+        "hf_max_m": 14,
+        "annexe_hf_max_m": null
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 20,
+        "permeable_ppri_fort_pct": 50
+      },
+      "toiture": {
+        "versants_obligatoire": false,
+        "couleurs_autorisees": [
+          "blanc cassé",
+          "gris",
+          "matériaux naturels"
+        ],
+        "couleurs_interdites": [
+          "bleu foncé",
+          "vert foncé",
+          "rouge foncé"
+        ]
+      },
+      "stationnement": {
+        "logement_standard": 1,
+        "hotel_par_2chambres": 1,
+        "bureau_par_100m2": 1,
+        "commerce_par_100m2": 2,
+        "restaurant_par_100m2": 10,
+        "stockage_places": 2,
+        "erp_par_50m2": 1,
+        "deux_roues_activite_par_100m2": 1
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10,
+        "icpe_autorisees": true
+      },
       "zones_speciales": {
         "U1ec": {
           "label": "Pôle Henri Cornu — EcoCité",
@@ -431,18 +753,42 @@
           "eclairage_anti_pollution": true
         }
       },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "U1l": {
       "label": "Zone de loisirs — Plaine de Cambaie",
       "bassin": "saint-paul-centre",
-      "type": "U", "sous_type": "loisirs",
-      "usages": { "habitation": false, "commerce": false, "bureau": false, "activite": false, "entrepot": false, "hotel": false, "camping": false, "agricole": false, "loisirs": true },
-      "reculs": { "voie_principale_m": 6, "sep_lat_m": 5, "inter_batiments_m": 3 },
-      "hauteurs": { "hf_max_m": 14 },
-      "emprise": { "emprise_sol_max_pct": null, "cos": null },
-      "permeabilite": { "permeable_min_pct": 20 },
+      "type": "U",
+      "sous_type": "loisirs",
+      "usages": {
+        "habitation": false,
+        "commerce": false,
+        "bureau": false,
+        "activite": false,
+        "entrepot": false,
+        "hotel": false,
+        "camping": false,
+        "agricole": false,
+        "loisirs": true
+      },
+      "reculs": {
+        "voie_principale_m": 6,
+        "sep_lat_m": 5,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "hf_max_m": 14
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 20
+      },
       "zones_speciales": {
         "U1lec": {
           "label": "Extension loisirs Cambaie EcoCité",
@@ -460,21 +806,41 @@
           "especes_min_par_1000m2": 30
         }
       },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "Usdu": {
       "label": "Secteurs Déjà Urbanisés — Loi Littoral",
       "bassin": "tous",
-      "type": "U", "sous_type": "sdu_loi_littoral", "loi_littoral": true,
+      "type": "U",
+      "sous_type": "sdu_loi_littoral",
+      "loi_littoral": true,
       "note": "Art. L.121-8 Code urbanisme. Constructions limitées à amélioration offre logement/hébergement et services publics. Avis CDNPS obligatoire.",
-      "usages": { "habitation": true, "commerce": true, "bureau": false, "activite": false, "entrepot": false, "hotel": true, "camping": false, "agricole": false },
-      "reculs": {
-        "voie_principale_m": 4, "voie_alignement": false,
-        "sep_lat_m": 4, "sep_lat_limite_autorisee": false,
-        "sep_fond_m": 4, "inter_batiments_m": 3
+      "usages": {
+        "habitation": true,
+        "commerce": true,
+        "bureau": false,
+        "activite": false,
+        "entrepot": false,
+        "hotel": true,
+        "camping": false,
+        "agricole": false
       },
-      "hauteurs": { "he_max_m": 6, "hf_max_m": 9, "annexe_hf_max_m": 3.5 },
+      "reculs": {
+        "voie_principale_m": 4,
+        "voie_alignement": false,
+        "sep_lat_m": 4,
+        "sep_lat_limite_autorisee": false,
+        "sep_fond_m": 4,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 6,
+        "hf_max_m": 9,
+        "annexe_hf_max_m": 3.5
+      },
       "emprise": {
         "emprise_sol_max_pct": null,
         "emprise_habitation_commerce_max_m2": 150,
@@ -485,67 +851,1050 @@
         "emprise_hotel_total_max_m2": 300,
         "cos": null
       },
-      "permeabilite": { "permeable_min_pct": 50, "permeable_ppri_fort_pct": 50, "permeable_3strates_pct_of_permeable": 50, "aires_jeux": "sans objet" },
-      "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25, "pente_max_pct": 100 },
-      "stationnement": { "logement_standard": 2, "logement_aide": 1, "hotel_par_2chambres": 1, "restaurant_par_100m2": 6, "commerce_lt250_par_100m2": 2 },
-      "contraintes_specifiques": { "loi_littoral": true, "cdnps_avis": true, "extension_perimetre_bati_interdite": true },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "permeabilite": {
+        "permeable_min_pct": 50,
+        "permeable_ppri_fort_pct": 50,
+        "permeable_3strates_pct_of_permeable": 50,
+        "aires_jeux": "sans objet"
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25,
+        "pente_max_pct": 100
+      },
+      "stationnement": {
+        "logement_standard": 2,
+        "logement_aide": 1,
+        "hotel_par_2chambres": 1,
+        "restaurant_par_100m2": 6,
+        "commerce_lt250_par_100m2": 2
+      },
+      "contraintes_specifiques": {
+        "loi_littoral": true,
+        "cdnps_avis": true,
+        "extension_perimetre_bati_interdite": true
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
-    "U2a": { "label": "Centre Saint-Gilles les Bains", "bassin": "saint-gilles", "type": "U", "sous_type": "centre_balnéaire", "reculs": { "voie_principale_m": 4, "voie_alignement": false, "sep_lat_m": 3, "sep_lat_limite_autorisee": true, "inter_batiments_m": 3 }, "hauteurs": { "he_max_m": 12, "hf_max_m": 16, "mitoyen_zone_n_limite": "R+1", "mitoyen_zone_n_bande_m": 10 }, "emprise": { "cos": null }, "permeabilite": { "permeable_min_pct": 30 }, "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25 }, "stationnement": { "logement_standard": 1.5, "logement_aide": 1, "bureau_par_100m2": 1, "restaurant_par_100m2": 6, "commerce_lt250_par_100m2": 1, "commerce_gte250_par_100m2": 1.5 }, "usages": { "bureau": false, "note": "Bureaux et activités tertiaires non liées au tourisme interdits sauf équipements publics" }, "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30 }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "U2b": { "label": "Centre l'Ermitage les Bains", "bassin": "saint-gilles", "type": "U", "sous_type": "centre_résidentiel", "reculs": { "voie_principale_m": 4, "sep_lat_m": 3, "sep_lat_limite_autorisee": true, "sep_lat_longueur_max_m": 18, "sep_lat_hauteur_bande_m": 9, "inter_batiments_m": 3 }, "hauteurs": { "he_max_m": 15, "hf_max_m": 19, "mitoyen_zone_n_limite": "R+1", "mitoyen_zone_n_bande_m": 10 }, "emprise": { "cos": null }, "permeabilite": { "permeable_min_pct": 30 }, "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25 }, "stationnement": { "logement_standard": 1.5, "logement_aide": 1, "bureau_par_100m2": 1, "restaurant_par_100m2": 6 }, "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30 }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "U2c": { "label": "Zone résidentielle mixte littorale — Boucan, Saint-Gilles, Ermitage, Saline", "bassin": "saint-gilles", "type": "U", "sous_type": "résidentielle_touristique", "loi_littoral": true, "reculs": { "voie_principale_m": 4, "sep_lat_m": 4, "sep_lat_limite_autorisee": true, "sep_lat_longueur_max_m": 10, "sep_lat_hauteur_bande_m": 6, "sep_dpm_m": 4, "inter_batiments_m": 3 }, "hauteurs": { "he_max_m": 6, "hf_max_m": 9, "mitoyen_zone_n_limite": "R+1", "mitoyen_zone_n_bande_m": 10 }, "emprise": { "cos": null }, "permeabilite": { "permeable_tourisme_pct": 40, "permeable_habitation_pct": 50 }, "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25 }, "stationnement": { "logement_standard": 2, "logement_aide": 1, "hotel_par_2chambres": 1, "restaurant_par_100m2": 6 }, "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30 }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "U2d": { "label": "Zone résidentielle littorale conservée", "bassin": "saint-gilles", "type": "U", "sous_type": "résidentielle_littorale_protégée", "loi_littoral": true, "reculs": { "voie_principale_m": 4, "sep_lat_m": 4, "sep_lat_limite_autorisee": false, "sep_dpm_m": 4, "inter_batiments_m": 3 }, "hauteurs": { "he_max_m": 4.5, "hf_max_m": 6.5 }, "emprise": { "cos": null }, "permeabilite": { "permeable_lt700m2_pct": 90, "permeable_gte700m2_pct": 65, "permeable_demol_recon_pct": 65 }, "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25 }, "stationnement": { "logement_standard": 2, "logement_aide": 1 }, "contraintes_specifiques": { "loi_littoral": true, "dpm_recul_m": 4 }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "U2h": { "label": "Zone touristique et loisirs", "bassin": "saint-gilles", "type": "U", "sous_type": "touristique", "usages": { "habitation": false, "hotel": true, "activite_touristique": true, "extension_hab_existante_max_m2": 30 }, "reculs": { "voie_principale_m": 4, "sep_lat_m": 4, "sep_lat_limite_autorisee": true, "sep_lat_longueur_max_m": 10, "sep_lat_hauteur_bande_m": 6, "inter_batiments_m": 3 }, "hauteurs": { "he_max_m": 9, "hf_max_m": 13, "he_bande_m": 6, "bande_depuis_voie_m": 5 }, "emprise": { "cos": null }, "permeabilite": { "permeable_min_pct": 40 }, "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25 }, "stationnement": { "hotel_par_2chambres": 1 }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "U2e": { "label": "Zone d'activités — Carrosse, Bruniquel", "bassin": "saint-gilles", "type": "U", "sous_type": "activites", "usages": { "habitation": false, "hotel": false, "activite": true, "bureau": true, "entrepot": true }, "reculs": { "voie_principale_m": 6, "sep_lat_m": 5, "sep_lat_limite_autorisee": true, "inter_batiments_m": 3 }, "hauteurs": { "hf_max_m": 14 }, "emprise": { "cos": null }, "permeabilite": { "permeable_min_pct": 20 }, "stationnement": { "logement_standard": 1, "bureau_par_100m2": 1, "commerce_par_100m2": 2, "restaurant_par_100m2": 10, "stockage_places": 2 }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "U3a": { "label": "Centre Plateau Caillou", "bassin": "plateau-caillou", "type": "U", "sous_type": "centre_bassin_vie", "reculs": { "voie_principale_m": 0, "voie_alignement": true, "voie_zac_m": 3, "sep_lat_m": 3, "sep_lat_limite_autorisee": true, "sep_lat_longueur_max_m": null, "inter_batiments_m": 3 }, "hauteurs": { "he_max_m": 15, "hf_max_m": 19, "he_zac_voirie_m": 18, "hf_zac_voirie_m": 22, "mitoyen_zone_n_limite": "R+1", "mitoyen_zone_n_bande_m": 10 }, "emprise": { "cos": null }, "permeabilite": { "permeable_min_pct": 20, "permeable_parking_ss": "20% planté sur dalle ep.min 0.8m" }, "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25 }, "stationnement": { "logement_standard": 1.5, "logement_aide": 1, "bureau_par_100m2": 1, "commerce_lt250_par_100m2": 1, "commerce_gte250_par_100m2": 1.5, "restaurant_par_100m2": 6 }, "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30, "exception_zac": "Savane des Tamarins : calcul à l'échelle de l'opération" }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "U3b": { "label": "Centres intermédiaires — Saint-Gilles les Hauts, l'Eperon", "bassin": "plateau-caillou", "type": "U", "sous_type": "centre_quartier", "reculs": { "voie_principale_m": 3, "voie_alignement_commerces_rdc": true, "sep_lat_m": 3, "sep_lat_limite_autorisee": true, "sep_lat_longueur_max_m": 10, "sep_lat_hauteur_bande_m": 6, "inter_batiments_m": 3 }, "hauteurs": { "he_max_m": 12, "hf_max_m": 16, "mitoyen_zone_n_limite": "R+1", "mitoyen_zone_n_bande_m": 10 }, "emprise": { "cos": null }, "permeabilite": { "permeable_min_pct": 30 }, "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25 }, "stationnement": { "logement_standard": 1.5, "logement_aide": 1, "bureau_par_100m2": 1, "restaurant_par_100m2": 6 }, "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30 }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "U3c": { "label": "Zone résidentielle mixte densifiée — Plateau Caillou, Eperon, Bernica", "bassin": "plateau-caillou", "type": "U", "sous_type": "résidentielle_mixte", "reculs": { "voie_principale_m": 4, "sep_lat_m": 3, "sep_lat_limite_autorisee": true, "sep_lat_longueur_max_m": 10, "sep_lat_hauteur_bande_m": 6, "inter_batiments_m": 3 }, "hauteurs": { "he_max_m": 9, "hf_max_m": 12, "mitoyen_zone_n_limite": "R+1", "mitoyen_zone_n_bande_m": 10 }, "emprise": { "cos": null }, "permeabilite": { "permeable_min_pct": 40 }, "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25 }, "stationnement": { "logement_standard": 2, "logement_aide": 1, "bureau_par_100m2": 1, "restaurant_par_100m2": 6 }, "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30 }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "U3h": { "label": "Zone touristique Plateau Caillou", "bassin": "plateau-caillou", "type": "U", "sous_type": "touristique", "reculs": { "voie_principale_m": 4, "sep_lat_m": 4, "sep_lat_limite_autorisee": true, "sep_lat_longueur_max_m": 10, "sep_lat_hauteur_bande_m": 6, "inter_batiments_m": 3 }, "hauteurs": { "he_max_m": 9, "hf_max_m": 13 }, "emprise": { "cos": null }, "permeabilite": { "permeable_min_pct": 40 }, "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25 }, "stationnement": { "hotel_par_2chambres": 1 }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "U3e": { "label": "Zone d'activités — Eperon, Plateau Caillou", "bassin": "plateau-caillou", "type": "U", "sous_type": "activites", "reculs": { "voie_principale_m": 6, "sep_lat_m": 5, "inter_batiments_m": 3 }, "hauteurs": { "hf_max_m": 14, "hf_zac_m": 19 }, "emprise": { "cos": null }, "permeabilite": { "permeable_min_pct": 20 }, "stationnement": { "bureau_par_100m2": 1, "commerce_par_100m2": 2, "restaurant_par_100m2": 10, "stockage_places": 2 }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "U4a": { "label": "Centre La Plaine — Sans-Souci", "bassin": "plaine-bois-nefles", "type": "U", "sous_type": "centre_bassin_vie", "reculs": { "voie_principale_m": 0, "voie_alignement": true, "voie_zac_m": 3, "sep_lat_m": 3, "sep_lat_limite_autorisee": true, "sep_lat_longueur_max_m": 12, "inter_batiments_m": 3 }, "hauteurs": { "he_max_m": 12, "hf_max_m": 16, "mitoyen_zone_n_limite": "R+1", "mitoyen_zone_n_bande_m": 10 }, "emprise": { "cos": null }, "permeabilite": { "permeable_min_pct": 20 }, "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25 }, "stationnement": { "logement_standard": 1.5, "logement_aide": 1, "bureau_par_100m2": 1, "commerce_lt250_par_100m2": 1, "commerce_gte250_par_100m2": 1.5, "restaurant_par_100m2": 6 }, "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30, "exception_zac": "ZAC Marie Caze et ZAC Sans Souci : calcul à l'échelle de l'opération" }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "U4b": { "label": "Zone résidentielle mixte — Bois de Nèfles, La Plaine", "bassin": "plaine-bois-nefles", "type": "U", "sous_type": "résidentielle_mixte", "reculs": { "voie_principale_m": 3, "voie_alignement_commerces_rdc": true, "sep_lat_m": 3, "sep_lat_limite_autorisee": true, "sep_lat_longueur_max_m": 10, "sep_lat_hauteur_bande_m": 6, "inter_batiments_m": 3 }, "hauteurs": { "he_max_m": 9, "hf_max_m": 13, "mitoyen_zone_n_limite": "R+1", "mitoyen_zone_n_bande_m": 10 }, "emprise": { "cos": null }, "permeabilite": { "permeable_min_pct": 30 }, "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25 }, "stationnement": { "logement_standard": 2, "logement_aide": 1, "bureau_par_100m2": 1, "restaurant_par_100m2": 6 }, "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30 }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "U4c": { "label": "Zone résidentielle mixte — Hangar, Ruisseau, Sans Souci", "bassin": "plaine-bois-nefles", "type": "U", "sous_type": "résidentielle_mixte", "reculs": { "voie_principale_m": 4, "sep_lat_m": 3, "sep_lat_limite_autorisee": true, "sep_lat_longueur_max_m": 10, "sep_lat_hauteur_bande_m": 6, "inter_batiments_m": 4 }, "hauteurs": { "he_max_m": 6, "hf_max_m": 9, "mitoyen_zone_n_limite": "R+1", "mitoyen_zone_n_bande_m": 10 }, "emprise": { "cos": null }, "permeabilite": { "permeable_min_pct": 40 }, "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25 }, "stationnement": { "logement_standard": 2, "logement_aide": 1, "bureau_par_100m2": 1, "restaurant_par_100m2": 6 }, "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30 }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "U5a": { "label": "Centre La Saline", "bassin": "la-saline", "type": "U", "sous_type": "centre_bassin_vie", "reculs": { "voie_principale_m": 0, "voie_alignement": true, "voie_zac_rues_m": 3, "voie_zac_rues": ["Rue Prisami","Rue Vellayoudom","Rue Cousin","Rue Chapelle Karly"], "sep_lat_m": 3, "sep_lat_limite_autorisee": true, "sep_lat_longueur_max_m": 12, "inter_batiments_m": 3 }, "hauteurs": { "he_max_m": 12, "hf_max_m": 16, "mitoyen_zone_n_limite": "R+1", "mitoyen_zone_n_bande_m": 10, "note_zac": "Le long Prisami et Chapelle Karly : hauteur limitée R+1 sur 10m depuis zone A/N" }, "emprise": { "cos": null }, "permeabilite": { "permeable_min_pct": 20 }, "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25 }, "stationnement": { "logement_standard": 1.5, "logement_aide": 1, "bureau_par_100m2": 1, "commerce_lt250_par_100m2": 1, "commerce_gte250_par_100m2": 1.5, "restaurant_par_100m2": 6 }, "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30 }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "U5b": { "label": "Zone résidentielle — Saline, Barrage, Ermitage hauts", "bassin": "la-saline", "type": "U", "sous_type": "résidentielle_mixte", "reculs": { "voie_principale_m": 3, "voie_alignement_commerces_rdc": true, "sep_lat_m": 3, "sep_lat_limite_autorisee": true, "sep_lat_longueur_max_m": 10, "sep_lat_hauteur_bande_m": 6, "inter_batiments_m": 3 }, "hauteurs": { "he_max_m": 9, "hf_max_m": 13, "mitoyen_zone_n_limite": "R+1", "mitoyen_zone_n_bande_m": 10 }, "emprise": { "cos": null }, "permeabilite": { "permeable_min_pct": 30 }, "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25 }, "stationnement": { "logement_standard": 2, "logement_aide": 1, "bureau_par_100m2": 1, "restaurant_par_100m2": 6 }, "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30 }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "U5c": { "label": "Zone résidentielle rurale — Corbeil, Ravine Daniel, Cinq Heure", "bassin": "la-saline", "type": "U", "sous_type": "résidentielle_rurale", "reculs": { "voie_principale_m": 4, "sep_lat_m": 3, "sep_lat_limite_autorisee": true, "sep_lat_longueur_max_m": 10, "sep_lat_hauteur_bande_m": 6, "inter_batiments_m": 4 }, "hauteurs": { "he_max_m": 6, "hf_max_m": 9, "mitoyen_zone_n_limite": "R+1", "mitoyen_zone_n_bande_m": 10 }, "emprise": { "cos": null }, "permeabilite": { "permeable_min_pct": 40 }, "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25 }, "stationnement": { "logement_standard": 2, "logement_aide": 1, "bureau_par_100m2": 1, "restaurant_par_100m2": 6 }, "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30 }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "U6a": { "label": "Centre historique Guillaume", "bassin": "guillaume", "type": "U", "sous_type": "centre_historique", "reculs": { "voie_principale_m": 0, "voie_alignement": true, "sep_lat_m": 3, "sep_lat_limite_autorisee": true, "sep_lat_longueur_max_m": 12, "inter_batiments_m": 3 }, "hauteurs": { "he_max_m": 12, "hf_max_m": 16, "mitoyen_zone_n_limite": "R+1", "mitoyen_zone_n_bande_m": 10 }, "emprise": { "cos": null }, "permeabilite": { "permeable_min_pct": 20 }, "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25 }, "stationnement": { "logement_standard": 1.5, "logement_aide": 1, "bureau_par_100m2": 1, "commerce_lt250_par_100m2": 1, "commerce_gte250_par_100m2": 1.5, "restaurant_par_100m2": 6 }, "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30 }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "U6b": { "label": "Zone résidentielle mixte Guillaume, Bellemène, Tan Rouge", "bassin": "guillaume", "type": "U", "sous_type": "résidentielle_mixte", "reculs": { "voie_principale_m": 3, "voie_alignement_commerces_rdc": true, "sep_lat_m": 3, "sep_lat_limite_autorisee": true, "sep_lat_longueur_max_m": 10, "sep_lat_hauteur_bande_m": 6, "inter_batiments_m": 3 }, "hauteurs": { "he_max_m": 9, "hf_max_m": 13, "mitoyen_zone_n_limite": "R+1", "mitoyen_zone_n_bande_m": 10 }, "emprise": { "cos": null }, "permeabilite": { "permeable_min_pct": 30 }, "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25 }, "stationnement": { "logement_standard": 2, "logement_aide": 1, "bureau_par_100m2": 1, "restaurant_par_100m2": 6 }, "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30 }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "U6c": { "label": "Zone résidentielle rurale — Tan Rouge, Bellemène, Bac Rouge", "bassin": "guillaume", "type": "U", "sous_type": "résidentielle_rurale", "reculs": { "voie_principale_m": 4, "sep_lat_m": 3, "sep_lat_limite_autorisee": true, "sep_lat_longueur_max_m": 10, "sep_lat_hauteur_bande_m": 6, "inter_batiments_m": 4 }, "hauteurs": { "he_max_m": 6, "hf_max_m": 9, "mitoyen_zone_n_limite": "R+1", "mitoyen_zone_n_bande_m": 10 }, "emprise": { "cos": null }, "permeabilite": { "permeable_min_pct": 40 }, "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 25 }, "stationnement": { "logement_standard": 2, "logement_aide": 1, "bureau_par_100m2": 1, "restaurant_par_100m2": 6 }, "logement_aide": { "sdp_seuil_1_m2": 1800, "pct_seuil_1": 30, "nb_logements_seuil_2": 20, "pct_seuil_2": 30, "terrain_seuil_3_m2": 6000, "pct_seuil_3": 30 }, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
+    "U2a": {
+      "label": "Centre Saint-Gilles les Bains",
+      "bassin": "saint-gilles",
+      "type": "U",
+      "sous_type": "centre_balnéaire",
+      "reculs": {
+        "voie_principale_m": 4,
+        "voie_alignement": false,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 12,
+        "hf_max_m": 16,
+        "mitoyen_zone_n_limite": "R+1",
+        "mitoyen_zone_n_bande_m": 10
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 30
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25
+      },
+      "stationnement": {
+        "logement_standard": 1.5,
+        "logement_aide": 1,
+        "bureau_par_100m2": 1,
+        "restaurant_par_100m2": 6,
+        "commerce_lt250_par_100m2": 1,
+        "commerce_gte250_par_100m2": 1.5
+      },
+      "usages": {
+        "bureau": false,
+        "note": "Bureaux et activités tertiaires non liées au tourisme interdits sauf équipements publics"
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "U2b": {
+      "label": "Centre l'Ermitage les Bains",
+      "bassin": "saint-gilles",
+      "type": "U",
+      "sous_type": "centre_résidentiel",
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": 18,
+        "sep_lat_hauteur_bande_m": 9,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 15,
+        "hf_max_m": 19,
+        "mitoyen_zone_n_limite": "R+1",
+        "mitoyen_zone_n_bande_m": 10
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 30
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25
+      },
+      "stationnement": {
+        "logement_standard": 1.5,
+        "logement_aide": 1,
+        "bureau_par_100m2": 1,
+        "restaurant_par_100m2": 6
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "U2c": {
+      "label": "Zone résidentielle mixte littorale — Boucan, Saint-Gilles, Ermitage, Saline",
+      "bassin": "saint-gilles",
+      "type": "U",
+      "sous_type": "résidentielle_touristique",
+      "loi_littoral": true,
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 4,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": 10,
+        "sep_lat_hauteur_bande_m": 6,
+        "sep_dpm_m": 4,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 6,
+        "hf_max_m": 9,
+        "mitoyen_zone_n_limite": "R+1",
+        "mitoyen_zone_n_bande_m": 10
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_tourisme_pct": 40,
+        "permeable_habitation_pct": 50
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25
+      },
+      "stationnement": {
+        "logement_standard": 2,
+        "logement_aide": 1,
+        "hotel_par_2chambres": 1,
+        "restaurant_par_100m2": 6
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "U2d": {
+      "label": "Zone résidentielle littorale conservée",
+      "bassin": "saint-gilles",
+      "type": "U",
+      "sous_type": "résidentielle_littorale_protégée",
+      "loi_littoral": true,
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 4,
+        "sep_lat_limite_autorisee": false,
+        "sep_dpm_m": 4,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 4.5,
+        "hf_max_m": 6.5
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_lt700m2_pct": 90,
+        "permeable_gte700m2_pct": 65,
+        "permeable_demol_recon_pct": 65
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25
+      },
+      "stationnement": {
+        "logement_standard": 2,
+        "logement_aide": 1
+      },
+      "contraintes_specifiques": {
+        "loi_littoral": true,
+        "dpm_recul_m": 4
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "U2h": {
+      "label": "Zone touristique et loisirs",
+      "bassin": "saint-gilles",
+      "type": "U",
+      "sous_type": "touristique",
+      "usages": {
+        "habitation": false,
+        "hotel": true,
+        "activite_touristique": true,
+        "extension_hab_existante_max_m2": 30
+      },
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 4,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": 10,
+        "sep_lat_hauteur_bande_m": 6,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 9,
+        "hf_max_m": 13,
+        "he_bande_m": 6,
+        "bande_depuis_voie_m": 5
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 40
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25
+      },
+      "stationnement": {
+        "hotel_par_2chambres": 1
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "U2e": {
+      "label": "Zone d'activités — Carrosse, Bruniquel",
+      "bassin": "saint-gilles",
+      "type": "U",
+      "sous_type": "activites",
+      "usages": {
+        "habitation": false,
+        "hotel": false,
+        "activite": true,
+        "bureau": true,
+        "entrepot": true
+      },
+      "reculs": {
+        "voie_principale_m": 6,
+        "sep_lat_m": 5,
+        "sep_lat_limite_autorisee": true,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "hf_max_m": 14
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 20
+      },
+      "stationnement": {
+        "logement_standard": 1,
+        "bureau_par_100m2": 1,
+        "commerce_par_100m2": 2,
+        "restaurant_par_100m2": 10,
+        "stockage_places": 2
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "U3a": {
+      "label": "Centre Plateau Caillou",
+      "bassin": "plateau-caillou",
+      "type": "U",
+      "sous_type": "centre_bassin_vie",
+      "reculs": {
+        "voie_principale_m": 0,
+        "voie_alignement": true,
+        "voie_zac_m": 3,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": null,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 15,
+        "hf_max_m": 19,
+        "he_zac_voirie_m": 18,
+        "hf_zac_voirie_m": 22,
+        "mitoyen_zone_n_limite": "R+1",
+        "mitoyen_zone_n_bande_m": 10
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 20,
+        "permeable_parking_ss": "20% planté sur dalle ep.min 0.8m"
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25
+      },
+      "stationnement": {
+        "logement_standard": 1.5,
+        "logement_aide": 1,
+        "bureau_par_100m2": 1,
+        "commerce_lt250_par_100m2": 1,
+        "commerce_gte250_par_100m2": 1.5,
+        "restaurant_par_100m2": 6
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30,
+        "exception_zac": "Savane des Tamarins : calcul à l'échelle de l'opération"
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "U3b": {
+      "label": "Centres intermédiaires — Saint-Gilles les Hauts, l'Eperon",
+      "bassin": "plateau-caillou",
+      "type": "U",
+      "sous_type": "centre_quartier",
+      "reculs": {
+        "voie_principale_m": 3,
+        "voie_alignement_commerces_rdc": true,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": 10,
+        "sep_lat_hauteur_bande_m": 6,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 12,
+        "hf_max_m": 16,
+        "mitoyen_zone_n_limite": "R+1",
+        "mitoyen_zone_n_bande_m": 10
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 30
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25
+      },
+      "stationnement": {
+        "logement_standard": 1.5,
+        "logement_aide": 1,
+        "bureau_par_100m2": 1,
+        "restaurant_par_100m2": 6
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "U3c": {
+      "label": "Zone résidentielle mixte densifiée — Plateau Caillou, Eperon, Bernica",
+      "bassin": "plateau-caillou",
+      "type": "U",
+      "sous_type": "résidentielle_mixte",
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": 10,
+        "sep_lat_hauteur_bande_m": 6,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 9,
+        "hf_max_m": 12,
+        "mitoyen_zone_n_limite": "R+1",
+        "mitoyen_zone_n_bande_m": 10
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 40
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25
+      },
+      "stationnement": {
+        "logement_standard": 2,
+        "logement_aide": 1,
+        "bureau_par_100m2": 1,
+        "restaurant_par_100m2": 6
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "U3h": {
+      "label": "Zone touristique Plateau Caillou",
+      "bassin": "plateau-caillou",
+      "type": "U",
+      "sous_type": "touristique",
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 4,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": 10,
+        "sep_lat_hauteur_bande_m": 6,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 9,
+        "hf_max_m": 13
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 40
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25
+      },
+      "stationnement": {
+        "hotel_par_2chambres": 1
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "U3e": {
+      "label": "Zone d'activités — Eperon, Plateau Caillou",
+      "bassin": "plateau-caillou",
+      "type": "U",
+      "sous_type": "activites",
+      "reculs": {
+        "voie_principale_m": 6,
+        "sep_lat_m": 5,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "hf_max_m": 14,
+        "hf_zac_m": 19
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 20
+      },
+      "stationnement": {
+        "bureau_par_100m2": 1,
+        "commerce_par_100m2": 2,
+        "restaurant_par_100m2": 10,
+        "stockage_places": 2
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "U4a": {
+      "label": "Centre La Plaine — Sans-Souci",
+      "bassin": "plaine-bois-nefles",
+      "type": "U",
+      "sous_type": "centre_bassin_vie",
+      "reculs": {
+        "voie_principale_m": 0,
+        "voie_alignement": true,
+        "voie_zac_m": 3,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": 12,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 12,
+        "hf_max_m": 16,
+        "mitoyen_zone_n_limite": "R+1",
+        "mitoyen_zone_n_bande_m": 10
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 20
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25
+      },
+      "stationnement": {
+        "logement_standard": 1.5,
+        "logement_aide": 1,
+        "bureau_par_100m2": 1,
+        "commerce_lt250_par_100m2": 1,
+        "commerce_gte250_par_100m2": 1.5,
+        "restaurant_par_100m2": 6
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30,
+        "exception_zac": "ZAC Marie Caze et ZAC Sans Souci : calcul à l'échelle de l'opération"
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "U4b": {
+      "label": "Zone résidentielle mixte — Bois de Nèfles, La Plaine",
+      "bassin": "plaine-bois-nefles",
+      "type": "U",
+      "sous_type": "résidentielle_mixte",
+      "reculs": {
+        "voie_principale_m": 3,
+        "voie_alignement_commerces_rdc": true,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": 10,
+        "sep_lat_hauteur_bande_m": 6,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 9,
+        "hf_max_m": 13,
+        "mitoyen_zone_n_limite": "R+1",
+        "mitoyen_zone_n_bande_m": 10
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 30
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25
+      },
+      "stationnement": {
+        "logement_standard": 2,
+        "logement_aide": 1,
+        "bureau_par_100m2": 1,
+        "restaurant_par_100m2": 6
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "U4c": {
+      "label": "Zone résidentielle mixte — Hangar, Ruisseau, Sans Souci",
+      "bassin": "plaine-bois-nefles",
+      "type": "U",
+      "sous_type": "résidentielle_mixte",
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": 10,
+        "sep_lat_hauteur_bande_m": 6,
+        "inter_batiments_m": 4
+      },
+      "hauteurs": {
+        "he_max_m": 6,
+        "hf_max_m": 9,
+        "mitoyen_zone_n_limite": "R+1",
+        "mitoyen_zone_n_bande_m": 10
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 40
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25
+      },
+      "stationnement": {
+        "logement_standard": 2,
+        "logement_aide": 1,
+        "bureau_par_100m2": 1,
+        "restaurant_par_100m2": 6
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "U5a": {
+      "label": "Centre La Saline",
+      "bassin": "la-saline",
+      "type": "U",
+      "sous_type": "centre_bassin_vie",
+      "reculs": {
+        "voie_principale_m": 0,
+        "voie_alignement": true,
+        "voie_zac_rues_m": 3,
+        "voie_zac_rues": [
+          "Rue Prisami",
+          "Rue Vellayoudom",
+          "Rue Cousin",
+          "Rue Chapelle Karly"
+        ],
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": 12,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 12,
+        "hf_max_m": 16,
+        "mitoyen_zone_n_limite": "R+1",
+        "mitoyen_zone_n_bande_m": 10,
+        "note_zac": "Le long Prisami et Chapelle Karly : hauteur limitée R+1 sur 10m depuis zone A/N"
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 20
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25
+      },
+      "stationnement": {
+        "logement_standard": 1.5,
+        "logement_aide": 1,
+        "bureau_par_100m2": 1,
+        "commerce_lt250_par_100m2": 1,
+        "commerce_gte250_par_100m2": 1.5,
+        "restaurant_par_100m2": 6
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "U5b": {
+      "label": "Zone résidentielle — Saline, Barrage, Ermitage hauts",
+      "bassin": "la-saline",
+      "type": "U",
+      "sous_type": "résidentielle_mixte",
+      "reculs": {
+        "voie_principale_m": 3,
+        "voie_alignement_commerces_rdc": true,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": 10,
+        "sep_lat_hauteur_bande_m": 6,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 9,
+        "hf_max_m": 13,
+        "mitoyen_zone_n_limite": "R+1",
+        "mitoyen_zone_n_bande_m": 10
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 30
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25
+      },
+      "stationnement": {
+        "logement_standard": 2,
+        "logement_aide": 1,
+        "bureau_par_100m2": 1,
+        "restaurant_par_100m2": 6
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "U5c": {
+      "label": "Zone résidentielle rurale — Corbeil, Ravine Daniel, Cinq Heure",
+      "bassin": "la-saline",
+      "type": "U",
+      "sous_type": "résidentielle_rurale",
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": 10,
+        "sep_lat_hauteur_bande_m": 6,
+        "inter_batiments_m": 4
+      },
+      "hauteurs": {
+        "he_max_m": 6,
+        "hf_max_m": 9,
+        "mitoyen_zone_n_limite": "R+1",
+        "mitoyen_zone_n_bande_m": 10
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 40
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25
+      },
+      "stationnement": {
+        "logement_standard": 2,
+        "logement_aide": 1,
+        "bureau_par_100m2": 1,
+        "restaurant_par_100m2": 6
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "U6a": {
+      "label": "Centre historique Guillaume",
+      "bassin": "guillaume",
+      "type": "U",
+      "sous_type": "centre_historique",
+      "reculs": {
+        "voie_principale_m": 0,
+        "voie_alignement": true,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": 12,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 12,
+        "hf_max_m": 16,
+        "mitoyen_zone_n_limite": "R+1",
+        "mitoyen_zone_n_bande_m": 10
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 20
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25
+      },
+      "stationnement": {
+        "logement_standard": 1.5,
+        "logement_aide": 1,
+        "bureau_par_100m2": 1,
+        "commerce_lt250_par_100m2": 1,
+        "commerce_gte250_par_100m2": 1.5,
+        "restaurant_par_100m2": 6
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "U6b": {
+      "label": "Zone résidentielle mixte Guillaume, Bellemène, Tan Rouge",
+      "bassin": "guillaume",
+      "type": "U",
+      "sous_type": "résidentielle_mixte",
+      "reculs": {
+        "voie_principale_m": 3,
+        "voie_alignement_commerces_rdc": true,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": 10,
+        "sep_lat_hauteur_bande_m": 6,
+        "inter_batiments_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 9,
+        "hf_max_m": 13,
+        "mitoyen_zone_n_limite": "R+1",
+        "mitoyen_zone_n_bande_m": 10
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 30
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25
+      },
+      "stationnement": {
+        "logement_standard": 2,
+        "logement_aide": 1,
+        "bureau_par_100m2": 1,
+        "restaurant_par_100m2": 6
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "U6c": {
+      "label": "Zone résidentielle rurale — Tan Rouge, Bellemène, Bac Rouge",
+      "bassin": "guillaume",
+      "type": "U",
+      "sous_type": "résidentielle_rurale",
+      "reculs": {
+        "voie_principale_m": 4,
+        "sep_lat_m": 3,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_longueur_max_m": 10,
+        "sep_lat_hauteur_bande_m": 6,
+        "inter_batiments_m": 4
+      },
+      "hauteurs": {
+        "he_max_m": 6,
+        "hf_max_m": 9,
+        "mitoyen_zone_n_limite": "R+1",
+        "mitoyen_zone_n_bande_m": 10
+      },
+      "emprise": {
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": 40
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 25
+      },
+      "stationnement": {
+        "logement_standard": 2,
+        "logement_aide": 1,
+        "bureau_par_100m2": 1,
+        "restaurant_par_100m2": 6
+      },
+      "logement_aide": {
+        "sdp_seuil_1_m2": 1800,
+        "pct_seuil_1": 30,
+        "nb_logements_seuil_2": 20,
+        "pct_seuil_2": 30,
+        "terrain_seuil_3_m2": 6000,
+        "pct_seuil_3": 30
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
     "Ni": {
       "label": "Zone naturelle habitée — Ilets de Mafate",
       "bassin": "mafate",
-      "type": "N", "sous_type": "naturelle_habitee",
-      "usages": { "habitation": true, "hotel": true, "commerce": true, "camping": true, "agricole": true },
-      "reculs": { "voie_principale_m": 3, "voie_alignement_exceptions": ["commerce","service_public","extension_harmonie","aléa_faible"], "sep_lat_m": 3, "inter_batiments_m": 2 },
-      "hauteurs": { "he_max_m": 3, "hf_max_m": 4.5, "soubassement_max_m": 1.5, "exception_pilotis_hf_max_m": 5.5, "exception_pilotis_he_max_m": 4 },
-      "emprise": {
-        "habitation_annexes_max_m2": 120, "habitation_module_max_m2": 81,
-        "hotel_max_m2": 280, "hotel_module_max_m2": 81,
-        "commerce_max_m2": 81, "agricole_max_m2": 280, "agricole_module_max_m2": 81
+      "type": "N",
+      "sous_type": "naturelle_habitee",
+      "usages": {
+        "habitation": true,
+        "hotel": true,
+        "commerce": true,
+        "camping": true,
+        "agricole": true
       },
-      "permeabilite": { "permeable_min_pct": 75, "note": "75% de la concession en espace vert perméable arboré" },
-      "toiture": { "recommandation": "2 pentes, tôle ondulée ou joint debout profil créole ou bardeau refendu", "couleurs_interdites": ["blanc","très clair"], "toits_plats_interdits": true, "toits_monopente_lt20m2_interdits": true },
+      "reculs": {
+        "voie_principale_m": 3,
+        "voie_alignement_exceptions": [
+          "commerce",
+          "service_public",
+          "extension_harmonie",
+          "aléa_faible"
+        ],
+        "sep_lat_m": 3,
+        "inter_batiments_m": 2
+      },
+      "hauteurs": {
+        "he_max_m": 3,
+        "hf_max_m": 4.5,
+        "soubassement_max_m": 1.5,
+        "exception_pilotis_hf_max_m": 5.5,
+        "exception_pilotis_he_max_m": 4
+      },
+      "emprise": {
+        "habitation_annexes_max_m2": 120,
+        "habitation_module_max_m2": 81,
+        "hotel_max_m2": 280,
+        "hotel_module_max_m2": 81,
+        "commerce_max_m2": 81,
+        "agricole_max_m2": 280,
+        "agricole_module_max_m2": 81
+      },
+      "permeabilite": {
+        "permeable_min_pct": 75,
+        "note": "75% de la concession en espace vert perméable arboré"
+      },
+      "toiture": {
+        "recommandation": "2 pentes, tôle ondulée ou joint debout profil créole ou bardeau refendu",
+        "couleurs_interdites": [
+          "blanc",
+          "très clair"
+        ],
+        "toits_plats_interdits": true,
+        "toits_monopente_lt20m2_interdits": true
+      },
       "contraintes_specifiques": {
         "pdipr_alignement_interdit": true,
         "mur_soutenement_max_m": 1.5,
@@ -555,84 +1904,276 @@
         "pente_gt50pct_espaces_libres": true,
         "panneaux_solaires_hors_vision_sentiers": true
       },
-      "stationnement": { "note": "Non réglementé — Mafate inaccessible en voiture" },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "stationnement": {
+        "note": "Non réglementé — Mafate inaccessible en voiture"
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "Ntol": {
       "label": "Station d'Observation Atmosphère — Maïdo",
       "bassin": "mafate",
-      "type": "N", "sous_type": "equipement_scientifique",
-      "usages": { "habitation": false, "equipement_scientifique": true },
-      "reculs": { "voie_principale_m": 6, "sep_lat_m": 4, "inter_batiments_m": 4 },
-      "hauteurs": { "he_max_m": null, "hf_max_m": null, "note": "Non réglementé" },
-      "emprise": { "sdp_max_m2": 1200, "cos": null },
-      "permeabilite": { "permeable_min_pct": null },
-      "contraintes_specifiques": { "pente_gt50pct_espaces_libres": true },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "type": "N",
+      "sous_type": "equipement_scientifique",
+      "usages": {
+        "habitation": false,
+        "equipement_scientifique": true
+      },
+      "reculs": {
+        "voie_principale_m": 6,
+        "sep_lat_m": 4,
+        "inter_batiments_m": 4
+      },
+      "hauteurs": {
+        "he_max_m": null,
+        "hf_max_m": null,
+        "note": "Non réglementé"
+      },
+      "emprise": {
+        "sdp_max_m2": 1200,
+        "cos": null
+      },
+      "permeabilite": {
+        "permeable_min_pct": null
+      },
+      "contraintes_specifiques": {
+        "pente_gt50pct_espaces_libres": true
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "A": {
       "label": "Zone Agricole",
       "bassin": "tous",
-      "type": "A", "sous_type": "agricole",
-      "usages": { "habitation": false, "activite_agricole": true, "agri_tourisme": true, "equipement_collectif": true },
-      "reculs": { "voie_principale_m": 6, "sep_lat_m": 4, "inter_batiments_m": 3 },
+      "type": "A",
+      "sous_type": "agricole",
+      "usages": {
+        "habitation": false,
+        "activite_agricole": true,
+        "agri_tourisme": true,
+        "equipement_collectif": true
+      },
+      "reculs": {
+        "voie_principale_m": 6,
+        "sep_lat_m": 4,
+        "inter_batiments_m": 3
+      },
       "hauteurs": {
-        "he_max_habitation_m": 4, "hf_max_habitation_m": 7,
+        "he_max_habitation_m": 4,
+        "hf_max_habitation_m": 7,
         "agricole_non_reglemente": true
       },
-      "emprise": { "extension_habitation_max_pct": 30, "extension_habitation_max_m2": 30, "extension_habitation_total_max_m2": 130, "agri_tourisme_max_m2": 200, "agri_tourisme_vente_max_m2": 25, "cos": null },
-      "permeabilite": { "permeable_min_pct": null },
-      "toiture": { "versants_obligatoire": true, "versants_2_pentes_max": true, "versants_pct_volume": 60 },
-      "zones_speciales": {
-        "Acu": { "label": "Coupure d'urbanisation", "construction_neuve_interdite": true, "rehabilitation_possible": true, "extraction_materiaux": true },
-        "An": { "label": "Agricole naturel hauts", "biodiversite_prioritaire": true }
+      "emprise": {
+        "extension_habitation_max_pct": 30,
+        "extension_habitation_max_m2": 30,
+        "extension_habitation_total_max_m2": 130,
+        "agri_tourisme_max_m2": 200,
+        "agri_tourisme_vente_max_m2": 25,
+        "cos": null
       },
-      "contraintes_specifiques": { "ravine_recul_m": 10, "cloture_voie_hauteur_max_m": 2, "mur_soutenement_max_m": 2.5 },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "permeabilite": {
+        "permeable_min_pct": null
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_2_pentes_max": true,
+        "versants_pct_volume": 60
+      },
+      "zones_speciales": {
+        "Acu": {
+          "label": "Coupure d'urbanisation",
+          "construction_neuve_interdite": true,
+          "rehabilitation_possible": true,
+          "extraction_materiaux": true
+        },
+        "An": {
+          "label": "Agricole naturel hauts",
+          "biodiversite_prioritaire": true
+        }
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10,
+        "cloture_voie_hauteur_max_m": 2,
+        "mur_soutenement_max_m": 2.5
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "N": {
       "label": "Zone Naturelle",
       "bassin": "tous",
-      "type": "N", "sous_type": "naturelle",
-      "usages": { "habitation": false, "activite_agricole": true, "loisirs_legers": true, "equipement_collectif": true },
-      "reculs": { "voie_principale_m": 6, "sep_lat_m": 4, "inter_batiments_m": 4 },
-      "hauteurs": { "he_max_m": 4, "hf_max_m": 6 },
-      "emprise": { "sdp_max_m2": 150, "extension_max_m2": 30, "extension_total_max_m2": 130, "cos": null },
-      "permeabilite": { "pente_gt50pct_espaces_libres": true },
-      "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60 },
-      "zones_speciales": {
-        "NERL": { "label": "Espaces remarquables du littoral", "loi_littoral": true, "constructibilite": "très limitée" },
-        "Ncu": { "label": "Coupure d'urbanisation", "constructibilite": "très limitée" },
-        "NCOR": { "label": "Corridors écologiques — ravines", "constructibilite": "très limitée" },
-        "Nto": { "label": "Loisirs et sports", "sdp_max_m2": 250 },
-        "Ntoa": { "label": "Restaurants Ermitage", "sdp_max_m2": 1500 },
-        "Nrh": { "label": "Constructions limitées en nature", "sdp_habitation_max_m2": 100, "sdp_tourisme_max_m2": 300 }
+      "type": "N",
+      "sous_type": "naturelle",
+      "usages": {
+        "habitation": false,
+        "activite_agricole": true,
+        "loisirs_legers": true,
+        "equipement_collectif": true
       },
-      "stationnement": { "logement_standard": 2, "hotel_par_2chambres": 1, "restaurant_par_100m2": 6 },
-      "contraintes_specifiques": { "ravine_recul_m": 10, "ebc_protection": true },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "reculs": {
+        "voie_principale_m": 6,
+        "sep_lat_m": 4,
+        "inter_batiments_m": 4
+      },
+      "hauteurs": {
+        "he_max_m": 4,
+        "hf_max_m": 6
+      },
+      "emprise": {
+        "sdp_max_m2": 150,
+        "extension_max_m2": 30,
+        "extension_total_max_m2": 130,
+        "cos": null
+      },
+      "permeabilite": {
+        "pente_gt50pct_espaces_libres": true
+      },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60
+      },
+      "zones_speciales": {
+        "NERL": {
+          "label": "Espaces remarquables du littoral",
+          "loi_littoral": true,
+          "constructibilite": "très limitée"
+        },
+        "Ncu": {
+          "label": "Coupure d'urbanisation",
+          "constructibilite": "très limitée"
+        },
+        "NCOR": {
+          "label": "Corridors écologiques — ravines",
+          "constructibilite": "très limitée"
+        },
+        "Nto": {
+          "label": "Loisirs et sports",
+          "sdp_max_m2": 250
+        },
+        "Ntoa": {
+          "label": "Restaurants Ermitage",
+          "sdp_max_m2": 1500
+        },
+        "Nrh": {
+          "label": "Constructions limitées en nature",
+          "sdp_habitation_max_m2": 100,
+          "sdp_tourisme_max_m2": 300
+        }
+      },
+      "stationnement": {
+        "logement_standard": 2,
+        "hotel_par_2chambres": 1,
+        "restaurant_par_100m2": 6
+      },
+      "contraintes_specifiques": {
+        "ravine_recul_m": 10,
+        "ebc_protection": true
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
-    "AU1": { "label": "Zones à urbaniser — bassin Saint-Paul centre", "bassin": "saint-paul-centre", "type": "AU", "ref_zone": "U1", "note": "Se reporter à la zone U1 de même indice. Condition supplémentaire : infrastructures suffisantes (voirie, réseaux, incendie).", "ref": "U1x", "_meta": { "confidence": 1.0, "ambiguites": [] } },
-    "AU1st": { "label": "Zone à urbaniser bloquée — études préalables requises", "bassin": "saint-paul-centre", "type": "AU", "sous_type": "stric", "note": "Ouverture conditionnée à modification PLU. Seuls travaux légers sur existant autorisés (max 30m² SDP). Hauteur max 4m.", "construction_neuve_interdite": true, "extension_max_m2": 30, "hauteur_max_m": 4, "recul_voie_m": 5, "recul_sep_m": 5, "_meta": { "confidence": 1.0, "ambiguites": [] } },
-
-    "AU2": { "label": "Zones à urbaniser — bassin Saint-Gilles", "bassin": "saint-gilles", "type": "AU", "ref_zone": "U2", "ref": "U2x", "_meta": { "confidence": 1.0, "ambiguites": [] } },
-    "AU3": { "label": "Zones à urbaniser — bassin Plateau Caillou", "bassin": "plateau-caillou", "type": "AU", "ref_zone": "U3", "ref": "U3x", "_meta": { "confidence": 1.0, "ambiguites": [] } },
-    "AU4": { "label": "Zones à urbaniser — bassin Plaine-Bois de Nèfles", "bassin": "plaine-bois-nefles", "type": "AU", "ref_zone": "U4", "ref": "U4x", "_meta": { "confidence": 1.0, "ambiguites": [] } },
-    "AU5": { "label": "Zones à urbaniser — bassin La Saline", "bassin": "la-saline", "type": "AU", "ref_zone": "U5", "ref": "U5x", "_meta": { "confidence": 1.0, "ambiguites": [] } },
-    "AU6": { "label": "Zones à urbaniser — bassin Guillaume", "bassin": "guillaume", "type": "AU", "ref_zone": "U6", "ref": "U6x", "_meta": { "confidence": 1.0, "ambiguites": [] } }
+    "AU1": {
+      "label": "Zones à urbaniser — bassin Saint-Paul centre",
+      "bassin": "saint-paul-centre",
+      "type": "AU",
+      "ref_zone": "U1",
+      "note": "Se reporter à la zone U1 de même indice. Condition supplémentaire : infrastructures suffisantes (voirie, réseaux, incendie).",
+      "ref": "U1x",
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "AU1st": {
+      "label": "Zone à urbaniser bloquée — études préalables requises",
+      "bassin": "saint-paul-centre",
+      "type": "AU",
+      "sous_type": "stric",
+      "note": "Ouverture conditionnée à modification PLU. Seuls travaux légers sur existant autorisés (max 30m² SDP). Hauteur max 4m.",
+      "construction_neuve_interdite": true,
+      "extension_max_m2": 30,
+      "hauteur_max_m": 4,
+      "recul_voie_m": 5,
+      "recul_sep_m": 5,
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "AU2": {
+      "label": "Zones à urbaniser — bassin Saint-Gilles",
+      "bassin": "saint-gilles",
+      "type": "AU",
+      "ref_zone": "U2",
+      "ref": "U2x",
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "AU3": {
+      "label": "Zones à urbaniser — bassin Plateau Caillou",
+      "bassin": "plateau-caillou",
+      "type": "AU",
+      "ref_zone": "U3",
+      "ref": "U3x",
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "AU4": {
+      "label": "Zones à urbaniser — bassin Plaine-Bois de Nèfles",
+      "bassin": "plaine-bois-nefles",
+      "type": "AU",
+      "ref_zone": "U4",
+      "ref": "U4x",
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "AU5": {
+      "label": "Zones à urbaniser — bassin La Saline",
+      "bassin": "la-saline",
+      "type": "AU",
+      "ref_zone": "U5",
+      "ref": "U5x",
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "AU6": {
+      "label": "Zones à urbaniser — bassin Guillaume",
+      "bassin": "guillaume",
+      "type": "AU",
+      "ref_zone": "U6",
+      "ref": "U6x",
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    }
   },
-
   "regles_communes": {
     "ravine_recul_m": 10,
     "note_ravine": "Décret n°48-633 du 31 mars 1948. Interdit d'implanter construction dans 10m depuis bord des ravines. Applicable toutes zones.",
     "adaptations_mineures": "Art. L.123-1-9 : dérogations mineures possibles si nature du sol, configuration parcelle ou caractère constructions avoisinantes le justifient.",
     "risques_ppr": "En secteur PPR : prescriptions PPR s'appliquent indépendamment du PLU. Aléa fort PPRI → permeable_min_pct=50.",
     "reconstruction_identique": "Bâtiment détruit/démoli < 10 ans régulièrement édifié : reconstruction à l'identique autorisée sauf secteur risque naturel élevé.",
-    "annexe_universelle": { "hf_max_m": 3.5, "emprise_max_m2": 25 },
+    "annexe_universelle": {
+      "hf_max_m": 3.5,
+      "emprise_max_m2": 25
+    },
     "piscine_enterree_recul_voie_m": 1,
     "piscine_hors_sol_recul_voie_m": 2,
     "piscine_recul_sep_m": 1,
@@ -661,10 +2202,13 @@
     "ebc_defrichement_interdit": true,
     "pente_gt50pct_interdit": true
   },
-
   "plantations_communes": {
     "minimum_3_strates": true,
-    "strates": ["arborescente","arbustive","herbacée"],
+    "strates": [
+      "arborescente",
+      "arbustive",
+      "herbacée"
+    ],
     "especes_indigenes_prioritaires": true,
     "arbre_haute_tige_min_hauteur_tronc_m": 1.5,
     "ratio_maison_individuelle": "1 arbre + 1 arbuste / 200m²",

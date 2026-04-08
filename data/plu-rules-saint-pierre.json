@@ -4,7 +4,7 @@
     "region": "La Réunion",
     "generated": "2026-04-07",
     "commune": "Saint-Pierre",
-    "insee": "97418",
+    "insee": "97416",
     "intercommunalite": "CIVIS",
     "plu_type": "EcoPLU",
     "plu_date_approbation": "2024-06-25",
@@ -14,9 +14,40 @@
     "note_hauteurs": "Toutes les hauteurs sont exprimées en hé (égout) et hf (faîtage). Les PLU Saint-Paul utilisent he/hf — même chose.",
     "note_stationnement": "Normes exprimées par tranche de SDP (surface de plancher). Arrondi à l'entier supérieur. Réduction 30% si TCSP <200m. Réduction 30% si >50 logements (mutualisation). Recharge VE obligatoire pour >20 places (20% minimum).",
     "note_logement_aide": "Seuil unique : >60 logements → 25% logements aidés (LLS, LLTS, PLS DOM, PSLA). ZAC résidentielle → 40% minimum.",
-    "zones_liste": ["UCV", "UD", "Udl", "UdBO", "UG", "UF", "UfCA", "US", "UP", "UT", "UA", "Uazp", "Uazpc", "Uaza", "Uazc", "Uazi", "UE", "Uea", "Uep", "Uemi", "AU0", "AUD", "AUG", "AUF", "AUT", "AUT1", "AUT2", "AUA", "AUE", "A", "N"]
+    "zones_liste": [
+      "UCV",
+      "UD",
+      "Udl",
+      "UdBO",
+      "UG",
+      "UF",
+      "UfCA",
+      "US",
+      "UP",
+      "UT",
+      "UA",
+      "Uazp",
+      "Uazpc",
+      "Uaza",
+      "Uazc",
+      "Uazi",
+      "UE",
+      "Uea",
+      "Uep",
+      "Uemi",
+      "AU0",
+      "AUD",
+      "AUG",
+      "AUF",
+      "AUT",
+      "AUT1",
+      "AUT2",
+      "AUA",
+      "AUE",
+      "A",
+      "N"
+    ]
   },
-
   "regles_communes": {
     "reconstruction_sinistre_ans": 10,
     "reconstruction_sinistre_exception": "Exclue si destruction par aléa inondation/mouvement terrain/submersion marine PPR",
@@ -43,11 +74,20 @@
     "toiture_monotoit_autorise_portee_lte7m": true,
     "toiture_terrasse_vegetalisation_si_emprise_gt60pct": true,
     "cloture_voie_max_m": 2,
-    "cloture_types": ["végétalisée", "maçonnée 1-2m", "grille bahut 0.2-0.9m"],
+    "cloture_types": [
+      "végétalisée",
+      "maçonnée 1-2m",
+      "grille bahut 0.2-0.9m"
+    ],
     "50_pas_geometriques_regles_specifiques": true,
     "mixite_sociale_seuil_logements": 60,
     "mixite_sociale_pct": 25,
-    "mixite_sociale_types": ["LLS", "LLTS", "PLS DOM", "PSLA"],
+    "mixite_sociale_types": [
+      "LLS",
+      "LLTS",
+      "PLS DOM",
+      "PSLA"
+    ],
     "zac_residentielles_pct_aide": 40,
     "mixite_sociale_bonus_etage_si_gt10_aides": true,
     "rtaa_dom": "2016",
@@ -55,9 +95,7 @@
     "50_pas_geometriques": "Règles spécifiques dans secteurs concernés — voir zones individuelles",
     "arbre_haute_tige_hauteur_plantation_min_m": 1.8
   },
-
   "zones": {
-
     "UCV": {
       "label": "Zone urbaine Centre-Ville de Saint-Pierre",
       "type": "U",
@@ -77,7 +115,12 @@
       },
       "mixite_fonctionnelle": {
         "rdc_activites_obligatoire": true,
-        "rdc_destinations": ["restauration", "hôtellerie", "artisanat", "commerce détail"],
+        "rdc_destinations": [
+          "restauration",
+          "hôtellerie",
+          "artisanat",
+          "commerce détail"
+        ],
         "changement_destination_logement_rdc_interdit": true,
         "pct_sdp_logement_min": 30
       },
@@ -131,7 +174,10 @@
         "versants_pct_volume": 60,
         "versants_pct_si_terrasse_veg": 50,
         "pente_portee_lte10m_min_pct": 20,
-        "pente_portee_gt10m_min_max_pct": [20, 30],
+        "pente_portee_gt10m_min_max_pct": [
+          20,
+          30
+        ],
         "monotoit_portee_lte7m": true,
         "solaire_thermique_obligatoire": true
       },
@@ -155,7 +201,12 @@
       "logement_aide": {
         "seuil_logements": 60,
         "pct_aide": 25,
-        "types": ["LLS", "LLTS", "PLS DOM", "PSLA"],
+        "types": [
+          "LLS",
+          "LLTS",
+          "PLS DOM",
+          "PSLA"
+        ],
         "zac_pct": 40
       },
       "plantations": {
@@ -165,11 +216,15 @@
       },
       "_meta": {
         "confidence": 1.0,
-        "ambiguites": ["CBS UCV : pas de seuil pleine terre explicite — à confirmer"],
-        "source_pages": [58, 74]
+        "ambiguites": [
+          "CBS UCV : pas de seuil pleine terre explicite — à confirmer"
+        ],
+        "source_pages": [
+          58,
+          74
+        ]
       }
     },
-
     "UD": {
       "label": "Zone urbaine de centralité — Bois d'Olives et autres quartiers",
       "type": "U",
@@ -180,9 +235,15 @@
         "UdBO": "Bois d'Olives — règles CBS et clôtures spécifiques"
       },
       "usages": {
-        "habitation": true, "commerce": true, "restauration": true,
-        "bureau": true, "hotel": true, "equipement_collectif": true,
-        "industrie": false, "entrepot": false, "agricole": false
+        "habitation": true,
+        "commerce": true,
+        "restauration": true,
+        "bureau": true,
+        "hotel": true,
+        "equipement_collectif": true,
+        "industrie": false,
+        "entrepot": false,
+        "agricole": false
       },
       "reculs": {
         "voie_principale_m": 0,
@@ -253,7 +314,10 @@
         "versants_pct_volume": 60,
         "versants_pct_si_terrasse_veg": 50,
         "pente_portee_lte10m_min_pct": 20,
-        "pente_portee_gt10m_min_max_pct": [20, 30],
+        "pente_portee_gt10m_min_max_pct": [
+          20,
+          30
+        ],
         "monotoit_portee_lte7m": true,
         "terrasse_vegetalisation_obligatoire_si_emprise_gt60pct": true,
         "solaire_thermique_obligatoire": true
@@ -275,8 +339,15 @@
         "note": "UD : logement = 1pl/75m² SDP. Commerce/artisanat = 1pl/70m². Bureau = 1pl/50m². Hôtel = 0.5pl/ch."
       },
       "logement_aide": {
-        "seuil_logements": 60, "pct_aide": 25,
-        "types": ["LLS", "LLTS", "PLS DOM", "PSLA"], "zac_pct": 40
+        "seuil_logements": 60,
+        "pct_aide": 25,
+        "types": [
+          "LLS",
+          "LLTS",
+          "PLS DOM",
+          "PSLA"
+        ],
+        "zac_pct": 40
       },
       "plantations": {
         "arbres_par_m2_espaces_libres_lte1000m2": "1 arbre haute tige essence locale pour 30m²",
@@ -286,20 +357,31 @@
       },
       "_meta": {
         "confidence": 1.0,
-        "ambiguites": ["Vérifier règles ZAC Océan Indien (non réglementé article Ud3)", "Vérifier règles spécifiques ZAC Cap Austral"],
-        "source_pages": [75, 95]
+        "ambiguites": [
+          "Vérifier règles ZAC Océan Indien (non réglementé article Ud3)",
+          "Vérifier règles spécifiques ZAC Cap Austral"
+        ],
+        "source_pages": [
+          75,
+          95
+        ]
       }
     },
-
     "UG": {
       "label": "Zone urbaine mixte générale — densité modérée",
       "type": "U",
       "sous_type": "résidentielle_mixte",
       "loi_littoral": true,
       "usages": {
-        "habitation": true, "commerce": true, "restauration": true,
-        "bureau": true, "hotel": true, "equipement_collectif": true,
-        "industrie": false, "entrepot": false, "agricole": false
+        "habitation": true,
+        "commerce": true,
+        "restauration": true,
+        "bureau": true,
+        "hotel": true,
+        "equipement_collectif": true,
+        "industrie": false,
+        "entrepot": false,
+        "agricole": false
       },
       "reculs": {
         "voie_principale_m": 3,
@@ -349,7 +431,10 @@
         "versants_obligatoire": true,
         "versants_pct_volume": 60,
         "pente_portee_lte10m_min_pct": 20,
-        "pente_portee_gt10m_min_max_pct": [20, 30],
+        "pente_portee_gt10m_min_max_pct": [
+          20,
+          30
+        ],
         "monotoit_portee_lte7m": true,
         "4pans_si_pente_gt30pct_et_he_gte6m": true,
         "terrasse_vegetalisation_obligatoire_si_emprise_gt60pct": true,
@@ -364,8 +449,15 @@
         "note": "UG : logement = 1.5 place/logement"
       },
       "logement_aide": {
-        "seuil_logements": 60, "pct_aide": 25,
-        "types": ["LLS", "LLTS", "PLS DOM", "PSLA"], "zac_pct": 40
+        "seuil_logements": 60,
+        "pct_aide": 25,
+        "types": [
+          "LLS",
+          "LLTS",
+          "PLS DOM",
+          "PSLA"
+        ],
+        "zac_pct": 40
       },
       "plantations": {
         "arbres_par_m2_espaces_libres": "1 arbre haute tige essence locale pour 50m²",
@@ -374,10 +466,12 @@
       "_meta": {
         "confidence": 1.0,
         "ambiguites": [],
-        "source_pages": [96, 110]
+        "source_pages": [
+          96,
+          110
+        ]
       }
     },
-
     "UF": {
       "label": "Zone urbaine de faible densité — proximité espaces naturels",
       "type": "U",
@@ -387,9 +481,15 @@
         "UfCA": "Secteur Casabois — règles spécifiques (mur anti-bruit 3m, hauteur 6m/7.5m)"
       },
       "usages": {
-        "habitation": true, "commerce": false, "restauration": false,
-        "bureau": false, "hotel": false, "equipement_collectif": true,
-        "industrie": false, "entrepot": false, "agricole": false,
+        "habitation": true,
+        "commerce": false,
+        "restauration": false,
+        "bureau": false,
+        "hotel": false,
+        "equipement_collectif": true,
+        "industrie": false,
+        "entrepot": false,
+        "agricole": false,
         "note": "UF résidentielle essentiellement. Commerce/bureau très limités."
       },
       "reculs": {
@@ -433,7 +533,10 @@
         "versants_obligatoire": true,
         "versants_pct_volume": 60,
         "pente_portee_lte10m_min_pct": 20,
-        "pente_portee_gt10m_min_max_pct": [20, 30],
+        "pente_portee_gt10m_min_max_pct": [
+          20,
+          30
+        ],
         "monotoit_portee_lte7m": true,
         "4pans_si_pente_gt30pct_et_he_gte5m": true,
         "terrasse_vegetalisation_obligatoire_si_emprise_gt60pct": true,
@@ -449,8 +552,15 @@
         "note": "UF : 1.5 place/logement"
       },
       "logement_aide": {
-        "seuil_logements": 60, "pct_aide": 25,
-        "types": ["LLS", "LLTS", "PLS DOM", "PSLA"], "zac_pct": 40
+        "seuil_logements": 60,
+        "pct_aide": 25,
+        "types": [
+          "LLS",
+          "LLTS",
+          "PLS DOM",
+          "PSLA"
+        ],
+        "zac_pct": 40
       },
       "plantations": {
         "arbres_par_m2_espaces_libres": "1 arbre haute tige essence locale pour 50m²",
@@ -458,11 +568,15 @@
       },
       "_meta": {
         "confidence": 1.0,
-        "ambiguites": ["Emprise sol non réglementée explicitement — confirmer"],
-        "source_pages": [111, 127]
+        "ambiguites": [
+          "Emprise sol non réglementée explicitement — confirmer"
+        ],
+        "source_pages": [
+          111,
+          127
+        ]
       }
     },
-
     "US": {
       "label": "Zone urbaine peu dense en milieu naturel/agricole — uniquement résidentielle",
       "type": "U",
@@ -470,9 +584,14 @@
       "loi_littoral": false,
       "note": "Zone gel : aucune nouvelle construction dans l'attente approbation modification SCoT. Extensions existant autorisées.",
       "usages": {
-        "habitation": true, "extension_existant": true,
-        "commerce": false, "bureau": false, "hotel": false,
-        "industrie": false, "entrepot": false, "agricole": false
+        "habitation": true,
+        "extension_existant": true,
+        "commerce": false,
+        "bureau": false,
+        "hotel": false,
+        "industrie": false,
+        "entrepot": false,
+        "agricole": false
       },
       "reculs": {
         "voie_principale_m": 4,
@@ -505,7 +624,10 @@
         "versants_obligatoire": true,
         "versants_pct_volume": 60,
         "pente_portee_lte10m_min_pct": 20,
-        "pente_portee_gt10m_min_max_pct": [20, 30],
+        "pente_portee_gt10m_min_max_pct": [
+          20,
+          30
+        ],
         "solaire_thermique_obligatoire": true
       },
       "stationnement": {
@@ -515,7 +637,8 @@
         "note": "US : 1.5 place/logement"
       },
       "logement_aide": {
-        "seuil_logements": 60, "pct_aide": 25
+        "seuil_logements": 60,
+        "pct_aide": 25
       },
       "plantations": {
         "arbres_par_m2_espaces_libres": "1 arbre haute tige essence locale pour 50m²",
@@ -523,11 +646,15 @@
       },
       "_meta": {
         "confidence": 1.0,
-        "ambiguites": ["Zone en attente modification SCoT — vérifier si toujours applicable"],
-        "source_pages": [128, 140]
+        "ambiguites": [
+          "Zone en attente modification SCoT — vérifier si toujours applicable"
+        ],
+        "source_pages": [
+          128,
+          140
+        ]
       }
     },
-
     "UP": {
       "label": "Zone urbaine patrimoniale — Village de pêcheurs Terre Sainte",
       "type": "U",
@@ -535,9 +662,15 @@
       "loi_littoral": true,
       "note": "Tissu urbain très dense à préserver. Reculs libres — alignement ou retrait libre. Village de pêcheurs.",
       "usages": {
-        "habitation": true, "commerce": true, "restauration": true,
-        "bureau": false, "hotel": false, "equipement_collectif": true,
-        "industrie": false, "entrepot": false, "agricole": false
+        "habitation": true,
+        "commerce": true,
+        "restauration": true,
+        "bureau": false,
+        "hotel": false,
+        "equipement_collectif": true,
+        "industrie": false,
+        "entrepot": false,
+        "agricole": false
       },
       "reculs": {
         "voie_principale_m": 0,
@@ -591,11 +724,15 @@
       },
       "_meta": {
         "confidence": 0.85,
-        "ambiguites": ["Emprise sol : valeur exacte non visible dans les pages extraites — à vérifier p.145-146"],
-        "source_pages": [141, 154]
+        "ambiguites": [
+          "Emprise sol : valeur exacte non visible dans les pages extraites — à vérifier p.145-146"
+        ],
+        "source_pages": [
+          141,
+          154
+        ]
       }
     },
-
     "UT": {
       "label": "Zone urbaine à vocation touristique",
       "type": "U",
@@ -605,10 +742,14 @@
       "usages": {
         "habitation": true,
         "habitation_note": "Autorisé sous conditions uniquement",
-        "commerce": true, "restauration": true,
-        "hotel": true, "autres_hebergements_touristiques": true,
+        "commerce": true,
+        "restauration": true,
+        "hotel": true,
+        "autres_hebergements_touristiques": true,
         "equipement_collectif": true,
-        "industrie": false, "entrepot": false, "agricole": false
+        "industrie": false,
+        "entrepot": false,
+        "agricole": false
       },
       "reculs": {
         "voie_principale_m": 2,
@@ -661,11 +802,15 @@
       },
       "_meta": {
         "confidence": 1.0,
-        "ambiguites": ["Vérifier OAP AUt1 et AUt2 pour règles complémentaires"],
-        "source_pages": [155, 169]
+        "ambiguites": [
+          "Vérifier OAP AUt1 et AUt2 pour règles complémentaires"
+        ],
+        "source_pages": [
+          155,
+          169
+        ]
       }
     },
-
     "UA": {
       "label": "Zone urbaine et à urbaniser à vocation d'activités économiques",
       "type": "U",
@@ -679,9 +824,14 @@
         "Uazi": "ZI activités industrielles/artisanales — hé non limité pour extraction matériaux ZI N°4"
       },
       "usages": {
-        "habitation": false, "commerce": true, "bureau": true,
-        "activite": true, "industrie": true, "entrepot": true,
-        "hotel": false, "agricole": false
+        "habitation": false,
+        "commerce": true,
+        "bureau": true,
+        "activite": true,
+        "industrie": true,
+        "entrepot": true,
+        "hotel": false,
+        "agricole": false
       },
       "reculs": {
         "voie_principale_m": 4,
@@ -741,11 +891,15 @@
       },
       "_meta": {
         "confidence": 1.0,
-        "ambiguites": ["Vérifier servitude aéronautique Uazp/Uazpc — gabarit plan servitude aéronautique primant"],
-        "source_pages": [170, 185]
+        "ambiguites": [
+          "Vérifier servitude aéronautique Uazp/Uazpc — gabarit plan servitude aéronautique primant"
+        ],
+        "source_pages": [
+          170,
+          185
+        ]
       }
     },
-
     "UE": {
       "label": "Zone urbaine et à urbaniser à vocation d'équipements publics",
       "type": "U",
@@ -763,7 +917,9 @@
         "aerodrome": true,
         "militaire": true,
         "loisirs": true,
-        "commerce": false, "industrie": false, "agricole": false
+        "commerce": false,
+        "industrie": false,
+        "agricole": false
       },
       "reculs": {
         "voie_principale_m": 4,
@@ -808,11 +964,15 @@
       },
       "_meta": {
         "confidence": 1.0,
-        "ambiguites": ["Vérifier plan de servitude aéronautique pour Uea — primant sur les règles PLU"],
-        "source_pages": [186, 198]
+        "ambiguites": [
+          "Vérifier plan de servitude aéronautique pour Uea — primant sur les règles PLU"
+        ],
+        "source_pages": [
+          186,
+          198
+        ]
       }
     },
-
     "AU0": {
       "label": "Zones à urbaniser insuffisamment équipées — gel",
       "type": "AU",
@@ -823,10 +983,12 @@
       "_meta": {
         "confidence": 1.0,
         "ambiguites": [],
-        "source_pages": [199, 200]
+        "source_pages": [
+          199,
+          200
+        ]
       }
     },
-
     "AUD": {
       "label": "Zone à urbaniser de centralité — OAP obligatoire",
       "type": "AU",
@@ -835,17 +997,31 @@
       "sous_zones": {
         "AUdma": "Zone maritime — articles Ud3, Ud4, Ud5, Ud6 non réglementés"
       },
-      "_meta": { "confidence": 1.0, "ambiguites": ["Vérifier contenu OAP AUd pour prescriptions complémentaires"], "source_pages": [75, 95] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": [
+          "Vérifier contenu OAP AUd pour prescriptions complémentaires"
+        ],
+        "source_pages": [
+          75,
+          95
+        ]
+      }
     },
-
     "AUG": {
       "label": "Zone à urbaniser mixte générale — OAP obligatoire",
       "type": "AU",
       "ref": "UG",
       "ref_note": "Règles UG applicables. OAP annexées obligatoires.",
-      "_meta": { "confidence": 1.0, "ambiguites": [], "source_pages": [96, 110] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": [],
+        "source_pages": [
+          96,
+          110
+        ]
+      }
     },
-
     "AUF": {
       "label": "Zone à urbaniser de faible densité — OAP obligatoire",
       "type": "AU",
@@ -854,9 +1030,15 @@
       "sous_zones": {
         "AUfGB": "Secteur Grand Bois — hf max 5.5m"
       },
-      "_meta": { "confidence": 1.0, "ambiguites": [], "source_pages": [111, 127] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": [],
+        "source_pages": [
+          111,
+          127
+        ]
+      }
     },
-
     "AUT": {
       "label": "Zone à urbaniser touristique — OAP obligatoire",
       "type": "AU",
@@ -866,9 +1048,15 @@
         "AUt2": "OAP spécifique — hf max 6m"
       },
       "ref_note": "Règles UT applicables avec hauteurs spécifiques par secteur. OAP obligatoires.",
-      "_meta": { "confidence": 1.0, "ambiguites": [], "source_pages": [155, 169] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": [],
+        "source_pages": [
+          155,
+          169
+        ]
+      }
     },
-
     "AUA": {
       "label": "Zone à urbaniser d'activités économiques — OAP obligatoire",
       "type": "AU",
@@ -878,17 +1066,29 @@
         "AUazi": "OAP activités industrielles/artisanales"
       },
       "ref_note": "Règles UA applicables. OAP annexées obligatoires pour AUazc et AUazi.",
-      "_meta": { "confidence": 1.0, "ambiguites": [], "source_pages": [170, 185] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": [],
+        "source_pages": [
+          170,
+          185
+        ]
+      }
     },
-
     "AUE": {
       "label": "Zone à urbaniser équipements publics — OAP obligatoire",
       "type": "AU",
       "ref": "UE",
       "ref_note": "Règles UE applicables. OAP annexées obligatoires.",
-      "_meta": { "confidence": 1.0, "ambiguites": [], "source_pages": [186, 198] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": [],
+        "source_pages": [
+          186,
+          198
+        ]
+      }
     },
-
     "A": {
       "label": "Zone Agricole",
       "type": "A",
@@ -899,7 +1099,8 @@
         "activite_agricole": true,
         "agri_tourisme": true,
         "equipement_collectif": true,
-        "industrie": false, "commerce": false
+        "industrie": false,
+        "commerce": false
       },
       "reculs": {
         "voie_principale_m": 6,
@@ -930,11 +1131,15 @@
       },
       "_meta": {
         "confidence": 0.85,
-        "ambiguites": ["Pages A non extraites complètement — à vérifier pages 201-210 du PDF pour règles détaillées extension habitation"],
-        "source_pages": [201, 210]
+        "ambiguites": [
+          "Pages A non extraites complètement — à vérifier pages 201-210 du PDF pour règles détaillées extension habitation"
+        ],
+        "source_pages": [
+          201,
+          210
+        ]
       }
     },
-
     "N": {
       "label": "Zone Naturelle",
       "type": "N",
@@ -945,7 +1150,8 @@
         "activite_agricole": true,
         "loisirs_legers": true,
         "equipement_collectif": true,
-        "industrie": false, "commerce": false
+        "industrie": false,
+        "commerce": false
       },
       "reculs": {
         "voie_principale_m": 6,
@@ -969,8 +1175,13 @@
       },
       "_meta": {
         "confidence": 0.8,
-        "ambiguites": ["Pages N non extraites complètement — à vérifier pages 211-221 du PDF pour sous-zones Nea, Np, etc."],
-        "source_pages": [211, 221]
+        "ambiguites": [
+          "Pages N non extraites complètement — à vérifier pages 211-221 du PDF pour sous-zones Nea, Np, etc."
+        ],
+        "source_pages": [
+          211,
+          221
+        ]
       }
     }
   }

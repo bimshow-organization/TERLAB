@@ -4,7 +4,7 @@
     "region": "La Réunion",
     "generated": "2026-04-07",
     "commune": "Saint-Benoît",
-    "insee": "97411",
+    "insee": "97410",
     "intercommunalite": "CIREST",
     "plu_type": "PLU",
     "plu_date_approbation": "2020-02-06",
@@ -12,18 +12,30 @@
     "source": "Règlement PLU Saint-Benoît — GPU DU_97410 — 97410_reglement_20200206.pdf",
     "note": "PLU post-réforme : zone U unique avec sous-zones Ua/Ub/Uc/Ud/Ue/Up/Ut. Hauteurs variables selon document graphique."
   },
-
   "zones": {
-
     "U": {
       "label": "Zone urbaine — règles communes à toutes sous-zones U",
       "type": "U",
       "sous_type": "urbaine_générique",
-      "sous_zones": ["Ua", "Ub", "Uc", "Ud", "Ue", "Up", "Ut"],
+      "sous_zones": [
+        "Ua",
+        "Ub",
+        "Uc",
+        "Ud",
+        "Ue",
+        "Up",
+        "Ut"
+      ],
       "usages": {
-        "habitation": true, "commerce": true, "bureau": true,
-        "activite": true, "entrepot": false, "hotel": true,
-        "camping": false, "agricole": false, "industriel": false,
+        "habitation": true,
+        "commerce": true,
+        "bureau": true,
+        "activite": true,
+        "entrepot": false,
+        "hotel": true,
+        "camping": false,
+        "agricole": false,
+        "industriel": false,
         "note": "Industriel interdit sauf zone Ub sous conditions art.U-3"
       },
       "reculs": {
@@ -45,7 +57,13 @@
         "he_max_m": null,
         "hf_max_m": null,
         "hauteur_note": "Variable selon document graphique : 15m (R+4), 13m (R+3), 10m (R+2), 7m (R+1), 4m (R+combles). Toutes à l'égout/acrotère.",
-        "hauteurs_possibles_he_m": [15, 13, 10, 7, 4],
+        "hauteurs_possibles_he_m": [
+          15,
+          13,
+          10,
+          7,
+          4
+        ],
         "annexe_hf_max_m": null,
         "zones_speciales": [
           {
@@ -108,10 +126,22 @@
           "Hauteurs variables selon document graphique — valeurs exactes par parcelle non extractibles du règlement écrit seul",
           "Sous-zones Ua/Ub/Uc/Ud/Ue/Up/Ut : différences principalement dans usages autorisés et stationnement, pas dans gabarits"
         ],
-        "source_articles": [1,2,3,4,5,6,7,8,9,10,11,12]
+        "source_articles": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ]
       }
     },
-
     "Ua": {
       "label": "Hyper-centre Saint-Benoît",
       "type": "U",
@@ -123,18 +153,22 @@
         "stationnement_hotel": "non réglementé",
         "stationnement_restaurant": "non réglementé"
       },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "Ub": {
       "label": "Zone urbaine mixte avec activités",
       "type": "U",
       "sous_type": "résidentielle_mixte",
       "ref": "U",
       "ref_note": "Règles U. Industriel autorisé sous conditions (art.U-3).",
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "Ue": {
       "label": "Zone urbaine équipements et activités économiques",
       "type": "U",
@@ -151,25 +185,31 @@
           "note": "Petit Saint-Pierre — marge de recul vis-à-vis coupure urbanisation"
         }
       ],
-      "_meta": { "confidence": 0.9, "ambiguites": [] }
+      "_meta": {
+        "confidence": 0.9,
+        "ambiguites": []
+      }
     },
-
     "Up": {
       "label": "Zone activités économiques Beauvallon",
       "type": "U",
       "sous_type": "activites_economiques",
       "ref": "U",
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "Ut": {
       "label": "Zone tourisme — Les Orangers",
       "type": "U",
       "sous_type": "touristique",
       "ref": "U",
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "AU": {
       "label": "Zones à urbaniser",
       "type": "AU",
@@ -182,7 +222,12 @@
         "sep_fond_m": null
       },
       "hauteurs": {
-        "hauteurs_possibles_he_m": [15, 13, 10, 7],
+        "hauteurs_possibles_he_m": [
+          15,
+          13,
+          10,
+          7
+        ],
         "note": "Identiques aux secteurs U correspondants déjà urbanisés"
       },
       "emprise": {
@@ -193,16 +238,18 @@
       },
       "_meta": {
         "confidence": 0.9,
-        "ambiguites": ["Sous-zones AU détaillées dans fiches annexes non incluses dans le règlement écrit principal"]
+        "ambiguites": [
+          "Sous-zones AU détaillées dans fiches annexes non incluses dans le règlement écrit principal"
+        ]
       }
     },
-
     "A": {
       "label": "Zone agricole",
       "type": "A",
       "sous_type": "agricole",
       "usages": {
-        "habitation": false, "activite_agricole": true,
+        "habitation": false,
+        "activite_agricole": true,
         "extension_habitation_existante": true,
         "equipement_collectif": true
       },
@@ -236,17 +283,25 @@
         "cloture_transparence_hydraulique": true,
         "icpe_recul_zone_u_au_m": 100
       },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "N": {
       "label": "Zone naturelle et forestière",
       "type": "N",
       "sous_type": "naturelle",
-      "sous_zones": ["Ns", "Nta", "Ntb"],
+      "sous_zones": [
+        "Ns",
+        "Nta",
+        "Ntb"
+      ],
       "usages": {
-        "habitation": false, "activite_agricole": true,
-        "loisirs_legers": true, "equipement_collectif": true
+        "habitation": false,
+        "activite_agricole": true,
+        "loisirs_legers": true,
+        "equipement_collectif": true
       },
       "reculs": {
         "voie_principale_m": null,
@@ -276,11 +331,12 @@
       },
       "_meta": {
         "confidence": 0.9,
-        "ambiguites": ["Sous-zones Ns/Nta/Ntb : emprises et usages détaillés dans fiches annexes"]
+        "ambiguites": [
+          "Sous-zones Ns/Nta/Ntb : emprises et usages détaillés dans fiches annexes"
+        ]
       }
     }
   },
-
   "regles_communes": {
     "ravine_recul_m": 10,
     "note_ravine": "Décret n°48-633 du 31 mars 1948",

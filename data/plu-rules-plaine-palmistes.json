@@ -4,45 +4,130 @@
     "region": "La Réunion",
     "generated": "2026-04-07",
     "commune": "La Plaine-des-Palmistes",
-    "insee": "97407",
+    "insee": "97406",
     "intercommunalite": "CIREST",
     "plu_type": "PLU",
     "plu_date_approbation": "2013-05-29",
-    "plu_modifications": ["M 2019-03-11"],
+    "plu_modifications": [
+      "M 2019-03-11"
+    ],
     "source": "GPU DU_97406 — 97406_reglement_20230527.pdf"
   },
   "zones": {
-    "Ua": { "label": "Centre-bourg", "type": "U", "sous_type": "centre_urbain",
-      "reculs": { "voie_principale_m": null, "voie_note": "Variable selon sous-secteur", "sep_lat_m": 3, "sep_fond_m": 3 },
-      "hauteurs": { "hf_max_m": null, "note": "Hauteurs non trouvées explicitement — PDF 217p complexe", "annexe_hf_max_m": 3.5 },
-      "emprise": { "emprise_sol_max_pct": 70 },
-      "permeabilite": { "permeable_min_pct": 20 },
-      "_meta": { "confidence": 0.7, "ambiguites": ["Hauteurs non extraites — PDF très long (217p)"] }
+    "Ua": {
+      "label": "Centre-bourg",
+      "type": "U",
+      "sous_type": "centre_urbain",
+      "reculs": {
+        "voie_principale_m": null,
+        "voie_note": "Variable selon sous-secteur",
+        "sep_lat_m": 3,
+        "sep_fond_m": 3
+      },
+      "hauteurs": {
+        "hf_max_m": null,
+        "note": "Hauteurs non trouvées explicitement — PDF 217p complexe",
+        "annexe_hf_max_m": 3.5
+      },
+      "emprise": {
+        "emprise_sol_max_pct": 70
+      },
+      "permeabilite": {
+        "permeable_min_pct": 20
+      },
+      "_meta": {
+        "confidence": 0.7,
+        "ambiguites": [
+          "Hauteurs non extraites — PDF très long (217p)"
+        ]
+      }
     },
-    "Ub": { "label": "Zone résidentielle intermédiaire", "type": "U",
-      "emprise": { "emprise_sol_max_pct": 50 },
-      "permeabilite": { "permeable_min_pct": 40 },
-      "_meta": { "confidence": 0.7, "ambiguites": ["Hauteurs non extraites"] }
+    "Ub": {
+      "label": "Zone résidentielle intermédiaire",
+      "type": "U",
+      "emprise": {
+        "emprise_sol_max_pct": 50
+      },
+      "permeabilite": {
+        "permeable_min_pct": 40
+      },
+      "_meta": {
+        "confidence": 0.7,
+        "ambiguites": [
+          "Hauteurs non extraites"
+        ]
+      }
     },
-    "Uc": { "label": "Zone résidentielle diffuse", "type": "U",
-      "emprise": { "emprise_sol_max_pct": 40 },
-      "permeabilite": { "permeable_min_pct": 50 },
-      "_meta": { "confidence": 0.7, "ambiguites": ["Hauteurs non extraites"] }
+    "Uc": {
+      "label": "Zone résidentielle diffuse",
+      "type": "U",
+      "emprise": {
+        "emprise_sol_max_pct": 40
+      },
+      "permeabilite": {
+        "permeable_min_pct": 50
+      },
+      "_meta": {
+        "confidence": 0.7,
+        "ambiguites": [
+          "Hauteurs non extraites"
+        ]
+      }
     },
-    "Ue": { "label": "Zone activités", "type": "U", "sous_type": "activites",
-      "_meta": { "confidence": 0.6, "ambiguites": ["Données incomplètes — PDF 217p"] }
+    "Ue": {
+      "label": "Zone activités",
+      "type": "U",
+      "sous_type": "activites",
+      "_meta": {
+        "confidence": 0.6,
+        "ambiguites": [
+          "Données incomplètes — PDF 217p"
+        ]
+      }
     },
-    "AU": { "label": "Zones à urbaniser", "type": "AU", "ref": "zone U", "_meta": { "confidence": 1.0, "ambiguites": [] } },
-    "A": { "label": "Zone agricole", "type": "A",
-      "hauteurs": { "hf_max_m": 8, "note": "8m au faîtage" },
-      "permeabilite": { "permeable_min_pct": 40 },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    "AU": {
+      "label": "Zones à urbaniser",
+      "type": "AU",
+      "ref": "zone U",
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-    "N": { "label": "Zone naturelle", "type": "N",
-      "sous_zones": ["Nto"],
-      "emprise": { "Nto_pct": 20 },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+    "A": {
+      "label": "Zone agricole",
+      "type": "A",
+      "hauteurs": {
+        "hf_max_m": 8,
+        "note": "8m au faîtage"
+      },
+      "permeabilite": {
+        "permeable_min_pct": 40
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
+    },
+    "N": {
+      "label": "Zone naturelle",
+      "type": "N",
+      "sous_zones": [
+        "Nto"
+      ],
+      "emprise": {
+        "Nto_pct": 20
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     }
   },
-  "regles_communes": { "ravine_recul_m": 10, "cloture_voie_hauteur_max_m": 2, "mur_soutenement_max_m": 3, "rtaa_dom": "2016" }
+  "regles_communes": {
+    "ravine_recul_m": 10,
+    "cloture_voie_hauteur_max_m": 2,
+    "mur_soutenement_max_m": 3,
+    "rtaa_dom": "2016"
+  }
 }

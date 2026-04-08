@@ -1,4 +1,7 @@
-<!-- TERLAB · Phase 9 · Impact Carbone & Énergie · ENSA La Réunion v1.0 -->
+<!-- TERLAB · Phase 9 v2 · Impact Carbone & Énergie · ENSA La Réunion -->
+<!-- Carte Mapbox supprimée — remplacée par diagramme ACV Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
 <div class="left-panel">
   <div class="lp-head anim-slide-up">
     <div class="phase-label" style="color:#3cb860">Phase 9 · Carbone & Énergie</div>
@@ -14,28 +17,57 @@
     <span class="ts-item">Structure <strong id="ts-struct-p9">—</strong></span>
   </div>
 
-  <!-- ACV Matériaux -->
+  <!-- Surface plancher -->
   <div class="form-section anim-slide-up">
-    <div class="fs-head">ACV matériaux — Émissions grises</div>
-    <div class="acv-estimator">
-      <div class="acv-struct">
-        <div class="field-row">
-          <label class="field-label">Structure principale</label>
-          <div class="radio-group" style="flex-direction:column;gap:4px">
-            <label class="radio-option" onclick="P09.selectStruct(this,'beton',310)"><input type="radio" name="acv-struct" value="beton"/>🧱 Béton/Parpaing — ~310 kgCO₂eq/m²</label>
-            <label class="radio-option" onclick="P09.selectStruct(this,'bois_local',145)"><input type="radio" name="acv-struct" value="bois_local"/>🪵 Bois local plantation — ~145 kgCO₂eq/m²</label>
-            <label class="radio-option" onclick="P09.selectStruct(this,'bois_importe',210)"><input type="radio" name="acv-struct" value="bois_importe"/>🌲 Bois importé — ~210 kgCO₂eq/m² (transport)</label>
-            <label class="radio-option" onclick="P09.selectStruct(this,'acier',380)"><input type="radio" name="acv-struct" value="acier"/>⚙ Acier importé — ~380 kgCO₂eq/m²</label>
-            <label class="radio-option" onclick="P09.selectStruct(this,'biosource',90)"><input type="radio" name="acv-struct" value="biosource"/>🌿 Biosourcé local (bambou, fibre) — ~90 kgCO₂eq/m²</label>
-          </div>
-        </div>
-      </div>
-      <div class="acv-result" id="acv-result" style="display:none">
-        <div class="acv-r-label">Estimation émissions grises totales</div>
-        <div class="acv-r-val" id="acv-total">—</div>
-        <div class="acv-r-note" id="acv-note">—</div>
-        <div class="acv-chart-wrap"><canvas id="acv-chart" height="80"></canvas></div>
-      </div>
+    <div class="fs-head">Paramètres du projet</div>
+    <div class="field-row">
+      <label class="field-label">Surface plancher (SDP) m²</label>
+      <input type="number" class="field-input" id="acv-sdp" data-session-key="sdp_m2" placeholder="auto depuis P07 ou saisie" min="10" max="10000" step="1"/>
+    </div>
+    <div class="field-row">
+      <label class="field-label">Niveau de programme</label>
+      <select class="field-select" data-session-key="niveau_programme">
+        <option value="">-- Sélectionner --</option>
+        <option value="r1">R+1</option>
+        <option value="r2">R+2</option>
+        <option value="r3">R+3</option>
+        <option value="r4">R+4</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Matériaux par catégorie -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Matériaux structure</div>
+    <div class="mat-checks" data-cat="structure">
+      <label class="mat-check"><input type="checkbox" value="Béton armé (local)"/>🧱 Béton armé (local) — 280 kgCO₂e/m²</label>
+      <label class="mat-check"><input type="checkbox" value="Acier charpente"/>⚙ Acier charpente — 85 kgCO₂e/m²</label>
+      <label class="mat-check"><input type="checkbox" value="Bois pin des Caraïbes"/>🪵 Bois pin des Caraïbes — -30 kgCO₂e/m² (séquestration)</label>
+    </div>
+  </div>
+
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Matériaux enveloppe</div>
+    <div class="mat-checks" data-cat="enveloppe">
+      <label class="mat-check"><input type="checkbox" value="Parpaing béton (local)"/>🧱 Parpaing béton — 62 kgCO₂e/m²</label>
+      <label class="mat-check"><input type="checkbox" value="Tôle galvanisée (toiture)"/>🏠 Tôle galvanisée — 32 kgCO₂e/m²</label>
+      <label class="mat-check"><input type="checkbox" value="Fibre ciment"/>Fibre ciment — 48 kgCO₂e/m²</label>
+    </div>
+  </div>
+
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Matériaux finition</div>
+    <div class="mat-checks" data-cat="finition">
+      <label class="mat-check"><input type="checkbox" value="Enduit chaux/sable local"/>Enduit chaux/sable — 18 kgCO₂e/m²</label>
+      <label class="mat-check"><input type="checkbox" value="Peinture"/>🎨 Peinture — 4 kgCO₂e/m²</label>
+    </div>
+  </div>
+
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Durée de vie bâtiment</div>
+    <div class="field-row">
+      <input type="range" id="duree-vie" min="30" max="100" step="5" value="50" class="field-range" data-session-key="duree_vie_ans"/>
+      <span class="range-val" id="duree-vie-val">50 ans</span>
     </div>
   </div>
 
@@ -43,7 +75,7 @@
   <div class="form-section anim-slide-up">
     <div class="fs-head">Stratégie ventilation naturelle (RTAA DOM)</div>
     <div class="field-row">
-      <div class="radio-group" style="flex-direction:column;gap:4px">
+      <div class="radio-group" data-val-index="1" style="flex-direction:column;gap:4px">
         <label class="radio-option" onclick="P09.sel(this,'ventil','traversante')"><input type="radio" name="ventil" value="traversante"/>✅ Traversante optimisée (recommandé)</label>
         <label class="radio-option" onclick="P09.sel(this,'ventil','brasseurs')"><input type="radio" name="ventil" value="brasseurs"/>🌀 Mono-orientation + brasseurs de plafond</label>
         <label class="radio-option" onclick="P09.sel(this,'ventil','vmc')"><input type="radio" name="ventil" value="vmc"/>⚙ VMC tropicale + brasseurs</label>
@@ -77,6 +109,7 @@
         <span class="enr-chk">—</span>
       </div>
     </div>
+    <div id="mix-electrique-info" style="display:none;padding:4px 0"></div>
   </div>
 
   <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
@@ -91,10 +124,19 @@
     <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>ECS solaire intégré (obligation RTAA)</span></div>
     <div class="val-progress"><div class="val-bar"></div></div>
     <div class="val-footer"><span>Phase indicative</span><span class="val-pct">0/3</span></div>
-    <button class="next-btn">Phase 10 — Entretien & Rénovation →</button>
+    <button class="next-btn">Phase 10 — Durabilité & Fin de vie →</button>
   </div>
 </div>
-<div class="map-area"><div id="map" style="width:100%;height:100%"></div></div>
+
+<!-- Zone centrale : ACV container remplace la carte Mapbox -->
+<div id="acv-container" style="flex:1;display:flex;flex-direction:column;gap:16px;padding:16px;overflow-y:auto;background:var(--bg)">
+  <div id="acv-chart-wrap" style="position:relative;height:320px">
+    <canvas id="acv-chart"></canvas>
+  </div>
+  <div id="acv-scenarios" style="display:grid;grid-template-columns:1fr 1fr;gap:12px"></div>
+  <div id="acv-total" style="padding:12px;border:1px solid var(--border);border-radius:4px;display:none"></div>
+</div>
+
 <div class="right-panel">
   <div class="rp-section">
     <div class="rp-head">Impact insularité — Transport</div>
@@ -111,12 +153,15 @@
     <div id="eb-cards-p09"></div>
   </div>
 </div>
+
 <style>
-.acv-result { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:10px; margin-top:10px; }
-.acv-r-label { font-family:var(--font-mono); font-size:8.5px; color:var(--faint); text-transform:uppercase; letter-spacing:.1em; }
-.acv-r-val { font-family:var(--font-serif); font-size:22px; color:var(--success); font-weight:600; margin:3px 0; }
-.acv-r-note { font-size:10.5px; color:var(--muted); margin-bottom:8px; font-style:italic; }
-.acv-chart-wrap { height:80px; }
+.mat-checks { display:flex; flex-direction:column; gap:4px; }
+.mat-check { display:flex; align-items:center; gap:8px; padding:7px 10px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); font-size:11.5px; color:var(--text2); cursor:pointer; transition:all var(--tx-fast); }
+.mat-check:hover { border-color:var(--success); }
+.mat-check input { accent-color:var(--success); }
+.mat-check.active { border-color:var(--success); background:var(--success2); }
+.field-range { width:100%; accent-color:var(--success); }
+.range-val { font-family:var(--font-mono); font-size:10px; color:var(--muted); margin-left:8px; }
 .enr-items { display:flex; flex-direction:column; gap:5px; }
 .enr-item { display:flex; align-items:center; gap:8px; padding:8px 10px; background:var(--card); border:1.5px solid var(--border); border-radius:var(--r); cursor:pointer; transition:all var(--tx-fast); }
 .enr-item:hover { border-color:var(--success); background:var(--success2); }
@@ -126,40 +171,167 @@
 .enr-note { font-family:var(--font-mono); font-size:8.5px; color:var(--faint); margin-top:1px; }
 .enr-chk { margin-left:auto; font-family:var(--font-mono); font-size:12px; color:var(--faint); }
 .enr-item.selected .enr-chk { color:var(--success); }
+.scenario-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:12px; }
+.scenario-card h3 { font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:.05em; margin:0 0 8px 0; }
+.scenario-card .sc-total { font-family:var(--font-serif); font-size:20px; font-weight:600; margin:4px 0; }
+.scenario-card .sc-badge { display:inline-block; padding:2px 8px; border-radius:var(--r-sm); font-family:var(--font-mono); font-size:9px; font-weight:700; }
+.scenario-card .sc-mats { font-size:10px; color:var(--muted); margin-top:6px; line-height:1.5; }
+#acv-total { font-family:var(--font-mono); font-size:11px; color:var(--text2); }
 </style>
+
 <script type="module">
 const SessionManager = window.SessionManager;
+const EdfService     = window.EdfService;
+
+const MATERIAUX_REUNION = {
+  "Béton armé (local)":        { co2_kg_m2: 280, unite: "kg CO₂e/m²", categorie: "structure" },
+  "Acier charpente":           { co2_kg_m2: 85,  unite: "kg CO₂e/m²", categorie: "structure" },
+  "Bois pin des Caraïbes":     { co2_kg_m2: -30, unite: "kg CO₂e/m²", categorie: "structure" },
+  "Parpaing béton (local)":    { co2_kg_m2: 62,  unite: "kg CO₂e/m²", categorie: "enveloppe" },
+  "Tôle galvanisée (toiture)": { co2_kg_m2: 32,  unite: "kg CO₂e/m²", categorie: "enveloppe" },
+  "Fibre ciment":              { co2_kg_m2: 48,  unite: "kg CO₂e/m²", categorie: "enveloppe" },
+  "Enduit chaux/sable local":  { co2_kg_m2: 18,  unite: "kg CO₂e/m²", categorie: "finition"  },
+  "Peinture":                  { co2_kg_m2: 4,   unite: "kg CO₂e/m²", categorie: "finition"  },
+};
+
+const scenarioA = ["Béton armé (local)", "Tôle galvanisée (toiture)", "Parpaing béton (local)", "Enduit chaux/sable local"];
+const scenarioB = ["Bois pin des Caraïbes", "Fibre ciment", "Enduit chaux/sable local", "Peinture"];
+
+function getSDPm2() {
+  const input = document.getElementById('acv-sdp');
+  if (input?.value) return parseFloat(input.value);
+  const p07data = SessionManager.getPhase(7)?.data ?? {};
+  return p07data.sdp_estime_m2 ?? p07data.surface_plancher_m2
+      ?? SessionManager.getTerrain()?.contenance_m2 * 0.7 ?? 100;
+}
+
+function getSelectedMaterials() {
+  const selected = {};
+  document.querySelectorAll('.mat-check input:checked').forEach(cb => {
+    const name = cb.value;
+    if (MATERIAUX_REUNION[name]) selected[name] = MATERIAUX_REUNION[name];
+  });
+  return selected;
+}
+
+function renderACVChart(selectedMaterials, sdp_m2) {
+  const ctx = document.getElementById('acv-chart')?.getContext('2d');
+  if (!ctx) return;
+
+  const labels = Object.keys(selectedMaterials);
+  const values = labels.map(k => {
+    const m = MATERIAUX_REUNION[k];
+    return m ? Math.round(m.co2_kg_m2 * sdp_m2 / 1000) : 0;
+  });
+  const colors = values.map(v =>
+    v < 0  ? 'rgba(46, 92, 46, 0.7)'   :
+    v < 50 ? 'rgba(193, 101, 43, 0.5)' :
+             'rgba(139, 32, 32, 0.65)'
+  );
+
+  if (window._acvChart) window._acvChart.destroy();
+  window._acvChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Émissions (t CO₂e)',
+        data: values,
+        backgroundColor: colors,
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          title: { display: true, text: 'tonnes CO₂e (vie entière)' },
+          grid: { color: 'rgba(0,0,0,0.05)' }
+        }
+      }
+    }
+  });
+}
+
+function calcScenarioTotal(materials, sdp_m2) {
+  return materials.reduce((sum, name) => {
+    const m = MATERIAUX_REUNION[name];
+    return sum + (m ? Math.round(m.co2_kg_m2 * sdp_m2 / 1000) : 0);
+  }, 0);
+}
+
+function renderScenarios(sdp_m2) {
+  const container = document.getElementById('acv-scenarios');
+  const totalA = calcScenarioTotal(scenarioA, sdp_m2);
+  const totalB = calcScenarioTotal(scenarioB, sdp_m2);
+  const ref = totalA || 1;
+  const pctDiff = Math.round((1 - totalB / ref) * 100);
+
+  container.innerHTML = `
+    <div class="scenario-card">
+      <h3 style="color:var(--warning)">Scénario A — Béton/Tôle (conventionnel)</h3>
+      <div class="sc-total" style="color:var(--warning)">${totalA} t CO₂e</div>
+      <div class="sc-badge" style="background:var(--warning2);color:var(--warning)">Référence</div>
+      <div class="sc-mats">${scenarioA.join(' · ')}</div>
+    </div>
+    <div class="scenario-card">
+      <h3 style="color:var(--success)">Scénario B — Bois/Fibre ciment (biosourcé)</h3>
+      <div class="sc-total" style="color:var(--success)">${totalB} t CO₂e</div>
+      <div class="sc-badge" style="background:var(--success2);color:var(--success)">−${pctDiff}% vs référence</div>
+      <div class="sc-mats">${scenarioB.join(' · ')}</div>
+    </div>
+  `;
+}
+
+function updateAll() {
+  const sdp = getSDPm2();
+  const selected = getSelectedMaterials();
+  const hasSelection = Object.keys(selected).length > 0;
+
+  if (hasSelection) {
+    renderACVChart(selected, sdp);
+    // Auto-check validation 0
+    const check0 = document.querySelectorAll('.check-item')[0];
+    if (check0) { check0.classList.add('checked'); check0.setAttribute('aria-checked', 'true'); }
+  }
+  renderScenarios(sdp);
+
+  // Total panel
+  const totalPanel = document.getElementById('acv-total');
+  if (hasSelection) {
+    const totalUser = Object.keys(selected).reduce((sum, k) => {
+      return sum + Math.round(MATERIAUX_REUNION[k].co2_kg_m2 * sdp / 1000);
+    }, 0);
+    totalPanel.style.display = 'block';
+    totalPanel.innerHTML = `<strong>Votre sélection :</strong> ${totalUser} t CO₂e pour ${Math.round(sdp)} m² SDP · ${Object.keys(selected).length} matériaux`;
+  } else {
+    totalPanel.style.display = 'none';
+  }
+
+  // Save to session
+  SessionManager.savePhase(9, {
+    sdp_m2: sdp,
+    materiaux_selectionnes: Object.keys(selected),
+    co2_total_t: Object.keys(selected).reduce((s, k) => s + Math.round(MATERIAUX_REUNION[k].co2_kg_m2 * sdp / 1000), 0)
+  });
+}
+
+// Bind events
+document.querySelectorAll('.mat-check input').forEach(cb => {
+  cb.addEventListener('change', () => {
+    cb.closest('.mat-check').classList.toggle('active', cb.checked);
+    updateAll();
+  });
+});
+document.getElementById('acv-sdp')?.addEventListener('input', updateAll);
+document.getElementById('duree-vie')?.addEventListener('input', function() {
+  document.getElementById('duree-vie-val').textContent = `${this.value} ans`;
+  SessionManager.savePhase(9, { duree_vie_ans: parseInt(this.value) });
+});
+
 const P09 = {
-  _struct_val: 0,
-  _chart: null,
-  selectStruct(label, type, kgco2) {
-    document.querySelectorAll('[name="acv-struct"]').forEach(r => r.closest('.radio-option')?.classList.remove('selected'));
-    label.classList.add('selected');
-    this._struct_val = kgco2;
-    const sp = parseFloat(SessionManager.getPhase(7)?.data?.surface_plancher_m2 ?? document.getElementById('ts-sp-p9')?.textContent?.replace(' m²','') ?? 100);
-    const total = Math.round(kgco2 * sp);
-    const ref   = 300 * sp;
-    document.getElementById('acv-result').style.display = 'block';
-    document.getElementById('acv-total').textContent = `${total.toLocaleString('fr-FR')} kgCO₂eq`;
-    document.getElementById('acv-note').textContent  = total < ref ? `✓ ${Math.round((1-total/ref)*100)}% moins que la référence béton` : `+${Math.round((total/ref-1)*100)}% vs référence béton`;
-    document.getElementById('acv-total').style.color = total < ref*0.7 ? 'var(--success)' : total < ref ? '#c5e68a' : 'var(--warning)';
-    this._renderChart(kgco2, sp);
-    SessionManager.savePhase(9, { type_struct: type, co2_m2: kgco2, co2_total: total });
-  },
-  _renderChart(co2m2, sp) {
-    if (this._chart) this._chart.destroy();
-    const ctx = document.getElementById('acv-chart')?.getContext('2d');
-    if (!ctx) return;
-    const structs = ['Biosourcé local','Bois local','Bois importé','Béton/Parpaing','Acier'];
-    const vals    = [90, 145, 210, 310, 380].map(v => Math.round(v * sp));
-    const colors  = vals.map(v => v <= co2m2 * sp ? 'rgba(60,184,96,.7)' : 'rgba(56,74,92,.4)');
-    this._chart = new Chart(ctx, {
-      type: 'bar',
-      data: { labels: structs, datasets: [{ data: vals, backgroundColor: colors, borderWidth: 0 }] },
-      options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
-        scales: { x: { ticks:{color:'#6b5c3e',font:{size:8},callback:v=>`${Math.round(v/1000)}t`}, grid:{color:'rgba(154,120,32,.08)'} }, y:{ticks:{color:'#6b5c3e',font:{size:9}}} } }
-    });
-  },
   sel(label, field, val) {
     document.querySelectorAll(`[name="${field}"]`).forEach(r => r.closest('.radio-option')?.classList.remove('selected'));
     label.classList.add('selected');
@@ -168,15 +340,52 @@ const P09 = {
   toggleENR(el, id) {
     el.classList.toggle('selected');
     el.querySelector('.enr-chk').textContent = el.classList.contains('selected') ? '✓' : '—';
+    SessionManager.savePhase(9, { [`enr_${id}`]: el.classList.contains('selected') });
+  },
+
+  // Afficher le mix électrique Réunion (EDF SEI)
+  showMixElectrique() {
+    if (!EdfService) return;
+    const mix = EdfService.getMixElectrique();
+    if (!mix) return;
+    const r = mix.repartition;
+    const enrPct = (r.hydraulique + r.photovoltaique + r.eolien + r.biomasse + r.biogas + r.bagasse).toFixed(1);
+    const fossilePct = (r.charbon + r.fioul).toFixed(1);
+    const el = document.getElementById('mix-electrique-info');
+    if (el) {
+      el.style.display = 'block';
+      el.innerHTML = `
+        <div style="font-size:11px;color:var(--text2);margin-top:6px">
+          <strong>Mix électrique Réunion ${mix.annee}</strong> · ${mix.facteur_emission_kg_co2_kwh} kg CO₂/kWh<br>
+          Fossile ${fossilePct}% (charbon ${r.charbon}% · fioul ${r.fioul}%) · ENR ${enrPct}% (hydro ${r.hydraulique}% · PV ${r.photovoltaique}% · bagasse ${r.bagasse}%)
+        </div>`;
+    }
+    SessionManager.savePhase(9, {
+      mix_electrique_reunion: mix.repartition,
+      facteur_emission_kwh: mix.facteur_emission_kg_co2_kwh
+    });
   }
 };
+window.P09 = P09;
+
+// Init terrain strip
 const terrain = SessionManager.getTerrain();
 if (terrain?.commune) document.getElementById('ts-c-p9').textContent = terrain.commune;
 const p7 = SessionManager.getPhase(7)?.data ?? {};
 if (p7.surface_plancher_m2) document.getElementById('ts-sp-p9').textContent = `${p7.surface_plancher_m2} m²`;
 if (p7.type_structure) document.getElementById('ts-struct-p9').textContent = p7.type_structure;
-window.P09 = P09;
+
+// Pre-fill SDP from P07
+const sdpInput = document.getElementById('acv-sdp');
+const autoSdp = p7.sdp_estime_m2 ?? p7.surface_plancher_m2;
+if (sdpInput && autoSdp) sdpInput.value = autoSdp;
+
+// Initial render with scenarios
+renderScenarios(getSDPm2());
 
 // enviroBAT cards
 if (window.EnvirobatCards) EnvirobatCards.render('eb-cards-p09', 'p09');
+
+// Mix électrique Réunion (auto-affichage)
+P09.showMixElectrique();
 </script>

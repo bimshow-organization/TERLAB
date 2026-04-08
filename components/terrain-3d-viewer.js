@@ -1,6 +1,7 @@
 // TERLAB · components/terrain-3d-viewer.js
 // Viewer 3D terrain + gabarit + pentes + ensoleillement
 // Sources : TerrainViz_Gamer_v4 · bimshow-shadow-study · GIEP giep-3d-slopes
+// v2 : BIL 1m mesh + orthophoto IGN + modes couleur + export GLB
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -9,6 +10,7 @@ import SunCalcService from '../services/sun-calc-service.js';
 import GeoStatusBar from './geo-status-bar.js';
 import GLBExporter from '../utils/glb-exporter.js';
 import ContourService from '../services/contour-service.js';
+import BILTerrain from '../services/bil-terrain.js';
 
 // Exposer THREE globalement pour compatibilité scripts inline
 if (typeof window !== 'undefined' && !window.THREE) {
@@ -54,6 +56,10 @@ const Terrain3D = {
   _scaledPts:    null,
   _terrainCenter: null,
   _topMesh:      null,
+  _textureMode:  'ortho',     // 'ortho' | 'elevation' | 'slope' | 'satellite'
+  _textures:     {},           // cache { ortho, elevation, slope, satellite }
+  _bilMeta:      null,         // { heights, W, H, minAlt, maxAlt } pour coloration vertex
+  _orthoLoaded:  false,
 
   // ─── INIT ─────────────────────────────────────────────────────
   async init(canvasId, sessionData) {
@@ -210,7 +216,7 @@ const Terrain3D = {
     addAxis(-hs, 0, hs, 0, 0x00d4ff);  // E-O (cyan)
   },
 
-  // ─── TERRAIN IGN TEXTURÉ ──────────────────────────────────────
+  // ─── TERRAIN BIL HAUTE RÉSOLUTION ─────────────────────────────
   async _buildTerrain() {
     const t = this._parcelData;
     if (!t?.parcelle_geojson) {
@@ -233,51 +239,158 @@ const Terrain3D = {
     const LAT_SCALE = 111320;
     const LNG_SCALE = 111320 * Math.cos(center[1] * Math.PI / 180);
 
-    // Altitudes aux coins (depuis session ou estimation)
-    const altBase   = parseFloat(t.altitude_ngr ?? 100);
-    const denivelé  = parseFloat(t.denivelé_m ?? 2);
-    const cornerAlts = coords.map((_, i) =>
-      altBase + (i % 2 === 0 ? 0 : denivelé * (i / coords.length))
-    );
-    this._cornerAlts = cornerAlts;
+    // BBox WGS84 avec marge ~50m
+    const lngs = coords.map(c => c[0]), lats = coords.map(c => c[1]);
+    const margin = 0.0005; // ~55m
+    const wgsBounds = {
+      west:  Math.min(...lngs) - margin,
+      east:  Math.max(...lngs) + margin,
+      south: Math.min(...lats) - margin,
+      north: Math.max(...lats) + margin,
+    };
 
-    // Coordonnées locales (mètres)
-    const localPts = coords.map((c, i) => ({
-      x:   (c[0] - center[0]) * LNG_SCALE,
-      z:   (c[1] - center[1]) * LAT_SCALE,
-      alt: cornerAlts[i] - Math.min(...cornerAlts),
+    // Coordonnées locales du parcelle pour l'outline
+    const localPts = coords.map(c => ({
+      x: (c[0] - center[0]) * LNG_SCALE,
+      z: (c[1] - center[1]) * LAT_SCALE,
       lng: c[0], lat: c[1],
     }));
-
-    // BBox et facteur de scale
     const xs  = localPts.map(p => p.x);
     const zs  = localPts.map(p => p.z);
     const minX = Math.min(...xs), maxX = Math.max(...xs);
     const minZ = Math.min(...zs), maxZ = Math.max(...zs);
-    const sf   = this.SCALE_FACTOR / Math.max(maxX - minX, maxZ - minZ);
-
-    const scaledPts = localPts.map(p => ({
-      x: p.x * sf,
-      z: p.z * sf,
-      y: p.alt * sf * this.VERTICAL_EXAG + this.EXTRUDE_DEPTH,
-      lng: p.lng, lat: p.lat,
-    }));
 
     this._terrainGroup = new THREE.Group();
-    this._terrainSF = sf;
-    this._scaledPts = scaledPts;
     this._terrainCenter = center;
 
-    // ── Surface supérieure ────────────────────────────────────────
+    // ── Mesh BIL haute résolution (1m IGN) ────────────────────────
+    // BIL mesh coords : x=easting, y=northing, z=altitude (centré sur UTM)
+    // Three.js : x=east, y=up, z=south → rotation -90° autour de X
+    let topMesh;
+    try {
+      topMesh = await BILTerrain.buildMesh(wgsBounds, {
+        pixelSizeM: 1.0,
+        maxDim: 256,
+        verticalExaggeration: 1.0,
+      });
+
+      // Rotation XY-plane → XZ-plane (Y-up)
+      topMesh.rotation.x = -Math.PI / 2;
+
+      // Dimensions dans le plan horizontal (avant rotation)
+      const bb = topMesh.geometry.boundingBox;
+      const meshW = bb.max.x - bb.min.x;   // easting span
+      const meshH = bb.max.y - bb.min.y;   // northing span
+      const meshSpan = Math.max(meshW, meshH);
+      const sf = this.SCALE_FACTOR / meshSpan;
+
+      // Scale : X et Z (horiz) uniformes, Y (vertical) exagéré
+      // Après rotation -90°X : BIL-z (alt) → Three-y, BIL-y (north) → Three-(-z)
+      topMesh.scale.set(sf, sf * this.VERTICAL_EXAG, sf);
+      this._terrainSF = sf;
+
+      // Positionner le mesh pour que le point le plus bas = EXTRUDE_DEPTH
+      const altMin = bb.min.z * sf * this.VERTICAL_EXAG;
+      topMesh.position.y = this.EXTRUDE_DEPTH - altMin;
+
+      const ud = topMesh.userData;
+      this._bilMeta = ud;
+
+      // Calculer les scaledPts de la parcelle pour outline et slopes
+      const scaledPts = localPts.map(p => {
+        const sx = (p.x - (minX + maxX) / 2) / meshSpan * this.SCALE_FACTOR;
+        const sz = (p.z - (minZ + maxZ) / 2) / meshSpan * this.SCALE_FACTOR;
+        const altMid = (bb.min.z + bb.max.z) / 2 * sf * this.VERTICAL_EXAG;
+        return { x: sx, z: sz, y: altMid + this.EXTRUDE_DEPTH, lng: p.lng, lat: p.lat };
+      });
+      this._scaledPts = scaledPts;
+
+      console.log(`[Terrain3D] BIL mesh OK — ${meshW.toFixed(0)}×${meshH.toFixed(0)}m, pixel ${ud.pixelSizeM}m`);
+    } catch (err) {
+      console.warn('[Terrain3D] BIL indisponible, fallback ShapeGeometry:', err.message);
+      topMesh = this._buildFallbackTerrain(coords, center, LAT_SCALE, LNG_SCALE, localPts, minX, maxX, minZ, maxZ);
+    }
+
+    topMesh.castShadow    = true;
+    topMesh.receiveShadow = true;
+    topMesh.name = 'terrain-top';
+    this._terrainGroup.add(topMesh);
+    this._topMesh = topMesh;
+
+    // ── Base extrudée (sol opaque sous le mesh) ──────────────────
+    const bb2 = new THREE.Box3().setFromObject(topMesh);
+    const baseGeo = new THREE.PlaneGeometry(
+      bb2.max.x - bb2.min.x, bb2.max.z - bb2.min.z
+    );
+    const baseMesh = new THREE.Mesh(baseGeo, new THREE.MeshStandardMaterial({
+      color: 0x1a2e1a, roughness: 1.0,
+    }));
+    baseMesh.rotation.x = -Math.PI / 2;
+    baseMesh.position.set(
+      (bb2.min.x + bb2.max.x) / 2,
+      0.05,
+      (bb2.min.z + bb2.max.z) / 2
+    );
+    baseMesh.name = 'terrain-bottom';
+    this._terrainGroup.add(baseMesh);
+
+    this._scene.add(this._terrainGroup);
+
+    // ── Contour parcelle (lines) ──────────────────────────────────
+    if (this._scaledPts?.length > 2) {
+      const lineMat = new THREE.LineBasicMaterial({ color: 0x00d4ff, linewidth: 2, transparent: true, opacity: 0.8 });
+      const lineTop = this._scaledPts.map(p => new THREE.Vector3(p.x, p.y + 0.3, -p.z));
+      lineTop.push(lineTop[0].clone());
+      const lineObj = new THREE.Line(new THREE.BufferGeometry().setFromPoints(lineTop), lineMat);
+      lineObj.name = 'terrain-outline';
+      this._terrainGroup.add(lineObj);
+    }
+
+    // ── Texture : orthophoto IGN par défaut ───────────────────────
+    await this._loadOrthoIGN(topMesh, wgsBounds);
+
+    // ── Générer les textures alternatives en cache ────────────────
+    this._buildElevationColors(topMesh);
+    this._buildSlopeColors(topMesh);
+
+    // ── Labels altitudes aux coins ────────────────────────────────
+    if (this._scaledPts?.length >= 3) {
+      const altBase = parseFloat(t.altitude_ngr ?? 100);
+      const denivelé = parseFloat(t.denivelé_m ?? 2);
+      const cornerAlts = coords.map((_, i) =>
+        altBase + (i % 2 === 0 ? 0 : denivelé * (i / coords.length))
+      );
+      this._cornerAlts = cornerAlts;
+      this._makeAltLabels(this._scaledPts, cornerAlts);
+      this._makeDims(this._scaledPts, localPts, this._terrainSF ?? 1);
+    }
+  },
+
+  // ─── FALLBACK ShapeGeometry (si BIL échoue) ───────────────────
+  _buildFallbackTerrain(coords, center, LAT_SCALE, LNG_SCALE, localPts, minX, maxX, minZ, maxZ) {
+    const altBase  = parseFloat(this._parcelData.altitude_ngr ?? 100);
+    const denivelé = parseFloat(this._parcelData.denivelé_m ?? 2);
+    const cornerAlts = coords.map((_, i) =>
+      altBase + (i % 2 === 0 ? 0 : denivelé * (i / coords.length))
+    );
+    this._cornerAlts = cornerAlts;
+    const sf = this.SCALE_FACTOR / Math.max(maxX - minX, maxZ - minZ);
+    this._terrainSF = sf;
+
+    const scaledPts = localPts.map((p, i) => ({
+      x: p.x * sf, z: p.z * sf,
+      y: (cornerAlts[i] - Math.min(...cornerAlts)) * sf * this.VERTICAL_EXAG + this.EXTRUDE_DEPTH,
+      lng: p.lng, lat: p.lat,
+    }));
+    this._scaledPts = scaledPts;
+
     const shape = new THREE.Shape();
     shape.moveTo(scaledPts[0].x, scaledPts[0].z);
     scaledPts.slice(1).forEach(p => shape.lineTo(p.x, p.z));
     shape.closePath();
 
     const topGeo = new THREE.ShapeGeometry(shape, 8);
-    // Altitudes per vertex (interpolation IDW depuis les coins)
     const pos = topGeo.attributes.position.array;
-    const uvs = topGeo.attributes.uv.array;
     for (let i = 0; i < pos.length; i += 3) {
       const px = pos[i], pz = pos[i + 1];
       let wSum = 0, altW = 0;
@@ -287,56 +400,15 @@ const Terrain3D = {
         altW += sp.y * w; wSum += w;
       });
       pos[i + 2] = altW / wSum;
-      const uvIdx = (i / 3) * 2;
-      uvs[uvIdx]     = (pos[i] - Math.min(...scaledPts.map(p => p.x))) / (maxX - minX) / sf;
-      uvs[uvIdx + 1] = (pos[i + 1] - Math.min(...scaledPts.map(p => p.z))) / (maxZ - minZ) / sf;
     }
     topGeo.attributes.position.needsUpdate = true;
-    topGeo.attributes.uv.needsUpdate = true;
     topGeo.computeVertexNormals();
 
-    const topMat = new THREE.MeshStandardMaterial({
-      color: 0x4a7c3f, roughness: 0.85, metalness: 0.0, side: THREE.FrontSide,
-    });
-    const topMesh = new THREE.Mesh(topGeo, topMat);
-    topMesh.rotation.x = -Math.PI / 2;
-    topMesh.castShadow    = true;
-    topMesh.receiveShadow = true;
-    topMesh.name = 'terrain-top';
-    this._terrainGroup.add(topMesh);
-    this._topMesh = topMesh;
-
-    // ── Flancs extrudés ──────────────────────────────────────────
-    const sideMat = new THREE.MeshStandardMaterial({
-      color: 0x1a2e1a, roughness: 1.0, metalness: 0.0,
-    });
-    const extGeo = new THREE.ShapeGeometry(shape);
-    const botMesh = new THREE.Mesh(extGeo, sideMat);
-    botMesh.rotation.x = -Math.PI / 2;
-    botMesh.position.y = 0.1;
-    botMesh.name = 'terrain-bottom';
-    this._terrainGroup.add(botMesh);
-
-    this._scene.add(this._terrainGroup);
-
-    // ── Contour parcelle (lines) ──────────────────────────────────
-    const lineMat = new THREE.LineBasicMaterial({ color: 0x00d4ff, linewidth: 2, transparent: true, opacity: 0.8 });
-    const lineTop  = scaledPts.map(p => new THREE.Vector3(p.x, p.y + 0.1, -p.z));
-    lineTop.push(lineTop[0].clone());
-    const lineObj = new THREE.Line(new THREE.BufferGeometry().setFromPoints(lineTop), lineMat);
-    lineObj.name = 'terrain-outline';
-    this._terrainGroup.add(lineObj);
-
-    // ── Texture satellite ─────────────────────────────────────────
-    if (this.MAPBOX_TOKEN && t.lng && t.lat) {
-      await this._loadSatTexture(topMesh, t, minX, maxX, minZ, maxZ, sf);
-    }
-
-    // ── Labels altitudes aux coins ────────────────────────────────
-    this._makeAltLabels(scaledPts, cornerAlts);
-
-    // ── Cotations (dims) ─────────────────────────────────────────
-    this._makeDims(scaledPts, localPts, sf);
+    const mesh = new THREE.Mesh(topGeo, new THREE.MeshStandardMaterial({
+      color: 0x4a7c3f, roughness: 0.85, side: THREE.FrontSide,
+    }));
+    mesh.rotation.x = -Math.PI / 2;
+    return mesh;
   },
 
   // ─── TERRAIN DE DÉMONSTRATION ─────────────────────────────────
@@ -384,29 +456,88 @@ const Terrain3D = {
     ];
   },
 
-  // ─── TEXTURE SATELLITE ────────────────────────────────────────
-  async _loadSatTexture(mesh, t, minX, maxX, minZ, maxZ, sf) {
-    const mg    = 0.15;   // marge 15%
-    const lngR  = (maxX - minX) / sf / 111320 / Math.cos(t.lat * Math.PI / 180);
-    const latR  = (maxZ - minZ) / sf / 111320;
-    const w = t.lng - lngR / 2 - lngR * mg;
-    const e = t.lng + lngR / 2 + lngR * mg;
-    const s = t.lat - latR / 2 - latR * mg;
-    const n = t.lat + latR / 2 + latR * mg;
-    const url = `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/[${w.toFixed(6)},${s.toFixed(6)},${e.toFixed(6)},${n.toFixed(6)}]/640x640@2x?access_token=${this.MAPBOX_TOKEN}`;
+  // ─── ORTHOPHOTO IGN (WMS EPSG:3857) ────────────────────────────
+  async _loadOrthoIGN(mesh, wgsBounds) {
+    try {
+      await BILTerrain._ensureProj4();
+      // Convertir WGS84 → Web Mercator (3857) pour le WMS
+      if (!proj4.defs['EPSG:3857'])
+        proj4.defs('EPSG:3857', '+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +no_defs');
 
+      const sw3857 = proj4('EPSG:4326', 'EPSG:3857', [wgsBounds.west, wgsBounds.south]);
+      const ne3857 = proj4('EPSG:4326', 'EPSG:3857', [wgsBounds.east, wgsBounds.north]);
+      const bbox = `${sw3857[0]},${sw3857[1]},${ne3857[0]},${ne3857[1]}`;
+
+      // Résolution ~0.5m/pixel, cap à 2048px
+      const spanX = ne3857[0] - sw3857[0];
+      const spanY = ne3857[1] - sw3857[1];
+      const maxPx = 2048;
+      const pxSize = 0.5;
+      let W = Math.min(maxPx, Math.ceil(spanX / pxSize));
+      let H = Math.min(maxPx, Math.ceil(spanY / pxSize));
+
+      const params = new URLSearchParams({
+        SERVICE: 'WMS', VERSION: '1.3.0', REQUEST: 'GetMap',
+        LAYERS: 'ORTHOIMAGERY.ORTHOPHOTOS',
+        STYLES: '', CRS: 'EPSG:3857',
+        BBOX: bbox, WIDTH: String(W), HEIGHT: String(H),
+        FORMAT: 'image/jpeg',
+      });
+      const url = `https://data.geopf.fr/wms-r?${params.toString()}`;
+
+      const tex = await new Promise((resolve, reject) => {
+        const loader = new THREE.TextureLoader();
+        loader.crossOrigin = 'anonymous';
+        loader.load(url, t => {
+          t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+          t.minFilter = THREE.LinearMipmapLinearFilter;
+          t.magFilter = THREE.LinearFilter;
+          t.anisotropy = 4;
+          resolve(t);
+        }, undefined, reject);
+      });
+
+      this._textures.ortho = tex;
+      mesh.material.map = tex;
+      mesh.material.color.set(0xffffff);
+      mesh.material.needsUpdate = true;
+      this._orthoLoaded = true;
+      this._textureMode = 'ortho';
+      console.log(`[Terrain3D] Orthophoto IGN ${W}×${H}px chargée`);
+    } catch (err) {
+      console.warn('[Terrain3D] Orthophoto IGN indisponible:', err.message);
+      // Fallback Mapbox satellite
+      if (this.MAPBOX_TOKEN && this._parcelData?.lng) {
+        await this._loadSatFallback(mesh);
+      } else {
+        mesh.material.map = this._makeTerrainTexture();
+        mesh.material.needsUpdate = true;
+      }
+    }
+  },
+
+  // ─── FALLBACK SATELLITE MAPBOX ────────────────────────────────
+  async _loadSatFallback(mesh) {
+    const t = this._parcelData;
+    const bb = new THREE.Box3().setFromObject(mesh);
+    const sf = this._terrainSF ?? 1;
+    const spanM = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / sf;
+    const mg = 0.15;
+    const halfDeg = spanM / 111320 / 2 * (1 + mg);
+    const w = t.lng - halfDeg, e = t.lng + halfDeg;
+    const s = t.lat - halfDeg, n = t.lat + halfDeg;
+    const url = `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/[${w.toFixed(6)},${s.toFixed(6)},${e.toFixed(6)},${n.toFixed(6)}]/640x640@2x?access_token=${this.MAPBOX_TOKEN}`;
     return new Promise(resolve => {
-      const loader = new THREE.TextureLoader();
-      loader.crossOrigin = 'anonymous';
-      loader.load(url, tex => {
+      new THREE.TextureLoader().load(url, tex => {
         tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
         tex.minFilter = THREE.LinearFilter;
-        mesh.material.map   = tex;
+        this._textures.satellite = tex;
+        mesh.material.map = tex;
         mesh.material.color.set(0xffffff);
         mesh.material.needsUpdate = true;
+        this._textureMode = 'satellite';
         resolve();
       }, undefined, () => {
-        // Fallback : texture canvas verte
         mesh.material.map = this._makeTerrainTexture();
         mesh.material.needsUpdate = true;
         resolve();
@@ -424,6 +555,110 @@ const Terrain3D = {
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, 256, 256);
     return new THREE.CanvasTexture(cv);
+  },
+
+  // ─── COLORATION PAR ALTITUDE ──────────────────────────────────
+  _buildElevationColors(mesh) {
+    const pos = mesh.geometry.attributes.position;
+    if (!pos) return;
+    const count = pos.count;
+    const colors = new Float32Array(count * 3);
+
+    // Trouver min/max Z (altitude)
+    let zMin = Infinity, zMax = -Infinity;
+    for (let i = 0; i < count; i++) {
+      const z = pos.getZ(i);
+      if (z < zMin) zMin = z;
+      if (z > zMax) zMax = z;
+    }
+    const range = zMax - zMin || 1;
+
+    // Palette : bleu-vert → vert → jaune → orange → rouge
+    const palette = [
+      [0.12, 0.56, 0.60],  // 0.0 — bleu-vert
+      [0.22, 0.62, 0.30],  // 0.25 — vert
+      [0.55, 0.75, 0.20],  // 0.5 — vert-jaune
+      [0.90, 0.70, 0.15],  // 0.75 — orange
+      [0.85, 0.25, 0.15],  // 1.0 — rouge
+    ];
+    const lerpColor = (t) => {
+      const idx = Math.min(t * (palette.length - 1), palette.length - 1.001);
+      const lo = Math.floor(idx), hi = lo + 1;
+      const f = idx - lo;
+      return palette[lo].map((v, i) => v + (palette[hi][i] - v) * f);
+    };
+
+    for (let i = 0; i < count; i++) {
+      const t = (pos.getZ(i) - zMin) / range;
+      const [r, g, b] = lerpColor(t);
+      colors[i * 3] = r; colors[i * 3 + 1] = g; colors[i * 3 + 2] = b;
+    }
+
+    this._textures._elevColors = colors;
+  },
+
+  // ─── COLORATION PAR PENTE ─────────────────────────────────────
+  _buildSlopeColors(mesh) {
+    const geom = mesh.geometry;
+    if (!geom.attributes.normal) geom.computeVertexNormals();
+    const norm = geom.attributes.normal;
+    const count = norm.count;
+    const colors = new Float32Array(count * 3);
+
+    // Classification RTAA DOM : pente en % → couleur
+    for (let i = 0; i < count; i++) {
+      // BIL mesh : Z = altitude (up), donc normal.z = composante verticale
+      const ny = Math.abs(norm.getZ(i));
+      const slopePct = ny > 0.999 ? 0 : Math.tan(Math.acos(Math.min(ny, 1))) * 100;
+
+      let r, g, b;
+      if (slopePct > 15)       { r = 0.94; g = 0.27; b = 0.27; }  // rouge — G1 obligatoire
+      else if (slopePct > 5)   { r = 0.96; g = 0.62; b = 0.04; }  // ambre — fondations spéciales
+      else if (slopePct > 2)   { r = 0.00; g = 0.83; b = 1.00; }  // cyan — charpente adaptée
+      else                     { r = 0.18; g = 0.78; b = 0.60; }  // vert — aucune contrainte
+
+      colors[i * 3] = r; colors[i * 3 + 1] = g; colors[i * 3 + 2] = b;
+    }
+
+    this._textures._slopeColors = colors;
+  },
+
+  // ─── SWITCH MODE TEXTURE ──────────────────────────────────────
+  setTextureMode(mode) {
+    if (!this._topMesh) return;
+    const mesh = this._topMesh;
+    const mat = mesh.material;
+    this._textureMode = mode;
+
+    if (mode === 'ortho' && this._textures.ortho) {
+      mat.map = this._textures.ortho;
+      mat.vertexColors = false;
+      mat.color.set(0xffffff);
+      mesh.geometry.deleteAttribute('color');
+    } else if (mode === 'satellite' && this._textures.satellite) {
+      mat.map = this._textures.satellite;
+      mat.vertexColors = false;
+      mat.color.set(0xffffff);
+      mesh.geometry.deleteAttribute('color');
+    } else if (mode === 'elevation' && this._textures._elevColors) {
+      mat.map = null;
+      mat.vertexColors = true;
+      mat.color.set(0xffffff);
+      mesh.geometry.setAttribute('color',
+        new THREE.BufferAttribute(this._textures._elevColors, 3));
+    } else if (mode === 'slope' && this._textures._slopeColors) {
+      mat.map = null;
+      mat.vertexColors = true;
+      mat.color.set(0xffffff);
+      mesh.geometry.setAttribute('color',
+        new THREE.BufferAttribute(this._textures._slopeColors, 3));
+    } else {
+      // Fallback vert
+      mat.map = null;
+      mat.vertexColors = false;
+      mat.color.set(0x4a7c3f);
+    }
+    mat.needsUpdate = true;
   },
 
   // ─── GABARIT EXTRUDÉ ──────────────────────────────────────────
@@ -798,17 +1033,29 @@ const Terrain3D = {
     this._buildGabarit();
   },
 
-  // ─── EXPORT ───────────────────────────────────────────────────
+  // ─── EXPORT GLB ────────────────────────────────────────────────
   async exportGLB() {
-    const obj = this._terrainGroup ?? this._topMesh;
-    if (!obj) return window.TerlabToast?.show('Pas de terrain \u00e0 exporter', 'warning');
+    // Exporter terrain + gabarit dans un groupe temporaire
+    const group = new THREE.Group();
+    if (this._terrainGroup) group.add(this._terrainGroup.clone());
+    if (this._gabaritMesh)  group.add(this._gabaritMesh.clone());
+    if (this._contourGroup) group.add(this._contourGroup.clone());
+
+    if (group.children.length === 0)
+      return window.TerlabToast?.show('Pas de terrain \u00e0 exporter', 'warning');
+
     try {
       const ref = this._session?.terrain?.parcelle ?? 'terrain';
-      await GLBExporter.download(obj, `TERLAB_terrain_${ref}`);
+      const commune = this._session?.terrain?.commune ?? '';
+      const name = `TERLAB_${commune}_${ref}`.replace(/\s+/g, '_');
+      await GLBExporter.download(group, name);
     } catch (e) {
+      console.error('[Terrain3D] Export GLB:', e);
       window.TerlabToast?.show('Export GLB non disponible', 'warning');
     }
   },
+
+  getTextureMode() { return this._textureMode; },
 
   // ─── CAPTURE SCREENSHOT ───────────────────────────────────────
   capture() {

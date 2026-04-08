@@ -1,8 +1,11 @@
-// terlab/services/auto-plan-engine.js · Placement automatique Pareto A1-C2 · v1.1
+// terlab/services/auto-plan-engine.js · Placement automatique Pareto A1-C2 · v1.2
 // ENSA La Réunion · MGA Architecture 2026
 // Vanilla JS ES2022+, aucune dépendance externe
 // Génère 4-6 variantes Pareto pour étude de capacité constructible
 // v1.1 : intégration SdisChecker après chaque solution Pareto
+// v1.2 : intégration TopoCaseService — profMax et parkMode contraints par pente
+
+import TopoCaseService from './topo-case-service.js';
 
 const H_NIV  = 3.0;   // hauteur par niveau (m)
 const SP_MOY = 0.175 * 31 + 0.275 * 49 + 0.325 * 68 + 0.225 * 87; // ≈ 60.58 m²
@@ -19,6 +22,18 @@ const AutoPlanEngine = {
   async generate(session, prog, existing = null) {
     const TA = window.TerrainP07Adapter;
     if (!TA) { console.warn('[AutoPlan] TerrainP07Adapter non disponible'); return []; }
+
+    // 0. Contraintes topographiques
+    const topoConstraints = TopoCaseService.getProgConstraints(
+      session?.terrain?.pente_moy_pct, prog
+    );
+    const progTopo = {
+      ...prog,
+      profMax:  topoConstraints.profMax,
+      parkMode: topoConstraints.parkMode,
+      parkSS:   topoConstraints.parkSS,
+      _topoConstraints: topoConstraints,
+    };
 
     // 1. Géométrie parcelle
     const geojson = session?.terrain?.parcelle_geojson ?? session?.geojson;
@@ -87,8 +102,8 @@ const AutoPlanEngine = {
     // 8. PIR sur zone effective
     const [px, py] = TA.poleOfInaccessibility(envEff, 1.5);
 
-    // 9. Générer variantes Pareto
-    const solutions = this._generatePareto(envEff, prog, plu, bearing, px, py, area, existing);
+    // 9. Générer variantes Pareto (prog surchargé par contraintes topo)
+    const solutions = this._generatePareto(envEff, progTopo, plu, bearing, px, py, area, existing);
 
     // 10. Attacher les vérifications SDIS à chaque solution
     const Sdis = window.SdisChecker;
@@ -96,7 +111,7 @@ const AutoPlanEngine = {
       for (const sol of solutions) {
         const sMetrics = {
           nvEff: sol.niveaux,
-          type:  prog.type ?? 'collectif',
+          type:  progTopo.type ?? 'collectif',
           nbLgts: sol.nLgts,
           emprise: sol.surface,
           nbBlocs: sol.nbBlocs ?? 1,
@@ -111,7 +126,13 @@ const AutoPlanEngine = {
       }
     }
 
-    // 11. Trier par score Pareto
+    // 11. Injecter le cas topo dans chaque solution
+    for (const sol of solutions) {
+      sol.topoCase = topoConstraints.topoCase;
+      sol.topoConstraints = topoConstraints;
+    }
+
+    // 12. Trier par score Pareto
     solutions.sort((a, b) => b.score - a.score);
 
     return solutions;

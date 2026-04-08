@@ -20,7 +20,7 @@
   <!-- Recherche Géorisques -->
   <div class="form-section anim-slide-up">
     <div class="fs-head">Aléas Géorisques (API nationale)</div>
-    <div class="stub-warning" id="georisques-stub">⚠️ STUB — Proxy CORS requis pour certains endpoints DOM. Voir __stubs__/georisques-proxy.js</div>
+    <div class="stub-warning" id="georisques-stub">Interrogez l'API Géorisques ci-dessous. Si le service ne répond pas (CORS), des risques génériques Réunion seront affichés.</div>
     <button class="risk-fetch-btn" onclick="P03.fetchGeorisques()" id="btn-fetch-risk">
       <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.4"/><path d="M6 4v2l1.5 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
       Interroger Géorisques
@@ -353,11 +353,9 @@ const P03 = {
     btn.disabled = true;
     btn.textContent = 'Interrogation…';
 
-    // Retry avec fallback CORS
+    // Géorisques CORS wildcard confirmé (avril 2026) — appel direct OK
     const urls = [
       `https://georisques.gouv.fr/api/v1/gaspar/risques?latlon=${terrain.lat},${terrain.lng}&rayon=500`,
-      // Proxy fallback (stub — à implémenter)
-      `https://us-central1-terlab-reunion.cloudfunctions.net/georisquesProxy?lat=${terrain.lat}&lon=${terrain.lng}`
     ];
 
     let data = null;
@@ -378,7 +376,7 @@ const P03 = {
         { typeRisque: 'Séisme zone 2', codePPR: null },
         { typeRisque: 'Mouvement de terrain (aléa à vérifier)', codePPR: null }
       ]};
-      document.getElementById('georisques-stub').textContent = '⚠️ API Géorisques inaccessible (CORS) — données génériques Réunion affichées. Stub proxy requis.';
+      document.getElementById('georisques-stub').textContent = '⚠️ API Géorisques temporairement inaccessible — données génériques Réunion affichées.';
     } else {
       document.getElementById('georisques-stub').style.display = 'none';
     }

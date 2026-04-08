@@ -1,0 +1,37 @@
+{
+  "type": "FeatureCollection",
+  "name": "Filières déchets BTP — La Réunion",
+  "note": "Données statiques — ILEVA + ressourceries. Pas d'API disponible.",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [55.4504, -20.8823] },
+      "properties": { "nom": "ILEVA — Déchetterie Le Port", "type": "ileva", "accepts": ["béton", "métal", "bois"] }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [55.4748, -21.3393] },
+      "properties": { "nom": "ILEVA — Déchetterie Saint-Pierre", "type": "ileva", "accepts": ["béton", "métal", "bois", "plastique"] }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [55.5074, -20.9906] },
+      "properties": { "nom": "Ressourcerie Réunion — Saint-Denis", "type": "ressourcerie", "accepts": ["bois", "métal", "sanitaire"] }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [55.6056, -21.2520] },
+      "properties": { "nom": "ILEVA — Déchetterie Saint-Louis", "type": "ileva", "accepts": ["béton", "métal"] }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [55.3561, -20.9730] },
+      "properties": { "nom": "ILEVA — Déchetterie La Possession", "type": "ileva", "accepts": ["béton", "métal", "bois"] }
+    },
+    {
+      "type": "Feature",
+      "geometry": { "type": "Point", "coordinates": [55.4899, -21.0722] },
+      "properties": { "nom": "ILEVA — Déchetterie Saint-Paul", "type": "ileva", "accepts": ["béton", "métal", "bois", "verre"] }
+    }
+  ]
+}

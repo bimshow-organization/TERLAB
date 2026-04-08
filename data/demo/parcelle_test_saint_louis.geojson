@@ -1,0 +1,18 @@
+{
+  "type": "Feature",
+  "properties": {
+    "id": "test_saint_louis_0343_7689",
+    "commune": "Saint-Louis",
+    "source": "TERLAB demo — centre dalle LHD_REU_0343_7689"
+  },
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [55.4950, -20.8975],
+      [55.4953, -20.8975],
+      [55.4953, -20.8972],
+      [55.4950, -20.8972],
+      [55.4950, -20.8975]
+    ]]
+  }
+}

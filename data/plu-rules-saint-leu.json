@@ -4,7 +4,7 @@
     "region": "La Réunion",
     "generated": "2026-04-07",
     "commune": "Saint-Leu",
-    "insee": "97414",
+    "insee": "97413",
     "intercommunalite": "TCO",
     "plu_type": "PLU",
     "plu_date_approbation": "2024-06-25",
@@ -14,7 +14,8 @@
   "zones": {
     "Ua": {
       "label": "Centre urbain principal — Saint-Leu centre, Piton Saint-Leu",
-      "type": "U", "sous_type": "centre_urbain",
+      "type": "U",
+      "sous_type": "centre_urbain",
       "reculs": {
         "voie_principale_m": 0,
         "voie_alignement": true,
@@ -29,23 +30,37 @@
         "hf_max_m": null,
         "hauteur_note": "Fixée au document graphique du PLU — variable par secteur"
       },
-      "emprise": { "emprise_sol_max_pct": null, "note": "Non réglementée explicitement en Ua" },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "note": "Non réglementée explicitement en Ua"
+      },
       "permeabilite": {
         "permeable_min_pct": 30,
         "pleine_terre_min_pct": 10,
         "stationnement_aerien_permeable_pct": 30
       },
-      "toiture": { "versants_obligatoire": true, "versants_pct_volume": 60, "pente_min_pct": 30, "pente_max_pct": 100 },
+      "toiture": {
+        "versants_obligatoire": true,
+        "versants_pct_volume": 60,
+        "pente_min_pct": 30,
+        "pente_max_pct": 100
+      },
       "stationnement": {
         "logement_lt40m2": "1 place / logement",
         "logement_gte40m2": "2 places / logement",
         "velo_par_5places_min": true
       },
-      "_meta": { "confidence": 0.8, "ambiguites": ["Hauteurs Ua au document graphique — non extractibles du règlement écrit"] }
+      "_meta": {
+        "confidence": 0.8,
+        "ambiguites": [
+          "Hauteurs Ua au document graphique — non extractibles du règlement écrit"
+        ]
+      }
     },
     "Ub": {
       "label": "Zone résidentielle mixte dense",
-      "type": "U", "sous_type": "résidentielle_dense",
+      "type": "U",
+      "sous_type": "résidentielle_dense",
       "reculs": {
         "voie_principale_m": 0,
         "voie_alignement": true,
@@ -55,13 +70,24 @@
         "sep_lat_note": "H/2 min 2.50m",
         "sep_fond_m": 3
       },
-      "hauteurs": { "hauteur_note": "Document graphique" },
-      "permeabilite": { "permeable_min_pct": 30, "note": "30% espace libre dont moitié espace vert. Projets >4 logements : 30% hors voirie." },
-      "_meta": { "confidence": 0.8, "ambiguites": ["Hauteurs Ub au document graphique"] }
+      "hauteurs": {
+        "hauteur_note": "Document graphique"
+      },
+      "permeabilite": {
+        "permeable_min_pct": 30,
+        "note": "30% espace libre dont moitié espace vert. Projets >4 logements : 30% hors voirie."
+      },
+      "_meta": {
+        "confidence": 0.8,
+        "ambiguites": [
+          "Hauteurs Ub au document graphique"
+        ]
+      }
     },
     "Uc": {
       "label": "Zone résidentielle intermédiaire",
-      "type": "U", "sous_type": "résidentielle_intermédiaire",
+      "type": "U",
+      "sous_type": "résidentielle_intermédiaire",
       "reculs": {
         "voie_principale_m": null,
         "voie_note": "Variable selon document graphique",
@@ -69,82 +95,167 @@
         "sep_lat_note": "H/2 min 2.50m. En limite : hé max 3m sur bande 3m si profondeur ≤ 10m.",
         "sep_fond_m": 3
       },
-      "hauteurs": { "hauteur_note": "Document graphique. En limite séparative : hé max 3m sur bande 3m." },
-      "permeabilite": { "permeable_min_pct": 50, "note": "50% espace libre dont moitié espace vert" },
-      "_meta": { "confidence": 0.8, "ambiguites": [] }
+      "hauteurs": {
+        "hauteur_note": "Document graphique. En limite séparative : hé max 3m sur bande 3m."
+      },
+      "permeabilite": {
+        "permeable_min_pct": 50,
+        "note": "50% espace libre dont moitié espace vert"
+      },
+      "_meta": {
+        "confidence": 0.8,
+        "ambiguites": []
+      }
     },
     "Ud": {
       "label": "Zone résidentielle diffuse — hauts",
-      "type": "U", "sous_type": "résidentielle_diffuse",
+      "type": "U",
+      "sous_type": "résidentielle_diffuse",
       "reculs": {
         "sep_lat_m": 2.5,
         "sep_lat_note": "H/2 min 2.50m. En limite : hé max 3m sur bande 3m.",
         "sep_fond_m": 3
       },
-      "hauteurs": { "hauteur_note": "Document graphique. En limite : hé max 3m sur bande 3m." },
-      "permeabilite": { "permeable_min_pct": 50 },
-      "_meta": { "confidence": 0.8, "ambiguites": [] }
+      "hauteurs": {
+        "hauteur_note": "Document graphique. En limite : hé max 3m sur bande 3m."
+      },
+      "permeabilite": {
+        "permeable_min_pct": 50
+      },
+      "_meta": {
+        "confidence": 0.8,
+        "ambiguites": []
+      }
     },
     "Ue": {
       "label": "Zone d'activités économiques",
-      "type": "U", "sous_type": "activites",
+      "type": "U",
+      "sous_type": "activites",
       "reculs": {
         "sep_lat_m": 2.5,
         "sep_lat_note": "H/2 min 2.50m",
         "sep_fond_m": 3
       },
-      "hauteurs": { "hauteur_note": "Document graphique. En limite : hé max 3m sur bande 3m." },
-      "permeabilite": { "permeable_min_pct": 50 },
-      "_meta": { "confidence": 0.8, "ambiguites": [] }
+      "hauteurs": {
+        "hauteur_note": "Document graphique. En limite : hé max 3m sur bande 3m."
+      },
+      "permeabilite": {
+        "permeable_min_pct": 50
+      },
+      "_meta": {
+        "confidence": 0.8,
+        "ambiguites": []
+      }
     },
     "Usdu": {
       "label": "Secteurs Déjà Urbanisés — Loi Littoral",
-      "type": "U", "sous_type": "sdu_loi_littoral",
+      "type": "U",
+      "sous_type": "sdu_loi_littoral",
       "loi_littoral": true,
-      "hauteurs": { "h_max_m": 16 },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "hauteurs": {
+        "h_max_m": 16
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
     "Ut": {
       "label": "Zone touristique",
-      "type": "U", "sous_type": "touristique",
-      "reculs": { "sep_lat_m": 4, "sep_fond_m": 4 },
-      "hauteurs": { "h_max_m": 12 },
-      "permeabilite": { "permeable_min_pct": 50 },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "type": "U",
+      "sous_type": "touristique",
+      "reculs": {
+        "sep_lat_m": 4,
+        "sep_fond_m": 4
+      },
+      "hauteurs": {
+        "h_max_m": 12
+      },
+      "permeabilite": {
+        "permeable_min_pct": 50
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
     "Uep": {
       "label": "Zone équipements publics",
-      "type": "U", "sous_type": "equipements",
-      "hauteurs": { "h_max_m": 16 },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "type": "U",
+      "sous_type": "equipements",
+      "hauteurs": {
+        "h_max_m": 16
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
     "Up": {
       "label": "Zone portuaire",
-      "type": "U", "sous_type": "portuaire",
-      "_meta": { "confidence": 0.8, "ambiguites": ["Données Up incomplètes"] }
+      "type": "U",
+      "sous_type": "portuaire",
+      "_meta": {
+        "confidence": 0.8,
+        "ambiguites": [
+          "Données Up incomplètes"
+        ]
+      }
     },
     "AU": {
-      "label": "Zones à urbaniser", "type": "AU",
+      "label": "Zones à urbaniser",
+      "type": "AU",
       "ref": "zone U correspondante",
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
     "2AU": {
-      "label": "Zones à urbaniser différées", "type": "AU", "sous_type": "strict",
+      "label": "Zones à urbaniser différées",
+      "type": "AU",
+      "sous_type": "strict",
       "construction_neuve_interdite": true,
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
     "A": {
-      "label": "Zone agricole", "type": "A",
-      "hauteurs": { "he_max_m": 6, "hf_max_m": 9, "annexe_hf_max_m": 3 },
-      "permeabilite": { "permeable_min_pct": null },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "label": "Zone agricole",
+      "type": "A",
+      "hauteurs": {
+        "he_max_m": 6,
+        "hf_max_m": 9,
+        "annexe_hf_max_m": 3
+      },
+      "permeabilite": {
+        "permeable_min_pct": null
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
     "N": {
-      "label": "Zone naturelle et forestière", "type": "N",
-      "reculs": { "voie_principale_m": 6, "sep_lat_m": 4, "sep_fond_m": 4 },
-      "hauteurs": { "he_max_m": 6, "hf_max_m": 9 },
-      "permeabilite": { "permeable_min_pct": 70 },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "label": "Zone naturelle et forestière",
+      "type": "N",
+      "reculs": {
+        "voie_principale_m": 6,
+        "sep_lat_m": 4,
+        "sep_fond_m": 4
+      },
+      "hauteurs": {
+        "he_max_m": 6,
+        "hf_max_m": 9
+      },
+      "permeabilite": {
+        "permeable_min_pct": 70
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     }
   },
   "regles_communes": {

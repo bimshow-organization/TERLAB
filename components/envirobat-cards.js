@@ -3,7 +3,7 @@
  * Affiche des cartes-exemples avec thumbnail, résumé et lien PDF
  * Usage : EnvirobatCards.render(containerId, phaseId)
  */
-const EnvirobatCards = (() => {
+const EnvirobatCards = window.EnvirobatCards ?? (() => {
 
   const FICHES = [
     {

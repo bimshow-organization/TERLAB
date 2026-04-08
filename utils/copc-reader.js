@@ -8,17 +8,24 @@ import { Copc } from 'copc';
 import UTM40S from './utm40s.js';
 
 // ── Retry-aware HTTP Getter pour IGN (rate limit ~1 req/s, burst 10) ──
-// copc.js Getter signature: (offset, length) → Promise<Uint8Array>
+// copc.js Getter signature: (begin, end) → Promise<Uint8Array>
+//   begin = offset du premier octet, end = offset après le dernier octet (exclusif)
+//   Le getter doit retourner exactement (end - begin) octets.
 function createIgnGetter(url, onProgress) {
   let requestCount = 0;
 
-  return async (offset, length) => {
+  return async (begin, end) => {
+    const length = end - begin;
     const MAX_RETRIES = 6;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 30000); // 30s timeout par range request
         const res = await fetch(url, {
-          headers: { Range: `bytes=${offset}-${offset + length - 1}` },
+          headers: { Range: `bytes=${begin}-${end - 1}` },
+          signal: ctrl.signal,
         });
+        clearTimeout(timer);
 
         if (res.status === 429) {
           const wait = 1.5 * (2 ** attempt);
@@ -34,6 +41,13 @@ function createIgnGetter(url, onProgress) {
         requestCount++;
         if (onProgress) onProgress({ requests: requestCount });
         const buf = await res.arrayBuffer();
+
+        // Si le serveur renvoie 200 au lieu de 206, extraire le segment demandé
+        if (res.status === 200 && buf.byteLength > length) {
+          console.warn(`[COPC] Serveur 200 au lieu de 206 — slice ${begin}..${end} sur ${buf.byteLength}`);
+          return new Uint8Array(buf.slice(begin, end));
+        }
+
         return new Uint8Array(buf);
       } catch (err) {
         if (attempt === MAX_RETRIES - 1) throw err;
@@ -68,14 +82,20 @@ async function readTile(url, queryMinX, queryMinY, queryMaxX, queryMaxY, options
   const maxPoints = options.maxPoints ?? 200000;
   const onProgress = options.onProgress ?? null;
 
+  const tileId = url.split('/').pop().replace(/_PTS.*/, '');
   const getter = createIgnGetter(url, onProgress);
 
   // 1. Ouvrir le COPC (header + info VLR, ~65KB initial fetch)
+  console.log(`[COPC] ${tileId} — ouverture header…`);
   const copc = await Copc.create(getter);
   const { info } = copc;
+  console.log(`[COPC] ${tileId} — header OK, cube: ${info.cube.map(v => v.toFixed(0)).join(',')}`,
+    `rootPage: offset=${info.rootHierarchyPage?.pageOffset}, length=${info.rootHierarchyPage?.pageLength}`);
 
   // 2. Charger la hiérarchie (Copc.loadHierarchyPage prend getter + info)
-  const hierarchy = await Copc.loadHierarchyPage(getter, info);
+  console.log(`[COPC] ${tileId} — chargement hiérarchie…`);
+  const hierarchy = await Copc.loadHierarchyPage(getter, info.rootHierarchyPage);
+  console.log(`[COPC] ${tileId} — hiérarchie: ${Object.keys(hierarchy.nodes).length} noeuds`);
 
   // 3. Trouver les noeuds qui intersectent la bbox
   const matchingNodes = [];
@@ -87,26 +107,34 @@ async function readTile(url, queryMinX, queryMinY, queryMaxX, queryMaxY, options
     const bounds = nodeBounds(parts, info.cube);
 
     if (intersects2D(bounds, queryMinX, queryMinY, queryMaxX, queryMaxY)) {
-      matchingNodes.push({ key: keyStr, entry });
+      matchingNodes.push({ key: keyStr, entry, depth: parts[0] });
     }
   }
 
   if (matchingNodes.length === 0) return [];
-  console.log(`[COPC] ${matchingNodes.length} noeuds intersectent la bbox`);
+
+  // Trier par profondeur croissante : décompresser les noeuds grossiers d'abord,
+  // arrêter dès qu'on a assez de points (évite OOM sur les noeuds fins)
+  matchingNodes.sort((a, b) => a.depth - b.depth);
+
+  // Limiter la profondeur max selon le nombre de points demandés
+  // Depth 5 = ~1m de résolution, largement suffisant pour 200K pts sur une parcelle
+  const MAX_DEPTH = 4;
+  const cappedNodes = matchingNodes.filter(n => n.depth <= MAX_DEPTH);
+  console.log(`[COPC] ${matchingNodes.length} noeuds intersectent la bbox (${cappedNodes.length} retenus, depth≤${MAX_DEPTH})`);
 
   // 4. Charger et décoder les points de chaque noeud
   const allPoints = [];
   let loaded = 0;
 
-  for (const node of matchingNodes) {
+  for (const node of cappedNodes) {
     if (allPoints.length >= maxPoints) break;
 
     try {
-      // loadPointDataView(getter, copc, entry, options)
-      // Returns { pointCount, dimensions, getter(dimName) → extractor(i) }
       const view = await Copc.loadPointDataView(getter, copc, node.entry);
 
       loaded++;
+      // Debug noeud retiré — garder uniquement les logs de progression tuile
       if (onProgress) onProgress({ nodes: loaded, totalNodes: matchingNodes.length });
 
       // Préparer les extracteurs de dimensions
@@ -174,6 +202,8 @@ async function readPointsBbox(tiles, queryMinX, queryMinY, queryMaxX, queryMaxY,
     : null;
   const onProgress = options.onProgress ?? null;
 
+  console.log(`[COPC] readPointsBbox: ${tiles.length} tuile(s), bbox UTM [${queryMinX.toFixed(0)},${queryMinY.toFixed(0)}]→[${queryMaxX.toFixed(0)},${queryMaxY.toFixed(0)}], max=${maxPoints}`);
+
   const allPoints = [];
   const ptsPerTile = Math.max(Math.floor(maxPoints / Math.max(tiles.length, 1)), 10000);
 
@@ -181,6 +211,7 @@ async function readPointsBbox(tiles, queryMinX, queryMinY, queryMaxX, queryMaxY,
     if (allPoints.length >= maxPoints) break;
 
     const tile = tiles[t];
+    console.log(`[COPC] Tuile ${t + 1}/${tiles.length}: ${tile.tileId} — ${tile.url.split('/').pop()}`);
     if (onProgress) onProgress({ phase: 'tile', current: t + 1, total: tiles.length, tileId: tile.tileId });
 
     try {
@@ -189,7 +220,7 @@ async function readPointsBbox(tiles, queryMinX, queryMinY, queryMaxX, queryMaxY,
         maxPoints: ptsPerTile,
         onProgress,
       });
-      allPoints.push(...tilePoints);
+      for (let i = 0; i < tilePoints.length; i++) allPoints.push(tilePoints[i]);
     } catch (err) {
       console.warn(`[COPC] Tuile ${tile.tileId} échouée:`, err.message);
     }

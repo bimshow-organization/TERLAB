@@ -23,7 +23,7 @@
   <!-- Zone PLU -->
   <div class="form-section anim-slide-up">
     <div class="fs-head">Zone PLU <span id="plu-auto-badge" style="display:none;font-size:8px;background:var(--success2);color:var(--success);padding:2px 6px;border-radius:3px;margin-left:6px;font-family:var(--font-mono)">IGN WFS</span></div>
-    <div class="stub-warning" id="plu-stub-banner">⚠️ STUB — PLU WMS Géoportail Urbanisme instable pour La Réunion. Vérification manuelle requise sur le site de l'intercommunalité.</div>
+    <div class="stub-warning" id="plu-stub-banner">⚠️ Le WMS Géoportail Urbanisme est instable pour La Réunion. La zone sera détectée automatiquement si le service répond, sinon sélectionnez-la manuellement après vérification sur le site de l'intercommunalité.</div>
     <div id="plu-auto-result" style="display:none;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:var(--r-sm);margin-bottom:8px;font-size:11px;line-height:1.6">
       <div><strong id="plu-auto-zone">—</strong> <span id="plu-auto-type" style="font-family:var(--font-mono);font-size:9px;color:var(--muted)">—</span></div>
       <div id="plu-auto-interp" style="color:var(--text2);margin-top:3px">—</div>
@@ -62,6 +62,9 @@
       ⚠️ Le règlement est extrait du <strong>Géoportail de l'Urbanisme</strong> (source officielle). Vérifier la date d'approbation — un PLU en révision peut être modifié.
     </div>
   </div>
+
+  <!-- Prescriptions surfaciques GPU -->
+  <div id="prescriptions-gpu" class="form-section anim-slide-up" style="display:none"></div>
 
   <!-- Alerte ambiguïtés PLU -->
   <div id="plu-ambig-alert" style="display:none" class="form-section" style="padding:0">
@@ -325,6 +328,7 @@
 const SessionManager = window.SessionManager;
 const INTERCOS_URLS = { CINOR:'https://www.cinor.re', CIREST:'https://www.cirest.fr', CASUD:'https://www.casud.re', TCO:'https://www.tco.re' };
 const PLUService = window.PLUService;
+const GpuService = window.GpuService;
 const MapViewer  = window.TerlabMap;
 
 const P04 = {
@@ -733,6 +737,31 @@ P04._initSolarDiagram();
 
   } catch (e) {
     console.warn('[P04] Règlement GPU fetch failed:', e.message);
+  }
+})();
+
+// ─── Prescriptions surfaciques GPU (EBC, espaces remarquables) ──
+(async () => {
+  const t = SessionManager.getTerrain();
+  if (!t?.lat || !t?.lng || !GpuService?.fetchPrescriptionsSurf) return;
+  try {
+    const presc = await GpuService.fetchPrescriptionsSurf(parseFloat(t.lat), parseFloat(t.lng));
+    if (!presc?.features?.length) return;
+    const prescList = presc.features.map(f => {
+      const p = f.properties;
+      return { type: p.typepsc || '—', libelle: p.libelle || p.txt || '—' };
+    });
+    const el = document.getElementById('prescriptions-gpu');
+    if (el) {
+      el.style.display = 'block';
+      el.innerHTML = `
+        <div class="fs-head" style="font-size:11px;margin-bottom:4px">Prescriptions surfaciques GPU (${prescList.length})</div>
+        ${prescList.map(p => `<div style="font-size:10.5px;color:var(--text2);padding:2px 0">· <strong>${p.type}</strong> — ${p.libelle}</div>`).join('')}
+      `;
+    }
+    SessionManager.saveTerrain({ prescriptions_gpu: prescList });
+  } catch (e) {
+    console.warn('[P04] Prescriptions GPU failed:', e.message);
   }
 })();
 

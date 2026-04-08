@@ -87,6 +87,20 @@
     </div>
   </div>
 
+  <!-- Progression chargement LiDAR -->
+  <div class="form-section anim-slide-up" id="lidar-progress-section" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="lidar-spinner"></div>
+      <div>
+        <div id="lidar-progress-text" style="font-size:11px;color:var(--text-secondary,#7a7060)">Chargement LiDAR HD…</div>
+        <div id="lidar-progress-detail" style="font-size:9px;color:var(--text-tertiary,#a09080);margin-top:2px"></div>
+      </div>
+    </div>
+    <div class="lidar-progress-bar" style="margin-top:8px">
+      <div id="lidar-progress-fill" class="lidar-progress-fill"></div>
+    </div>
+  </div>
+
   <!-- Visualisation LiDAR (visible après chargement des points) -->
   <div class="form-section anim-slide-up" id="lidar-viz-section" style="display:none">
     <div class="fs-head">Nuage de points LiDAR</div>
@@ -153,10 +167,7 @@
     <!-- Stats -->
     <div class="lidar-stats" id="lidar-stats"></div>
 
-    <!-- Charger toutes les classes -->
-    <button class="topo-btn lidar-btn" id="btn-lidar-all-classes" onclick="P01.loadAllLidarClasses()" style="margin-top:4px">
-      Charger toutes les classes (sol + bâtiments + végétation)
-    </button>
+    <!-- Toutes les classes sont chargées d'un coup (même coût réseau COPC) -->
   </div>
 
   <!-- Profil altimétrique -->
@@ -188,6 +199,77 @@
         ✓ Valider cette coupe au dossier
       </button>
     </div>
+  </div>
+
+  <!-- ═══ COUPES A/B — Longitudinale + Perpendiculaire ═══ -->
+  <div class="form-section anim-slide-up" id="section-ab-section" style="display:none">
+    <div class="fs-head">
+      Coupes A / B
+      <span class="topo-source-badge" id="section-source-badge" style="display:none">—</span>
+    </div>
+    <p class="field-note" style="margin-bottom:6px">
+      Coupe A (longitudinale, sens pente) et Coupe B (perpendiculaire).
+      Cliquez sur une coupe pour l'afficher en split-screen.
+    </p>
+
+    <!-- Section profile containers -->
+    <div class="section-ab-grid">
+      <!-- Coupe A -->
+      <div class="section-card" id="section-card-A" onclick="P01.selectSection('A')">
+        <div class="section-card-head">
+          <span class="section-badge section-badge-A">A</span>
+          <span class="section-card-title">Longitudinale</span>
+          <span class="section-card-info" id="section-info-A">—</span>
+        </div>
+        <div class="section-viewer-wrap" id="section-viewer-A"></div>
+        <div class="section-zoom-controls">
+          <button class="section-zoom-btn" onclick="event.stopPropagation();P01.sectionZoom('A','in')" title="Zoom +">+</button>
+          <button class="section-zoom-btn" onclick="event.stopPropagation();P01.sectionZoom('A','out')" title="Zoom -">−</button>
+          <button class="section-zoom-btn" onclick="event.stopPropagation();P01.sectionZoom('A','reset')" title="Reset">1:1</button>
+          <button class="section-split-btn" data-section="A" onclick="event.stopPropagation();P01.toggleSectionSplit('A')" title="Split-screen">⇔</button>
+        </div>
+      </div>
+
+      <!-- Coupe B -->
+      <div class="section-card" id="section-card-B" onclick="P01.selectSection('B')">
+        <div class="section-card-head">
+          <span class="section-badge section-badge-B">B</span>
+          <span class="section-card-title">Perpendiculaire</span>
+          <span class="section-card-info" id="section-info-B">—</span>
+        </div>
+        <div class="section-viewer-wrap" id="section-viewer-B"></div>
+        <div class="section-zoom-controls">
+          <button class="section-zoom-btn" onclick="event.stopPropagation();P01.sectionZoom('B','in')" title="Zoom +">+</button>
+          <button class="section-zoom-btn" onclick="event.stopPropagation();P01.sectionZoom('B','out')" title="Zoom -">−</button>
+          <button class="section-zoom-btn" onclick="event.stopPropagation();P01.sectionZoom('B','reset')" title="Reset">1:1</button>
+          <button class="section-split-btn" data-section="B" onclick="event.stopPropagation();P01.toggleSectionSplit('B')" title="Split-screen">⇔</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generate button -->
+    <div class="topo-btn-group" style="margin-top:6px">
+      <button class="topo-btn" onclick="P01.generateSections()" id="btn-gen-sections">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <path d="M1 6h10M6 1v10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        Générer Coupes A/B
+      </button>
+    </div>
+  </div>
+
+  <!-- Split-screen container (inject between map and left panel) -->
+  <div id="section-split-wrap" class="section-split-wrap">
+    <div class="section-split-header">
+      <span id="section-split-title">Coupe —</span>
+      <div class="section-split-controls">
+        <button class="section-zoom-btn" onclick="P01.splitZoom('in')">+</button>
+        <button class="section-zoom-btn" onclick="P01.splitZoom('out')">−</button>
+        <button class="section-zoom-btn" onclick="P01.splitZoom('reset')">1:1</button>
+        <button class="section-zoom-btn" onclick="P01.closeSplit()" title="Fermer">✕</button>
+      </div>
+    </div>
+    <div id="section-split-profile" class="section-split-profile"></div>
   </div>
 
   <!-- Ravines -->
@@ -538,6 +620,10 @@
 .lidar-btn { border-color:rgba(139,92,246,.4) !important; color:rgba(139,92,246,.9) !important; }
 .lidar-btn:hover { border-color:rgba(139,92,246,.7) !important; background:rgba(139,92,246,.1) !important; color:#a78bfa !important; }
 .lidar-btn.loading { pointer-events:none; opacity:.6; }
+.lidar-spinner { width:20px; height:20px; border:2px solid rgba(154,120,32,.15); border-top-color:var(--accent,#9a7820); border-radius:50%; animation:lidar-spin .8s linear infinite; flex-shrink:0; }
+@keyframes lidar-spin { to { transform:rotate(360deg); } }
+.lidar-progress-bar { height:3px; background:var(--border,#e0d8c8); border-radius:2px; overflow:hidden; }
+.lidar-progress-fill { height:100%; width:0%; background:var(--accent,#9a7820); border-radius:2px; transition:width .3s ease; }
 
 .topo-source-badge { font-family:var(--font-mono); font-size:7.5px; padding:1px 6px; border-radius:3px; margin-left:6px; border:1px solid; }
 .topo-source-badge[data-source="dem"] { background:rgba(96,165,250,.1); color:rgba(96,165,250,.8); border-color:rgba(96,165,250,.3); }
@@ -571,6 +657,66 @@
 .etage-badge { font-family:var(--font-mono); font-size:9px; padding:2px 6px; border-radius:3px; border:1px solid; font-weight:700; flex-shrink:0; }
 .etage-name { font-size:11px; color:var(--text2); font-weight:500; }
 .etage-range { font-family:var(--font-mono); font-size:8.5px; color:var(--faint); margin-top:1px; }
+
+/* ── Coupes A/B ────────────────────────────────────────────── */
+.section-ab-grid { display:flex; flex-direction:column; gap:6px; }
+
+.section-card {
+  background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm);
+  padding:6px 8px; cursor:pointer; transition:all var(--tx-fast);
+}
+.section-card:hover { border-color:var(--accent); }
+.section-card.active { border-color:var(--accent); box-shadow:0 0 8px rgba(232,129,26,.15); }
+
+.section-card-head { display:flex; align-items:center; gap:6px; margin-bottom:4px; }
+.section-badge { font-family:var(--font-mono); font-size:10px; font-weight:700; padding:2px 7px; border-radius:3px; }
+.section-badge-A { background:#E8811A22; color:#E8811A; border:1px solid #E8811A44; }
+.section-badge-B { background:#4A90D922; color:#4A90D9; border:1px solid #4A90D944; }
+.section-card-title { font-size:10px; color:var(--text2); font-weight:500; }
+.section-card-info { font-family:var(--font-mono); font-size:8px; color:var(--faint); margin-left:auto; }
+
+.section-viewer-wrap {
+  width:100%; height:130px; position:relative; overflow:hidden;
+  background:var(--raised); border-radius:var(--r-sm); border:1px solid var(--border);
+}
+.section-viewer-wrap svg { width:100%; height:100%; }
+
+.section-zoom-controls {
+  display:flex; gap:3px; margin-top:4px; justify-content:flex-end;
+}
+.section-zoom-btn {
+  padding:3px 8px; background:var(--raised); border:1px solid var(--border2);
+  border-radius:3px; color:var(--muted); cursor:pointer; font-family:var(--font-mono);
+  font-size:9px; transition:all var(--tx-fast); min-width:24px; text-align:center;
+}
+.section-zoom-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+.section-split-btn {
+  padding:3px 8px; background:var(--raised); border:1px solid rgba(0,212,255,.3);
+  border-radius:3px; color:rgba(0,212,255,.8); cursor:pointer; font-family:var(--font-mono);
+  font-size:9px; transition:all var(--tx-fast);
+}
+.section-split-btn:hover { border-color:rgba(0,212,255,.6); background:rgba(0,212,255,.08); }
+.section-split-btn.active { border-color:rgba(0,212,255,.8); background:rgba(0,212,255,.15); color:#00d4ff; }
+
+/* Split-screen overlay */
+.section-split-wrap {
+  display:none; position:fixed; bottom:0; left:0; right:0; z-index:200;
+  height:0; background:var(--surface, #1a1814); border-top:2px solid var(--accent);
+  transition:height .35s ease;
+  flex-direction:column;
+}
+.section-split-wrap.split-active {
+  display:flex; height:300px;
+}
+.section-split-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:6px 14px; background:var(--raised); border-bottom:1px solid var(--border);
+  font-family:var(--font-mono); font-size:11px; color:var(--accent); font-weight:600;
+}
+.section-split-controls { display:flex; gap:4px; }
+.section-split-profile { flex:1; overflow:hidden; padding:8px; }
+.section-split-profile svg { width:100%; height:100%; }
 </style>
 
 <!-- ═══════════════════ SCRIPT PHASE 1 ══════════════════════════ -->
@@ -583,6 +729,8 @@ const RiskPlayer      = window.RiskPlayer;
 const TerrainAnalysis = window.TerrainAnalysis;
 const TerrainSVG      = window.TerrainSVG;
 const LidarService    = window.LidarService;
+const SectionViewer   = window.SectionProfileViewer;
+const BdTopoService   = window.BdTopoService;
 
 const P01 = {
   _exag: 1.4,
@@ -773,6 +921,9 @@ const P01 = {
     document.getElementById('auto-profile-section').style.display = '';
     this.autoProfile();
 
+    // Afficher la section Coupes A/B
+    document.getElementById('section-ab-section').style.display = '';
+
     // Auto-détecter la station météo la plus proche
     P01._autoDetectMeteo(lat, lng);
   },
@@ -789,10 +940,39 @@ const P01 = {
     btn?.classList.add('loading');
     btn && (btn.textContent = '⏳ Chargement LiDAR…');
 
+    // Afficher le spinner de progression
+    const progressSection = document.getElementById('lidar-progress-section');
+    const progressText = document.getElementById('lidar-progress-text');
+    const progressDetail = document.getElementById('lidar-progress-detail');
+    const progressFill = document.getElementById('lidar-progress-fill');
+    if (progressSection) progressSection.style.display = 'block';
+
+    const onProgress = (info) => {
+      if (info.phase === 'tiles') {
+        if (progressText) progressText.textContent = 'Localisation des tuiles IGN…';
+        if (progressFill) progressFill.style.width = '5%';
+      } else if (info.phase === 'loading' || info.phase === 'tile') {
+        const pct = info.current && info.total
+          ? Math.round(10 + (info.current / info.total) * 50)
+          : 15;
+        if (progressText) progressText.textContent = info.message || `Tuile ${info.current}/${info.total}…`;
+        if (progressDetail) progressDetail.textContent = info.tileId || '';
+        if (progressFill) progressFill.style.width = pct + '%';
+      } else if (info.nodes) {
+        const pct = Math.round(60 + (info.nodes / info.totalNodes) * 35);
+        if (progressText) progressText.textContent = `Décompression LAZ… ${info.nodes}/${info.totalNodes}`;
+        if (progressFill) progressFill.style.width = pct + '%';
+      } else if (info.phase === 'fallback') {
+        if (progressText) progressText.textContent = 'Basculement serveur PDAL…';
+        if (progressFill) progressFill.style.width = '50%';
+      }
+    };
+
     try {
-      // Récupérer les points sol (classe 2) dans la bbox parcelle + 50m
+      // Charger toutes les classes d'un coup (les noeuds COPC contiennent toutes
+      // les classes mélangées, filtrer après décompression = même coût réseau)
       const result = await LidarService.getPointsForParcel(
-        terrain.parcelle_geojson, 50, { classes: '2', maxPoints: 200000 }
+        terrain.parcelle_geojson, 50, { classes: '2,3,4,5,6,9', maxPoints: 300000, onProgress }
       );
 
       if (!result.points.length) {
@@ -802,7 +982,7 @@ const P01 = {
 
       // Cacher les points pour le profil + cache global (survit au changement de phase)
       this._lidarPoints = result.points;
-      LidarService.setRawPoints(result.points, '2');
+      LidarService.setRawPoints(result.points, '2,3,4,5,6,9');
 
       // Analyser pente / exposition / altitudes
       const analysis = LidarService.analyzeTerrain(result.points, terrain.parcelle_geojson);
@@ -880,10 +1060,15 @@ const P01 = {
       // Afficher les points sur la carte + panneau de visualisation
       this._showLidarViz(result.points, result.count);
 
+      // Afficher la section Coupes A/B (LiDAR disponible pour HD)
+      document.getElementById('section-ab-section').style.display = '';
+
     } catch (err) {
       console.error('[P01] Erreur LiDAR:', err);
       window.TerlabToast?.show(`Erreur LiDAR : ${err.message}`, 'error');
     } finally {
+      // Masquer le spinner de progression
+      if (progressSection) progressSection.style.display = 'none';
       if (btn) {
         btn.classList.remove('loading');
         btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="2" stroke="currentColor" stroke-width="1.2"/><path d="M3 3L2 2M9 3L10 2M3 9L2 10M9 9L10 10" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg> LiDAR HD (±0.15m)`;
@@ -946,23 +1131,25 @@ const P01 = {
       if (mode === 'classification' && legendCls) legendCls.style.display = 'flex';
       if (mode === 'altitude' && legendAlt) {
         legendAlt.style.display = 'flex';
-        // Mettre à jour les bornes
         const pts = this._lidarPoints ?? [];
         if (pts.length) {
-          const alts = pts.map(p => p[2]).filter(v => v != null);
-          document.getElementById('lidar-alt-min').textContent = Math.round(Math.min(...alts)) + 'm';
-          document.getElementById('lidar-alt-max').textContent = Math.round(Math.max(...alts)) + 'm';
+          let aMin = Infinity, aMax = -Infinity;
+          for (const p of pts) { if (p[2] < aMin) aMin = p[2]; if (p[2] > aMax) aMax = p[2]; }
+          document.getElementById('lidar-alt-min').textContent = Math.round(aMin) + 'm';
+          document.getElementById('lidar-alt-max').textContent = Math.round(aMax) + 'm';
         }
       }
       if (mode === 'height' && legendHgt) {
         legendHgt.style.display = 'flex';
-        // Hauteur max = alt max non-sol - alt min sol
         const pts = this._lidarPoints ?? [];
         if (pts.length) {
-          const groundAlts = pts.filter(p => p[6] === 2).map(p => p[2]);
-          const groundMin = groundAlts.length ? Math.min(...groundAlts) : Math.min(...pts.map(p => p[2]));
-          const maxH = Math.max(...pts.map(p => p[2])) - groundMin;
-          document.getElementById('lidar-height-max').textContent = Math.round(maxH) + 'm';
+          let gMin = Infinity, altMax = -Infinity;
+          for (const p of pts) {
+            if (p[2] > altMax) altMax = p[2];
+            if (p[6] === 2 && p[2] < gMin) gMin = p[2];
+          }
+          if (gMin === Infinity) { for (const p of pts) { if (p[2] < gMin) gMin = p[2]; } }
+          document.getElementById('lidar-height-max').textContent = Math.round(altMax - gMin) + 'm';
         }
       }
     }
@@ -1012,6 +1199,186 @@ const P01 = {
     }
   },
 
+  // ─── COUPES A/B — Génération automatique ───────────────────────
+  _sectionAxes: null,
+  _sectionSplitId: null,
+
+  async generateSections() {
+    if (!SectionViewer) {
+      window.TerlabToast?.show('Module SectionProfileViewer non chargé', 'error');
+      return;
+    }
+
+    const terrain = SessionManager.getTerrain();
+    if (!terrain?.parcelle_geojson || !terrain?.lat || !terrain?.lng) {
+      window.TerlabToast?.show('Parcelle non définie — complétez la Phase 0', 'warning');
+      return;
+    }
+
+    const btn = document.getElementById('btn-gen-sections');
+    if (btn) btn.textContent = '⏳ Calcul des coupes…';
+
+    const center = [parseFloat(terrain.lng), parseFloat(terrain.lat)];
+    const orientation = terrain.orientation_terrain
+      || (document.querySelector('[name="orientation"]:checked')?.value)
+      || 'S';
+
+    try {
+      // 1. Compute axes
+      const axes = SectionViewer.computeSectionAxes(terrain.parcelle_geojson, orientation, center);
+      if (!axes) {
+        window.TerlabToast?.show('Impossible de calculer les axes de coupe', 'warning');
+        return;
+      }
+      this._sectionAxes = axes;
+
+      // 2. Draw lines on map
+      MapViewer.drawSectionLines(axes);
+
+      // 3. Extract profiles (LiDAR or fallback)
+      const lidarPts = this._lidarPoints ?? LidarService?.getRawPoints?.() ?? null;
+      const [profileA, profileB] = await Promise.all([
+        SectionViewer.extractProfile(axes.A, lidarPts),
+        SectionViewer.extractProfile(axes.B, lidarPts),
+      ]);
+
+      // 4. Build annotations
+      const map = MapViewer.getMap();
+      const crossing = SectionViewer.findSectionCrossing(axes.A, axes.B);
+
+      const annoA = [
+        ...SectionViewer.findParcelBoundaryIntersections(axes.A.start, axes.A.end, terrain.parcelle_geojson),
+        ...SectionViewer.findRoadIntersections(axes.A.start, axes.A.end, map),
+      ];
+      const annoB = [
+        ...SectionViewer.findParcelBoundaryIntersections(axes.B.start, axes.B.end, terrain.parcelle_geojson),
+        ...SectionViewer.findRoadIntersections(axes.B.start, axes.B.end, map),
+      ];
+
+      // Add cross-section marks
+      if (crossing) {
+        annoA.push({ name: 'Coupe B', distance_m: crossing.distA_m, type: 'section_cross' });
+        annoB.push({ name: 'Coupe A', distance_m: crossing.distB_m, type: 'section_cross' });
+      }
+
+      // 5. Render profiles
+      const srcLabel = (s) => s === 'lidar_hd' ? 'LiDAR HD ±0.15m' : s === 'ign_api' ? 'IGN ~2m' : 'DEM ~10m';
+
+      if (profileA.data.length) {
+        SectionViewer._viewers.A = SectionViewer._viewers.A || {};
+        SectionViewer._viewers.A.source = profileA.source;
+        SectionViewer.render('A', 'section-viewer-A', profileA.data, annoA);
+        const lenA = Math.round(profileA.data[profileA.data.length - 1]?.distance_m || 0);
+        document.getElementById('section-info-A').textContent = `${lenA}m · ${srcLabel(profileA.source)}`;
+      }
+
+      if (profileB.data.length) {
+        SectionViewer._viewers.B = SectionViewer._viewers.B || {};
+        SectionViewer._viewers.B.source = profileB.source;
+        SectionViewer.render('B', 'section-viewer-B', profileB.data, annoB);
+        const lenB = Math.round(profileB.data[profileB.data.length - 1]?.distance_m || 0);
+        document.getElementById('section-info-B').textContent = `${lenB}m · ${srcLabel(profileB.source)}`;
+      }
+
+      // 6. Show source badge
+      const badge = document.getElementById('section-source-badge');
+      if (badge) {
+        const src = profileA.source || profileB.source;
+        badge.textContent = srcLabel(src);
+        badge.style.display = 'inline';
+      }
+
+      // 7. Save to session
+      SessionManager.savePhase(1, {
+        section_a_generated: true,
+        section_b_generated: true,
+        section_source: profileA.source || profileB.source,
+        section_a_bearing: axes.A.bearing,
+        section_b_bearing: axes.B.bearing,
+        section_timestamp: new Date().toISOString(),
+      });
+
+      if (btn) btn.textContent = '↻ Régénérer Coupes A/B';
+      window.TerlabToast?.show('Coupes A/B générées — cliquez pour le split-screen', 'success', 4000);
+
+    } catch (err) {
+      console.error('[P01] Section generation error:', err);
+      window.TerlabToast?.show(`Erreur coupes : ${err.message}`, 'error');
+      if (btn) btn.textContent = '⚠ Erreur — réessayer';
+    }
+  },
+
+  selectSection(id) {
+    document.querySelectorAll('.section-card').forEach(c => c.classList.remove('active'));
+    document.getElementById(`section-card-${id}`)?.classList.add('active');
+    MapViewer.highlightSectionLine(id);
+  },
+
+  sectionZoom(id, action) {
+    if (!SectionViewer) return;
+    if (action === 'in') SectionViewer.zoomIn(id);
+    else if (action === 'out') SectionViewer.zoomOut(id);
+    else SectionViewer.resetZoom(id);
+  },
+
+  toggleSectionSplit(id) {
+    const wrap = document.getElementById('section-split-wrap');
+    if (!wrap) return;
+
+    // If already showing this section, close
+    if (this._sectionSplitId === id && wrap.classList.contains('split-active')) {
+      this.closeSplit();
+      return;
+    }
+
+    // Open split screen
+    this._sectionSplitId = id;
+    const state = SectionViewer._viewers[id];
+    if (!state?.data) return;
+
+    const titleEl = document.getElementById('section-split-title');
+    if (titleEl) titleEl.textContent = `Coupe ${id} — ${id === 'A' ? 'Longitudinale' : 'Perpendiculaire'}`;
+
+    const panel = document.getElementById('section-split-profile');
+    if (panel) {
+      panel.innerHTML = `<div id="section-split-viewer-${id}" style="width:100%;height:100%"></div>`;
+      // Create a split viewer with larger dimensions
+      const splitKey = `${id}_split`;
+      SectionViewer._viewers[splitKey] = {
+        ...state,
+        el: document.getElementById(`section-split-viewer-${id}`),
+        cfg: { ...state.cfg, width: 1200, height: 260 },
+        zoomLevel: state.zoomLevel || 1,
+        panX: state.panX || 0,
+      };
+      SectionViewer._renderSVG(splitKey);
+    }
+
+    wrap.classList.add('split-active');
+    MapViewer.highlightSectionLine(id);
+
+    // Update button states
+    document.querySelectorAll('.section-split-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`.section-split-btn[data-section="${id}"]`)?.classList.add('active');
+  },
+
+  closeSplit() {
+    const wrap = document.getElementById('section-split-wrap');
+    if (wrap) wrap.classList.remove('split-active');
+    this._sectionSplitId = null;
+    MapViewer.resetSectionHighlight();
+    document.querySelectorAll('.section-split-btn').forEach(b => b.classList.remove('active'));
+  },
+
+  splitZoom(action) {
+    const id = this._sectionSplitId;
+    if (!id) return;
+    const splitKey = `${id}_split`;
+    if (action === 'in') SectionViewer.zoomIn(splitKey);
+    else if (action === 'out') SectionViewer.zoomOut(splitKey);
+    else SectionViewer.resetZoom(splitKey);
+  },
+
   // ─── Auto-détection station météo via MeteoService ─────────────
   _autoDetectMeteo(lat, lng) {
     const nearest = MeteoService.findNearest(lat, lng);
@@ -1021,6 +1388,42 @@ const P01 = {
       select.value = nearest.key;
       P01.updateMeteoData();
       window.TerlabToast?.show(`Station météo auto-détectée : ${nearest.label}`, 'info', 3000);
+    }
+    // Auto-détection ravines via BD TOPO
+    P01._autoDetectRavines(lat, lng);
+  },
+
+  async _autoDetectRavines(lat, lng) {
+    if (!BdTopoService) return;
+    const nomInput = document.getElementById('nom-ravine');
+    const distInput = document.getElementById('distance-ravine');
+    if (nomInput?.value) return; // Déjà renseigné
+
+    try {
+      const coursEau = await BdTopoService.fetchCoursEau(lat, lng, 1500);
+      if (!coursEau?.features?.length) return;
+
+      // Trouver le cours d'eau le plus proche avec un nom
+      let nearest = null, minDist = Infinity;
+      for (const f of coursEau.features) {
+        const nom = f.properties?.nom;
+        if (!nom || nom === 'Inconnu' || nom === 'NR') continue;
+        // Distance approx au centroïde de la ligne
+        const coords = f.geometry?.coordinates;
+        if (!coords?.length) continue;
+        const mid = Array.isArray(coords[0][0]) ? coords[0][Math.floor(coords[0].length / 2)] : coords[Math.floor(coords.length / 2)];
+        if (!mid) continue;
+        const d = Math.hypot((mid[1] - lat) * 111000, (mid[0] - lng) * 111000 * Math.cos(lat * Math.PI / 180));
+        if (d < minDist) { minDist = d; nearest = { nom, distance: Math.round(d) }; }
+      }
+      if (nearest) {
+        if (nomInput) nomInput.value = nearest.nom;
+        if (distInput) distInput.value = nearest.distance;
+        SessionManager.saveTerrain({ nom_ravine: nearest.nom, distance_ravine_m: nearest.distance });
+        window.TerlabToast?.show(`Ravine détectée : ${nearest.nom} (${nearest.distance}m)`, 'info', 3000);
+      }
+    } catch (e) {
+      console.warn('[P01] Auto-détection ravines:', e.message);
     }
   },
 

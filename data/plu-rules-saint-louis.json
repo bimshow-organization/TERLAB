@@ -4,25 +4,32 @@
     "region": "La Réunion",
     "generated": "2026-04-07",
     "commune": "Saint-Louis",
-    "insee": "97415",
+    "insee": "97414",
     "intercommunalite": "CIVIS",
     "plu_type": "PLU",
     "plu_date_approbation": "2014-03-11",
-    "plu_modifications": ["2020-02-27", "2025-07-09"],
+    "plu_modifications": [
+      "2020-02-27",
+      "2025-07-09"
+    ],
     "source": "Règlement PLU Saint-Louis — GPU DU_97414 — 97414_reglement_20251218.pdf"
   },
-
   "zones": {
-
     "UA": {
       "label": "Grand centre-ville de Saint-Louis",
       "type": "U",
       "sous_type": "centre_urbain",
       "loi_littoral": false,
       "usages": {
-        "habitation": true, "commerce": true, "bureau": true,
-        "activite": true, "entrepot": false, "hotel": true,
-        "camping": false, "agricole": false, "industriel": false
+        "habitation": true,
+        "commerce": true,
+        "bureau": true,
+        "activite": true,
+        "entrepot": false,
+        "hotel": true,
+        "camping": false,
+        "agricole": false,
+        "industriel": false
       },
       "reculs": {
         "voie_principale_m": 0,
@@ -84,10 +91,25 @@
       "_meta": {
         "confidence": 1.0,
         "ambiguites": [],
-        "source_articles": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+        "source_articles": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ]
       }
     },
-
     "UA1": {
       "label": "Centre historique de Saint-Louis",
       "type": "U",
@@ -100,18 +122,26 @@
         "permeable_min_pct": null,
         "permeable_note": "Non réglementée en UA1"
       },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "UB": {
       "label": "Bois de Nèfles Cocos — quartier stratégique dense",
       "type": "U",
       "sous_type": "résidentielle_dense",
       "loi_littoral": false,
       "usages": {
-        "habitation": true, "commerce": true, "bureau": true,
-        "activite": true, "entrepot": false, "hotel": true,
-        "camping": false, "agricole": false, "industriel": false
+        "habitation": true,
+        "commerce": true,
+        "bureau": true,
+        "activite": true,
+        "entrepot": false,
+        "hotel": true,
+        "camping": false,
+        "agricole": false,
+        "industriel": false
       },
       "reculs": {
         "voie_principale_m": 0,
@@ -158,18 +188,26 @@
         "cloture_voie_hauteur_max_m": 2,
         "mur_soutenement_max_m": 3
       },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "UC": {
       "label": "Tissu urbain aggloméré de la Rivière — mixité résidentielle",
       "type": "U",
       "sous_type": "résidentielle_mixte",
       "loi_littoral": false,
       "usages": {
-        "habitation": true, "commerce": true, "bureau": true,
-        "activite": true, "entrepot": false, "hotel": true,
-        "camping": false, "agricole": false, "industriel": false
+        "habitation": true,
+        "commerce": true,
+        "bureau": true,
+        "activite": true,
+        "entrepot": false,
+        "hotel": true,
+        "camping": false,
+        "agricole": false,
+        "industriel": false
       },
       "reculs": {
         "voie_principale_m": 4,
@@ -218,9 +256,11 @@
         "cloture_voie_hauteur_max_m": 2,
         "mur_soutenement_max_m": 3
       },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "UC1": {
       "label": "Emprises foncières habitat collectif dense — La Rivière",
       "type": "U",
@@ -231,12 +271,16 @@
         "he_max_m": 9,
         "hf_max_m": 13,
         "zones_speciales": [
-          { "note": "Opérations > 2000m² SDP : 40% max peut atteindre hé 12m, hf 16m" }
+          {
+            "note": "Opérations > 2000m² SDP : 40% max peut atteindre hé 12m, hf 16m"
+          }
         ]
       },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "UC2": {
       "label": "Quartier du Ruisseau — densités moindres",
       "type": "U",
@@ -247,18 +291,26 @@
         "he_max_m": 6,
         "hf_max_m": 10
       },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "UD": {
       "label": "Tissu urbain rural — résidentiel peu dense",
       "type": "U",
       "sous_type": "résidentielle_diffuse",
       "loi_littoral": false,
       "usages": {
-        "habitation": true, "commerce": true, "bureau": true,
-        "activite": true, "entrepot": false, "hotel": true,
-        "camping": false, "agricole": false, "industriel": false
+        "habitation": true,
+        "commerce": true,
+        "bureau": true,
+        "activite": true,
+        "entrepot": false,
+        "hotel": true,
+        "camping": false,
+        "agricole": false,
+        "industriel": false
       },
       "reculs": {
         "voie_principale_m": 4,
@@ -300,27 +352,39 @@
         "cloture_voie_hauteur_max_m": 2,
         "mur_soutenement_max_m": 3
       },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "UD1": {
       "label": "Village de Cilaos — tissu bâti ancien",
       "type": "U",
       "sous_type": "village_historique",
       "ref": "UD",
       "ref_note": "Mêmes règles que UD — contraintes patrimoniales renforcées",
-      "_meta": { "confidence": 0.8, "ambiguites": ["Vérifier règles spécifiques UD1 dans document graphique"] }
+      "_meta": {
+        "confidence": 0.8,
+        "ambiguites": [
+          "Vérifier règles spécifiques UD1 dans document graphique"
+        ]
+      }
     },
-
     "UE": {
       "label": "Zone d'activités économiques",
       "type": "U",
       "sous_type": "activites",
       "loi_littoral": false,
       "usages": {
-        "habitation": false, "commerce": true, "bureau": true,
-        "activite": true, "entrepot": true, "hotel": false,
-        "camping": false, "agricole": false, "industriel": true
+        "habitation": false,
+        "commerce": true,
+        "bureau": true,
+        "activite": true,
+        "entrepot": true,
+        "hotel": false,
+        "camping": false,
+        "agricole": false,
+        "industriel": true
       },
       "reculs": {
         "voie_principale_m": 5,
@@ -360,16 +424,22 @@
         "cloture_voie_hauteur_max_m": 2,
         "mur_soutenement_max_m": 3
       },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "US": {
       "label": "Zone d'activités sportives et de loisirs",
       "type": "U",
       "sous_type": "sport_loisirs",
       "usages": {
-        "habitation": false, "commerce": false, "bureau": false,
-        "activite": false, "sport": true, "loisirs": true
+        "habitation": false,
+        "commerce": false,
+        "bureau": false,
+        "activite": false,
+        "sport": true,
+        "loisirs": true
       },
       "reculs": {
         "voie_principale_m": 5,
@@ -403,16 +473,22 @@
         "ravine_recul_m": 10,
         "mur_soutenement_max_m": 3
       },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "UZ": {
       "label": "ZAC — zone d'aménagement concerté",
       "type": "U",
       "sous_type": "zac",
       "usages": {
-        "habitation": true, "commerce": true, "bureau": true,
-        "activite": true, "entrepot": false, "hotel": true
+        "habitation": true,
+        "commerce": true,
+        "bureau": true,
+        "activite": true,
+        "entrepot": false,
+        "hotel": true
       },
       "reculs": {
         "voie_principale_m": null,
@@ -461,20 +537,42 @@
       },
       "_meta": {
         "confidence": 0.9,
-        "ambiguites": ["Hauteur max 42m semble très élevée — vérifier si c'est le gabarit enveloppe ZAC"],
-        "source_articles": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+        "ambiguites": [
+          "Hauteur max 42m semble très élevée — vérifier si c'est le gabarit enveloppe ZAC"
+        ],
+        "source_articles": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ]
       }
     },
-
     "AUindicee": {
       "label": "Zones à urbaniser prioritaires (SAR)",
       "type": "AU",
       "ref": "zone U correspondante",
       "ref_note": "Règles identiques à la zone U de même bassin (UA à UD). 1AU = prioritaire, 2AU = après 1AU entreprises.",
-      "conditions": ["Infrastructures suffisantes", "Opération d'ensemble"],
-      "_meta": { "confidence": 0.9, "ambiguites": [] }
+      "conditions": [
+        "Infrastructures suffisantes",
+        "Opération d'ensemble"
+      ],
+      "_meta": {
+        "confidence": 0.9,
+        "ambiguites": []
+      }
     },
-
     "AUst": {
       "label": "Zones à urbaniser — études préalables requises",
       "type": "AU",
@@ -488,16 +586,21 @@
         "sep_lat_m": 3,
         "sep_fond_m": 3
       },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "A": {
       "label": "Zone agricole",
       "type": "A",
       "sous_type": "agricole",
       "usages": {
-        "habitation": false, "commerce": false, "bureau": false,
-        "activite_agricole": true, "equipement_collectif": true
+        "habitation": false,
+        "commerce": false,
+        "bureau": false,
+        "activite_agricole": true,
+        "equipement_collectif": true
       },
       "reculs": {
         "voie_principale_m": 10,
@@ -534,16 +637,22 @@
         "ebc": true,
         "mur_soutenement_max_m": 3
       },
-      "_meta": { "confidence": 0.9, "ambiguites": ["Vérifier emprise habitation — valeurs lues dans texte A art.9"] }
+      "_meta": {
+        "confidence": 0.9,
+        "ambiguites": [
+          "Vérifier emprise habitation — valeurs lues dans texte A art.9"
+        ]
+      }
     },
-
     "N": {
       "label": "Zone naturelle et forestière",
       "type": "N",
       "sous_type": "naturelle",
       "usages": {
-        "habitation": false, "activite_agricole": true,
-        "loisirs_legers": true, "equipement_collectif": true
+        "habitation": false,
+        "activite_agricole": true,
+        "loisirs_legers": true,
+        "equipement_collectif": true
       },
       "reculs": {
         "voie_principale_m": 10,
@@ -572,10 +681,12 @@
         "ravine_recul_m": 10,
         "ebc": true
       },
-      "_meta": { "confidence": 0.9, "ambiguites": [] }
+      "_meta": {
+        "confidence": 0.9,
+        "ambiguites": []
+      }
     }
   },
-
   "regles_communes": {
     "ravine_recul_m": 10,
     "note_ravine": "Décret n°48-633 du 31 mars 1948. Interdiction 10m depuis bord des ravines.",

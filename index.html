@@ -2,7 +2,10 @@
 <html lang="fr" data-theme="ivory">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#161614"/>
 <meta name="description" content="TERLAB — Laboratoire d'analyse de terrain · ENSA La Réunion · Île de La Réunion"/>
 <title>TERLAB · Analyse de Terrain · ENSA La Réunion</title>
 <link rel="icon" type="image/png" href="assets/logo-giep.png"/>
@@ -16,6 +19,21 @@
     "copc": "https://cdn.jsdelivr.net/npm/copc@0.0.8/+esm"
   }
 }
+</script>
+<!-- laz-perf WASM : Emscripten cherche le .wasm relativement à la page (échoue en ES module).
+     Ce hook redirige fetch() vers le CDN pour que ça marche partout (local + GitHub Pages). -->
+<script>
+(function() {
+  var CDN_WASM = 'https://cdn.jsdelivr.net/npm/laz-perf@0.0.7/lib/laz-perf.wasm';
+  var _fetch = window.fetch;
+  window.fetch = function(input) {
+    var url = typeof input === 'string' ? input : (input && input.url) || '';
+    if (url.endsWith('laz-perf.wasm') && !url.startsWith('http')) {
+      return _fetch.call(this, CDN_WASM);
+    }
+    return _fetch.apply(this, arguments);
+  };
+})();
 </script>
 
 <!-- Fonts -->
@@ -36,51 +54,80 @@
 <!-- Chart.js v4 -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-<!-- jsPDF + html2canvas -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<!-- QR code generator (Phase 12 synthèse) -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 
-<!-- Firebase -->
+<!-- jsPDF + html2canvas supprimés — PDF via print-template.html + window.print() -->
+
+<!-- Firebase (BIMSHOW preprod1) -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
   import { getDatabase, ref, set, get } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+  import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
-  // ⚠️ STUB — Remplacer par la vraie config Firebase TERLAB/BIMSHOW
-  const firebaseConfig = {
-    apiKey: "TERLAB_FIREBASE_API_KEY",
-    authDomain: "terlab-reunion.firebaseapp.com",
-    databaseURL: "https://terlab-reunion-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId: "terlab-reunion",
-    storageBucket: "terlab-reunion.appspot.com"
-  };
+  // Config chargee depuis config/firebase-config.js (exclu du git)
+  // Fallback : stub si fichier absent
+  let firebaseConfig = null;
+  let TERLAB_ACCESS_CODE = 'TERLAB2026';
+  try {
+    const mod = await import('./config/firebase-config.js');
+    firebaseConfig = mod.firebaseConfig;
+    if (mod.TERLAB_ACCESS_CODE) TERLAB_ACCESS_CODE = mod.TERLAB_ACCESS_CODE;
+  } catch {
+    console.info('TERLAB: config/firebase-config.js absent — session locale seulement');
+  }
 
-  if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('TERLAB_')) {
+  window.TERLAB_ACCESS_CODE = TERLAB_ACCESS_CODE;
+  window.TERLAB_DB = null;
+
+  if (firebaseConfig?.apiKey) {
     try {
-      const app = initializeApp(firebaseConfig);
-      window.TERLAB_DB = getDatabase(app);
+      const app  = initializeApp(firebaseConfig);
+      const db   = getDatabase(app);
+      const auth = getAuth(app);
+
+      window.TERLAB_DB     = db;
+      window.TERLAB_AUTH   = auth;
       window.TERLAB_FB_REF = ref;
       window.TERLAB_FB_SET = set;
       window.TERLAB_FB_GET = get;
+
+      // Auth anonyme automatique
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          window.TERLAB_UID = user.uid;
+          console.info('TERLAB: Firebase auth OK — uid', user.uid.slice(-8));
+        }
+      });
+      await signInAnonymously(auth).catch(e => {
+        console.warn('TERLAB: auth anonyme échoué', e.message);
+      });
     } catch(e) {
       console.warn('TERLAB: Firebase init failed — session locale seulement', e.message);
-      window.TERLAB_DB = null;
     }
-  } else {
-    console.info('TERLAB: Firebase stub config — session locale seulement');
-    window.TERLAB_DB = null;
   }
 </script>
 
-<!-- TERLAB CSS -->
+<!-- TERLAB CSS — ordre strict : tokens → shell → phase-base → map → composants → mobile -->
+<!-- 1. Tokens (variables, en premier TOUJOURS) -->
+<link rel="stylesheet" href="assets/tokens.css"/>
+<!-- 2. Shell (layout desktop) -->
 <link rel="stylesheet" href="assets/terlab-shell.css"/>
+<!-- 3. Styles communs phases -->
+<link rel="stylesheet" href="assets/phase-base.css"/>
+<!-- 4. Carte Mapbox -->
 <link rel="stylesheet" href="assets/terlab-map.css"/>
-<link rel="stylesheet" href="assets/terlab-print.css" media="print"/>
+<!-- 5. Composants -->
 <link rel="stylesheet" href="assets/terlab-v2-additions.css"/>
 <link rel="stylesheet" href="assets/acces-pompiers.css"/>
 <link rel="stylesheet" href="assets/terrain-3d.css"/>
 <link rel="stylesheet" href="assets/terlab-3d-viewer.css"/>
 <link rel="stylesheet" href="assets/envirobat-cards.css"/>
 <link rel="stylesheet" href="assets/sun-gizmo.css"/>
+<!-- 6. Mobile responsive (en dernier, surcharge) -->
+<link rel="stylesheet" href="assets/mobile.css"/>
+<!-- Print en dernier, séparé -->
+<link rel="stylesheet" href="assets/terlab-print.css" media="print"/>
 </head>
 <body>
 
@@ -240,6 +287,82 @@
 
   </main>
 
+  <!-- ═══ MOB-TABBAR ═══ Navigation phases mobile ═══ -->
+  <nav class="mob-tabbar" id="mob-tabbar" aria-label="Navigation phases" role="navigation">
+
+    <!-- Précédent -->
+    <button class="mob-tab mob-phase-btn" id="mob-prev-btn" aria-label="Phase précédente" disabled>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+
+    <!-- Indicateur phase -->
+    <div class="mob-tab" style="flex:0 0 auto; pointer-events:none">
+      <span class="mob-phase-indicator" id="mob-phase-indicator">P00</span>
+      <span class="mob-tl" id="mob-phase-name" style="font-size:8px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    </div>
+
+    <!-- Ouvrir sheet formulaire (centre) -->
+    <button class="mob-tab mob-sheet-toggle" id="mob-sheet-btn" aria-label="Ouvrir formulaire" aria-expanded="false">
+      <div class="mob-tab-icon-wrap">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <polyline points="18 15 12 9 6 15"/>
+        </svg>
+      </div>
+      <span class="mob-tl" style="font-size:8px">Formulaire</span>
+    </button>
+
+    <!-- Vue carte -->
+    <button class="mob-tab active" id="mob-map-btn" aria-label="Vue carte">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+      </svg>
+      <span class="mob-tl">Carte</span>
+    </button>
+
+    <!-- Suivant -->
+    <button class="mob-tab mob-phase-btn" id="mob-next-btn" aria-label="Phase suivante">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
+
+  </nav>
+  <!-- ═══ /MOB-TABBAR ═══ -->
+
+  <!-- ═══ MOB-SHEET ═══ Bottom sheet (contient left panel sur mobile) ═══ -->
+  <div class="mob-sheet" id="mob-sheet" role="dialog" aria-modal="true" aria-hidden="true">
+
+    <!-- Handle drag -->
+    <div class="mob-sheet-handle" id="mob-sheet-handle">
+      <div class="mob-sheet-handle-bar"></div>
+    </div>
+
+    <!-- Tabs (Formulaire / Risques / Acteurs) -->
+    <div class="mob-sheet-tabs" id="mob-sheet-tabs">
+      <button class="mob-sheet-tab active" data-tab="form">Formulaire</button>
+      <button class="mob-sheet-tab" data-tab="risks">Risques</button>
+      <button class="mob-sheet-tab" data-tab="actors">Acteurs</button>
+    </div>
+
+    <!-- Corps scrollable -->
+    <div class="mob-sheet-body" id="mob-sheet-body">
+      <div id="mob-sheet-form-content"></div>
+      <div id="mob-sheet-risks-content" style="display:none;padding:12px 16px"></div>
+      <div id="mob-sheet-actors-content" style="display:none;padding:12px 16px"></div>
+    </div>
+
+    <!-- Pied : bouton phase suivante -->
+    <div class="mob-sheet-footer" id="mob-sheet-footer">
+      <button class="mob-next-btn" id="mob-next-phase-btn" disabled>
+        Chargement…
+      </button>
+    </div>
+
+  </div>
+  <!-- ═══ /MOB-SHEET ═══ -->
+
   <!-- ═══════════════════════════════════════════════════════
        PANEL 3D VIEWER (mini-BIMSHOW intégré)
   ═══════════════════════════════════════════════════════ -->
@@ -318,12 +441,12 @@
         <button class="export-btn" data-format="pdf-site" onclick="TerlabExport.generatePDF('site')">
           <span class="export-icon">🗺️</span>
           <span class="export-label">PDF Site</span>
-          <span class="export-desc">Analyse terrain — 6 planches</span>
+          <span class="export-desc">A4 portrait — 8 planches</span>
         </button>
         <button class="export-btn" data-format="pdf-projet" onclick="TerlabExport.generatePDF('projet')">
           <span class="export-icon">📐</span>
           <span class="export-label">PDF Projet</span>
-          <span class="export-desc">Site + plan masse — 8 planches</span>
+          <span class="export-desc">A4 portrait — 9 planches + plan masse</span>
         </button>
         <button class="export-btn" data-format="dxf" onclick="TerlabExport.generateDXF()">
           <span class="export-icon">📐</span>
@@ -355,6 +478,95 @@
     </div>
   </div>
 </div>
+
+<!-- Login TERLAB -->
+<div class="modal-backdrop" id="modal-login" role="dialog" aria-labelledby="modal-login-title" aria-modal="true" hidden>
+  <div class="modal-box" style="max-width:380px">
+    <div class="modal-head">
+      <h2 id="modal-login-title" class="modal-title">Connexion TERLAB</h2>
+    </div>
+    <div class="modal-body">
+      <p class="modal-text">Entrez votre adresse mail ENSA et le code d'acces fourni par l'enseignant.</p>
+      <input type="email" id="terlab-login-email" class="modal-input" placeholder="prenom.nom@reunion.archi.fr" aria-label="Adresse email" autocomplete="email"/>
+      <input type="text" id="terlab-login-code" class="modal-input" placeholder="Code d'acces" aria-label="Code acces" autocomplete="off" style="margin-top:8px"/>
+      <p class="modal-hint" id="terlab-login-error" style="color:var(--danger);display:none"></p>
+    </div>
+    <div class="modal-foot">
+      <button class="modal-btn-primary" onclick="TerlabLogin.submit()">Se connecter</button>
+      <button class="modal-btn-ghost" onclick="TerlabLogin.close()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<script>
+window.TerlabLogin = {
+  open() {
+    document.getElementById('modal-login').hidden = false;
+    document.getElementById('terlab-login-email').focus();
+  },
+  close() {
+    document.getElementById('modal-login').hidden = true;
+    document.getElementById('terlab-login-error').style.display = 'none';
+  },
+  submit() {
+    const email = document.getElementById('terlab-login-email').value.trim();
+    const code  = document.getElementById('terlab-login-code').value.trim();
+    const err   = document.getElementById('terlab-login-error');
+
+    if (!email || !email.includes('@')) {
+      err.textContent = 'Adresse email invalide';
+      err.style.display = 'block';
+      return;
+    }
+    if (code !== window.TERLAB_ACCESS_CODE) {
+      err.textContent = 'Code d\'acces incorrect';
+      err.style.display = 'block';
+      return;
+    }
+
+    // Stocker l'email dans la session et dans Firebase
+    window.TERLAB_USER_EMAIL = email;
+    localStorage.setItem('terlab_user_email', email);
+    localStorage.setItem('terlab_auth', '1');
+
+    if (window.SessionManager) {
+      window.SessionManager.saveTerrain({ student_email: email });
+    }
+
+    // Sauvegarder dans RTDB si connecte
+    if (window.TERLAB_DB && window.TERLAB_UID) {
+      const userRef = window.TERLAB_FB_REF(window.TERLAB_DB, `terlab/users/${window.TERLAB_UID}`);
+      window.TERLAB_FB_SET(userRef, { email, connected_at: new Date().toISOString() }).catch(() => {});
+    }
+
+    // Mettre a jour le bouton login
+    const btn = document.getElementById('btn-login');
+    if (btn) btn.title = email;
+
+    this.close();
+    window.TerlabToast?.show(`Connecte : ${email}`, 'success', 3000);
+  },
+  restore() {
+    const email = localStorage.getItem('terlab_user_email');
+    if (email && localStorage.getItem('terlab_auth')) {
+      window.TERLAB_USER_EMAIL = email;
+      const btn = document.getElementById('btn-login');
+      if (btn) btn.title = email;
+    }
+  }
+};
+
+// Brancher le bouton login existant (si pas connecté → ouvre le login)
+// Si connecté, le ProjectMenu (index.js) gère le dropdown avec déconnexion
+document.getElementById('btn-login')?.addEventListener('click', () => {
+  if (!window.TERLAB_USER_EMAIL) {
+    TerlabLogin.open();
+  }
+});
+
+// Restaurer la session au chargement
+TerlabLogin.restore();
+</script>
 
 <!-- Toast notifications -->
 <div class="toast-container" id="toast-container" role="status" aria-live="polite" aria-atomic="false"></div>

@@ -1,13 +1,15 @@
-<!-- TERLAB · Phase 10 · Entretien, Rénovation & Adaptation · ENSA La Réunion v1.0 -->
+<!-- TERLAB · Phase 10 · Durabilité, Entretien & Fin de vie · ENSA La Réunion v2.0 -->
+<!-- Fusion P10+P11 — sprint canvas 08/04/2026 -->
 <div class="left-panel">
   <div class="lp-head anim-slide-up">
-    <div class="phase-label" style="color:#a0784a">Phase 10 · Entretien & Durabilité</div>
-    <h1 class="phase-title">🔧 <em>Entretien</em>, Rénovation & Adaptation</h1>
-    <p class="phase-desc">Anticiper la durabilité dans le contexte tropical réunionnais. L'humidité, les UV intenses, le sel marin et les termites dégradent rapidement les matériaux non traités. Prévoir dès la conception.</p>
+    <div class="phase-label" style="color:#a0784a">Phase 10 · Durabilité & Fin de vie</div>
+    <h1 class="phase-title">🔧 <em>Durabilité</em>, Entretien & Fin de vie</h1>
+    <p class="phase-desc">Anticiper la durabilité dans le contexte tropical réunionnais et prévoir la déconstruction dès la conception. Corrosion marine, termites, filières ILEVA et réemploi des matériaux.</p>
   </div>
 
+  <!-- ═══ DURABILITÉ & ENTRETIEN ═══ -->
   <div class="form-section anim-slide-up">
-    <div class="fs-head">Menaces durabilité tropicale</div>
+    <div class="fs-head">Contraintes climatiques tropicales</div>
     <div class="durabilite-grid">
       <div class="dur-item" onclick="P10.toggle(this,'termites')">
         <span class="dur-icon">🐛</span>
@@ -42,12 +44,31 @@
         <div class="dur-status" id="dur-uv">À évaluer</div>
       </div>
     </div>
+
+    <div class="field-row" style="margin-top:8px">
+      <label class="field-label">Exposition à la corrosion marine</label>
+      <select class="field-select" data-session-key="corrosion_exposition" data-val-index="2">
+        <option value="">-- Sélectionner --</option>
+        <option value="faible">Faible (&gt; 2km mer)</option>
+        <option value="moderee">Modérée (500m–2km)</option>
+        <option value="forte">Forte (&lt; 500m mer)</option>
+      </select>
+    </div>
+    <div class="field-row">
+      <label class="field-label">Risque termites</label>
+      <select class="field-select" data-session-key="risque_termites">
+        <option value="">-- Sélectionner --</option>
+        <option value="faible">Faible</option>
+        <option value="present">Présent</option>
+        <option value="fort">Fort</option>
+      </select>
+    </div>
   </div>
 
   <div class="form-section anim-slide-up">
     <div class="fs-head">Traitement anti-termites préventif</div>
     <div class="field-row">
-      <div class="radio-group" style="flex-direction:column;gap:4px">
+      <div class="radio-group" data-val-index="1" style="flex-direction:column;gap:4px">
         <label class="radio-option" onclick="P10.sel(this,'termites_trait','integre')"><input type="radio" name="termites_trait" value="integre"/>✅ Intégré dès la conception (recommandé)</label>
         <label class="radio-option" onclick="P10.sel(this,'termites_trait','a_prevoir')"><input type="radio" name="termites_trait" value="a_prevoir"/>À prévoir (budget à anticiper)</label>
         <label class="radio-option" onclick="P10.sel(this,'termites_trait','existant')"><input type="radio" name="termites_trait" value="existant"/>Déjà traité (bâti existant)</label>
@@ -68,27 +89,112 @@
   </div>
 
   <div class="form-section anim-slide-up">
+    <div class="fs-head">Maintenance préventive</div>
+    <div class="maint-checks">
+      <label class="maint-item"><input type="checkbox" data-key="acces_toiture" data-session-key="acces_toiture"/>Accès toiture prévu (trappe/échelle)</label>
+      <label class="maint-item"><input type="checkbox" data-key="ep_cyclone" data-session-key="ep_cyclone"/>Descentes EP dimensionnées cyclone</label>
+      <label class="maint-item"><input type="checkbox" data-key="vrd_accessible" data-session-key="vrd_accessible"/>Réseau VRD accessible pour entretien</label>
+      <label class="maint-item"><input type="checkbox" data-key="traitement_bois" data-session-key="traitement_bois"/>Traitement bois prévu</label>
+    </div>
+    <div class="field-row" style="margin-top:6px">
+      <label class="field-label">Bardage ou revêtement extérieur</label>
+      <select class="field-select" data-session-key="bardage_type">
+        <option value="">-- Sélectionner --</option>
+        <option value="tole">Tôle</option>
+        <option value="fibre_ciment">Fibre ciment</option>
+        <option value="enduit">Enduit</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ═══ FIN DE VIE & RÉEMPLOI ═══ -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Déconstruction sélective</div>
+    <div class="field-row">
+      <label class="field-label">Principe de conception réversible</label>
+      <div class="radio-group" data-val-index="5" style="flex-direction:column;gap:5px">
+        <label class="radio-option" onclick="P10.sel(this,'reversible','oui')"><input type="radio" name="reversible" value="oui"/>✅ Oui — assemblages mécaniques (vis, boulons)</label>
+        <label class="radio-option" onclick="P10.sel(this,'reversible','partiel')"><input type="radio" name="reversible" value="partiel"/>Partielle — mixte mécanique / chimique</label>
+        <label class="radio-option" onclick="P10.sel(this,'reversible','non')"><input type="radio" name="reversible" value="non"/>Non — maçonnerie liaisonnée (standard Réunion)</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Matériaux réemployables identifiés</div>
+    <div class="reemploi-items">
+      <label class="reemploi-item"><input type="checkbox" data-key="struct_bois" data-session-key="reemploi_bois"/>🪵 Structure bois (si démontable)</label>
+      <label class="reemploi-item"><input type="checkbox" data-key="menuiseries" data-session-key="reemploi_menuiseries"/>🪟 Menuiseries aluminium</label>
+      <label class="reemploi-item"><input type="checkbox" data-key="toiture_tole" data-session-key="reemploi_tole"/>🏠 Tôle toiture (réutilisable)</label>
+      <label class="reemploi-item"><input type="checkbox" data-key="equipements" data-session-key="reemploi_equipements"/>🔌 Équipements PV / ECS</label>
+      <label class="reemploi-item"><input type="checkbox" data-key="parpaings" data-session-key="reemploi_parpaings"/>🧱 Parpaings entiers (tri déconstruction)</label>
+    </div>
+  </div>
+
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Filières déchets à La Réunion (ILEVA)</div>
+    <div class="field-row">
+      <label class="field-label">Filière principale envisagée</label>
+      <select class="field-select" data-session-key="filiere_dechets" data-val-index="3">
+        <option value="">-- Sélectionner --</option>
+        <option value="beton_inerte">Béton/Parpaing → Inerte (ILEVA) — gratuit</option>
+        <option value="bois_valorisation">Bois → Valorisation énergie ou réemploi</option>
+        <option value="acier_recyclage">Acier → Recyclage (ferrailleur)</option>
+        <option value="mixte_tri">Mixte → Tri à la source prévu sur chantier</option>
+        <option value="a_definir">À définir</option>
+      </select>
+    </div>
+    <div class="filiere-note" id="filiere-note" style="display:none"></div>
+
+    <!-- Indicateurs corrosion + filière auto-calculés -->
+    <div class="corrosion-summary" id="corrosion-summary" style="margin-top:10px">
+      <div class="cs-row"><span class="cs-label">Distance à la mer :</span><span class="cs-val" id="cs-dist">—</span></div>
+      <div class="cs-row"><span class="cs-label">Niveau corrosion :</span><span class="cs-badge" id="cs-level">—</span></div>
+      <div class="cs-row"><span class="cs-label">Traitement acier requis :</span><span class="cs-val" id="cs-acier">—</span></div>
+      <div class="cs-row"><span class="cs-label">Filière ILEVA la plus proche :</span><span class="cs-val" id="cs-filiere">—</span></div>
+    </div>
+
+    <a href="https://www.ileva.re" target="_blank" rel="noopener" class="source-btn" style="margin-top:6px;display:inline-flex">→ ILEVA — Déchets BTP Réunion ↗</a>
+  </div>
+
+  <div class="form-section anim-slide-up">
     <div class="fs-head">Diagnostics fin de cycle</div>
     <div class="diag-items">
       <label class="diag-item"><input type="checkbox" data-key="diag_amiante"/>Diagnostic amiante (construction &lt; 1997)</label>
       <label class="diag-item"><input type="checkbox" data-key="diag_termites"/>Diagnostic termites (obligatoire vente)</label>
       <label class="diag-item"><input type="checkbox" data-key="diag_erp"/>État des Risques et Pollutions (ERP)</label>
       <label class="diag-item"><input type="checkbox" data-key="diag_dpe"/>DPE adapté DOM</label>
+      <label class="diag-item"><input type="checkbox" data-key="diag_pemd"/>Diagnostic PEMD (loi AGEC 2020)</label>
     </div>
   </div>
 
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Passeport matériaux (BIM)</div>
+    <div class="field-row">
+      <div class="radio-group">
+        <label class="radio-option" onclick="P10.sel(this,'passeport','oui')"><input type="radio" name="passeport" value="oui"/>Oui — intégré au modèle BIMSHOW</label>
+        <label class="radio-option" onclick="P10.sel(this,'passeport','non')"><input type="radio" name="passeport" value="non"/>Non</label>
+        <label class="radio-option" onclick="P10.sel(this,'passeport','moe')"><input type="radio" name="passeport" value="moe"/>À définir avec MOE</label>
+      </div>
+    </div>
+    <p class="field-note">Le passeport matériaux (métadonnées BIM par élément) facilite la traçabilité pour le réemploi et réduit les coûts de déconstruction sélective.</p>
+  </div>
+
   <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
-    <button class="source-btn" onclick="TerlabSources.open(10)">→ Sources &amp; références entretien</button>
+    <button class="source-btn" onclick="TerlabSources.open(10)">→ Sources &amp; références durabilité</button>
   </div>
 
   <div class="val-block">
     <div class="val-title">Validation de la phase 10</div>
     <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Plan de maintenance esquissé</span></div>
     <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Matériaux résistants termites/corrosion choisis</span></div>
-    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Diagnostics fin de cycle listés</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Niveau corrosion marine évalué</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Filière déchet principale identifiée (ILEVA)</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Matériaux réemployables listés</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Conception réversible intégrée</span></div>
     <div class="val-progress"><div class="val-bar"></div></div>
-    <div class="val-footer"><span>Phase indicative</span><span class="val-pct">0/3</span></div>
-    <button class="next-btn">Phase 11 — Fin de Vie →</button>
+    <div class="val-footer"><span>Phase indicative</span><span class="val-pct">0/6</span></div>
+    <button class="next-btn">Phase 12 — Synthèse & Exports →</button>
   </div>
 </div>
 <div class="map-area"><div id="map" style="width:100%;height:100%"></div></div>
@@ -102,6 +208,27 @@
       <strong>Annuel :</strong> nettoyage panneaux PV, inspection charpente (termites), entretien joints.<br/>
       <strong>5 ans :</strong> repeinture façades (UV), vérification étanchéité terrasse.<br/>
       <strong>Vente :</strong> ERP obligatoire dans les 6 mois précédant la signature.
+    </div>
+  </div>
+  <div class="rp-section">
+    <div class="rp-head">Durabilité tropicale</div>
+    <div class="ped-note" style="font-size:11px">
+      À La Réunion, la durabilité des bâtiments est fortement conditionnée
+      par deux facteurs : la <strong>corrosion marine</strong> (humidité saline à moins de
+      2 km du littoral) et les <strong>termites souterrains</strong> (Coptotermes vastator).
+      Les menuiseries aluminium et les charpentes en bois traités CL4 sont
+      les solutions de référence pour les zones exposées.
+    </div>
+  </div>
+  <div class="rp-section">
+    <div class="rp-head">Fin de vie & réemploi</div>
+    <div class="ped-note" style="font-size:11px">
+      La loi <strong>AGEC (2020)</strong> impose un diagnostic PEMD (Produits, Équipements,
+      Matériaux, Déchets) avant toute démolition. À La Réunion, <strong>ILEVA</strong> assure
+      la collecte et le traitement des déchets du BTP dans 6 déchetteries.
+      Le taux de valorisation matière des déchets inertes (béton, tuiles)
+      dépasse 70% à l'île.<br/><br/>
+      <strong>Amiante = coût caché majeur.</strong> Un bâtiment construit avant 1997 peut contenir de l'amiante en toiture (fibrociment), dans les dalles de sol ou les flocages. La dépose et l'évacuation coûtent 50–200 €/m² selon la surface et le type.
     </div>
   </div>
   <div class="rp-section">
@@ -122,22 +249,101 @@
 .diag-items { display:flex; flex-direction:column; gap:4px; }
 .diag-item { display:flex; align-items:center; gap:8px; padding:6px 9px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); font-size:12px; color:var(--text2); cursor:pointer; }
 .diag-item input { accent-color:var(--success); }
+.reemploi-items { display:flex; flex-direction:column; gap:4px; }
+.reemploi-item { display:flex; align-items:center; gap:8px; padding:7px 10px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); font-size:12px; color:var(--text2); cursor:pointer; transition:all var(--tx-fast); }
+.reemploi-item:hover { border-color:var(--success); }
+.reemploi-item input { accent-color:var(--success); }
+.filiere-note { background:var(--raised); border:1px solid var(--border); border-radius:var(--r-sm); padding:7px 10px; font-size:11px; color:var(--muted); margin-top:6px; line-height:1.6; }
+.maint-checks { display:flex; flex-direction:column; gap:4px; }
+.maint-item { display:flex; align-items:center; gap:8px; padding:6px 9px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); font-size:12px; color:var(--text2); cursor:pointer; }
+.maint-item input { accent-color:var(--success); }
+.corrosion-summary { background:var(--raised); border:1px solid var(--border); border-radius:var(--r); padding:10px; }
+.cs-row { display:flex; justify-content:space-between; align-items:center; padding:3px 0; font-size:11px; }
+.cs-label { color:var(--muted); }
+.cs-val { font-family:var(--font-mono); font-size:10px; color:var(--text2); font-weight:500; }
+.cs-badge { font-family:var(--font-mono); font-size:9px; font-weight:700; padding:2px 8px; border-radius:var(--r-sm); }
+.cs-badge.forte { background:var(--danger2); color:var(--danger); }
+.cs-badge.moderee { background:var(--warning2); color:var(--warning); }
+.cs-badge.faible { background:var(--success2); color:var(--success); }
 </style>
 <script type="module">
 const SessionManager = window.SessionManager;
+
+const FILIERE_NOTES = {
+  beton_inerte: 'ILEVA accepte les déchets inertes (béton, parpaing, briques) dans ses déchetteries professionnelles. Déclaration préfectorale requise pour tout remblaiement.',
+  bois_valorisation: 'Filière bois peu développée à La Réunion. Explorer réemploi local avant valorisation énergie. Traçabilité traitement anti-termites à vérifier.',
+  acier_recyclage: 'Ferraillement bien organisé à La Réunion. Bonne valorisation économique.',
+  mixte_tri: 'Tri à la source sur chantier = plus value logistique mais nécessite formation équipes et bennes séparées.'
+};
+
 const P10 = {
   toggle(el, id) {
     el.classList.toggle('checked');
     const stat = document.getElementById(`dur-${id}`);
     if (stat) stat.textContent = el.classList.contains('checked') ? '✓ Traité' : 'À évaluer';
+    // Count checked reemploi items for auto-validation (index 4)
+    P10._updateReemploiCount();
   },
   sel(label, field, val) {
     document.querySelectorAll(`[name="${field}"]`).forEach(r => r.closest('.radio-option')?.classList.remove('selected'));
     label.classList.add('selected');
     SessionManager.savePhase(10, { [field]: val });
+  },
+  _updateReemploiCount() {
+    const checked = document.querySelectorAll('.reemploi-item input:checked').length;
+    const checkItems = document.querySelectorAll('.check-item');
+    if (checkItems[4] && checked > 0) {
+      checkItems[4].classList.add('checked');
+      checkItems[4].setAttribute('aria-checked', 'true');
+    }
   }
 };
 window.P10 = P10;
+
+// Filière note dynamic
+document.querySelector('[data-session-key="filiere_dechets"]')?.addEventListener('change', function() {
+  const note = document.getElementById('filiere-note');
+  if (FILIERE_NOTES[this.value]) { note.style.display = 'block'; note.textContent = FILIERE_NOTES[this.value]; }
+  else note.style.display = 'none';
+});
+
+// Reemploi checkboxes → auto-check validation item 4
+document.querySelectorAll('.reemploi-item input').forEach(cb => {
+  cb.addEventListener('change', () => P10._updateReemploiCount());
+});
+
+// Auto-update corrosion summary from map data
+function updateCorrosionSummary() {
+  const corr = window.TERLAB_CORROSION;
+  const fil  = window.TERLAB_NEAREST_FILIERE;
+  if (corr) {
+    document.getElementById('cs-dist').textContent = `${corr.dist_km} km`;
+    const badge = document.getElementById('cs-level');
+    badge.textContent = corr.level.toUpperCase();
+    badge.className = `cs-badge ${corr.level}`;
+    document.getElementById('cs-acier').textContent = corr.level === 'faible' ? 'NON' : 'OUI';
+
+    // Auto-set corrosion select
+    const corrSelect = document.querySelector('[data-session-key="corrosion_exposition"]');
+    if (corrSelect && !corrSelect.value) {
+      const map = { forte: 'forte', 'modérée': 'moderee', moderee: 'moderee', faible: 'faible' };
+      corrSelect.value = map[corr.level] ?? '';
+      corrSelect.dispatchEvent(new Event('change'));
+    }
+  }
+  if (fil) {
+    document.getElementById('cs-filiere').textContent = `${fil.nom} — ${fil.dist_km} km`;
+  }
+}
+
+// Poll for map data (loaded async by map-viewer)
+const _csTimer = setInterval(() => {
+  if (window.TERLAB_CORROSION || window.TERLAB_NEAREST_FILIERE) {
+    updateCorrosionSummary();
+    clearInterval(_csTimer);
+  }
+}, 500);
+setTimeout(() => clearInterval(_csTimer), 15000);
 
 // enviroBAT cards
 if (window.EnvirobatCards) EnvirobatCards.render('eb-cards-p10', 'p10');

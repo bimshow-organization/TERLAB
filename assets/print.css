@@ -1,0 +1,167 @@
+/* ============================================================
+   TERLAB · print.css · MGA Architecture · 2026
+   A4 portrait · systeme typographique tri-niveaux
+   ============================================================ */
+
+:root {
+  --tc:   #C1652B;
+  --tc2:  rgba(193, 101, 43, 0.10);
+  --ink:  #1C1C1A;
+  --ink2: #6A6860;
+  --ink3: #A8A49C;
+  --bg:   #FFFFFF;
+  --bg2:  #F5F3EE;
+  --bg3:  #EDEBE6;
+  --ru:   rgba(28,28,26, 0.10);
+  --ru2:  rgba(28,28,26, 0.20);
+  --fd: 'Cormorant Garamond', Georgia, serif;
+  --fm: 'IBM Plex Mono', monospace;
+  --fu: 'Jost', system-ui, sans-serif;
+}
+
+/* --- Reset & base ------------------------------------------ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #D0CCC4;
+  font-family: var(--fu);
+}
+
+/* --- Page A4 portrait -------------------------------------- */
+.page {
+  width: 210mm;
+  min-height: 297mm;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin: 0 auto 12mm;
+  position: relative;
+}
+
+@media print {
+  body { background: white; margin: 0; }
+  .page { margin: 0; page-break-after: always; break-after: page; }
+  .page:last-child { page-break-after: avoid; }
+  @page { size: A4 portrait; margin: 0; }
+}
+
+/* --- Barre accent ------------------------------------------ */
+.tc-bar { height: 3px; background: var(--tc); flex-shrink: 0; }
+
+/* --- En-tete page ------------------------------------------ */
+.pg-head {
+  padding: 14px 40px 12px;
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 0.5px solid var(--ru2);
+  flex-shrink: 0;
+}
+.pg-brand  { font-family: var(--fm); font-size: 9px; letter-spacing: .15em; color: var(--tc); }
+.pg-sep    { color: var(--ru2); }
+.pg-sub    { font-family: var(--fu); font-size: 9px; color: var(--ink2); font-weight: 300; }
+.pg-spacer { flex: 1; height: 0.5px; background: var(--ru2); }
+
+/* --- Couverture -------------------------------------------- */
+.mode-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 9px; border: 0.5px solid var(--tc);
+  font-family: var(--fm); font-size: 7px; letter-spacing: .12em; color: var(--tc);
+  margin-bottom: 18px;
+}
+.mode-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--tc); }
+.cover-body { flex: 1; padding: 36px 40px 0; }
+.commune {
+  font-family: var(--fd); font-size: 72px; font-weight: 600;
+  line-height: .88; letter-spacing: -.02em; color: var(--ink); margin-bottom: 8px;
+}
+.parcelle-ref {
+  font-family: var(--fm); font-size: 11px; color: var(--tc); letter-spacing: .1em;
+  margin-bottom: 28px; display: flex; align-items: center; gap: 12px;
+}
+.parcelle-ref::after { content: ''; flex: 1; height: 0.5px; background: var(--tc); opacity: .3; }
+.cover-grid { display: grid; grid-template-columns: 1fr 1.45fr; gap: 24px; }
+.dr { display: flex; justify-content: space-between; align-items: baseline; padding: 7px 0; border-bottom: 0.5px solid var(--ru); }
+.dl { font-size: 8px; font-weight: 400; color: var(--ink2); text-transform: uppercase; letter-spacing: .08em; font-family: var(--fu); }
+.dv { font-family: var(--fm); font-size: 10px; color: var(--ink); text-align: right; }
+.dv.acc { color: var(--tc); } .dv.lg { font-size: 13px; } .dv.em { color: var(--ink3); font-style: italic; }
+
+/* --- En-tete planche --------------------------------------- */
+.ph {
+  padding: 16px 40px 12px;
+  display: flex; align-items: baseline; justify-content: space-between;
+  border-bottom: 0.5px solid var(--ru2); flex-shrink: 0;
+}
+.ph-brand  { font-family: var(--fm); font-size: 7px; color: var(--tc); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 3px; }
+.ph-title  { font-family: var(--fd); font-size: 22px; font-weight: 600; color: var(--ink); }
+.ph-n      { font-family: var(--fm); font-size: 9px; color: var(--ink2); text-align: right; }
+.ph-ref    { font-family: var(--fm); font-size: 7px; color: var(--ink3); text-align: right; margin-top: 2px; }
+
+/* --- Corps planche ----------------------------------------- */
+.pb      { flex: 1; padding: 20px 40px; display: grid; gap: 24px; align-content: start; }
+.pb2     { grid-template-columns: 3fr 5fr; }
+.pb3     { grid-template-columns: 1fr 1fr; }
+
+/* --- Sections de donnees ----------------------------------- */
+.sec     { display: flex; flex-direction: column; gap: 8px; }
+.stitle  { font-family: var(--fm); font-size: 7px; text-transform: uppercase; letter-spacing: .12em; color: var(--tc); padding-bottom: 4px; border-bottom: 0.5px solid var(--tc); opacity: .85; }
+.fr      { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 0; border-bottom: 0.5px solid var(--ru); }
+.fl      { font-size: 9px; font-weight: 300; color: var(--ink2); font-family: var(--fu); }
+.fv      { font-family: var(--fm); font-size: 9px; color: var(--ink); text-align: right; }
+.fv.ac  { color: var(--tc); } .fv.wa { color: #8B6A20; } .fv.ok { color: #2E5C2E; } .fv.em { color: var(--ink3); font-style: italic; }
+.fv.au::after {
+  content: 'AUTO'; font-size: 5.5px; letter-spacing: .07em;
+  color: #fff; background: var(--ink3);
+  padding: 1px 3px; margin-left: 4px; vertical-align: 1px;
+}
+
+/* --- Boite highlight --------------------------------------- */
+.hbox { background: var(--tc2); border-left: 2px solid var(--tc); padding: 8px 11px; }
+.hbox p { font-size: 9px; color: var(--ink); line-height: 1.65; font-family: var(--fu); font-weight: 300; }
+.hbox strong { font-weight: 400; color: var(--tc); font-family: var(--fm); }
+
+/* --- Cartes / placeholders --------------------------------- */
+.map-wrap { position: relative; border: 0.5px solid var(--ru2); overflow: hidden; background: var(--bg2); }
+.map-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.map-lbl { position: absolute; bottom: 6px; left: 7px; font-family: var(--fm); font-size: 6.5px; color: var(--ink2); background: var(--bg); padding: 1px 5px; border: 0.5px solid var(--ru); }
+.map-src { position: absolute; bottom: 6px; right: 7px; font-family: var(--fm); font-size: 6px; color: var(--ink3); }
+
+/* --- Scores de phases -------------------------------------- */
+.sr  { display: flex; align-items: center; gap: 7px; padding: 4px 0; border-bottom: 0.5px solid var(--ru); }
+.sl  { font-size: 8px; color: var(--ink2); flex: 1; font-family: var(--fu); font-weight: 300; }
+.sb  { width: 80px; height: 2px; background: var(--ru2); border-radius: 2px; overflow: hidden; }
+.sf  { height: 100%; border-radius: 2px; background: var(--tc); }
+.sp  { font-family: var(--fm); font-size: 8px; color: var(--ink); width: 24px; text-align: right; }
+
+/* --- Synthese items ---------------------------------------- */
+.synth-row { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; border-bottom: 0.5px solid var(--ru); }
+.si { width: 12px; flex-shrink: 0; font-family: var(--fm); font-size: 10px; margin-top: 1px; }
+.si.p { color: #3A6B3A; } .si.m { color: #8B2020; } .si.a { color: var(--tc); }
+.st { font-size: 9px; line-height: 1.55; color: var(--ink); font-family: var(--fu); font-weight: 300; }
+
+/* --- Potentiel cards --------------------------------------- */
+.pcrd { background: var(--bg2); border: 0.5px solid var(--ru2); padding: 9px; display: flex; flex-direction: column; gap: 3px; }
+.pcl  { font-family: var(--fm); font-size: 6.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink3); }
+.pcv  { font-family: var(--fd); font-size: 24px; font-weight: 600; color: var(--ink); line-height: 1; }
+.pcu  { font-family: var(--fm); font-size: 7.5px; color: var(--ink2); }
+
+/* --- Pied de planche --------------------------------------- */
+.ph-foot {
+  padding: 10px 40px;
+  border-top: 0.5px solid var(--ru2);
+  display: grid; grid-template-columns: 1fr auto auto auto 1fr;
+  align-items: center; gap: 18px; flex-shrink: 0;
+}
+.phf-c { font-family: var(--fd); font-size: 11px; font-weight: 600; color: var(--ink); }
+.phf-m { font-family: var(--fm); font-size: 6.5px; color: var(--tc); letter-spacing: .1em; text-transform: uppercase; }
+.phf-e { font-family: var(--fm); font-size: 6.5px; color: var(--ink3); }
+.phf-n { font-family: var(--fm); font-size: 14px; color: var(--ru2); text-align: right; }
+
+/* --- Pied de couverture ------------------------------------ */
+.pg-foot { padding: 12px 40px; border-top: 0.5px solid var(--ru); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+.pf { font-family: var(--fm); font-size: 7px; color: var(--ink3); letter-spacing: .04em; }
+
+/* --- Potentiel grid (cover) -------------------------------- */
+.pot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+
+/* --- Cover map --------------------------------------------- */
+.cover-map { width: 100%; height: 180px; }

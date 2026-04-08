@@ -99,10 +99,15 @@
     <div class="export-panel">
 
       <div class="ep-main">
-        <button class="ep-btn ep-pdf" onclick="TerlabExport.generatePDF()">
+        <button class="ep-btn ep-pdf" id="btn-export-pdf" onclick="TerlabExport.generatePDF('site')">
           <span class="ep-icon">📄</span>
-          <div class="ep-label">PDF A3 — 6 pages</div>
-          <div class="ep-desc">Synthèse complète · Cartouche ENSA La Réunion</div>
+          <div class="ep-label">PDF A4 — Analyse site</div>
+          <div class="ep-desc">8 planches A4 portrait · print natif</div>
+        </button>
+        <button class="ep-btn ep-pdf" onclick="TerlabExport.generatePDF('projet')">
+          <span class="ep-icon">📐</span>
+          <div class="ep-label">PDF A4 — Projet</div>
+          <div class="ep-desc">9 planches A4 portrait · plan masse inclus</div>
         </button>
       </div>
 
@@ -144,12 +149,11 @@
           <span style="font-size:28px">📱</span>
           <span style="font-family:monospace;font-size:9px;color:var(--faint)">Générer le QR code</span>
         </div>
-        <canvas id="qr-canvas" style="display:none;max-width:120px;max-height:120px"></canvas>
+        <div id="qr-img-wrap" style="display:none"></div>
       </div>
       <div class="qr-info">
         <div class="qr-url" id="qr-url">bimshow.io/terlab/#session/…</div>
         <button class="qr-btn" onclick="P12.generateQR()">Générer QR code</button>
-        <div class="stub-warning" style="margin-top:4px">⚠️ STUB — Librairie QR code à intégrer</div>
       </div>
     </div>
   </div>
@@ -295,10 +299,32 @@ const P12 = {
   },
 
   generateQR() {
-    // ⚠️ STUB — librairie QR code à intégrer
-    window.TerlabToast?.show('QR code — STUB. Librairie qrcode-generator à intégrer.', 'warning', 5000);
     const url = `https://bimshow.io/terlab/#session/${SessionManager._sessionId}`;
     document.getElementById('qr-url').textContent = url;
+
+    const wrap = document.getElementById('qr-img-wrap');
+    const placeholder = document.getElementById('qr-placeholder');
+    if (!wrap) return;
+
+    if (typeof qrcode === 'undefined') {
+      window.TerlabToast?.show('Librairie QR code non chargée', 'warning', 4000);
+      return;
+    }
+
+    try {
+      const qr = qrcode(0, 'M');
+      qr.addData(url);
+      qr.make();
+      wrap.innerHTML = qr.createImgTag(3, 6);
+      wrap.querySelector('img').style.cssText = 'display:block;margin:0 auto;border-radius:4px';
+      wrap.style.display = 'block';
+      if (placeholder) placeholder.style.display = 'none';
+      window.TerlabToast?.show('QR code généré', 'success', 2000);
+    } catch (e) {
+      console.warn('QR code generation failed:', e);
+      wrap.innerHTML = `<span style="font-family:monospace;font-size:9px;color:var(--muted);word-break:break-all">${url}</span>`;
+      wrap.style.display = 'block';
+    }
   },
 
   async syncFirebase() {

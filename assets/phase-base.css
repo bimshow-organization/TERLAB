@@ -1,0 +1,193 @@
+/* ================================================================
+   TERLAB · phase-base.css · Styles communs à toutes les phases
+   MGA Architecture · ENSA La Réunion · 2026
+
+   NOTE : Les styles de base des composants de phase (form-section,
+   val-block, check-item, field-input, etc.) sont centralisés dans
+   terlab-shell.css §9-14. Ce fichier contient les styles additionnels
+   partagés entre phases qui ne sont PAS dans le shell.
+   ================================================================ */
+
+/* ── Grille de données détectées (P00, P01, P02…) ── */
+.detected-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+.det-cell {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 6px 9px;
+}
+.det-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--faint);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 2px;
+}
+.det-val {
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 500;
+  display: block;
+}
+
+/* ── Bouton action phase (topo, detect, lidar…) ── */
+.action-btn,
+.search-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  background: var(--accent2, rgba(154,120,32,.08));
+  border: 1px solid rgba(154,120,32,.22);
+  border-radius: var(--r-sm);
+  color: var(--accent);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  transition: all var(--tx-fast);
+}
+.action-btn:hover,
+.search-btn:hover {
+  background: rgba(154,120,32,.16);
+  border-color: rgba(154,120,32,.35);
+}
+.action-btn:disabled,
+.search-btn:disabled {
+  opacity: .4;
+  pointer-events: none;
+}
+.search-btn.wide {
+  justify-content: center;
+  width: 100%;
+}
+
+/* ── Input avec bouton accolé ── */
+.input-with-btn {
+  display: flex;
+  gap: 6px;
+}
+.input-with-btn .field-input {
+  flex: 1;
+}
+
+/* ── Alertes contextuelles (altitude, zone A, inondation…) ── */
+.phase-alert {
+  border-radius: var(--r-sm);
+  padding: 7px 10px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+.phase-alert.warning {
+  background: rgba(245,158,11,.1);
+  border: 1px solid rgba(245,158,11,.3);
+  border-left: 3px solid var(--warning);
+  color: var(--warning);
+}
+.phase-alert.danger {
+  background: var(--danger2);
+  border: 1px solid rgba(242,87,87,.3);
+  border-left: 3px solid var(--danger);
+  color: var(--danger);
+}
+.phase-alert.info {
+  background: var(--accent3);
+  border: 1px solid var(--border2);
+  border-left: 3px solid var(--accent);
+  color: var(--accent);
+}
+.alert-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+/* ── Tabs de mode (recherche, affichage, etc.) ── */
+.search-mode-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.mode-tab {
+  padding: 5px 11px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .06em;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border2);
+  background: var(--card);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all var(--tx-fast);
+}
+.mode-tab.active {
+  background: var(--accent2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.mode-panel.hidden {
+  display: none;
+}
+
+/* ── Notes pédagogiques (right panel) ── */
+.ped-note {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.65;
+  font-style: italic;
+  padding: 10px 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  margin-bottom: 8px;
+}
+.ped-note strong {
+  color: var(--text2);
+  font-weight: 600;
+}
+
+/* ── Right panel section ── */
+.rp-section {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.rp-head {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+/* ── API status indicator ── */
+.api-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--faint);
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  background: var(--card);
+  border: 1px solid var(--border);
+}
+.api-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+.api-status-dot.live { background: var(--success); }
+.api-status-dot.stub { background: var(--warning); }
+.api-status-dot.error { background: var(--danger); }

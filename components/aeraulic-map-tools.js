@@ -28,14 +28,20 @@ const AeraulicMapTools = {
     this._clickHandler = (e) => {
       const pt = e.point;
 
-      // D3 : couche réelle = 'buildings-3d' (map-viewer.js)
-      const BUILDING_LAYERS = [
-        'buildings-3d',
-      ].filter(l => { try { return !!map.getLayer(l); } catch { return false; } });
+      // Détection robuste : couche TERLAB ou couche Mapbox native fill-extrusion
+      const candidates = ['buildings-3d', 'building', 'building-extrusion', '3d-buildings'];
+      const BUILDING_LAYERS = candidates.filter(l => {
+        try { return !!map.getLayer(l); } catch { return false; }
+      });
+      if (!BUILDING_LAYERS.length) {
+        // Fallback : chercher toute couche fill-extrusion
+        const style = map.getStyle();
+        const ext = style?.layers?.find(l => l.type === 'fill-extrusion');
+        if (ext) BUILDING_LAYERS.push(ext.id);
+      }
 
       if (!BUILDING_LAYERS.length) {
-        // ⚠️ STUB — Couche bâtiments non trouvée — effort XS : vérifier nom couche
-        window.TerlabToast?.show('Couche bâtiments non détectée — zoomez > 15', 'warning', 4000);
+        window.TerlabToast?.show('Couche bâtiments non détectée — activez le mode 3D ou zoomez > 15', 'warning', 4000);
         return;
       }
 
@@ -79,7 +85,8 @@ const AeraulicMapTools = {
         W = Math.max(2, Math.min(W, 50));
       }
 
-      const L  = W * 1.5; // ⚠️ STUB estimation — effort XS : mesure réelle du profil bâti
+      const profileData = window.SessionManager?.getPhase?.(1)?.data?.profil_altimetrique;
+      const L  = profileData?.longueur_m ?? W * 1.5;
       const Rb = MU.blockageRatio(W, H, L);
       const Vrel = MU.streetVelocity(Rb);
       const { C, label: cLabel, ok } = MU.ventilationC(Vrel, 1.0);

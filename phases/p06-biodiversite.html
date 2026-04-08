@@ -305,9 +305,10 @@
 </style>
 
 <script type="module">
-const SessionManager = window.SessionManager;
-const MapViewer      = window.TerlabMap;
-const OBIAService    = window.OBIAService;
+const SessionManager       = window.SessionManager;
+const MapViewer            = window.TerlabMap;
+const OBIAService          = window.OBIAService;
+const BiodiversiteService  = window.BiodiversiteService;
 
 const PARC_ALERTS = {
   adhesion_500m: '⚠ Zone d\'adhésion Parc National à moins de 500m. Éclairage nocturne orienté vers le bas obligatoire. Contacter SEOR pour inventaire faunistique si travaux proches.',
@@ -517,6 +518,47 @@ const terrain = SessionManager.getTerrain();
 if (terrain?.commune) document.getElementById('ts-commune-p6').textContent = terrain.commune;
 
 window.P06 = P06;
+
+// ─── Auto-détection ZNIEFF & Parc National via BiodiversiteService ───
+(async () => {
+  if (!BiodiversiteService || !terrain?.lat || !terrain?.lng) return;
+  try {
+    await BiodiversiteService.init();
+    const check = BiodiversiteService.checkPoint(parseFloat(terrain.lat), parseFloat(terrain.lng));
+    if (!check) return;
+
+    // Auto-sélection ZNIEFF
+    if (check.inZnieff1) {
+      const opt = document.querySelector('input[name="znieff"][value="terrain"]');
+      if (opt && !opt.checked) { opt.checked = true; opt.closest('.radio-option')?.classList.add('selected'); }
+      const note = document.getElementById('znieff-note');
+      if (note) note.style.display = 'block';
+      SessionManager.saveTerrain({ znieff: 'terrain' });
+    } else if (check.inZnieff2) {
+      const opt = document.querySelector('input[name="znieff"][value="type2_500m"]');
+      if (opt && !opt.checked) { opt.checked = true; opt.closest('.radio-option')?.classList.add('selected'); }
+      SessionManager.saveTerrain({ znieff: 'type2_500m' });
+    }
+
+    // Auto-sélection Parc National
+    if (check.inParcNat) {
+      const zone = check.zones.find(z => z.type === 'parc');
+      const val = zone?.nom?.toLowerCase().includes('coeur') || zone?.nom?.toLowerCase().includes('cœur') ? 'coeur' : 'adhesion';
+      const opt = document.querySelector(`input[name="parc"][value="${val}"]`);
+      if (opt && !opt.checked) { opt.checked = true; opt.closest('.radio-option')?.classList.add('selected'); }
+      P06.selectParc(opt?.closest('.radio-option'), val);
+    }
+
+    // Afficher les couches sur la carte
+    const map = MapViewer?.getMap();
+    if (map && check.zones.length) {
+      const names = check.zones.map(z => `${z.nom} (${z.type})`).join(', ');
+      window.TerlabToast?.show(`Biodiversité : ${names}`, 'info', 5000);
+    }
+  } catch (e) {
+    console.warn('[P06] BiodiversiteService auto-detect failed:', e.message);
+  }
+})();
 
 // enviroBAT cards
 if (window.EnvirobatCards) EnvirobatCards.render('eb-cards-p06', 'p06');

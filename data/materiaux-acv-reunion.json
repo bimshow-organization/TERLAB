@@ -1,0 +1,14 @@
+{
+  "note": "Données INIES adaptées contexte DOM — émissions CO₂ équivalent par m² de surface plancher",
+  "source": "Base INIES + ajustements transport insulaire La Réunion",
+  "materiaux": {
+    "Béton armé (local)":        { "co2_kg_m2": 280, "unite": "kg CO₂e/m²", "categorie": "structure" },
+    "Acier charpente":           { "co2_kg_m2": 85,  "unite": "kg CO₂e/m²", "categorie": "structure" },
+    "Bois pin des Caraïbes":     { "co2_kg_m2": -30, "unite": "kg CO₂e/m²", "categorie": "structure" },
+    "Parpaing béton (local)":    { "co2_kg_m2": 62,  "unite": "kg CO₂e/m²", "categorie": "enveloppe" },
+    "Tôle galvanisée (toiture)": { "co2_kg_m2": 32,  "unite": "kg CO₂e/m²", "categorie": "enveloppe" },
+    "Fibre ciment":              { "co2_kg_m2": 48,  "unite": "kg CO₂e/m²", "categorie": "enveloppe" },
+    "Enduit chaux/sable local":  { "co2_kg_m2": 18,  "unite": "kg CO₂e/m²", "categorie": "finition" },
+    "Peinture":                  { "co2_kg_m2": 4,   "unite": "kg CO₂e/m²", "categorie": "finition" }
+  }
+}

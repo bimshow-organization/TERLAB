@@ -8,28 +8,28 @@
     "sources": {
       "97401": "Règlement PLU Les Avirons — GPU DU_97401 — 97401_reglement_20241206.pdf",
       "97402": "GPU DU_97402",
-      "97403": "Règlement PLU Cilaos — GPU DU_97424 — 97424_reglement_20240213.pdf",
-      "97404": "GPU DU_97403",
-      "97405": "GPU DU_97404 — 97404_reglement_20250917.pdf",
-      "97406": "GPU DU_97405 — 97405_reglement_20230527.pdf",
-      "97407": "GPU DU_97406 — 97406_reglement_20230527.pdf",
-      "97408": "plu-rules-le-port.json",
-      "97409": "GPU DU_97408 — 97408_reglement_20251217.pdf",
-      "97410": "Règlement PLU Saint-André — 97410_saint-andre_reglement.pdf (fourni directement)",
-      "97411": "Règlement PLU Saint-Benoît — GPU DU_97410 — 97410_reglement_20200206.pdf",
-      "97412": "Règlement PLU Saint-Denis — GPU DU_97411 — 97411_reglement_20240220.pdf",
-      "97413": "GPU DU_97412 — 97412_Reglement_20240320.pdf",
-      "97414": "Règlement écrit PLU Saint-Leu — 97414_saint-leu_reglement.pdf (fourni directement)",
-      "97415": "Règlement PLU Saint-Louis — GPU DU_97414 — 97414_reglement_20251218.pdf",
-      "97416": "Règlement PLU Saint-Paul — Titres I à VI",
+      "97403": "GPU DU_97403",
+      "97404": "GPU DU_97404 — 97404_reglement_20250917.pdf",
+      "97405": "GPU DU_97405 — 97405_reglement_20230527.pdf",
+      "97406": "GPU DU_97406 — 97406_reglement_20230527.pdf",
+      "97407": "plu-rules-le-port.json",
+      "97408": "GPU DU_97408 — 97408_reglement_20251217.pdf",
+      "97409": "Règlement PLU Saint-André — 97410_saint-andre_reglement.pdf (fourni directement)",
+      "97410": "Règlement PLU Saint-Benoît — GPU DU_97410 — 97410_reglement_20200206.pdf",
+      "97411": "Règlement PLU Saint-Denis — GPU DU_97411 — 97411_reglement_20240220.pdf",
+      "97412": "GPU DU_97412 — 97412_Reglement_20240320.pdf",
+      "97413": "Règlement écrit PLU Saint-Leu — 97414_saint-leu_reglement.pdf (fourni directement)",
+      "97414": "Règlement PLU Saint-Louis — GPU DU_97414 — 97414_reglement_20251218.pdf",
+      "97415": "Règlement PLU Saint-Paul — Titres I à VI",
+      "97416": "plu-rules-saint-pierre.json",
       "97417": "Règlement PLU non disponible sur le GPU ni en téléchargement direct. À chercher auprès de la mairie ou de la CASUD.",
-      "97418": "plu-rules-saint-pierre.json",
-      "97419": "Règlement PLU Sainte-Marie — GPU DU_97418 — 97418_reglement_20251126.pdf",
-      "97420": "Règlement PLU Sainte-Rose — GPU DU_97419 — 97419_reglement_20190504.pdf",
-      "97421": "GPU DU_97420",
+      "97418": "Règlement PLU Sainte-Marie — GPU DU_97418 — 97418_reglement_20251126.pdf",
+      "97419": "Règlement PLU Sainte-Rose — GPU DU_97419 — 97419_reglement_20190504.pdf",
+      "97420": "GPU DU_97420",
+      "97421": "GPU DU_97421",
       "97422": "Règlement PLU Le Tampon — GPU DU_97422 — 97422_reglement_20230811.pdf",
       "97423": "Règlement PLU Trois-Bassins — GPU DU_97423 — 97423_reglement_20220602.pdf",
-      "97424": "GPU DU_97421"
+      "97424": "Règlement PLU Cilaos — GPU DU_97424 — 97424_reglement_20240213.pdf"
     },
     "note": "Fichier assemblé automatiquement depuis les extractions individuelles. Golden standard: Saint-Paul. Saint-Philippe: PLU introuvable."
   },
@@ -41,7 +41,7 @@
         "generated": "2026-04-07",
         "commune": "Les Avirons",
         "insee": "97401",
-        "intercommunalite": "TCO",
+        "intercommunalite": "CIVIS",
         "plu_type": "PLU",
         "plu_date_approbation": "2024-12-06",
         "source": "Règlement PLU Les Avirons — GPU DU_97401 — 97401_reglement_20241206.pdf"
@@ -658,216 +658,8 @@
         "version": "2026-04",
         "region": "La Réunion",
         "generated": "2026-04-07",
-        "commune": "Cilaos",
-        "insee": "97403",
-        "intercommunalite": "CIVIS",
-        "plu_type": "PLU",
-        "plu_date_approbation": "2008-02-06",
-        "plu_modifications": [
-          "Modification 2024-02-13"
-        ],
-        "source": "Règlement PLU Cilaos — GPU DU_97424 — 97424_reglement_20240213.pdf"
-      },
-      "zones": {
-        "Ua": {
-          "label": "Centre-bourg Cilaos",
-          "type": "U",
-          "sous_type": "centre_urbain",
-          "reculs": {
-            "voie_principale_m": 0,
-            "voie_alignement": true,
-            "voie_alternative_m": 3,
-            "voie_note": "Alignement ou retrait min 3m",
-            "sep_lat_m": 3,
-            "sep_lat_limite_autorisee": true,
-            "sep_lat_longueur_hab_m": 15,
-            "sep_lat_longueur_autre_m": 20,
-            "sep_fond_m": 3
-          },
-          "hauteurs": {
-            "he_max_m": 10,
-            "hf_max_m": 14,
-            "annexe_hf_max_m": 3.5,
-            "annexe_emprise_max_m2": 40
-          },
-          "emprise": {
-            "emprise_sol_max_pct": 80,
-            "annexe_emprise_max_m2": 40
-          },
-          "permeabilite": {
-            "permeable_min_pct": 10
-          },
-          "toiture": {
-            "versants_obligatoire": true,
-            "versants_pct_volume": 60,
-            "pente_min_pct": 30,
-            "pente_max_pct": 100
-          },
-          "_meta": {
-            "confidence": 1,
-            "ambiguites": []
-          }
-        },
-        "UAh": {
-          "label": "Secteur patrimonial centre historique Cilaos",
-          "type": "U",
-          "sous_type": "centre_patrimonial",
-          "ref": "Ua",
-          "ref_note": "Règles Ua sauf hauteurs réduites",
-          "hauteurs": {
-            "he_max_m": 7,
-            "hf_max_m": 11
-          },
-          "_meta": {
-            "confidence": 1,
-            "ambiguites": []
-          }
-        },
-        "Ub": {
-          "label": "Zone résidentielle intermédiaire",
-          "type": "U",
-          "sous_type": "résidentielle_intermédiaire",
-          "reculs": {
-            "voie_principale_m": 0,
-            "voie_alignement": true,
-            "voie_alternative_m": 3,
-            "sep_lat_m": 3,
-            "sep_lat_limite_autorisee": true,
-            "sep_lat_longueur_hab_m": 15,
-            "sep_lat_longueur_autre_m": 20,
-            "sep_fond_m": 3
-          },
-          "hauteurs": {
-            "he_max_m": 7,
-            "hf_max_m": 11,
-            "annexe_hf_max_m": 3.5,
-            "annexe_emprise_max_m2": 40
-          },
-          "emprise": {
-            "emprise_sol_max_pct": 50,
-            "annexe_emprise_max_m2": 40
-          },
-          "permeabilite": {
-            "permeable_min_pct": 40
-          },
-          "_meta": {
-            "confidence": 1,
-            "ambiguites": []
-          }
-        },
-        "Uc": {
-          "label": "Zone résidentielle diffuse — hauts et ilets",
-          "type": "U",
-          "sous_type": "résidentielle_diffuse",
-          "reculs": {
-            "voie_principale_m": 4,
-            "sep_lat_m": 3,
-            "sep_lat_limite_autorisee": true,
-            "sep_lat_longueur_m": 15,
-            "sep_fond_m": 3
-          },
-          "hauteurs": {
-            "he_max_m": 4,
-            "hf_max_m": 8,
-            "annexe_hf_max_m": 3.5,
-            "annexe_emprise_max_m2": 40
-          },
-          "emprise": {
-            "emprise_sol_max_pct": null,
-            "note": "Hors espaces boisés classés"
-          },
-          "permeabilite": {
-            "permeable_min_pct": null
-          },
-          "_meta": {
-            "confidence": 0.8,
-            "ambiguites": [
-              "Emprise Uc non chiffrée explicitement"
-            ]
-          }
-        },
-        "AUst": {
-          "label": "Zone à urbaniser — études préalables",
-          "type": "AU",
-          "sous_type": "strict",
-          "construction_neuve_interdite": true,
-          "reculs": {
-            "voie_principale_m": 4,
-            "sep_lat_m": 3,
-            "sep_fond_m": 3
-          },
-          "_meta": {
-            "confidence": 1,
-            "ambiguites": []
-          }
-        },
-        "AUindicee": {
-          "label": "Zones à urbaniser",
-          "type": "AU",
-          "ref": "zone U correspondante",
-          "_meta": {
-            "confidence": 1,
-            "ambiguites": []
-          }
-        },
-        "A": {
-          "label": "Zone agricole",
-          "type": "A",
-          "reculs": {
-            "voie_principale_m": 10,
-            "voie_note": "Recul 10m depuis axe voie",
-            "sep_lat_m": 4,
-            "sep_fond_m": 4
-          },
-          "hauteurs": {
-            "he_max_m": 4,
-            "hf_max_m": 7
-          },
-          "emprise": {
-            "emprise_sol_max_pct": null
-          },
-          "_meta": {
-            "confidence": 1,
-            "ambiguites": []
-          }
-        },
-        "N": {
-          "label": "Zone naturelle",
-          "type": "N",
-          "reculs": {
-            "voie_principale_m": 10,
-            "sep_lat_m": 5,
-            "sep_fond_m": 5
-          },
-          "hauteurs": {
-            "hf_max_m": 6,
-            "annexe_hf_max_m": 3.5,
-            "note": "6m au faîtage, pas de règle hé"
-          },
-          "emprise": {
-            "annexe_max_m2_par_logement": 40
-          },
-          "_meta": {
-            "confidence": 1,
-            "ambiguites": []
-          }
-        }
-      },
-      "regles_communes": {
-        "ravine_recul_m": 10,
-        "cloture_voie_hauteur_max_m": 2,
-        "mur_soutenement_max_m": 3,
-        "bonus_risque_inondation_m": 1,
-        "rtaa_dom": "2016"
-      }
-    },
-    "97404": {
-      "meta": {
-        "version": "2026-04",
-        "region": "La Réunion",
-        "generated": "2026-04-07",
         "commune": "Entre-Deux",
-        "insee": "97404",
+        "insee": "97403",
         "intercommunalite": "CASUD",
         "plu_type": "PLU",
         "plu_date_approbation": "2024-09-24",
@@ -1022,14 +814,14 @@
         "rtaa_dom": "2016"
       }
     },
-    "97405": {
+    "97404": {
       "meta": {
         "version": "2026-04",
         "region": "La Réunion",
         "generated": "2026-04-07",
         "commune": "L'Étang-Salé",
-        "insee": "97405",
-        "intercommunalite": "TCO",
+        "insee": "97404",
+        "intercommunalite": "CIVIS",
         "plu_type": "PLU",
         "plu_date_approbation": "2017-06-22",
         "plu_modifications": [
@@ -1163,14 +955,14 @@
         "rtaa_dom": "2016"
       }
     },
-    "97406": {
+    "97405": {
       "meta": {
         "version": "2026-04",
         "region": "La Réunion",
         "generated": "2026-04-07",
         "commune": "Petite-Île",
-        "insee": "97406",
-        "intercommunalite": "CASUD",
+        "insee": "97405",
+        "intercommunalite": "CIVIS",
         "plu_type": "PLU",
         "plu_date_approbation": "2017-02-23",
         "plu_modifications": [
@@ -1308,13 +1100,13 @@
         "rtaa_dom": "2016"
       }
     },
-    "97407": {
+    "97406": {
       "meta": {
         "version": "2026-04",
         "region": "La Réunion",
         "generated": "2026-04-07",
         "commune": "La Plaine-des-Palmistes",
-        "insee": "97407",
+        "insee": "97406",
         "intercommunalite": "CIREST",
         "plu_type": "PLU",
         "plu_date_approbation": "2013-05-29",
@@ -1441,13 +1233,13 @@
         "rtaa_dom": "2016"
       }
     },
-    "97408": {
+    "97407": {
       "meta": {
         "version": "2026-04",
         "region": "La Réunion",
         "generated": "2026-04-07",
         "commune": "Le Port",
-        "insee": "97408",
+        "insee": "97407",
         "intercommunalite": "TCO",
         "plu_type": "PLU",
         "plu_date_approbation": "2018-10-02",
@@ -2438,13 +2230,13 @@
         }
       }
     },
-    "97409": {
+    "97408": {
       "meta": {
         "version": "2026-04",
         "region": "La Réunion",
         "generated": "2026-04-07",
         "commune": "La Possession",
-        "insee": "97409",
+        "insee": "97408",
         "intercommunalite": "TCO",
         "plu_type": "PLU",
         "plu_date_approbation": "2019-06-12",
@@ -2617,13 +2409,13 @@
         "rtaa_dom": "2016"
       }
     },
-    "97410": {
+    "97409": {
       "meta": {
         "version": "2026-04",
         "region": "La Réunion",
         "generated": "2026-04-07",
         "commune": "Saint-André",
-        "insee": "97410",
+        "insee": "97409",
         "intercommunalite": "CIREST",
         "plu_type": "PLU",
         "plu_date_approbation": "2019-02-28",
@@ -2867,13 +2659,13 @@
         "rtaa_dom": "2016"
       }
     },
-    "97411": {
+    "97410": {
       "meta": {
         "version": "2026-04",
         "region": "La Réunion",
         "generated": "2026-04-07",
         "commune": "Saint-Benoît",
-        "insee": "97411",
+        "insee": "97410",
         "intercommunalite": "CIREST",
         "plu_type": "PLU",
         "plu_date_approbation": "2020-02-06",
@@ -3224,13 +3016,13 @@
         "rtaa_dom": "2016"
       }
     },
-    "97412": {
+    "97411": {
       "meta": {
         "version": "2026-04",
         "region": "La Réunion",
         "generated": "2026-04-07",
         "commune": "Saint-Denis",
-        "insee": "97412",
+        "insee": "97411",
         "intercommunalite": "CINOR",
         "plu_type": "PLU",
         "plu_date_approbation": "2004-12-01",
@@ -3617,13 +3409,13 @@
         "rtaa_dom": "2016"
       }
     },
-    "97413": {
+    "97412": {
       "meta": {
         "version": "2026-04",
         "region": "La Réunion",
         "generated": "2026-04-07",
         "commune": "Saint-Joseph",
-        "insee": "97413",
+        "insee": "97412",
         "intercommunalite": "CASUD",
         "plu_type": "PLU",
         "plu_date_approbation": "2019-06-26",
@@ -3815,13 +3607,13 @@
         "rtaa_dom": "2016"
       }
     },
-    "97414": {
+    "97413": {
       "meta": {
         "version": "2026-04",
         "region": "La Réunion",
         "generated": "2026-04-07",
         "commune": "Saint-Leu",
-        "insee": "97414",
+        "insee": "97413",
         "intercommunalite": "TCO",
         "plu_type": "PLU",
         "plu_date_approbation": "2024-06-25",
@@ -4087,13 +3879,13 @@
         "rtaa_dom": "2016"
       }
     },
-    "97415": {
+    "97414": {
       "meta": {
         "version": "2026-04",
         "region": "La Réunion",
         "generated": "2026-04-07",
         "commune": "Saint-Louis",
-        "insee": "97415",
+        "insee": "97414",
         "intercommunalite": "CIVIS",
         "plu_type": "PLU",
         "plu_date_approbation": "2014-03-11",
@@ -4800,13 +4592,13 @@
         "rtaa_dom": "2016"
       }
     },
-    "97416": {
+    "97415": {
       "meta": {
         "version": "2026-04",
         "region": "La Réunion",
         "generated": "2026-04-07",
         "commune": "Saint-Paul",
-        "insee": "97416",
+        "insee": "97415",
         "intercommunalite": "TCO",
         "plu_type": "PLU",
         "plu_date_approbation": "2021-09-27",
@@ -7022,27 +6814,13 @@
         "palette_vegetale_reference": "Titre VI PLU Saint-Paul — 4 palettes (bord de mer, bas <500m, hauts >500m, Mafate)"
       }
     },
-    "97417": {
-      "meta": {
-        "version": "2026-04",
-        "region": "La Réunion",
-        "generated": "2026-04-07",
-        "commune": "Saint-Philippe",
-        "insee": "97417",
-        "intercommunalite": "CASUD",
-        "plu_type": "PLU",
-        "status": "PLU_INTROUVABLE",
-        "note": "Règlement PLU non disponible sur le GPU ni en téléchargement direct. À chercher auprès de la mairie ou de la CASUD."
-      },
-      "zones": {}
-    },
-    "97418": {
+    "97416": {
       "meta": {
         "version": "2026-04",
         "region": "La Réunion",
         "generated": "2026-04-07",
         "commune": "Saint-Pierre",
-        "insee": "97418",
+        "insee": "97416",
         "intercommunalite": "CIVIS",
         "plu_type": "EcoPLU",
         "plu_date_approbation": "2024-06-25",
@@ -8224,13 +8002,27 @@
         }
       }
     },
-    "97419": {
+    "97417": {
+      "meta": {
+        "version": "2026-04",
+        "region": "La Réunion",
+        "generated": "2026-04-07",
+        "commune": "Saint-Philippe",
+        "insee": "97417",
+        "intercommunalite": "CASUD",
+        "plu_type": "PLU",
+        "status": "PLU_INTROUVABLE",
+        "note": "Règlement PLU non disponible sur le GPU ni en téléchargement direct. À chercher auprès de la mairie ou de la CASUD."
+      },
+      "zones": {}
+    },
+    "97418": {
       "meta": {
         "version": "2026-04",
         "region": "La Réunion",
         "generated": "2026-04-07",
         "commune": "Sainte-Marie",
-        "insee": "97419",
+        "insee": "97418",
         "intercommunalite": "CINOR",
         "plu_type": "PLU",
         "plu_date_approbation": "2025-11-26",
@@ -8735,13 +8527,13 @@
         "equivalent_logement_m2": 80
       }
     },
-    "97420": {
+    "97419": {
       "meta": {
         "version": "2026-04",
         "region": "La Réunion",
         "generated": "2026-04-07",
         "commune": "Sainte-Rose",
-        "insee": "97420",
+        "insee": "97419",
         "intercommunalite": "CIREST",
         "plu_type": "PLU",
         "plu_date_approbation": "2019-05-04",
@@ -8971,13 +8763,13 @@
         "rtaa_dom": "2016"
       }
     },
-    "97421": {
+    "97420": {
       "meta": {
         "version": "2026-04",
         "region": "La Réunion",
         "generated": "2026-04-07",
         "commune": "Sainte-Suzanne",
-        "insee": "97421",
+        "insee": "97420",
         "intercommunalite": "CINOR",
         "plu_type": "PLU",
         "plu_date_approbation": "2025-09-29",
@@ -9068,6 +8860,178 @@
           },
           "hauteurs": {
             "h_max_m": 6
+          },
+          "_meta": {
+            "confidence": 1,
+            "ambiguites": []
+          }
+        }
+      },
+      "regles_communes": {
+        "ravine_recul_m": 10,
+        "cloture_voie_hauteur_max_m": 2,
+        "rtaa_dom": "2016"
+      }
+    },
+    "97421": {
+      "meta": {
+        "version": "2026-04",
+        "region": "La Réunion",
+        "generated": "2026-04-07",
+        "commune": "Salazie",
+        "insee": "97421",
+        "intercommunalite": "CIREST",
+        "plu_type": "PLU",
+        "plu_date_approbation": "2022-05-24",
+        "source": "GPU DU_97421"
+      },
+      "zones": {
+        "UA": {
+          "label": "Centre-bourg",
+          "type": "U",
+          "sous_type": "centre_urbain",
+          "reculs": {
+            "voie_principale_m": 3,
+            "sep_lat_m": 3,
+            "sep_fond_m": 3
+          },
+          "hauteurs": {
+            "he_max_m": 12,
+            "annexe_hf_max_m": 3.5
+          },
+          "permeabilite": {
+            "permeable_min_pct": 10
+          },
+          "_meta": {
+            "confidence": 1,
+            "ambiguites": []
+          }
+        },
+        "UA1": {
+          "label": "Centre historique",
+          "type": "U",
+          "ref": "UA",
+          "hauteurs": {
+            "he_max_m": 7
+          },
+          "_meta": {
+            "confidence": 1,
+            "ambiguites": []
+          }
+        },
+        "UB": {
+          "label": "Résidentiel intermédiaire",
+          "type": "U",
+          "reculs": {
+            "voie_principale_m": 3,
+            "sep_lat_m": 3,
+            "sep_fond_m": 3
+          },
+          "hauteurs": {
+            "he_max_m": 12,
+            "annexe_hf_max_m": 3.5
+          },
+          "permeabilite": {
+            "permeable_min_pct": 20
+          },
+          "_meta": {
+            "confidence": 1,
+            "ambiguites": []
+          }
+        },
+        "UC": {
+          "label": "Résidentiel diffus",
+          "type": "U",
+          "reculs": {
+            "voie_principale_m": 3,
+            "sep_lat_m": 3,
+            "sep_fond_m": 3
+          },
+          "hauteurs": {
+            "he_max_m": 9,
+            "annexe_hf_max_m": 3.5
+          },
+          "permeabilite": {
+            "permeable_min_pct": 25
+          },
+          "_meta": {
+            "confidence": 1,
+            "ambiguites": []
+          }
+        },
+        "UT": {
+          "label": "Tourisme",
+          "type": "U",
+          "sous_type": "touristique",
+          "reculs": {
+            "voie_principale_m": 3,
+            "sep_lat_m": 3,
+            "sep_fond_m": 3
+          },
+          "hauteurs": {
+            "he_max_m": 12
+          },
+          "permeabilite": {
+            "permeable_min_pct": 25
+          },
+          "_meta": {
+            "confidence": 1,
+            "ambiguites": []
+          }
+        },
+        "AU": {
+          "label": "Zones AU",
+          "type": "AU",
+          "ref": "zone U",
+          "_meta": {
+            "confidence": 1,
+            "ambiguites": []
+          }
+        },
+        "AUE": {
+          "label": "AU économique",
+          "type": "AU",
+          "sous_type": "activites",
+          "reculs": {
+            "voie_principale_m": 3
+          },
+          "hauteurs": {
+            "he_max_m": 12
+          },
+          "permeabilite": {
+            "permeable_min_pct": 25
+          },
+          "_meta": {
+            "confidence": 1,
+            "ambiguites": []
+          }
+        },
+        "A": {
+          "label": "Agricole",
+          "type": "A",
+          "reculs": {
+            "voie_principale_m": 4,
+            "sep_lat_m": 5
+          },
+          "hauteurs": {
+            "he_max_m": 4,
+            "hf_max_m": 7
+          },
+          "_meta": {
+            "confidence": 1,
+            "ambiguites": []
+          }
+        },
+        "N": {
+          "label": "Naturelle",
+          "type": "N",
+          "reculs": {
+            "voie_principale_m": 4,
+            "sep_lat_m": 5
+          },
+          "hauteurs": {
+            "he_max_m": 4,
+            "hf_max_m": 7
           },
           "_meta": {
             "confidence": 1,
@@ -9688,144 +9652,173 @@
         "version": "2026-04",
         "region": "La Réunion",
         "generated": "2026-04-07",
-        "commune": "Salazie",
+        "commune": "Cilaos",
         "insee": "97424",
-        "intercommunalite": "CIREST",
+        "intercommunalite": "CIVIS",
         "plu_type": "PLU",
-        "plu_date_approbation": "2022-05-24",
-        "source": "GPU DU_97421"
+        "plu_date_approbation": "2008-02-06",
+        "plu_modifications": [
+          "Modification 2024-02-13"
+        ],
+        "source": "Règlement PLU Cilaos — GPU DU_97424 — 97424_reglement_20240213.pdf"
       },
       "zones": {
-        "UA": {
-          "label": "Centre-bourg",
+        "Ua": {
+          "label": "Centre-bourg Cilaos",
           "type": "U",
           "sous_type": "centre_urbain",
           "reculs": {
-            "voie_principale_m": 3,
+            "voie_principale_m": 0,
+            "voie_alignement": true,
+            "voie_alternative_m": 3,
+            "voie_note": "Alignement ou retrait min 3m",
             "sep_lat_m": 3,
+            "sep_lat_limite_autorisee": true,
+            "sep_lat_longueur_hab_m": 15,
+            "sep_lat_longueur_autre_m": 20,
             "sep_fond_m": 3
           },
           "hauteurs": {
-            "he_max_m": 12,
-            "annexe_hf_max_m": 3.5
+            "he_max_m": 10,
+            "hf_max_m": 14,
+            "annexe_hf_max_m": 3.5,
+            "annexe_emprise_max_m2": 40
+          },
+          "emprise": {
+            "emprise_sol_max_pct": 80,
+            "annexe_emprise_max_m2": 40
           },
           "permeabilite": {
             "permeable_min_pct": 10
           },
-          "_meta": {
-            "confidence": 1,
-            "ambiguites": []
-          }
-        },
-        "UA1": {
-          "label": "Centre historique",
-          "type": "U",
-          "ref": "UA",
-          "hauteurs": {
-            "he_max_m": 7
+          "toiture": {
+            "versants_obligatoire": true,
+            "versants_pct_volume": 60,
+            "pente_min_pct": 30,
+            "pente_max_pct": 100
           },
           "_meta": {
             "confidence": 1,
             "ambiguites": []
           }
         },
-        "UB": {
-          "label": "Résidentiel intermédiaire",
+        "UAh": {
+          "label": "Secteur patrimonial centre historique Cilaos",
           "type": "U",
+          "sous_type": "centre_patrimonial",
+          "ref": "Ua",
+          "ref_note": "Règles Ua sauf hauteurs réduites",
+          "hauteurs": {
+            "he_max_m": 7,
+            "hf_max_m": 11
+          },
+          "_meta": {
+            "confidence": 1,
+            "ambiguites": []
+          }
+        },
+        "Ub": {
+          "label": "Zone résidentielle intermédiaire",
+          "type": "U",
+          "sous_type": "résidentielle_intermédiaire",
           "reculs": {
-            "voie_principale_m": 3,
+            "voie_principale_m": 0,
+            "voie_alignement": true,
+            "voie_alternative_m": 3,
             "sep_lat_m": 3,
+            "sep_lat_limite_autorisee": true,
+            "sep_lat_longueur_hab_m": 15,
+            "sep_lat_longueur_autre_m": 20,
             "sep_fond_m": 3
           },
           "hauteurs": {
-            "he_max_m": 12,
-            "annexe_hf_max_m": 3.5
+            "he_max_m": 7,
+            "hf_max_m": 11,
+            "annexe_hf_max_m": 3.5,
+            "annexe_emprise_max_m2": 40
+          },
+          "emprise": {
+            "emprise_sol_max_pct": 50,
+            "annexe_emprise_max_m2": 40
           },
           "permeabilite": {
-            "permeable_min_pct": 20
+            "permeable_min_pct": 40
           },
           "_meta": {
             "confidence": 1,
             "ambiguites": []
           }
         },
-        "UC": {
-          "label": "Résidentiel diffus",
+        "Uc": {
+          "label": "Zone résidentielle diffuse — hauts et ilets",
           "type": "U",
+          "sous_type": "résidentielle_diffuse",
           "reculs": {
-            "voie_principale_m": 3,
+            "voie_principale_m": 4,
             "sep_lat_m": 3,
+            "sep_lat_limite_autorisee": true,
+            "sep_lat_longueur_m": 15,
             "sep_fond_m": 3
           },
           "hauteurs": {
-            "he_max_m": 9,
-            "annexe_hf_max_m": 3.5
+            "he_max_m": 4,
+            "hf_max_m": 8,
+            "annexe_hf_max_m": 3.5,
+            "annexe_emprise_max_m2": 40
+          },
+          "emprise": {
+            "emprise_sol_max_pct": null,
+            "note": "Hors espaces boisés classés"
           },
           "permeabilite": {
-            "permeable_min_pct": 25
+            "permeable_min_pct": null
           },
           "_meta": {
-            "confidence": 1,
-            "ambiguites": []
+            "confidence": 0.8,
+            "ambiguites": [
+              "Emprise Uc non chiffrée explicitement"
+            ]
           }
         },
-        "UT": {
-          "label": "Tourisme",
-          "type": "U",
-          "sous_type": "touristique",
-          "reculs": {
-            "voie_principale_m": 3,
-            "sep_lat_m": 3,
-            "sep_fond_m": 3
-          },
-          "hauteurs": {
-            "he_max_m": 12
-          },
-          "permeabilite": {
-            "permeable_min_pct": 25
-          },
-          "_meta": {
-            "confidence": 1,
-            "ambiguites": []
-          }
-        },
-        "AU": {
-          "label": "Zones AU",
+        "AUst": {
+          "label": "Zone à urbaniser — études préalables",
           "type": "AU",
-          "ref": "zone U",
+          "sous_type": "strict",
+          "construction_neuve_interdite": true,
+          "reculs": {
+            "voie_principale_m": 4,
+            "sep_lat_m": 3,
+            "sep_fond_m": 3
+          },
           "_meta": {
             "confidence": 1,
             "ambiguites": []
           }
         },
-        "AUE": {
-          "label": "AU économique",
+        "AUindicee": {
+          "label": "Zones à urbaniser",
           "type": "AU",
-          "sous_type": "activites",
-          "reculs": {
-            "voie_principale_m": 3
-          },
-          "hauteurs": {
-            "he_max_m": 12
-          },
-          "permeabilite": {
-            "permeable_min_pct": 25
-          },
+          "ref": "zone U correspondante",
           "_meta": {
             "confidence": 1,
             "ambiguites": []
           }
         },
         "A": {
-          "label": "Agricole",
+          "label": "Zone agricole",
           "type": "A",
           "reculs": {
-            "voie_principale_m": 4,
-            "sep_lat_m": 5
+            "voie_principale_m": 10,
+            "voie_note": "Recul 10m depuis axe voie",
+            "sep_lat_m": 4,
+            "sep_fond_m": 4
           },
           "hauteurs": {
             "he_max_m": 4,
             "hf_max_m": 7
+          },
+          "emprise": {
+            "emprise_sol_max_pct": null
           },
           "_meta": {
             "confidence": 1,
@@ -9833,15 +9826,20 @@
           }
         },
         "N": {
-          "label": "Naturelle",
+          "label": "Zone naturelle",
           "type": "N",
           "reculs": {
-            "voie_principale_m": 4,
-            "sep_lat_m": 5
+            "voie_principale_m": 10,
+            "sep_lat_m": 5,
+            "sep_fond_m": 5
           },
           "hauteurs": {
-            "he_max_m": 4,
-            "hf_max_m": 7
+            "hf_max_m": 6,
+            "annexe_hf_max_m": 3.5,
+            "note": "6m au faîtage, pas de règle hé"
+          },
+          "emprise": {
+            "annexe_max_m2_par_logement": 40
           },
           "_meta": {
             "confidence": 1,
@@ -9852,6 +9850,8 @@
       "regles_communes": {
         "ravine_recul_m": 10,
         "cloture_voie_hauteur_max_m": 2,
+        "mur_soutenement_max_m": 3,
+        "bonus_risque_inondation_m": 1,
         "rtaa_dom": "2016"
       }
     }

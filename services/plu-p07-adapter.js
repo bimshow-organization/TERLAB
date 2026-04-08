@@ -45,9 +45,11 @@ export class PLUP07Adapter {
         .find(c => (c.meta?.commune ?? c.nom)?.toLowerCase() === codeInsee?.toLowerCase());
     }
     if (!communeData) {
-      // ⚠️ STUB — Commune ${codeInsee} absente — effort S : compléter plu-rules-reunion.json
+      const communeName = window.SessionManager?.getTerrain?.()?.commune ?? codeInsee;
+      console.warn(`plu-p07-adapter: commune ${codeInsee} (${communeName}) absente de plu-rules-reunion.json — valeurs par défaut RTAA`);
+      window.TerlabToast?.show(`PLU ${communeName} : données non disponibles — valeurs RTAA par défaut`, 'warning', 5000);
       return this._fallback(codeInsee, zonePlu, zoneRtaa,
-        [`Commune ${codeInsee} absente de plu-rules-reunion.json`], 0);
+        [`Commune ${codeInsee} (${communeName}) absente de plu-rules-reunion.json`], 0);
     }
 
     // Trouver zone

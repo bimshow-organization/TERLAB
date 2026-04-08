@@ -1,0 +1,616 @@
+/* ================================================================
+   TERLAB · mobile.css · Responsive iPhone / iPad
+   Pattern: HOUSEG-SPEECH mobile — single breakpoint 800px
+   MGA Architecture · ENSA La Réunion · 2026
+   ================================================================ */
+
+/* ── Éléments cachés sur desktop, visibles uniquement sur mobile ── */
+.mob-tabbar       { display: none }
+.mob-sheet        { display: none }
+.mob-fab          { display: none }
+.mob-sheet-handle { display: none }
+.mob-phase-nav    { display: none }
+
+/* ================================================================
+   MOBILE : @media max-width 800px
+   ================================================================ */
+@media (max-width: 800px) {
+
+  /* ── Viewport & body ── */
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  /* ── App shell ── */
+  .terlab-app {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    overflow: hidden;
+    grid-template-columns: none;
+    grid-template-rows: none;
+  }
+
+  /* ── Sidebar → cachée ── */
+  .sidebar {
+    display: none !important;
+  }
+
+  /* ── Left panel → caché (contenu dans bottom sheet) ── */
+  .left-panel {
+    display: none !important;
+  }
+
+  /* ── Right panel → caché ── */
+  .right-panel {
+    display: none !important;
+  }
+
+  /* ── Main → flex fill ── */
+  .terlab-main {
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* ── Phase container → single column ── */
+  .phase-container {
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: none;
+  }
+
+  /* ── Zone carte → plein écran moins topbar et tabbar ── */
+  .map-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  #map {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* ── Topbar mobile ── */
+  .topbar {
+    position: relative !important;
+    height: calc(var(--mob-topbar-h) + env(safe-area-inset-top, 0px)) !important;
+    padding: env(safe-area-inset-top, 8px) var(--sp-lg) 0 var(--sp-lg) !important;
+    background: var(--surface) !important;
+    border-bottom: 1px solid var(--border2) !important;
+    z-index: var(--z-topbar);
+    display: flex;
+    align-items: flex-end;
+    padding-bottom: 10px !important;
+    flex-wrap: nowrap;
+    gap: var(--sp-sm);
+    flex-shrink: 0;
+    grid-column: auto;
+  }
+
+  /* Logo compact en mobile */
+  .tb-logo {
+    width: 40px;
+    height: auto;
+    border-right: none;
+  }
+  .tb-logo svg, .tb-logo img {
+    width: 32px;
+    height: 32px;
+  }
+
+  /* Brand compact */
+  .tb-brand {
+    max-width: 120px;
+    border-right: none;
+    padding: 0 4px;
+  }
+
+  /* Phase nav cachée sur mobile (remplacée par tab bar) */
+  .tb-phases {
+    display: none !important;
+  }
+  .phase-arrow {
+    display: none !important;
+  }
+  .phase-player {
+    display: none !important;
+  }
+
+  /* Actions droite compactes */
+  .tb-right {
+    margin-left: auto;
+  }
+
+  /* Phase name dans topbar */
+  .topbar .phase-label,
+  #topbar .phase-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+  }
+
+  /* Terrain strip compact dans topbar */
+  .terrain-strip {
+    display: none !important;
+  }
+
+  /* Chip terrain mini dans topbar */
+  .topbar-terrain-mini {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--font-mono);
+    font-size: 8px;
+    color: var(--faint);
+    background: var(--raised);
+    border: 1px solid var(--border);
+    border-radius: var(--r-xl, 16px);
+    padding: 2px 8px;
+    white-space: nowrap;
+  }
+
+  /* Boutons topbar surnuméraires → cachés */
+  .topbar .topbar-desktop-only {
+    display: none !important;
+  }
+
+  /* ── Tab Bar de navigation phases ── */
+  .mob-tabbar {
+    display: flex !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: calc(var(--mob-tabbar-h) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--surface);
+    border-top: 1px solid var(--border2);
+    z-index: var(--z-tabbar);
+    flex-direction: row;
+    align-items: stretch;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mob-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    color: var(--muted);
+    transition: color var(--t-sm) var(--ease);
+    border: none;
+    background: none;
+    font-family: var(--font-body);
+    position: relative;
+    padding: 0 4px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mob-tab svg,
+  .mob-tab .mob-tab-icon {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    transition: all var(--t-sm) var(--ease);
+  }
+
+  .mob-tab .mob-tl {
+    font-size: 9px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .mob-tab.active {
+    color: var(--accent);
+  }
+
+  /* Indicateur actif : ligne en haut */
+  .mob-tab.active::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 20%;
+    right: 20%;
+    height: 2.5px;
+    background: linear-gradient(90deg, var(--accent), var(--accent));
+    border-radius: 0 0 3px 3px;
+  }
+
+  /* Tab centrale : FAB-like (ouvrir le sheet) */
+  .mob-tab.mob-sheet-toggle {
+    flex: 0 0 64px;
+  }
+
+  .mob-tab.mob-sheet-toggle .mob-tab-icon-wrap {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--accent2);
+    border: 1.5px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--t-sm) var(--ease);
+    margin-bottom: 2px;
+  }
+
+  .mob-tab.mob-sheet-toggle.sheet-open .mob-tab-icon-wrap {
+    background: var(--accent2);
+    transform: rotate(180deg);
+  }
+
+  /* Navigation phases précédente / suivante */
+  .mob-phase-nav {
+    display: flex !important;
+    align-items: center;
+    gap: 0;
+    flex: 0 0 auto;
+  }
+
+  .mob-phase-btn {
+    width: 40px;
+    height: var(--mob-tabbar-h);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mob-phase-btn:disabled {
+    opacity: .25;
+    cursor: default;
+  }
+
+  .mob-phase-indicator {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    white-space: nowrap;
+    min-width: 32px;
+    text-align: center;
+  }
+
+  /* ── Bottom Sheet (left panel transformé) ── */
+  .mob-sheet {
+    position: fixed !important;
+    bottom: calc(var(--mob-tabbar-h) + env(safe-area-inset-bottom, 0px)) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: var(--mob-sheet-h) !important;
+    max-height: calc(100dvh
+      - var(--mob-topbar-h)
+      - env(safe-area-inset-top, 0px)
+      - var(--mob-tabbar-h)
+      - env(safe-area-inset-bottom, 0px)
+    ) !important;
+    background: var(--surface) !important;
+    border-left: none !important;
+    border-top: 1px solid var(--border2);
+    border-radius: var(--r-xl, 22px) var(--r-xl, 22px) 0 0;
+    transform: translateY(100%);
+    transition: transform var(--t-lg) var(--ease-out);
+    z-index: var(--z-sheet);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0 !important;
+    will-change: transform;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mob-sheet.sheet-open {
+    transform: translateY(0);
+  }
+
+  /* Handle drag indicator */
+  .mob-sheet-handle {
+    display: flex !important;
+    justify-content: center;
+    padding: 10px 0 6px;
+    flex-shrink: 0;
+  }
+
+  .mob-sheet-handle-bar {
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border3);
+  }
+
+  /* Tabs dans le sheet (Formulaire / Risques / Acteurs) */
+  .mob-sheet-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .mob-sheet-tabs::-webkit-scrollbar { display: none }
+
+  .mob-sheet-tab {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--faint);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: all var(--t-sm);
+    -webkit-tap-highlight-color: transparent;
+    white-space: nowrap;
+  }
+
+  .mob-sheet-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* Contenu du sheet */
+  .mob-sheet-body {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding: var(--sp-sm) 0;
+  }
+
+  /* Pied de sheet : validation CTA */
+  .mob-sheet-footer {
+    flex-shrink: 0;
+    padding: var(--sp-sm) var(--sp-lg);
+    padding-bottom: calc(var(--sp-sm) + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  /* Bouton "Phase suivante" en pleine largeur */
+  .mob-next-btn {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent2);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: var(--r, 7px);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all var(--t-sm);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mob-next-btn:active {
+    background: var(--accent2);
+    transform: scale(.98);
+  }
+
+  .mob-next-btn:disabled {
+    opacity: .35;
+    cursor: default;
+  }
+
+  /* ── Sections formulaire dans le sheet ── */
+  .form-section {
+    padding: var(--sp-sm) var(--sp-lg);
+  }
+
+  .fs-head {
+    font-size: 10px;
+    margin-bottom: var(--sp-sm);
+  }
+
+  .field-input,
+  .field-select {
+    height: 40px;
+    font-size: 16px; /* Évite le zoom auto iOS */
+  }
+
+  .field-label {
+    font-size: 10px;
+  }
+
+  /* Validation block compact */
+  .val-block {
+    padding: var(--sp-sm) var(--sp-lg);
+  }
+
+  .check-item {
+    padding: 8px 0;
+  }
+
+  .check-item span {
+    font-size: 12px;
+  }
+
+  /* ── Toast repositionné au-dessus tab bar ── */
+  .toast,
+  #toast-container,
+  .toast-container,
+  .terlab-toast {
+    bottom: calc(var(--mob-tabbar-h) + env(safe-area-inset-bottom, 0px) + 12px) !important;
+    left: var(--sp-lg) !important;
+    right: var(--sp-lg) !important;
+    border-radius: var(--r-lg, 11px) !important;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  /* ── Stub warnings plus compacts ── */
+  .stub-warning {
+    font-size: 10px;
+    padding: var(--sp-sm) var(--sp-md);
+  }
+
+  /* ── Map stub banner → repositionné ── */
+  #map-stub-banner {
+    bottom: calc(var(--mob-tabbar-h) + env(safe-area-inset-bottom, 0px) + var(--sp-sm)) !important;
+    top: auto !important;
+  }
+
+  /* ── Phase title compact dans sheet header ── */
+  .phase-title {
+    font-size: 18px !important;
+    line-height: 1.2;
+  }
+
+  .phase-desc {
+    font-size: 11px !important;
+    -webkit-line-clamp: 2;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* ── lp-head → dans le sheet ── */
+  .lp-head {
+    padding: 0 var(--sp-lg) var(--sp-sm);
+  }
+
+  /* ── Source button ── */
+  .source-btn {
+    width: 100%;
+    padding: 10px var(--sp-lg);
+    font-size: 11px;
+    text-align: center;
+  }
+
+  /* ── Scores de validation compacts ── */
+  .val-progress { height: 3px }
+  .val-pct { font-size: 10px }
+
+  /* ── Quick actions compactes ── */
+  .quick-actions { gap: 4px }
+  .qa-btn {
+    padding: 6px 10px;
+    font-size: 10px;
+  }
+
+  /* ── Correction bar visible ── */
+  .corr-bar { display: block !important }
+
+  /* ── Phase-specific map overlay controls ── */
+  .mapbox-ctrl-group,
+  .mapboxgl-ctrl-group {
+    margin: 8px !important;
+  }
+
+  /* ── FAB flottant sur la carte ── */
+  .mob-fab {
+    display: flex !important;
+    position: absolute;
+    right: var(--sp-lg);
+    bottom: var(--sp-lg);
+    width: var(--mob-fab-size);
+    height: var(--mob-fab-size);
+    border-radius: 50%;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: var(--z-overlay);
+    box-shadow: var(--shadow-md, 0 4px 16px rgba(0,0,0,.5));
+    -webkit-tap-highlight-color: transparent;
+    transition: all var(--t-sm) var(--ease);
+  }
+
+  .mob-fab:active {
+    transform: scale(.92);
+  }
+
+  /* ── Scroll bounce iOS ── */
+  .mob-sheet-body {
+    overscroll-behavior-y: contain;
+  }
+
+  /* ── Touch target minimum 44px ── */
+  button, [role="button"], .check-item {
+    min-height: 44px;
+  }
+
+  /* ── Modals full-width on mobile ── */
+  .modal-box {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    border-radius: var(--r-xl, 22px) var(--r-xl, 22px) 0 0 !important;
+    max-height: 85dvh;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+
+  /* ── Splash screen mobile ── */
+  .splash-screen {
+    padding-bottom: calc(var(--mob-tabbar-h) + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* ── Hide orientation warning (we handle mobile now) ── */
+  .orientation-warning {
+    display: none !important;
+  }
+
+  /* ── 3D panel full screen on mobile ── */
+  .terlab-3d-panel {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: var(--z-modal);
+  }
+
+} /* fin @media 800px */
+
+/* ================================================================
+   TABLET : 801px → 1024px (ajustements légers)
+   ================================================================ */
+@media (min-width: 801px) and (max-width: 1024px) {
+  :root {
+    --left-panel-w: 280px;
+    --right-panel-w: 240px;
+  }
+
+  .right-panel {
+    display: none;
+  }
+
+  .map-area {
+    flex: 1;
+  }
+}

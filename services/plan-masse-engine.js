@@ -5,6 +5,7 @@
 // ENSA La Réunion · MGA Architecture
 
 import { getZoneRTAA } from './reunion-constants.js';
+import TopoCaseService from './topo-case-service.js';
 
 // ── CONSTANTES ───────────────────────────────────────────────────────────────
 const SNAP_M   = 0.5;
@@ -179,7 +180,41 @@ const PlanMasseEngine = {
       checks.push({ lbl: 'Dist. inter-bat', ok: true, proj: `${gapMin.toFixed(1)}m`, rule: `≥${gapMin.toFixed(1)}`, unit: 'm' });
     }
 
-    const allOk = checks.every(c => c.ok);
+    // ── CHECKS TOPOGRAPHIQUES ────────────────────────────────
+    const topoCase = state?.proposal?.topoCase ?? state?.topoCase
+      ?? TopoCaseService.getCase(state?.terrain?.pente_moy_pct ?? null);
+
+    if (topoCase && !topoCase.unknown) {
+      if (bat.l > topoCase.profMax) {
+        checks.push({
+          lbl: 'Prof. topo', ok: false,
+          proj: bat.l.toFixed(1), rule: `≤${topoCase.profMax}`,
+          unit: 'm', severity: 'warning',
+          detail: `Sur ${topoCase.label}, profondeur max recommandée = ${topoCase.profMax}m`,
+          conseil: 'C' + ({ flat: 17, gentle: 18, medium: 19, steep: 20, extreme: 21 }[topoCase.id] ?? 17),
+        });
+      }
+      if (topoCase.bureauStructure) {
+        checks.push({
+          lbl: 'Bureau structure', ok: null,
+          proj: 'requis', rule: 'pilotis >8m',
+          unit: '', severity: 'info',
+          detail: 'Pente extrême : note de calcul structure obligatoire avant permis.',
+          conseil: 'D29',
+        });
+      }
+      if (topoCase.pompesRelev) {
+        checks.push({
+          lbl: 'Pompes relevage', ok: null,
+          proj: 'probable', rule: 'R-1+',
+          unit: '', severity: 'info',
+          detail: 'Niveaux enterrés sous cote réseau — prévoir pompe de relevage (3 000–4 500€/niv).',
+          conseil: 'F41',
+        });
+      }
+    }
+
+    const allOk = checks.every(c => c.ok !== false);
 
     // Capacité max théorique
     const maxEmprise = terrain.area * (plu.emprMax ?? 60) / 100;

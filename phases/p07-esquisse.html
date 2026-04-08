@@ -83,6 +83,22 @@
                oninput="window.P07?.setProg('nvMax',+this.value);window.PlanMasseCanvas?.setProg('nvMax',+this.value);document.getElementById('pm-nvmax-lbl').textContent=['','R+0','R+1','R+2','R+3'][+this.value]"/>
         <span id="pm-nvmax-lbl" style="font-size:10px;color:var(--accent);min-width:30px">R+1</span>
       </div>
+      <!-- TOPO CASE PANEL (alimenté par EsquisseCanvas._applyTopoConstraints) -->
+      <div id="topo-case-panel" class="topo-panel" style="display:none">
+        <div class="topo-label">
+          <span id="topo-case-badge" class="topo-badge"></span>
+          <span id="topo-case-name"></span>
+        </div>
+        <div id="topo-constraints-list" class="topo-constraints"></div>
+        <a id="topo-conseils-link" class="topo-link" target="_blank">
+          Voir les conseils §C →
+        </a>
+        <div id="topo-coupe-preview" class="topo-coupe-wrap" style="display:none;margin-top:8px">
+          <div style="font-family:var(--font-mono);font-size:8.5px;color:var(--muted);margin-bottom:4px">Coupe de principe :</div>
+          <div id="topo-coupe-svg-container"></div>
+        </div>
+      </div>
+
       <div class="field-row">
         <label class="field-label">Prof. max N-S</label>
         <input type="range" id="pm-profmax" min="5" max="25" value="15" step="0.5"
@@ -410,7 +426,11 @@
       <button class="t3d-btn active" id="t3d-btn-contours" onclick="window.P07?.toggleContours()">Contours</button>
       <button class="t3d-btn" id="t3d-btn-sun" onclick="window.P07?.toggleSun()">Soleil</button>
       <div style="height:4px"></div>
-      <button class="t3d-btn" onclick="window.P07?.exportGLB3D()">GLB</button>
+      <button class="t3d-btn active" id="t3d-btn-tex-ortho" onclick="window.P07?.setTexture('ortho')">Ortho</button>
+      <button class="t3d-btn" id="t3d-btn-tex-elev" onclick="window.P07?.setTexture('elevation')">Altitude</button>
+      <button class="t3d-btn" id="t3d-btn-tex-slope" onclick="window.P07?.setTexture('slope')">Pente</button>
+      <div style="height:4px"></div>
+      <button class="t3d-btn" onclick="window.P07?.exportGLB3D()">Export GLB</button>
     </div>
 
     <!-- Info terrain -->
@@ -729,6 +749,23 @@
 .pareto-card-body .pc-warn { color:var(--warning); }
 .pareto-card-violation { font-size:8px; color:#e74c3c; margin-top:2px; }
 
+/* Topo case panel */
+.topo-panel { background:rgba(122,96,16,.06); border:1px solid rgba(122,96,16,.22); border-radius:3px; padding:10px 12px; margin:8px 0; }
+.topo-label { display:flex; align-items:center; font-size:11px; color:var(--text2); font-weight:500; }
+.topo-badge { font-family:var(--font-mono,monospace); font-size:.6rem; letter-spacing:.08em; text-transform:uppercase; padding:2px 6px; border-radius:2px; color:#fff; margin-right:6px; }
+.topo-badge.flat     { background:#2a5848 }
+.topo-badge.gentle   { background:#3a6828 }
+.topo-badge.medium   { background:#7a6010 }
+.topo-badge.steep    { background:#8a3818 }
+.topo-badge.extreme  { background:#7a1a1a }
+.topo-constraints    { font-size:.72rem; color:rgba(200,185,140,.75); margin:6px 0; line-height:1.7; font-family:var(--font-mono,monospace); }
+.topo-constraints ul { margin:0; padding:0; }
+.topo-constraints li { list-style:none; }
+.topo-constraints li::before { content:'→ '; opacity:.55 }
+.topo-link { font-size:.7rem; color:#9a7820; text-decoration:none; font-family:var(--font-mono,monospace); letter-spacing:.06em; }
+.topo-link:hover { text-decoration:underline }
+.topo-coupe-wrap { border-top:1px solid rgba(122,96,16,.15); padding-top:8px; }
+
 /* Terrain banner PLU réel */
 .terrain-banner { display:flex; align-items:center; gap:6px; padding:5px 13px; background:var(--accent3, rgba(154,120,32,.06)); border-bottom:1px solid var(--border, #30363D); font-family:var(--font-mono, monospace); font-size:9.5px; color:var(--muted, #6b5c3e); flex-wrap:wrap; }
 .plu-badge { padding:2px 8px; border-radius:10px; font-size:8.5px; font-weight:600; margin-left:auto; }
@@ -806,11 +843,15 @@ async function initP07Real() {
         pluConfig.area      = 750;
       }
     } else {
-      // ⚠️ STUB — Polygone cadastral — effort XS : lecture session.terrain.parcelle_geojson
-      showStubWarning('Polygone cadastral manquant — terrain rectangulaire approximatif');
-      pluConfig.poly      = [[0,0],[30,0],[30,25],[0,25]];
+      // Polygone cadastral absent de la session — fallback rectangle 30×25m
+      const contenance = parseFloat(ter.contenance_m2) || 750;
+      const ratio = 1.2; // rapport longueur/largeur courant
+      const w = Math.sqrt(contenance / ratio);
+      const l = w * ratio;
+      showStubWarning('Polygone cadastral manquant — retournez en Phase 0 pour sélectionner la parcelle');
+      pluConfig.poly      = [[0,0],[l,0],[l,w],[0,w]];
       pluConfig.edgeTypes = ['voie','lat','fond','lat'];
-      pluConfig.area      = 750;
+      pluConfig.area      = contenance;
     }
 
     TERRAIN_REEL = pluConfig;
@@ -1610,6 +1651,15 @@ Object.assign(P07, {
     Terrain3D.exportGLB();
   },
 
+  // Changer le mode texture (ortho / elevation / slope)
+  setTexture(mode) {
+    Terrain3D.setTextureMode(mode);
+    // Toggle boutons actifs
+    document.querySelectorAll('[id^="t3d-btn-tex-"]').forEach(b => b.classList.remove('active'));
+    const btn = document.getElementById(`t3d-btn-tex-${mode}`);
+    if (btn) btn.classList.add('active');
+  },
+
   // Capturer screenshot 3D pour rapport (Phase 12)
   capture3D() {
     const img = Terrain3D.capture();
@@ -1766,9 +1816,8 @@ Object.assign(P07, {
       });
     }
 
-    // Re-render
-    canvas._updateEngineMetrics();
-    canvas._fullRedraw();
+    // Sync centralisé : _prog → AABB → métriques → re-render
+    canvas._syncState('prog');
   },
 
   setParkSide(side) {
@@ -1778,8 +1827,7 @@ Object.assign(P07, {
     ['est', 'nord', 'ouest', 'sud'].forEach(s => {
       document.getElementById(`pm-side-${s}`)?.classList.toggle('active', side === s);
     });
-    canvas._updateEngineMetrics();
-    canvas._fullRedraw();
+    canvas._syncState('prog');
   },
 });
 

@@ -1,0 +1,36 @@
+{
+  "generated": "2026-04-08",
+  "test_date": "2026-04-08",
+  "note": "Classification basée sur les tests réels des endpoints (scripts/test-providers.js)",
+  "classification": {
+    "A_integrer_maintenant": [
+      { "id": "ign-wfs-cadastre",       "status": "OK",      "cors": "OK",      "raison": "Déjà intégré P00 — GetCapabilities OK" },
+      { "id": "ign-bdtopo-batiments",   "status": "OK",      "cors": "OK",      "raison": "Gratuit, CORS OK, hauteurs bâtiments P05" },
+      { "id": "ign-bdtopo-cours-eau",   "status": "OK",      "cors": "OK",      "raison": "Gratuit, CORS OK, ravines nommées P01/P03" },
+      { "id": "gpu-urbanisme",          "status": "OK",      "cors": "OK",      "raison": "PLU vectoriel officiel P04/P07 — test OK" },
+      { "id": "inpn-znieff",            "status": "OK",      "cors": "OK",      "raison": "WFS Carmen OK — mais instable, préparer fallback statique" },
+      { "id": "georisques",              "status": "OK",      "cors": "OK (*)",  "raison": "CORS wildcard confirmé — intégration directe sans proxy" },
+      { "id": "peigeo-ppr",             "status": "OK",      "cors": "OK (*)",  "raison": "CORS wildcard confirmé — WFS+WMS directs depuis bimshow.io" },
+      { "id": "global-solar-atlas",     "status": "OK",      "cors": "OK",      "raison": "Irradiation PV par coords P07/P09 — JSON direct" },
+      { "id": "open-elevation",         "status": "OK",      "cors": "OK",      "raison": "Fallback altimétrie mobile P01" },
+      { "id": "region-reuniondata",     "status": "OK",      "cors": "OK",      "raison": "Catalogue OpenDataSoft P05/P11" }
+    ],
+    "B_token_inscription": [
+      { "id": "meteofrance-api",        "status": "HTTP 401","cors": "OK",      "raison": "Token gratuit requis, 70 stations Réunion P01/P03. Fallback normales 1991-2020 en place." }
+    ],
+    "C_proxy_cors": [
+      { "id": "saintdenis-sig",         "status": "OK",      "cors": "MISSING", "raison": "ArcGIS REST OK mais CORS manquant — proxy ou pré-téléchargement" }
+    ],
+    "D_statique_geojson": [
+      { "id": "inpn-znieff-fallback",   "status": "n/a",     "cors": "n/a",     "raison": "Backup si WFS Carmen tombe — télécharger depuis data.gouv.fr" },
+      { "id": "inpn-parc-national",     "status": "n/a",     "cors": "n/a",     "raison": "Géométrie stable — télécharger une fois" }
+    ],
+    "E_erreur_ou_reporter": [
+      { "id": "brgm-geol1m",            "status": "HTTP 400","cors": "OK",      "raison": "URL test GetMap mal formée — le WMS est déjà intégré via brgm-service.js avec une autre URL" },
+      { "id": "edf-postes-sources",     "status": "HTTP 410","cors": "n/a",     "raison": "API ODS EDF migrée (410 Gone depuis avr 2026) — données statiques intégrées en fallback" },
+      { "id": "edf-installations-pv",   "status": "HTTP 410","cors": "n/a",     "raison": "API ODS EDF migrée — portail fonctionne mais API REST inaccessible" },
+      { "id": "overpass-osm",           "status": "HTTP 504","cors": "MISSING", "raison": "Timeout + CORS — bâtiments déjà dans BD TOPO, reporter" },
+      { "id": "global-wind-atlas",      "status": "OK",      "cors": "MISSING", "raison": "GeoTIFF 11Mo, CORS manquant — parsing raster complexe, reporter" }
+    ]
+  }
+}

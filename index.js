@@ -45,6 +45,7 @@ import LidarContextService from './services/lidar-context-service.js';
 import EnvelopeGenerator   from './services/envelope-generator.js';
 import PlanMasseEngine   from './services/plan-masse-engine.js';
 import TerrainProfile    from './services/terrain-profile.js';
+import SectionProfileViewer from './components/section-profile-viewer.js';
 import ParetoScorer      from './services/pareto-scorer.js';
 import ViewDetector      from './services/view-detector.js';
 import BpfGardenAdvisor  from './services/bpf-garden-advisor.js';
@@ -78,12 +79,21 @@ import GLBExporter       from './utils/glb-exporter.js';
 // ─── Mini-viewer 3D intégré (remplace popup BIMSHOW) ────────
 import BimshowViewer     from './components/bimshow-viewer.js';
 
+// ─── Mobile responsive controller ───────────────────────────
+import MobileController  from './components/mobile-controller.js';
+
 // ─── Éditeur GeoJSON 3 niveaux (GPU + import + dessin) ──────
 import CoordConverter        from './utils/coord-converter.js';
 import UTM40S               from './utils/utm40s.js';
 import GPUFetcher            from './services/gpu-fetcher.js';
 import GeoJsonLayerService   from './services/geojson-layer-service.js';
 import GeoJsonPanel          from './components/geojson-panel.js';
+
+// ─── Data Providers Réunion (Sprint intégration 2026-04) ────
+import BdTopoService         from './services/bdtopo-service.js';
+import EdfService            from './services/edf-service.js';
+import GpuService            from './services/gpu-service.js';
+import BiodiversiteService   from './services/biodiversite-service.js';
 
 // ─── Données globales ────────────────────────────────────────────
 let PHASES_META = null;
@@ -163,9 +173,12 @@ async function init() {
 
     setSplash('Token Mapbox…', 50);
     // Token public Mapbox (pk.* = client-side, non secret)
-    const _pk = ['pk.eyJ1IjoiYmltc2hvdyIsImEiOi', 'Jjbm5vYTJ4d2oxdzZzMnFzbTZwdmp3NnJ1In0', '.JYT9Kofu8088LsnoNUl6qw'];
+    const _pk = ['pk.eyJ1IjoiYmltc2hvdyIsImEiOi', 'JjbW5vYTJ4d2oxdzZzMnFzbTZwdmp3NnJ1In0', '.JYT9Kofu8088LsnoNU16qw'];
     AppState.mapboxToken = localStorage.getItem('terlab_mapbox_token') || _pk.join('');
     localStorage.setItem('terlab_mapbox_token', AppState.mapboxToken);
+
+    // Namespace TERLAB — évite les collisions avec BIMSHOW globals
+    window.TERLAB = window.TERLAB ?? {};
 
     // Exposer les APIs globales AVANT route() — les scripts de phase en dépendent
     window.TerlabRouter  = Router;
@@ -181,6 +194,16 @@ async function init() {
     window.CoherenceService = CoherenceService;
     window.SessionManager   = SessionManager;
     window.BimshowViewer    = BimshowViewer;
+
+    // Aliases namespace (nouveau standard — utiliser window.TERLAB.* dans le nouveau code)
+    window.TERLAB.Session = SessionManager;
+    window.TERLAB.Map     = MapViewer;
+    window.TERLAB.Toast   = Toast;
+    window.TERLAB.Export  = ExportEngine;
+    window.TERLAB.Sources = SourceModal;
+    window.TERLAB.Router  = Router;
+    window.TERLAB.Mobile  = MobileController;
+    window.MobileController = MobileController;
 
     // Utilitaires réseau (disponibles dans les scripts inline des phases)
     window.resilientFetch     = resilientFetch;
@@ -207,6 +230,7 @@ async function init() {
     window.EnvelopeGenerator   = EnvelopeGenerator;
     window.PlanMasseEngine   = PlanMasseEngine;
     window.TerrainProfile    = TerrainProfile;
+    window.SectionProfileViewer = SectionProfileViewer;
     window.ParetoScorer      = ParetoScorer;
     window.ViewDetector      = ViewDetector;
     window.BpfGardenAdvisor  = BpfGardenAdvisor;
@@ -248,6 +272,21 @@ async function init() {
     window.GeoJsonLayerService = GeoJsonLayerService;
     window.GeoJsonPanel        = GeoJsonPanel;
 
+    // Data Providers Réunion
+    window.BdTopoService        = BdTopoService;
+    window.EdfService           = EdfService;
+    window.GpuService           = GpuService;
+    window.BiodiversiteService  = BiodiversiteService;
+
+    // Charger sources-providers.json (non-bloquant)
+    fetch('data/sources-providers.json')
+      .then(r => r.json())
+      .then(d => {
+        window.TERLAB_PROVIDERS = d.acteurs_data_providers;
+        window.TERLAB.Providers = d.acteurs_data_providers;
+      })
+      .catch(() => console.warn('[TERLAB] sources-providers.json non chargé'));
+
     // Charger aeraulique-meta.json (non-bloquant)
     fetch('data/aeraulique-meta.json')
       .then(r => r.json())
@@ -270,6 +309,9 @@ async function init() {
 
     // Topbar — afficher le terrain si déjà chargé
     updateTerrainStrips();
+
+    // Init mobile controller (après DOM prêt + première phase chargée)
+    MobileController.init();
 
     // Init GeoJSON layer system
     GeoJsonLayerService.restore();
@@ -384,6 +426,7 @@ async function route() {
   AppState.loading = true;
   Router.currentPhase = phaseId;
   AppState.currentPhase = phaseId;
+  if (window.TERLAB) window.TERLAB.currentPhaseId = phaseId;
 
   await loadPhase(phaseId);
   AppState.loading = false;
@@ -492,8 +535,8 @@ async function loadPhase(id) {
     }
   }
 
-  // 4. Carte
-  if (AppState.mapboxToken) {
+  // 4. Carte (skip si map_mode === 'none' ou pas de div #map)
+  if (AppState.mapboxToken && meta.map_mode !== 'none' && document.getElementById('map')) {
     try {
       const terrain = SessionManager.getTerrain();
       const hasTerrain = terrain?.lat && terrain?.lng;
@@ -570,6 +613,9 @@ async function loadPhase(id) {
   // 6. MAJ nav
   updatePhaseNav(id);
 
+  // 6b. Notifier le mobile controller
+  MobileController.onPhaseInjected(id, meta.title ?? '');
+
   // 7. Acteurs + risques
   injectActors(id);
   injectRisks(id);
@@ -642,14 +688,14 @@ const PHASE_ICONS_SVG = [
   /* 12 SYNTH */ `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 2.5h7l3 3V13.5H3V2.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M10 2.5v3h3" stroke="currentColor" stroke-width="1"/><path d="M5.5 7h5M5.5 9.5h5M5.5 12h3" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity=".6"/></svg>`,
   /* 13 WORLD */ `<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.2"/><ellipse cx="8" cy="8" rx="3" ry="6" stroke="currentColor" stroke-width="1" opacity=".5"/><path d="M2 8h12M2.8 5h10.4M2.8 11h10.4" stroke="currentColor" stroke-width=".8" opacity=".4"/></svg>`,
 ];
-const PHASE_LABELS_SHORT = ['IDENT','TOPO','GEO','HYDRO','PLU','VOIS','BIO','ESQ','CHANT','CO2','ENT','FDV','SYNTH','WORLD'];
+const PHASE_LABELS_SHORT = ['IDENT','TOPO','GEO','HYDRO','PLU','VOIS','BIO','ESQ','CHANT','CO2','DURA','FDV','SYNTH','WORLD'];
 
 function buildPhaseNav() {
   const nav = document.getElementById('tb-phases');
   if (!nav || !PHASES_META) return;
 
   nav.innerHTML = PHASES_META.phases
-    .filter(p => p.id !== 13) // p13 World masquée — pas encore prête
+    .filter(p => p.id !== 13 && p.active !== false) // p13 World masquée, p11 fusionnée en P10
     .map((p, i) => {
     const sess     = SessionManager.getPhase(p.id);
     const isDone   = sess?.completed ?? false;
@@ -731,9 +777,14 @@ const PhasePlayer = {
   },
 
   /** Trouve la prochaine phase non-vue après `from`, ou la prochaine tout court */
+  _isActive(id) {
+    const p = PHASES_META.phases.find(pp => pp.id === id);
+    return p && p.active !== false;
+  },
+
   _nextUnvisited(from) {
     for (let i = from + 1; i <= this.maxPhase; i++) {
-      if (!this.isVisited(i)) return i;
+      if (this._isActive(i) && !this.isVisited(i)) return i;
     }
     return -1; // toutes vues
   },
@@ -741,7 +792,7 @@ const PhasePlayer = {
   /** Trouve la phase non-vue précédente avant `from` */
   _prevUnvisited(from) {
     for (let i = from - 1; i >= 0; i--) {
-      if (!this.isVisited(i)) return i;
+      if (this._isActive(i) && !this.isVisited(i)) return i;
     }
     return -1;
   },
@@ -1097,7 +1148,9 @@ function attachValidationEvents(phaseId) {
   if (nextBtn && !nextBtn.dataset.bound) {
     nextBtn.dataset.bound = '1';
     nextBtn.addEventListener('click', () => {
-      const targetId = phaseId + 1;
+      // Skip inactive phases (e.g. P11 fusionnée en P10)
+      let targetId = phaseId + 1;
+      while (targetId <= 13 && PHASES_META.phases.find(p => p.id === targetId)?.active === false) targetId++;
       if (targetId <= 13) Router.goto(targetId);
     });
   }
@@ -1381,6 +1434,29 @@ const Toast = {
       toast.classList.add('fade-out');
       toast.addEventListener('animationend', () => toast.remove(), { once: true });
     }, duration);
+  },
+
+  confirm(message, onConfirm) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = 'toast warning toast-confirm';
+    toast.innerHTML = `
+      <span>${message}</span>
+      <div class="toast-confirm-actions">
+        <button class="toast-confirm-btn toast-confirm-ok">OK</button>
+        <button class="toast-confirm-btn toast-confirm-cancel">Annuler</button>
+      </div>`;
+    container.appendChild(toast);
+    toast.querySelector('.toast-confirm-ok').addEventListener('click', () => {
+      toast.classList.add('fade-out');
+      toast.addEventListener('animationend', () => toast.remove(), { once: true });
+      onConfirm();
+    });
+    toast.querySelector('.toast-confirm-cancel').addEventListener('click', () => {
+      toast.classList.add('fade-out');
+      toast.addEventListener('animationend', () => toast.remove(), { once: true });
+    });
   }
 };
 
@@ -1491,6 +1567,17 @@ const ProjectMenu = {
       html += `<div class="pm-empty">Aucun autre projet sauvegardé</div>`;
     }
 
+    // User connection
+    const email = window.TERLAB_USER_EMAIL;
+    if (email) {
+      html += `
+        <div class="pm-section">Compte</div>
+        <div class="pm-user-info">
+          <span class="pm-user-email">${email}</span>
+          <button class="pm-action-btn pm-btn-logout" id="pm-btn-logout">Se deconnecter</button>
+        </div>`;
+    }
+
     // Action buttons
     html += `
       <div class="pm-actions">
@@ -1520,11 +1607,11 @@ const ProjectMenu = {
         const id = btn.dataset.del;
         const s = TerlabStorage.getSession(id);
         const name = s?.terrain?.commune || 'ce projet';
-        if (confirm(`Supprimer ${name} ?`)) {
+        Toast.confirm(`Supprimer ${name} ?`, () => {
           TerlabStorage.deleteSession(id);
           this.render();
           Toast.show('Projet supprimé', 'info');
-        }
+        });
       });
     });
 
@@ -1543,6 +1630,18 @@ const ProjectMenu = {
     // Import
     this._dropdown.querySelector('#pm-btn-import')?.addEventListener('click', () => {
       document.getElementById('pm-file-import')?.click();
+    });
+
+    // Logout
+    this._dropdown.querySelector('#pm-btn-logout')?.addEventListener('click', () => {
+      Toast.confirm(`Se deconnecter de ${window.TERLAB_USER_EMAIL} ?`, () => {
+        localStorage.removeItem('terlab_user_email');
+        localStorage.removeItem('terlab_auth');
+        window.TERLAB_USER_EMAIL = null;
+        document.getElementById('btn-login').title = 'Connexion';
+        Toast.show('Deconnecte', 'info', 2000);
+        this.render();
+      });
     });
 
     // Accueil

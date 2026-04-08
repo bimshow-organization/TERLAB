@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-TERLAB · Exporteur de projet — v1.0
+TERLAB · Exporteur de projet — v2.0
 =====================================
-Application pédagogique d'analyse de terrain — ÉARL Réunion
+Application pédagogique d'analyse de terrain — ENSA La Réunion
 Hébergé par BIMSHOW · MGA Architecture · Saint-Leu, La Réunion
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -25,39 +25,46 @@ Hébergé par BIMSHOW · MGA Architecture · Saint-Leu, La Réunion
      python export_terlab.py --mode composant --composant map-viewer
      → Export map-viewer.js + phases qui l'utilisent + session-manager
 
-  4. DATA → JSON uniquement
-     python export_terlab.py --mode data
-     → Tous les JSON de data/ (phases-meta, acteurs, risques, demos…)
+  4. SERVICES → Couche métier JS
+     python export_terlab.py --mode service
+     → 45 services (terrain, PLU, PPR, SDIS, LiDAR…) + 9 utils
 
-  5. INTEGRATION BIMSHOW → Bridge + IFC + shell
+  5. DATA → JSON uniquement
+     python export_terlab.py --mode data
+     → Tous les JSON de data/ (phases-meta, PLU 24 communes, SCoT, risques…)
+
+  6. INTEGRATION BIMSHOW → Bridge + IFC + shell
      python export_terlab.py --mode bimshow
      → index.js + bimshow-bridge.js + ifc-worker.js + index.html
 
-  6. FULL → Export complet (attention à la taille)
+  7. FULL → Export complet (attention à la taille)
      python export_terlab.py --mode full
-     → Tous les fichiers TERLAB (~400Ko texte brut)
+     → Tous les fichiers TERLAB
 
-  7. REVIEW → Fichiers modifiés récemment
+  8. REVIEW → Fichiers modifiés récemment
      python export_terlab.py --mode changes --days 3
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 MODULES TERLAB :
-  phases      → 14 fichiers HTML p00-p13 (phases pédagogiques)
-  components  → 8 composants JS partagés (session, map, export…)
-  data        → 7 fichiers JSON (meta, acteurs, risques, demos…)
-  assets      → 3 CSS (shell, map, print)
-  workers     → ifc-worker.js (export IFC 2x3)
+  phases      → 15 fichiers HTML p00-p13 (phases pédagogiques)
+  components  → 30 composants JS partagés (session, map, export, aéraulique, gabarit…)
+  services    → 45 services JS métier (terrain, PLU, PPR, SDIS, LiDAR, envelope…)
+  data        → 45 fichiers JSON (meta, PLU 24 communes, SCoT 5 intercos, risques…)
+  assets      → 10 CSS (shell, map, print, esquisse, 3D, aéraulique…)
+  utils       → 9 utilitaires JS (coords UTM40S, COPC, GLB exporter…)
+  workers     → 2 workers JS (ifc-worker + dxf-worker)
   stubs       → georisques-proxy.js (Firebase Function)
-  shell       → index.html + index.js (SPA router)
-  docs        → README.md + CLAUDE_CODE_INTEGRATION_PROMPT.md
+  shell       → index.html + accueil.html + index.js (SPA router)
+  docs        → prompts/ + plu-schemas/ + .docs/
 
 Usage :
   python export_terlab.py --mode audit
   python export_terlab.py --mode phase --phase p03
   python export_terlab.py --mode phase --phase p07
   python export_terlab.py --mode composant --composant map-viewer
-  python export_terlab.py --mode composant --composant session-manager
+  python export_terlab.py --mode composant --composant esquisse-canvas
+  python export_terlab.py --mode service
   python export_terlab.py --mode data
   python export_terlab.py --mode bimshow
   python export_terlab.py --mode full
@@ -73,14 +80,16 @@ from collections import defaultdict
 # ─── Configuration ────────────────────────────────────────────────
 
 TERLAB_MODULES = {
-    'phases'     : '14 phases HTML pédagogiques (p00 → p13)',
-    'components' : '8 composants JS partagés (session, map, export, bridge…)',
-    'data'       : '7 JSON de configuration (phases-meta, acteurs, risques, demos…)',
-    'assets'     : '3 CSS (shell design system · map Mapbox · print PDF)',
-    'workers'    : 'Workers JS (ifc-worker — export IFC 2x3)',
+    'phases'     : '15 phases HTML pédagogiques (p00 → p13, dont p11 esquisse + fin-de-vie)',
+    'components' : '30 composants JS partagés (session, map, export, bridge, aéraulique, gabarit, 3D…)',
+    'services'   : '45 services JS métier (terrain, PLU, PPR, SDIS, LiDAR, envelope, plan masse…)',
+    'data'       : '45 JSON de configuration (phases-meta, PLU 24 communes, SCoT 5 intercos, risques…)',
+    'assets'     : '10 CSS (shell · map · print · esquisse · 3D · aéraulique · envirobat…)',
+    'utils'      : '9 utilitaires JS (coords UTM40S, COPC reader, GLB exporter, sun diagram…)',
+    'workers'    : '2 workers JS (ifc-worker IFC 2x3 + dxf-worker DXF export)',
     'stubs'      : 'Stubs à implémenter (georisques-proxy Firebase Function)',
-    'shell'      : 'Shell SPA : index.html + index.js (router, injection phases)',
-    'docs'       : 'Documentation : README.md + CLAUDE_CODE_INTEGRATION_PROMPT.md',
+    'shell'      : 'Shell SPA : index.html + accueil.html + index.js (router, injection phases)',
+    'docs'       : 'Documentation : prompts/ + plu-schemas/ + .docs/',
 }
 
 PHASE_MAP = {
@@ -97,17 +106,46 @@ PHASE_MAP = {
     'p10': ('entretien',       'earth', 'Durabilité tropicale + termites + corrosion'),
     'p11': ('fin-de-vie',      'green', 'Économie circulaire + ILEVA + réemploi'),
     'p12': ('synthese',        'dark',  'Exports PDF A3/DXF/GLB/IFC + QR code Firebase'),
-    'p13': ('world',           'world', 'Globe Köppen rotatif + partenariats ÉARL'),
+    'p13': ('world',           'world', 'Globe Köppen rotatif + partenariats ENSA La Réunion'),
 }
 
 COMPOSANT_MAP = {
-    'session-manager' : 'UUID anonyme + localStorage + Firebase RTDB sync',
-    'map-viewer'      : 'Wrapper Mapbox GL v3 — 10 modes carte + profil + mesure',
-    'bimshow-bridge'  : 'postMessage BIMSHOW — envoi GLB + réception snapshot',
-    'export-engine'   : 'PDF jsPDF A3 + DXF ASCII + GLB + JSON session',
-    'source-modal'    : 'Modal références bibliographiques par phase',
-    'demo-loader'     : 'Chargeur scénarios démo (ville/village/isolé)',
-    'qr-code'         : 'QR code session TERLAB (3 méthodes + fallback)',
+    # Core
+    'session-manager'       : 'UUID anonyme + localStorage + Firebase RTDB sync',
+    'terlab-storage'        : 'Abstraction stockage session persistante',
+    'map-viewer'            : 'Wrapper Mapbox GL v3 — 10 modes carte + profil + mesure',
+    'bimshow-bridge'        : 'postMessage BIMSHOW — envoi GLB + réception snapshot',
+    'bimshow-viewer'        : 'Viewer BIMSHOW embarqué iframe',
+    'export-engine'         : 'PDF jsPDF A3 + DXF ASCII + GLB + JSON session',
+    'source-modal'          : 'Modal références bibliographiques par phase',
+    'demo-loader'           : 'Chargeur scénarios démo (ville/village/isolé)',
+    'qr-code'               : 'QR code session TERLAB (3 méthodes + fallback)',
+    # Esquisse & gabarit
+    'esquisse-canvas'       : 'Canvas SVG plan masse Mapbox live overlay',
+    'gabarit-3d'            : 'Viewer Three.js gabarit volumétrique',
+    'gabarit-engine'        : 'Moteur calcul gabarit PLU (prospect, reculs)',
+    'gabarit-pareto'        : 'Score Pareto multi-critères gabarit',
+    'gabarit-svg'           : 'Rendu SVG gabarit 2D',
+    'parcel-selector'       : 'Sélection parcelle cadastrale IGN WFS',
+    # 3D & terrain
+    'buildings-3d-viewer'   : 'Bâtiments 3D Mapbox extrusion voisinage',
+    'terrain-3d-viewer'     : 'Viewer terrain 3D Three.js DEM + LiDAR',
+    # Risques & réglementation
+    'risk-player'           : 'Player animé risques naturels (inondation slider)',
+    'geojson-panel'         : 'Panel affichage couches GeoJSON PPR/PLU',
+    'rtaa-panel'            : 'Panel conformité RTAA DOM ventilation',
+    'rtaa-ventilation-sim'  : 'Simulation ventilation naturelle traversante',
+    'acces-pompiers-canvas' : 'Canvas accès SDIS voie engin/échelle',
+    'geo-status-bar'        : 'Barre status coordonnées + altitude NGR',
+    'giep-score'            : 'Calcul score GIEP biodiversité parcelle',
+    # Aéraulique
+    'aeraulic-map-tools'    : 'Outils carte vent Mapbox (rose des vents)',
+    'aeraulic-planner'      : 'Planificateur ventilation naturelle pièces',
+    'aeraulic-section'      : 'Coupe section aéraulique bâtiment',
+    'wind-navigator'        : 'Navigation direction vents dominants Réunion',
+    # Contenu
+    'atlas-modal'           : 'Modal atlas territorial Réunion',
+    'envirobat-cards'       : 'Cartes fiches Envirobat Réunion (14 fiches)',
 }
 
 IGNORE_DIRS = {'node_modules', '.git', '__pycache__', '.angular', 'dist', 'build'}
@@ -188,18 +226,19 @@ def extract_phase_info(html: str) -> dict:
 
 def build_project_context(root: Path) -> str:
     lines = [SEP2,
-             'TERLAB · Laboratoire d\'Analyse de Terrain · ÉARL — Île de La Réunion',
+             'TERLAB · Laboratoire d\'Analyse de Terrain · ENSA La Réunion',
              'MGA Architecture · Mathias Giraud · Saint-Leu, La Réunion (UTC+4)',
              SEP2, '']
 
     lines += [
         '🏗 STACK TECHNIQUE',
         '  Frontend    : Vanilla JS ES2022+ · Aucun framework · Modules natifs',
-        '  Cartographie: Mapbox GL JS v3.7 (token requis)',
+        '  Cartographie: Mapbox GL JS v3.7 + Mapbox Draw v1.4.3 + Turf.js v7',
         '  3D          : Three.js r182 (partagé avec BIMSHOW)',
-        '  Graphiques  : Chart.js v4',
-        '  Export PDF  : jsPDF v2.5 + html2canvas v1.4',
-        '  Persistence : Firebase RTDB v10 (sessions anonymes UUID)',
+        '  Graphiques  : Chart.js v4.4',
+        '  Export PDF  : jsPDF v2.5.1 + html2canvas v1.4.1',
+        '  Persistence : Firebase RTDB v10.12 (sessions anonymes UUID)',
+        '  LiDAR       : COPC v0.0.8 (Cloud-Optimized Point Cloud)',
         '  Hébergement : bimshow.io/terlab (fichiers statiques depuis BIMSHOW)',
         '  Design      : 7 thèmes CSS (dark/ivory/risk/earth/site/green/world)',
         '',
@@ -229,6 +268,7 @@ def build_project_context(root: Path) -> str:
               '  data.geopf.fr/wmts           Tuiles cadastre + ortho (gratuite)',
               '  data.geopf.fr/geocodage      Géocodage adresses (gratuite)',
               '  georisques.gouv.fr/api/v1    Risques multi-aléas (proxy requis DOM)',
+              '  peigeo.re:8080/geoserver     GeoServer AGORAH — couches PPR/PLU/communes Réunion',
               '  api.mapbox.com               Terrain 3D, satellite, globe (token requis)',
               '  Firebase RTDB                Sessions étudiantes anonymes',
               '',
@@ -306,7 +346,7 @@ def export_audit(root: Path, args) -> str:
 
     # Shell
     out.append(f'\n{SEP2}\n🏠 SHELL SPA\n{SEP2}')
-    for fname in ['index.html', 'index.js']:
+    for fname in ['index.html', 'accueil.html', 'index.js']:
         p = root / fname
         if p.exists():
             out.append(file_header(p, root))
@@ -318,6 +358,22 @@ def export_audit(root: Path, args) -> str:
     if comp_dir.exists():
         for p in sorted(comp_dir.glob('*.js')):
             if p.name == 'all-components.js': continue  # doublon
+            out.append(file_header(p, root))
+            out.append(read_file(p))
+
+    # Services JS
+    svc_dir = root / 'services'
+    if svc_dir.exists():
+        out.append(f'\n{SEP2}\n🔧 SERVICES JS (métier)\n{SEP2}')
+        for p in sorted(svc_dir.glob('*.js')):
+            out.append(file_header(p, root))
+            out.append(read_file(p))
+
+    # Utils
+    utils_dir = root / 'utils'
+    if utils_dir.exists():
+        out.append(f'\n{SEP2}\n🛠 UTILS\n{SEP2}')
+        for p in sorted(utils_dir.glob('*.js')):
             out.append(file_header(p, root))
             out.append(read_file(p))
 
@@ -433,11 +489,27 @@ def export_phase(root: Path, phase_slug: str) -> str:
             out.append(file_header(p2, root))
             out.append(read_file(p2))
 
-    # Workers si Phase 7
-    if phase_slug == 'p07':
+    # Services JS pertinents
+    svc_dir = root / 'services'
+    if svc_dir.exists():
+        out.append(f'\n{SEP2}\n🔧 SERVICES JS\n{SEP2}')
+        for p2 in sorted(svc_dir.glob('*.js')):
+            out.append(file_header(p2, root))
+            out.append(read_file(p2))
+
+    # Utils
+    utils_dir = root / 'utils'
+    if utils_dir.exists():
+        out.append(f'\n{SEP2}\n🛠 UTILS\n{SEP2}')
+        for p2 in sorted(utils_dir.glob('*.js')):
+            out.append(file_header(p2, root))
+            out.append(read_file(p2))
+
+    # Workers si Phase 7 ou 12
+    if phase_slug in ('p07', 'p12'):
         workers_dir = root / 'workers'
         if workers_dir.exists():
-            out.append(f'\n{SEP2}\n🔧 WORKERS (Phase 7 — IFC export)\n{SEP2}')
+            out.append(f'\n{SEP2}\n🔧 WORKERS (export IFC/DXF)\n{SEP2}')
             for p2 in sorted(workers_dir.glob('*.js')):
                 out.append(file_header(p2, root))
                 out.append(read_file(p2))
@@ -448,7 +520,7 @@ def export_phase(root: Path, phase_slug: str) -> str:
     if data_dir.exists():
         priority = ['phases-meta.json', 'acteurs.json', 'risques-phases.json', 'references-biblio.json']
         if phase_slug in ('p13',):
-            priority += ['climat-koppen.json', 'partenariats-earl.json']
+            priority += ['climat-koppen.json', 'partenariats-ensa.json']
         if phase_slug in ('p00',):
             priority += ['demos.json']
         for fname in priority:
@@ -550,6 +622,27 @@ def export_composant(root: Path, composant_name: str) -> str:
                 out.append(f'  ✓ {p2.name}')
 
     out.append(build_stubs_index(root))
+    return '\n'.join(out)
+
+
+def export_service(root: Path, args) -> str:
+    """Export tous les services JS métier + utils."""
+    out = [build_project_context(root)]
+    out.append(f'\n{SEP2}\n🔧 MODE : Services JS — Couche métier\n{SEP2}')
+
+    svc_dir = root / 'services'
+    if svc_dir.exists():
+        for p in sorted(svc_dir.glob('*.js')):
+            out.append(file_header(p, root))
+            out.append(read_file(p))
+
+    utils_dir = root / 'utils'
+    if utils_dir.exists():
+        out.append(f'\n{SEP2}\n🛠 UTILS\n{SEP2}')
+        for p in sorted(utils_dir.glob('*.js')):
+            out.append(file_header(p, root))
+            out.append(read_file(p))
+
     return '\n'.join(out)
 
 
@@ -677,7 +770,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument('--mode', default='audit',
-        choices=['audit', 'phase', 'composant', 'data', 'bimshow', 'full', 'changes'],
+        choices=['audit', 'phase', 'composant', 'service', 'data', 'bimshow', 'full', 'changes'],
         help='Mode d\'export')
     parser.add_argument('--phase',      default='p00',
         help='Phase à exporter (p00-p13) — utilisé avec --mode phase')
@@ -701,7 +794,7 @@ def main():
         print('   Vérifiez que vous êtes dans le dossier terlab/ ou passez --root chemin/')
         sys.exit(1)
 
-    print(f'TERLAB Exporter v1.0')
+    print(f'TERLAB Exporter v2.0')
     print(f'Racine : {root}')
     print(f'Mode   : {args.mode}')
 
@@ -714,6 +807,8 @@ def main():
     elif args.mode == 'composant':
         content = export_composant(root, args.composant)
         print(f'Compo  : {args.composant}')
+    elif args.mode == 'service':
+        content = export_service(root, args)
     elif args.mode == 'data':
         content = export_data(root)
     elif args.mode == 'bimshow':

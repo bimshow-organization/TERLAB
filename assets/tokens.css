@@ -1,0 +1,105 @@
+/* ================================================================
+   TERLAB · tokens.css · Variables CSS globales
+   MGA Architecture · ENSA La Réunion · 2026
+   Source de vérité unique — charger en premier
+   ================================================================ */
+
+:root {
+
+  /* ── Couleurs de base (dark theme defaults) ── */
+  --bg:     #0f0f0e;
+  --bg1:    #161614;
+  --bg2:    #1e1e1b;
+  --bg3:    #252522;
+  --bgH:    rgba(255,185,110,.04);
+
+  --acc:    #ffb366;
+  --accD:   rgba(255,179,102,.12);
+  --accB:   rgba(255,179,102,.25);
+  --acc2:   #ff9633;
+
+  --text1:  rgba(255,255,255,.92);
+  --text2:  rgba(255,255,255,.55);
+  --text3:  rgba(255,255,255,.28);
+
+  --border:   rgba(255,255,255,.08);
+  --border2:  rgba(255,255,255,.14);
+  --border3:  rgba(255,255,255,.22);
+
+  --red:    #ef4444;
+  --grn:    #34d399;
+  --yel:    #fbbf24;
+  --blu:    #60a5fa;
+
+  /* ── Thèmes par phase (data-theme sur <html>) ── */
+  --theme-dark-bg:   #0f0f0e;
+  --theme-ivory-bg:  #f0ebe0;
+  --theme-risk-bg:   #1a0808;
+  --theme-earth-bg:  #0e0d09;
+  --theme-site-bg:   #09140a;
+  --theme-green-bg:  #0a140b;
+  --theme-world-bg:  #080910;
+
+  /* ── Typographie ── */
+  --fS:   'Inter', system-ui, sans-serif;
+  --fT:   'IBM Plex Mono', monospace;
+  --fD:   'Cormorant Garamond', Georgia, serif;
+
+  /* ── Layout Desktop ── */
+  --lp-w:      340px;   /* largeur left panel */
+  --rp-w:      300px;   /* largeur right panel */
+  --topbar-h:  48px;    /* hauteur topbar */
+
+  /* ── Layout Mobile ── */
+  --mob-tabbar-h:     62px;
+  --mob-sheet-h:      70dvh;
+  --mob-topbar-h:     64px;
+  --mob-fab-size:     52px;
+
+  /* ── Z-index (échelle cohérente) ── */
+  --z-map:      1;
+  --z-overlay:  10;
+  --z-panel:    20;
+  --z-topbar:   30;
+  --z-sheet:    40;
+  --z-tabbar:   50;
+  --z-toast:    60;
+  --z-modal:    70;
+
+  /* ── Radius ── */
+  --r-xs: 3px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+
+  /* ── Transitions ── */
+  --ease:       cubic-bezier(.4,0,.2,1);
+  --ease-in:    cubic-bezier(.4,0,1,1);
+  --ease-out:   cubic-bezier(0,0,.2,1);
+  --t-xs:       .1s;
+  --t-sm:       .18s;
+  --t-md:       .28s;
+  --t-lg:       .4s;
+
+  /* ── Shadows ── */
+  --shadow-sm:  0 1px 3px rgba(0,0,0,.4);
+  --shadow-md:  0 4px 16px rgba(0,0,0,.5);
+  --shadow-lg:  0 8px 32px rgba(0,0,0,.6);
+
+  /* ── Espacement ── */
+  --sp-xs: 4px;
+  --sp-sm: 8px;
+  --sp-md: 12px;
+  --sp-lg: 16px;
+  --sp-xl: 24px;
+}
+
+/* Thème par phase via data-theme sur <html> */
+[data-theme="dark"]  { --bg: #0f0f0e; --bg1: #161614; --bg2: #1e1e1b; --border: rgba(255,255,255,.08) }
+[data-theme="ivory"] { --bg: #f0ebe0; --bg1: #e8e2d4; --bg2: #ddd8c8; --text1: rgba(0,0,0,.88); --text2: rgba(0,0,0,.5); --border: rgba(0,0,0,.1) }
+[data-theme="risk"]  { --bg: #1a0808; --bg1: #220e0e; --bg2: #2a1212; --acc: #f87171; --border: rgba(248,113,113,.1) }
+[data-theme="earth"] { --bg: #0e0d09; --bg1: #17150f; --bg2: #201d14; --acc: #d4a76a; --border: rgba(212,167,106,.1) }
+[data-theme="site"]  { --bg: #09140a; --bg1: #0f1e11; --bg2: #162918; --acc: #6ee7b7; --border: rgba(110,231,183,.1) }
+[data-theme="green"] { --bg: #0a140b; --bg1: #101f12; --bg2: #162b18; --acc: #86efac; --border: rgba(134,239,172,.1) }
+[data-theme="world"] { --bg: #080910; --bg1: #0d0f1a; --bg2: #131624; --acc: #93c5fd; --border: rgba(147,197,253,.1) }

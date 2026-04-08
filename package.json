@@ -1,0 +1,15 @@
+{
+  "name": "terlab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TERLAB — Analyse de terrain pédagogique · ENSA La Réunion",
+  "scripts": {
+    "test:random": "node scripts/random-terrain-pdf.js",
+    "test:random:batch": "node scripts/random-terrain-pdf.js --count 5",
+    "serve": "npx serve . -p 8080 -s"
+  },
+  "devDependencies": {
+    "puppeteer": "^24.0.0",
+    "serve": "^14.2.0"
+  }
+}

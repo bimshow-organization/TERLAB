@@ -54,10 +54,12 @@ html, body { overflow: auto; }
   text-align: center;
   margin-bottom: 40px;
 }
-.accueil-logo {
-  width: 56px;
-  height: 56px;
-  margin: 0 auto 16px;
+.accueil-logo-giep {
+  width: 120px;
+  height: auto;
+  margin: 0 auto 20px;
+  display: block;
+  opacity: 0.85;
 }
 .accueil-title {
   font-family: var(--font-serif);
@@ -414,6 +416,89 @@ html, body { overflow: auto; }
   color: var(--accent);
 }
 
+/* ── Auth bar ──────────────────────────────────────────────── */
+.accueil-auth {
+  width: 100%;
+  max-width: 520px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+.auth-guest, .auth-user {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.auth-guest-msg {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text2);
+}
+.auth-btn {
+  padding: 6px 16px;
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.auth-btn-login {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: transparent;
+}
+.auth-btn-login:hover { filter: brightness(1.15); }
+.auth-btn-logout {
+  background: var(--card);
+  color: var(--text2);
+}
+.auth-btn-logout:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.auth-user-email {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent);
+}
+
+/* ── Login modal inputs ───────────────────────────────────── */
+.accueil-login-input {
+  display: block;
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  padding: 8px 12px;
+  outline: none;
+  box-sizing: border-box;
+}
+.accueil-login-input:focus { border-color: var(--accent); }
+.accueil-login-input::placeholder { color: var(--faint); }
+.accueil-login-error {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--danger);
+  margin-top: 6px;
+  min-height: 1em;
+}
+
+/* ── Guest locked state ───────────────────────────────────── */
+.accueil-app.guest .accueil-form { display: none; }
+.accueil-app.guest .project-card-new { opacity: 0.35; pointer-events: none; }
+.accueil-app.guest .pc-btn-danger,
+.accueil-app.guest .pc-btn-export { opacity: 0.35; pointer-events: none; }
+.accueil-app.guest #btn-import { opacity: 0.35; pointer-events: none; }
+
 .accueil-empty {
   text-align: center;
   padding: 24px;
@@ -432,15 +517,41 @@ html, body { overflow: auto; }
 
   <!-- En-tête -->
   <header class="accueil-header">
-    <svg class="accueil-logo" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" stroke="#9a7820" stroke-width="1.5" stroke-linejoin="round"/>
-      <polyline points="3.27 6.96 12 12.01 20.73 6.96" stroke="#9a7820" stroke-width="1.2" opacity=".5"/>
-      <line x1="12" y1="22.08" x2="12" y2="12" stroke="#9a7820" stroke-width="1.2" opacity=".5"/>
-    </svg>
+    <img class="accueil-logo-giep" src="assets/logo-giep.png" alt="GIEP — Géo-Intelligence Environnementale et Pédagogique" />
     <h1 class="accueil-title">TERLAB</h1>
     <p class="accueil-sub">Laboratoire d'analyse de terrain</p>
     <p class="accueil-ensa">ENSA La Réunion · Île de La Réunion</p>
   </header>
+
+  <!-- Bandeau connexion -->
+  <div class="accueil-auth" id="accueil-auth">
+    <!-- Non connecté -->
+    <div class="auth-guest" id="auth-guest">
+      <span class="auth-guest-msg">Connectez-vous pour créer et sauvegarder vos projets</span>
+      <button class="auth-btn auth-btn-login" id="btn-auth-login">Se connecter</button>
+    </div>
+    <!-- Connecté -->
+    <div class="auth-user" id="auth-user" hidden>
+      <span class="auth-user-email" id="auth-user-email"></span>
+      <button class="auth-btn auth-btn-logout" id="btn-auth-logout">Se deconnecter</button>
+    </div>
+  </div>
+
+  <!-- Modal login -->
+  <div class="tl-modal-overlay" id="login-modal">
+    <div class="tl-modal">
+      <div class="tl-modal-icon" style="background:rgba(154,120,32,0.12)">🔑</div>
+      <div class="tl-modal-title">Connexion TERLAB</div>
+      <div class="tl-modal-msg">Entrez votre adresse mail ENSA et le code d'accès fourni par l'enseignant.</div>
+      <input type="email" id="login-email" class="accueil-login-input" placeholder="prenom.nom@reunion.archi.fr" autocomplete="email"/>
+      <input type="text" id="login-code" class="accueil-login-input" placeholder="Code d'accès" autocomplete="off" style="margin-top:8px"/>
+      <p class="accueil-login-error" id="login-error"></p>
+      <div class="tl-modal-actions" style="margin-top:16px">
+        <button class="tl-modal-btn tl-modal-btn-cancel" id="login-cancel">Annuler</button>
+        <button class="tl-modal-btn" id="login-submit" style="background:var(--accent);color:var(--bg);border-color:transparent">Se connecter</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Formulaire étudiant -->
   <section class="accueil-form" id="accueil-form">
@@ -513,6 +624,87 @@ html, body { overflow: auto; }
 
 <script type="module">
 import TerlabStorage from './components/terlab-storage.js';
+
+// ── Config access code ────────────────────────────────────
+let TERLAB_ACCESS_CODE = 'TERLAB2026';
+try {
+  const mod = await import('./config/firebase-config.js');
+  if (mod.TERLAB_ACCESS_CODE) TERLAB_ACCESS_CODE = mod.TERLAB_ACCESS_CODE;
+} catch { /* config absente — code par défaut */ }
+
+// ── Auth state ────────────────────────────────────────────
+function isLoggedIn() {
+  return !!(localStorage.getItem('terlab_user_email') && localStorage.getItem('terlab_auth'));
+}
+
+function getEmail() {
+  return localStorage.getItem('terlab_user_email') || '';
+}
+
+function updateAuthUI() {
+  const logged = isLoggedIn();
+  const app = document.querySelector('.accueil-app');
+  app.classList.toggle('guest', !logged);
+
+  document.getElementById('auth-guest').hidden = logged;
+  document.getElementById('auth-user').hidden = !logged;
+  if (logged) {
+    document.getElementById('auth-user-email').textContent = getEmail();
+  }
+}
+
+// ── Login modal ───────────────────────────────────────────
+function openLogin() {
+  const overlay = document.getElementById('login-modal');
+  overlay.classList.add('tl-modal-visible');
+  document.getElementById('login-email').value = '';
+  document.getElementById('login-code').value = '';
+  document.getElementById('login-error').textContent = '';
+  setTimeout(() => document.getElementById('login-email').focus(), 100);
+}
+
+function closeLogin() {
+  document.getElementById('login-modal').classList.remove('tl-modal-visible');
+}
+
+function submitLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const code  = document.getElementById('login-code').value.trim();
+  const err   = document.getElementById('login-error');
+
+  if (!email || !email.includes('@')) {
+    err.textContent = 'Adresse email invalide';
+    return;
+  }
+  if (code !== TERLAB_ACCESS_CODE) {
+    err.textContent = 'Code d\'accès incorrect';
+    return;
+  }
+
+  localStorage.setItem('terlab_user_email', email);
+  localStorage.setItem('terlab_auth', '1');
+  closeLogin();
+  updateAuthUI();
+  render();
+}
+
+function logout() {
+  localStorage.removeItem('terlab_user_email');
+  localStorage.removeItem('terlab_auth');
+  updateAuthUI();
+  render();
+}
+
+document.getElementById('btn-auth-login')?.addEventListener('click', openLogin);
+document.getElementById('btn-auth-logout')?.addEventListener('click', logout);
+document.getElementById('login-submit')?.addEventListener('click', submitLogin);
+document.getElementById('login-cancel')?.addEventListener('click', closeLogin);
+document.getElementById('login-modal')?.addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeLogin();
+});
+document.getElementById('login-code')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') submitLogin();
+});
 
 // ── État ────────────────────────────────────────────────────
 const PREFS_KEY   = 'terlab_accueil_prefs';
@@ -731,6 +923,7 @@ function attachEvents() {
 }
 
 function createNew() {
+  if (!isLoggedIn()) { openLogin(); return; }
   const sessions = TerlabStorage.listSessions();
   if (sessions.length >= MAX_PROJETS) return;
 
@@ -790,6 +983,7 @@ if (prefs.groupe)   document.getElementById('input-groupe').value = prefs.groupe
   document.getElementById(id)?.addEventListener('input', savePrefs);
 });
 
+updateAuthUI();
 render();
 </script>
 

@@ -3,6 +3,7 @@ plu-sources/
 
 # Docs / references (PDFs, anciennes versions)
 .docs/
+docs/random-pdf/
 
 # Export audit logs
 TERLAB_export_audit_*.txt
@@ -26,6 +27,11 @@ node_modules/
 .env
 .env.local
 config.local.js
+config/firebase-config.js
+config/meteo-france-config.js
+
+# Generated output
+output/
 
 # OS
 .DS_Store

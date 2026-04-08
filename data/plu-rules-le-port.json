@@ -4,22 +4,56 @@
     "region": "La Réunion",
     "generated": "2026-04-07",
     "commune": "Le Port",
-    "insee": "97408",
+    "insee": "97407",
     "intercommunalite": "TCO",
     "plu_type": "PLU",
     "plu_date_approbation": "2018-10-02",
     "plu_modifications": [
-      {"indice": 1, "date": "2018-10-02", "objet": "Révision du PLU"},
-      {"indice": 2, "date": "2019-12-17", "objet": "Modification droit commun n°1 — forages, EBC, zones Ua/Ue/Up/N"},
-      {"indice": 3, "date": null, "objet": "Modification droit commun n°2 — stationnement, erreurs matérielles, OAP Fil vert, linéaire commercial"}
+      {
+        "indice": 1,
+        "date": "2018-10-02",
+        "objet": "Révision du PLU"
+      },
+      {
+        "indice": 2,
+        "date": "2019-12-17",
+        "objet": "Modification droit commun n°1 — forages, EBC, zones Ua/Ue/Up/N"
+      },
+      {
+        "indice": 3,
+        "date": null,
+        "objet": "Modification droit commun n°2 — stationnement, erreurs matérielles, OAP Fil vert, linéaire commercial"
+      }
     ],
     "note_hauteur": "Toutes les hauteurs Le Port sont exprimées au faîtage OU au sommet de l'acrotère (pas de distinction hé/hf comme Saint-Paul). Un seul chiffre = hauteur totale maximale.",
     "note_stationnement": "Normes identiques pour toutes les zones U sauf seuil d'obligation d'ouvrage (Ua/Ub/Uv : 1000m², Uc/Ud/Ue : 500m²). Logement : 0.3pl/logt + 1pl visiteur/100m² SDP. LLS : 0.2pl/logt + 8pl/1000m² SDP.",
     "note_permeable": "Le Port utilise le terme '% superficie non imperméabilisée ou éco-aménageable'. Pas de CBS. Valeurs directement comparables à permeable_min_pct dans le schéma commun.",
     "note_forage": "Toutes les zones U sont concernées par des servitudes de protection des forages d'eau potable (AS1 : FRG1Bis, F1-F6, FR1, P11/P11bis). Des règles ICPE et pollution spécifiques s'appliquent dans les périmètres rapprochés.",
-    "zones_liste": ["Ua", "Ub", "Uc", "Uca", "Ud", "Ue", "Uem", "Umi", "Uoap", "Up", "Uppp", "Us", "Uv", "1AUm", "1AUmut", "2AU", "2AUem", "2AUmut", "2AUp", "A", "N", "Nerl"]
+    "zones_liste": [
+      "Ua",
+      "Ub",
+      "Uc",
+      "Uca",
+      "Ud",
+      "Ue",
+      "Uem",
+      "Umi",
+      "Uoap",
+      "Up",
+      "Uppp",
+      "Us",
+      "Uv",
+      "1AUm",
+      "1AUmut",
+      "2AU",
+      "2AUem",
+      "2AUmut",
+      "2AUp",
+      "A",
+      "N",
+      "Nerl"
+    ]
   },
-
   "regles_communes": {
     "reconstruction_sinistre_ans": 10,
     "reconstruction_identique": true,
@@ -28,7 +62,12 @@
     "extension_mesurée_max_pct_sdp": 30,
     "permeable_alternative_si_emprise_depasse": "Solution alternative validée hydrogéologue admise pour obtenir résultat équivalent 20% perméabilité",
     "bonus_exemplarité_energetique_pct": 30,
-    "toiture_terrasse_neuve_fonctions": ["énergies renouvelables", "agriculture urbaine", "végétalisation", "récupération/rétention eaux pluviales"],
+    "toiture_terrasse_neuve_fonctions": [
+      "énergies renouvelables",
+      "agriculture urbaine",
+      "végétalisation",
+      "récupération/rétention eaux pluviales"
+    ],
     "ve_recharge_hab_lte40places_pct": 50,
     "ve_recharge_hab_gt40places_pct": 75,
     "ve_recharge_industriel_lte40places_pct": 10,
@@ -49,8 +88,16 @@
     "deux_roues_commerce_par_100m2": 1,
     "cloture_voie_max_m": 1.8,
     "cloture_sep_max_m": 2,
-    "cloture_interdite": ["maille métallique ajourée sur boulevards", "tôle", "pleine pour logements collectifs et équipements"],
-    "cloture_autorisee": ["ajourée", "pleine", "mixte (voir schéma directeur)"],
+    "cloture_interdite": [
+      "maille métallique ajourée sur boulevards",
+      "tôle",
+      "pleine pour logements collectifs et équipements"
+    ],
+    "cloture_autorisee": [
+      "ajourée",
+      "pleine",
+      "mixte (voir schéma directeur)"
+    ],
     "permis_demolir": "Territoire entier soumis sauf périmètres RHI",
     "rtaa_dom": true,
     "eaux_pluviales_debit_max_l_s_ha": 1.2,
@@ -58,7 +105,6 @@
     "eclairage_anti_pollution_lumineuse": true,
     "fil_vert_oap": "Projets limitrophes au périmètre Fil Vert doivent respecter l'OAP annexée"
   },
-
   "stationnement_commun": {
     "note": "Norme identique dans toutes les zones U. Seule différence : seuil de l'obligation d'ouvrage (RdC ou sous-sol).",
     "logement_standard_par_logt": 0.3,
@@ -74,19 +120,24 @@
     "industrie_entrepot_par_2emplois": 1,
     "equip_collectif_par_50m2_sdp": 1
   },
-
   "zones": {
-
     "Ua": {
       "label": "Zone résidentielle individuelle — quartiers et lotissements",
       "type": "U",
       "sous_type": "résidentielle_individuelle",
       "note": "Vocation résidentielle à préserver. Caractère paysager et homogénéité urbaine.",
       "usages": {
-        "habitation": true, "commerce_proximite": true, "restauration": true,
-        "artisanat": true, "bureau": false, "hotel": false,
-        "industrie": false, "entrepot": false, "agricole": false,
-        "commerce_gros": false, "cinema": false
+        "habitation": true,
+        "commerce_proximite": true,
+        "restauration": true,
+        "artisanat": true,
+        "bureau": false,
+        "hotel": false,
+        "industrie": false,
+        "entrepot": false,
+        "agricole": false,
+        "commerce_gros": false,
+        "cinema": false
       },
       "reculs": {
         "voie_principale_m": 3,
@@ -118,7 +169,11 @@
         "permeable_min_pct": 30,
         "pleine_terre_min_pct_of_permeable": 50,
         "strates_min": 3,
-        "strates": ["couvrante", "arbustive", "arborée"],
+        "strates": [
+          "couvrante",
+          "arbustive",
+          "arborée"
+        ],
         "arbres_par_100m2_non_bati": 2,
         "arbres_min_par_parcelle": 2,
         "bande_retrait_planteee_m": 1.5
@@ -136,24 +191,53 @@
       "_meta": {
         "confidence": 1.0,
         "ambiguites": [],
-        "source_articles": ["Ua1", "Ua2", "Ua3", "Ua4", "Ua5", "Ua6", "Ua7", "Ua8", "Ua9", "Ua10", "Ua11", "Ua12"]
+        "source_articles": [
+          "Ua1",
+          "Ua2",
+          "Ua3",
+          "Ua4",
+          "Ua5",
+          "Ua6",
+          "Ua7",
+          "Ua8",
+          "Ua9",
+          "Ua10",
+          "Ua11",
+          "Ua12"
+        ]
       }
     },
-
     "Ub": {
       "label": "Zone centre historique et patrimonial — trame Filloz",
       "type": "U",
       "sous_type": "centre_historique",
       "note": "Formes urbaines continues. Cœur marchand. Patrimoine historique damier Filloz.",
       "usages": {
-        "habitation": true, "commerce": true, "restauration": true,
-        "artisanat": true, "bureau": true, "hotel": true,
-        "cinema": true, "hebergement_touristique": true,
-        "industrie": false, "entrepot": false, "commerce_gros": false
+        "habitation": true,
+        "commerce": true,
+        "restauration": true,
+        "artisanat": true,
+        "bureau": true,
+        "hotel": true,
+        "cinema": true,
+        "hebergement_touristique": true,
+        "industrie": false,
+        "entrepot": false,
+        "commerce_gros": false
       },
       "mixite_fonctionnelle": {
-        "lineaire_commercial_strict_rdc": ["commerce de détail", "restauration", "bureaux administrations publiques"],
-        "lineaire_commercial_souple_rdc": ["commerce de détail", "restauration", "service clientèle", "bureaux", "administrations publiques"],
+        "lineaire_commercial_strict_rdc": [
+          "commerce de détail",
+          "restauration",
+          "bureaux administrations publiques"
+        ],
+        "lineaire_commercial_souple_rdc": [
+          "commerce de détail",
+          "restauration",
+          "service clientèle",
+          "bureaux",
+          "administrations publiques"
+        ],
         "demolition_commerce_rdc_obligation_recreer": true
       },
       "reculs": {
@@ -193,30 +277,64 @@
         "camions_bureau_gt_m2": 4000,
         "camions_commerce_artisanat_gt_m2": 500,
         "camions_ensemble_gt_m2": 5000,
-        "depose_reprise_cars": ["hôtels", "groupes scolaires", "établissements santé ambulatoires"],
+        "depose_reprise_cars": [
+          "hôtels",
+          "groupes scolaires",
+          "établissements santé ambulatoires"
+        ],
         "depose_reprise_ecoles": true
       },
       "_meta": {
         "confidence": 1.0,
         "ambiguites": [],
-        "source_articles": ["Ub1", "Ub2", "Ub3", "Ub4", "Ub5", "Ub6", "Ub7", "Ub8", "Ub9", "Ub10", "Ub11", "Ub12"]
+        "source_articles": [
+          "Ub1",
+          "Ub2",
+          "Ub3",
+          "Ub4",
+          "Ub5",
+          "Ub6",
+          "Ub7",
+          "Ub8",
+          "Ub9",
+          "Ub10",
+          "Ub11",
+          "Ub12"
+        ]
       }
     },
-
     "Uc": {
       "label": "Zone urbaine mixte — tissu principal de la commune",
       "type": "U",
       "sous_type": "tissu_urbain_mixte",
       "note": "Mixité fonctionnelle et morphologique encouragée. Uca : secteur non raccordé au réseau assainissement collectif.",
       "usages": {
-        "habitation": true, "commerce": true, "restauration": true,
-        "artisanat": true, "bureau": true, "hotel": true, "cinema": true,
-        "hebergement_touristique": true, "agriculture_urbaine": true,
-        "industrie": false, "entrepot": false, "commerce_gros": false
+        "habitation": true,
+        "commerce": true,
+        "restauration": true,
+        "artisanat": true,
+        "bureau": true,
+        "hotel": true,
+        "cinema": true,
+        "hebergement_touristique": true,
+        "agriculture_urbaine": true,
+        "industrie": false,
+        "entrepot": false,
+        "commerce_gros": false
       },
       "mixite_fonctionnelle": {
-        "lineaire_commercial_strict_rdc": ["commerce de détail", "restauration", "administrations publiques"],
-        "lineaire_commercial_souple_rdc": ["commerce de détail", "restauration", "service clientèle", "bureaux", "administrations publiques"],
+        "lineaire_commercial_strict_rdc": [
+          "commerce de détail",
+          "restauration",
+          "administrations publiques"
+        ],
+        "lineaire_commercial_souple_rdc": [
+          "commerce de détail",
+          "restauration",
+          "service clientèle",
+          "bureaux",
+          "administrations publiques"
+        ],
         "rdc_hauteur_plafond_recommandee_min_m": 3.5,
         "rdc_hauteur_plafond_recommandee_max_m": 4.1,
         "rdc_logements_sur_rue_surelevement_ou_plafond_min_m": 3.0
@@ -269,26 +387,51 @@
         "camions_bureau_gt_m2": 4000,
         "camions_commerce_gt_m2": 500,
         "camions_ensemble_gt_m2": 5000,
-        "depose_reprise_cars": ["hôtels", "groupes scolaires", "établissements santé ambulatoires"],
+        "depose_reprise_cars": [
+          "hôtels",
+          "groupes scolaires",
+          "établissements santé ambulatoires"
+        ],
         "depose_reprise_ecoles": true
       },
       "_meta": {
         "confidence": 1.0,
-        "ambiguites": ["Uca : assainissement semi-collectif toléré dans attente raccordement TCO"],
-        "source_articles": ["Uc1", "Uc2", "Uc3", "Uc4", "Uc5", "Uc6", "Uc7", "Uc8", "Uc9", "Uc10", "Uc11", "Uc12"]
+        "ambiguites": [
+          "Uca : assainissement semi-collectif toléré dans attente raccordement TCO"
+        ],
+        "source_articles": [
+          "Uc1",
+          "Uc2",
+          "Uc3",
+          "Uc4",
+          "Uc5",
+          "Uc6",
+          "Uc7",
+          "Uc8",
+          "Uc9",
+          "Uc10",
+          "Uc11",
+          "Uc12"
+        ]
       }
     },
-
     "Ud": {
       "label": "Zone urbaine grands ensembles — axes structurants",
       "type": "U",
       "sous_type": "grands_ensembles",
       "note": "Projets d'ensemble de grande qualité architecturale. Mixité fonctionnelle et sociale. ZAC Mail de l'Océan : couleurs différentes autorisées.",
       "usages": {
-        "habitation": true, "commerce": true, "restauration": true,
-        "artisanat": true, "bureau": true, "hotel": true, "cinema": true,
-        "hebergement_touristique": true, "commerce_gros": true,
-        "industrie": false, "entrepot": false
+        "habitation": true,
+        "commerce": true,
+        "restauration": true,
+        "artisanat": true,
+        "bureau": true,
+        "hotel": true,
+        "cinema": true,
+        "hebergement_touristique": true,
+        "commerce_gros": true,
+        "industrie": false,
+        "entrepot": false
       },
       "reculs": {
         "voie_principale_m": 0,
@@ -329,10 +472,22 @@
       "_meta": {
         "confidence": 1.0,
         "ambiguites": [],
-        "source_articles": ["Ud1", "Ud2", "Ud3", "Ud4", "Ud5", "Ud6", "Ud7", "Ud8", "Ud9", "Ud10", "Ud11", "Ud12"]
+        "source_articles": [
+          "Ud1",
+          "Ud2",
+          "Ud3",
+          "Ud4",
+          "Ud5",
+          "Ud6",
+          "Ud7",
+          "Ud8",
+          "Ud9",
+          "Ud10",
+          "Ud11",
+          "Ud12"
+        ]
       }
     },
-
     "Ue": {
       "label": "Zone d'activités industrielles, artisanales, services",
       "type": "U",
@@ -341,9 +496,14 @@
       "usages": {
         "habitation": true,
         "habitation_note": "1 logement par UF max si utile au fonctionnement/surveillance",
-        "commerce": true, "restauration": true, "artisanat": true,
-        "bureau": true, "hotel": true, "cinema": true,
-        "industrie": true, "entrepot": true,
+        "commerce": true,
+        "restauration": true,
+        "artisanat": true,
+        "bureau": true,
+        "hotel": true,
+        "cinema": true,
+        "industrie": true,
+        "entrepot": true,
         "commerce_gros": true,
         "uem_industrie": false,
         "equipement_collectif_max_pct_zone": 5,
@@ -385,11 +545,25 @@
       },
       "_meta": {
         "confidence": 1.0,
-        "ambiguites": ["Ue général : hauteur non réglementée (sauf Uem 18m) — confirmer"],
-        "source_articles": ["Ue1", "Ue2", "Ue3", "Ue4", "Ue5", "Ue6", "Ue7", "Ue8", "Ue9", "Ue10", "Ue11", "Ue12"]
+        "ambiguites": [
+          "Ue général : hauteur non réglementée (sauf Uem 18m) — confirmer"
+        ],
+        "source_articles": [
+          "Ue1",
+          "Ue2",
+          "Ue3",
+          "Ue4",
+          "Ue5",
+          "Ue6",
+          "Ue7",
+          "Ue8",
+          "Ue9",
+          "Ue10",
+          "Ue11",
+          "Ue12"
+        ]
       }
     },
-
     "Umi": {
       "label": "Zone d'activités militaires",
       "type": "U",
@@ -399,7 +573,9 @@
         "habitation_note": "Exclusivement gardiennage ou hébergement personnel en caserne",
         "militaire": true,
         "equipement_sport": true,
-        "industrie": false, "commerce": false, "bureau": false
+        "industrie": false,
+        "commerce": false,
+        "bureau": false
       },
       "reculs": {
         "voie_principale_m": 0,
@@ -423,10 +599,16 @@
       "_meta": {
         "confidence": 1.0,
         "ambiguites": [],
-        "source_articles": ["Umi1", "Umi4", "Umi5", "Umi6", "Umi7", "Umi8"]
+        "source_articles": [
+          "Umi1",
+          "Umi4",
+          "Umi5",
+          "Umi6",
+          "Umi7",
+          "Umi8"
+        ]
       }
     },
-
     "Uoap": {
       "label": "Zone OAP Portes de l'Océan — règlement OAP seul",
       "type": "U",
@@ -435,11 +617,14 @@
       "ref": "OAP_PORTES_OCEAN",
       "_meta": {
         "confidence": 1.0,
-        "ambiguites": ["Toutes les règles (hauteur, emprise, recul, stationnement) sont définies dans l'OAP pièce n°4 — non extractibles depuis ce règlement"],
-        "source_articles": ["Uoap1-14"]
+        "ambiguites": [
+          "Toutes les règles (hauteur, emprise, recul, stationnement) sont définies dans l'OAP pièce n°4 — non extractibles depuis ce règlement"
+        ],
+        "source_articles": [
+          "Uoap1-14"
+        ]
       }
     },
-
     "Up": {
       "label": "Zone portuaire — activités industrielles/artisanales/entrepôts/bureaux liées au port",
       "type": "U",
@@ -448,8 +633,14 @@
       "usages": {
         "habitation": true,
         "habitation_note": "1 logement/UF si utile au fonctionnement/surveillance des installations",
-        "industrie": true, "artisanat": true, "entrepot": true, "bureau": true,
-        "commerce": true, "restauration": true, "hotel": true, "cinema": true,
+        "industrie": true,
+        "artisanat": true,
+        "entrepot": true,
+        "bureau": true,
+        "commerce": true,
+        "restauration": true,
+        "hotel": true,
+        "cinema": true,
         "uppp_activites_economiques_touristiques": true,
         "equipement_max_pct_zone": 5
       },
@@ -479,10 +670,17 @@
       "_meta": {
         "confidence": 1.0,
         "ambiguites": [],
-        "source_articles": ["Up1", "Up2", "Up4", "Up5", "Up6", "Up7", "Up8"]
+        "source_articles": [
+          "Up1",
+          "Up2",
+          "Up4",
+          "Up5",
+          "Up6",
+          "Up7",
+          "Up8"
+        ]
       }
     },
-
     "Us": {
       "label": "Zone commerciale et de services",
       "type": "U",
@@ -490,8 +688,12 @@
       "usages": {
         "habitation": true,
         "habitation_note": "1 logement/UF max si utile au fonctionnement/surveillance",
-        "commerce": true, "restauration": true, "artisanat": true,
-        "bureau": true, "hotel": true, "cinema": true,
+        "commerce": true,
+        "restauration": true,
+        "artisanat": true,
+        "bureau": true,
+        "hotel": true,
+        "cinema": true,
         "entrepot": true,
         "entrepot_note": "Max 1/3 de la SDP totale du projet",
         "industrie": false,
@@ -527,10 +729,19 @@
       "_meta": {
         "confidence": 1.0,
         "ambiguites": [],
-        "source_articles": ["Us1", "Us2", "Us4", "Us5", "Us6", "Us7", "Us8", "Us11", "Us12"]
+        "source_articles": [
+          "Us1",
+          "Us2",
+          "Us4",
+          "Us5",
+          "Us6",
+          "Us7",
+          "Us8",
+          "Us11",
+          "Us12"
+        ]
       }
     },
-
     "Uv": {
       "label": "Zone Urbaine Verte — trame verte, espaces publics, équipements",
       "type": "U",
@@ -541,8 +752,11 @@
         "hebergement": false,
         "equipement_collectif": true,
         "agriculture_urbaine": true,
-        "commerce": false, "bureau": false, "industrie": false,
-        "hotel": false, "cinema": false
+        "commerce": false,
+        "bureau": false,
+        "industrie": false,
+        "hotel": false,
+        "cinema": false
       },
       "reculs": {
         "voie_rn1001_m": 25,
@@ -576,10 +790,18 @@
       "_meta": {
         "confidence": 1.0,
         "ambiguites": [],
-        "source_articles": ["Uv1", "Uv2", "Uv4", "Uv5", "Uv7", "Uv8", "Uv11", "Uv12"]
+        "source_articles": [
+          "Uv1",
+          "Uv2",
+          "Uv4",
+          "Uv5",
+          "Uv7",
+          "Uv8",
+          "Uv11",
+          "Uv12"
+        ]
       }
     },
-
     "1AUm": {
       "label": "Zone à urbaniser mixte — urbanisation future dominante mixte",
       "type": "AU",
@@ -604,9 +826,11 @@
         "strates_min": 3,
         "arbres_par_100m2_non_bati": 1
       },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "1AUmut": {
       "label": "Zone à urbaniser résidentielle — mutation urbaine avec échéancier OAP Centrale EDF",
       "type": "AU",
@@ -631,9 +855,13 @@
         "strates_min": 3,
         "arbres_par_100m2_non_bati": 1
       },
-      "_meta": { "confidence": 1.0, "ambiguites": ["Vérifier état d'avancement OAP Centrale EDF"] }
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": [
+          "Vérifier état d'avancement OAP Centrale EDF"
+        ]
+      }
     },
-
     "2AU": {
       "label": "Zone à urbaniser future — réseaux insuffisants, études préalables requises",
       "type": "AU",
@@ -650,11 +878,17 @@
       "reculs": {
         "sep_lat_note": "L ≥ H/2 (moitié hauteur à l'égout), min 3m"
       },
-      "hauteurs": { "note": "Non réglementé" },
-      "emprise": { "note": "Non réglementé" },
-      "_meta": { "confidence": 1.0, "ambiguites": [] }
+      "hauteurs": {
+        "note": "Non réglementé"
+      },
+      "emprise": {
+        "note": "Non réglementé"
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": []
+      }
     },
-
     "A": {
       "label": "Zone Agricole — Triangle agricole",
       "type": "A",
@@ -666,7 +900,8 @@
         "agricole": true,
         "agrotourisme": true,
         "equipement_collectif": true,
-        "industrie": false, "commerce": false
+        "industrie": false,
+        "commerce": false
       },
       "reculs": {
         "voie_principale_m": 5,
@@ -690,10 +925,16 @@
       "_meta": {
         "confidence": 1.0,
         "ambiguites": [],
-        "source_articles": ["A1", "A2", "A4", "A5", "A7", "A8"]
+        "source_articles": [
+          "A1",
+          "A2",
+          "A4",
+          "A5",
+          "A7",
+          "A8"
+        ]
       }
     },
-
     "N": {
       "label": "Zone Naturelle — protection qualité sites/milieux/paysages",
       "type": "N",
@@ -705,7 +946,9 @@
         "equipement_collectif": true,
         "loisirs_legers": true,
         "photovoltaique_sol": true,
-        "industrie": false, "commerce": false, "agricole": false,
+        "industrie": false,
+        "commerce": false,
+        "agricole": false,
         "nerl_amenagements_legers_seulement": true,
         "nerl_hebergement_interdit": true
       },
@@ -740,7 +983,14 @@
       "_meta": {
         "confidence": 1.0,
         "ambiguites": [],
-        "source_articles": ["N1", "N2", "N4", "N7", "N8", "N11"]
+        "source_articles": [
+          "N1",
+          "N2",
+          "N4",
+          "N7",
+          "N8",
+          "N11"
+        ]
       }
     }
   }
