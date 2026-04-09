@@ -272,7 +272,12 @@ async function processOneTerrain(browser, runIndex) {
                 }
               } catch { /* pas de PLU = on prend quand même */ }
             }
-            // Fallback : prendre la première parcelle si aucune n'est en zone U
+            // Si pas de zone U/AU trouvée, retenter une autre bbox (sauf dernière tentative)
+            if (!selectedFeature && attempt < MAX_TRIES - 1) {
+              console.log(`[Random] tentative ${attempt+1} : pas de zone U — retry`);
+              continue;
+            }
+            // Fallback dernière tentative : prendre la première parcelle même si zone N/A
             const feature = selectedFeature || valid[Math.floor(Math.random() * valid.length)];
             const props = feature.properties;
             const c = props.contenance ?? props.contenanc;
@@ -606,7 +611,7 @@ async function processOneTerrain(browser, runIndex) {
           // Calculer la géométrie locale (pour le plan masse SVG + BpfBridge)
           const TA = window.TerrainP07Adapter;
           if (TA?.process) {
-            const adapted = TA.process(t.parcelle_geojson, { bearing: 0 });
+            const adapted = TA.process(t.parcelle_geojson);
             if (adapted.valid) {
               sessionData._parcelLocal = adapted.poly?.map(([x, y]) => ({ x, y })) ?? [];
               sessionData._edgeTypes = TA.inferEdgeTypes?.(adapted.poly, sessionData) ?? [];
@@ -844,7 +849,7 @@ async function processOneTerrain(browser, runIndex) {
               // Recalculer la géométrie locale pour BpfBridge
               const TA = window.TerrainP07Adapter;
               if (TA?.process && terrain.parcelle_geojson) {
-                const adapted = TA.process(terrain.parcelle_geojson, { bearing: 0 });
+                const adapted = TA.process(terrain.parcelle_geojson);
                 if (adapted.valid) {
                   sessionData._parcelLocal = adapted.poly?.map(([x, y]) => ({ x, y })) ?? [];
                   sessionData._edgeTypes = TA.inferEdgeTypes?.(adapted.poly, sessionData) ?? [];
@@ -879,6 +884,13 @@ async function processOneTerrain(browser, runIndex) {
                         treeSvg += `<text x="${a.x}" y="${-(a.y)}" text-anchor="middle" font-size="0.7" fill="#8B6A20">${a.label ?? ''}</text>`;
                       }
                       svgStr = svgStr.replace('</svg>', treeSvg + '</svg>');
+
+                      // Stocker métriques BpfBridge pour la planche 4
+                      window.__bpfMetrics = {
+                        arbres_count: bpfResult.plants.filter(p => p.strate === 'arbre').length,
+                        vegetation_m2: Math.round(bpfResult.plants.reduce((s, p) => s + Math.PI * (p.canopyRadius ?? 2) ** 2, 0)),
+                        amenites: (bpfResult.amenities ?? []).map(a => a.label).filter(Boolean),
+                      };
                       console.log('[PDF] BpfBridge : ' + bpfResult.plants.length + ' plantes, ' + (bpfResult.amenities?.length ?? 0) + ' amenites');
                     }
                   }
@@ -962,30 +974,43 @@ async function processOneTerrain(browser, runIndex) {
             } catch (e) { console.warn('[PDF] Sections terrain:', e.message); }
           }
 
-          // ── Terrain 3D (Three.js headless via SwiftShader, fallback SVG isométrique) ──
+          // ── Terrain 3D (Three.js headless, fallback SVG isométrique) ──
           if (window.LidarService?._lastPoints?.length > 10) {
             try {
               const points = window.LidarService._lastPoints;
-              // Tenter Three.js headless
+              // Tenter Three.js headless via Terrain3D viewer
               let terrain3dOk = false;
               const T3D = window.Terrain3D;
               if (T3D?.init && terrain.parcelle_geojson) {
                 try {
-                  // Créer un conteneur temporaire pour le rendu 3D
-                  const t3dDiv = document.createElement('div');
-                  t3dDiv.id = 'terrain3d-headless';
-                  t3dDiv.style.cssText = 'position:absolute;left:-9999px;width:800px;height:500px';
-                  document.body.appendChild(t3dDiv);
-                  await T3D.init({ containerId: 'terrain3d-headless', session: window.SessionManager });
-                  // Attendre un frame de rendu
-                  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+                  // Créer un <div> parent dimensionné + <canvas> enfant
+                  const wrapper = document.createElement('div');
+                  wrapper.style.cssText = 'position:absolute;left:-9999px;width:800px;height:500px';
+                  document.body.appendChild(wrapper);
+                  const canvas = document.createElement('canvas');
+                  canvas.id = 'terrain3d-headless-canvas';
+                  canvas.width = 800;
+                  canvas.height = 500;
+                  wrapper.appendChild(canvas);
+
+                  // Préparer sessionData tel qu'attendu par Terrain3D
+                  const t3dSession = { terrain, phases: {} };
+                  for (let i = 0; i <= 12; i++) {
+                    const ph = session?.getPhase?.(i);
+                    if (ph) t3dSession.phases[i] = ph;
+                  }
+
+                  await T3D.init('terrain3d-headless-canvas', t3dSession);
+                  // Laisser Three.js rendre quelques frames
+                  await new Promise(r => setTimeout(r, 2000));
                   const snap = T3D.capture?.();
-                  if (snap && snap.length > 100) {
+                  if (snap && snap.length > 500) {
                     visuals.terrain3d = snap;
                     terrain3dOk = true;
                     console.log('[PDF] Terrain 3D Three.js headless : ' + Math.round(snap.length / 1024) + 'K');
                   }
-                  t3dDiv.remove();
+                  T3D.destroy?.();
+                  wrapper.remove();
                 } catch (e) { console.warn('[PDF] Three.js headless:', e.message); }
               }
 
@@ -1101,6 +1126,7 @@ async function processOneTerrain(browser, runIndex) {
                 sdp_m2: proposal.spTot ? Math.round(proposal.spTot) : null,
                 ces_pct: proposal.empPct ? Math.round(proposal.empPct * 10) / 10 : null,
                 permeable_pct: proposal.permPct ? Math.round(proposal.permPct * 10) / 10 : null,
+                ...(window.__bpfMetrics ?? {}),
               },
             };
           }

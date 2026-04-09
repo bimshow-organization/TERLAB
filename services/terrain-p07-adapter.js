@@ -38,7 +38,7 @@ const TerrainP07Adapter = {
 
     // 3. Nettoyer + dédupliquer
     let ring = this.cleanVertices(coords);
-    ring = this.deduplicateVertices(ring, 0.01);
+    ring = this.deduplicateVertices(ring, 0.000005); // ~0.5m en WGS84
 
     if (ring.length < 3) {
       warnings.push('GEOM_DEGENERE');

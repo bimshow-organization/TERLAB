@@ -465,35 +465,33 @@ const ExportEngine = {
     const bat = proposal?.bat ?? {};
     const metrics = proposal?.metrics ?? {};
 
+    // Métriques en bande horizontale compacte
+    const mRow = (l, v) => v != null && v !== '' ? `<span class="phf-e" style="margin-right:12px"><strong>${l}</strong> ${v}</span>` : '';
+
     return `<div class="page">
       ${plancheHead('Plan masse & Conformite', 4, tp, ref)}
-      <div class="pb pb2">
-        <div class="sec">
-          ${sec('METRIQUES CONFORMITE')}
-          ${row('Emprise au sol', metrics.emprise_m2 ? `${metrics.emprise_m2} m2` : null)}
-          ${row('Surface plancher', metrics.sdp_m2 ? `${metrics.sdp_m2} m2` : null)}
-          ${row('CES reel', metrics.ces_pct ? `${metrics.ces_pct} %` : null)}
-          ${row('Permeable reel', metrics.permeable_pct ? `${metrics.permeable_pct} %` : null)}
-          ${row('Hauteur', bat.h ? `${bat.h} m` : null)}
-          ${row('Niveaux', bat.niveaux)}
-
-          ${sec('VEGETATION & AMENITES')}
-          ${row('Arbres', metrics.arbres_count)}
-          ${row('Surface vegetalisee', metrics.vegetation_m2 ? `${metrics.vegetation_m2} m2` : null)}
-          ${row('Amenites', metrics.amenites?.join(', '))}
+      <div class="pb" style="display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;flex-wrap:wrap;gap:2px 0;font-size:7.5pt;line-height:1.6">
+          ${mRow('Emprise', metrics.emprise_m2 ? `${metrics.emprise_m2} m2` : null)}
+          ${mRow('SDP', metrics.sdp_m2 ? `${metrics.sdp_m2} m2` : null)}
+          ${mRow('CES', metrics.ces_pct ? `${metrics.ces_pct}%` : null)}
+          ${mRow('Permeable', metrics.permeable_pct ? `${metrics.permeable_pct}%` : null)}
+          ${mRow('Hauteur', bat.h ? `${bat.h} m` : null)}
+          ${mRow('Niveaux', bat.niveaux)}
+          ${mRow('Arbres', metrics.arbres_count)}
+          ${mRow('Veg.', metrics.vegetation_m2 ? `${metrics.vegetation_m2} m2` : null)}
+          ${mRow('Amenites', metrics.amenites?.join(', '))}
         </div>
-        <div>
-          ${planMasseImg ? `
-          <div class="map-wrap" style="height:400px">
-            <img src="${planMasseImg}" alt="Plan masse">
-            <span class="map-lbl">Plan masse</span>
-            <span class="map-src">TERLAB · Auto-plan</span>
-          </div>` : `
-          <div class="map-wrap" style="height:400px">
-            ${svgPlaceholder('Plan masse')}
-            <span class="map-lbl">Plan masse</span>
-          </div>`}
-        </div>
+        ${planMasseImg ? `
+        <div class="map-wrap" style="height:480px;flex:1">
+          <img src="${planMasseImg}" alt="Plan masse" style="object-fit:contain">
+          <span class="map-lbl">Plan masse</span>
+          <span class="map-src">TERLAB · Auto-plan</span>
+        </div>` : `
+        <div class="map-wrap" style="height:480px;flex:1">
+          ${svgPlaceholder('Plan masse')}
+          <span class="map-lbl">Plan masse</span>
+        </div>`}
       </div>
       ${plancheFoot(terrain.commune, ref, 4, tp)}
     </div>`;
