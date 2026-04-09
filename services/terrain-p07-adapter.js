@@ -55,33 +55,39 @@ const TerrainP07Adapter = {
     const cx = ring.reduce((s, c) => s + c[0], 0) / ring.length;
     const cy = ring.reduce((s, c) => s + c[1], 0) / ring.length;
 
-    // 5. Convertir → local mètres
-    const bearing = options.bearing ?? 0;
-    const poly = this.geoToLocal(ring, bearing, cy, cx);
+    // 5. Convertir → local mètres (sans rotation d'abord pour PCA)
+    let bearing = options.bearing ?? 0;
+    let poly = this.geoToLocal(ring, bearing, cy, cx);
+    let polyCCW = this.ensureCCW(poly);
 
-    // 6. Assurer CCW
-    const polyCCW = this.ensureCCW(poly);
+    // 5b. Si pas de bearing fourni, calculer via PCA et reconvertir avec rotation
+    if (!options.bearing) {
+      const pcaBearing = this.inferBearingFromPCA(polyCCW);
+      if (pcaBearing > 1) { // seuil pour éviter micro-rotations inutiles
+        bearing = pcaBearing;
+        poly = this.geoToLocal(ring, bearing, cy, cx);
+        polyCCW = this.ensureCCW(poly);
+      }
+    }
 
-    // 7. Auto-intersection
+    // 6. Auto-intersection
     const selfIsect = this.checkSelfIntersect(polyCCW);
     if (!selfIsect.valid) {
       warnings.push('GEOM_INVALID');
-      // On continue quand même avec le polygone nettoyé
     }
 
-    // 8. Aire
+    // 7. Aire
     const area = this.polyArea(polyCCW);
     if (area < 50) warnings.push('TINY_PARCEL');
 
-    // 9. AABB
+    // 8. AABB
     const bb = this.polyAABB(polyCCW);
 
-    // 10. PIR
+    // 9. PIR
     const prec = options.precision ?? 1.5;
     const pir = this.poleOfInaccessibility(polyCCW, prec);
 
-    // 11. Bearing auto si pas fourni
-    const finalBearing = bearing || this.inferBearingFromPCA(polyCCW);
+    const finalBearing = bearing;
 
     return {
       poly:      polyCCW,

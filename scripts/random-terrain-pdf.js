@@ -974,44 +974,99 @@ async function processOneTerrain(browser, runIndex) {
             } catch (e) { console.warn('[PDF] Sections terrain:', e.message); }
           }
 
-          // ── Terrain 3D (Three.js headless, fallback SVG isométrique) ──
+          // ── Terrain 3D (point cloud Three.js depuis LiDAR COPC, fallback SVG) ──
           if (window.LidarService?._lastPoints?.length > 10) {
             try {
               const points = window.LidarService._lastPoints;
-              // Tenter Three.js headless via Terrain3D viewer
               let terrain3dOk = false;
-              const T3D = window.Terrain3D;
-              if (T3D?.init && terrain.parcelle_geojson) {
-                try {
-                  // Créer un <div> parent dimensionné + <canvas> enfant
-                  const wrapper = document.createElement('div');
-                  wrapper.style.cssText = 'position:absolute;left:-9999px;width:800px;height:500px';
-                  document.body.appendChild(wrapper);
-                  const canvas = document.createElement('canvas');
-                  canvas.id = 'terrain3d-headless-canvas';
-                  canvas.width = 800;
-                  canvas.height = 500;
-                  wrapper.appendChild(canvas);
 
-                  // Préparer sessionData tel qu'attendu par Terrain3D
-                  const t3dSession = { terrain, phases: {} };
-                  for (let i = 0; i <= 12; i++) {
-                    const ph = session?.getPhase?.(i);
-                    if (ph) t3dSession.phases[i] = ph;
+              // Rendu point cloud Three.js direct depuis les points LiDAR
+              const THREE = window.THREE;
+              if (THREE?.WebGLRenderer) {
+                try {
+                  const W = 1000, H = 600;
+                  const canvas = document.createElement('canvas');
+                  canvas.width = W; canvas.height = H;
+                  document.body.appendChild(canvas);
+
+                  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+                  renderer.setSize(W, H);
+                  renderer.setClearColor(0xF5F0E8, 1); // fond papier TERLAB
+
+                  const scene = new THREE.Scene();
+                  scene.fog = new THREE.Fog(0xF5F0E8, 150, 350);
+
+                  // Lumières
+                  scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+                  const sun = new THREE.DirectionalLight(0xfff5e0, 0.8);
+                  sun.position.set(40, 60, 30);
+                  scene.add(sun);
+
+                  // Points LiDAR → positions + couleurs
+                  const pts = points.filter(p => Array.isArray(p) && p.length >= 3);
+                  const n = pts.length;
+
+                  // Centroïde et bbox
+                  let cx = 0, cy = 0, cz = 0, zMin = Infinity, zMax = -Infinity;
+                  for (const p of pts) { cx += p[0]; cy += p[1]; cz += p[2]; if (p[2] < zMin) zMin = p[2]; if (p[2] > zMax) zMax = p[2]; }
+                  cx /= n; cy /= n; cz /= n;
+                  const dz = zMax - zMin || 1;
+
+                  // Conversion WGS84 → mètres locaux
+                  const mlon = 111132.954 * Math.cos(cy * Math.PI / 180);
+                  const mlat = 111132.954;
+                  const vExag = Math.min(3, 40 / dz); // exagération verticale adaptative
+
+                  const positions = new Float32Array(n * 3);
+                  const colors = new Float32Array(n * 3);
+                  for (let i = 0; i < n; i++) {
+                    const p = pts[i];
+                    positions[i * 3]     = (p[0] - cx) * mlon;
+                    positions[i * 3 + 1] = (p[2] - cz) * vExag;
+                    positions[i * 3 + 2] = -(p[1] - cy) * mlat;
+
+                    // Couleur altitude : vert bas → brun haut
+                    const t = Math.max(0, Math.min(1, (p[2] - zMin) / dz));
+                    colors[i * 3]     = 0.18 + t * 0.5;  // R
+                    colors[i * 3 + 1] = 0.45 - t * 0.15; // G
+                    colors[i * 3 + 2] = 0.15 + t * 0.1;  // B
                   }
 
-                  await T3D.init('terrain3d-headless-canvas', t3dSession);
-                  // Laisser Three.js rendre quelques frames
-                  await new Promise(r => setTimeout(r, 2000));
-                  const snap = T3D.capture?.();
-                  if (snap && snap.length > 500) {
+                  const geom = new THREE.BufferGeometry();
+                  geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                  geom.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+                  geom.computeBoundingSphere();
+
+                  const mat = new THREE.PointsMaterial({ size: 0.8, vertexColors: true, sizeAttenuation: true });
+                  const cloud = new THREE.Points(geom, mat);
+                  scene.add(cloud);
+
+                  // Caméra axonométrique cadrée
+                  const sphere = geom.boundingSphere;
+                  const r = sphere.radius || 30;
+                  const aspect = W / H;
+                  const cam = new THREE.OrthographicCamera(-r * aspect, r * aspect, r, -r, 0.1, r * 10);
+                  // Vue axonométrique : 45° azimut, 35° élévation
+                  cam.position.set(
+                    sphere.center.x + r * 1.2,
+                    sphere.center.y + r * 0.9,
+                    sphere.center.z + r * 1.2
+                  );
+                  cam.lookAt(sphere.center);
+                  cam.updateProjectionMatrix();
+
+                  renderer.render(scene, cam);
+                  const snap = canvas.toDataURL('image/jpeg', 0.88);
+                  if (snap.length > 500) {
                     visuals.terrain3d = snap;
                     terrain3dOk = true;
-                    console.log('[PDF] Terrain 3D Three.js headless : ' + Math.round(snap.length / 1024) + 'K');
+                    console.log('[PDF] Terrain 3D point cloud LiDAR : ' + Math.round(snap.length / 1024) + 'K (' + n + ' pts, dz=' + Math.round(dz) + 'm)');
                   }
-                  T3D.destroy?.();
-                  wrapper.remove();
-                } catch (e) { console.warn('[PDF] Three.js headless:', e.message); }
+                  renderer.dispose();
+                  geom.dispose();
+                  mat.dispose();
+                  canvas.remove();
+                } catch (e) { console.warn('[PDF] Three.js point cloud:', e.message); }
               }
 
               // Fallback : SVG isométrique depuis points LiDAR

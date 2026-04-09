@@ -5,6 +5,8 @@
 // ════════════════════════════════════════════════════════════════════════════
 
 import MapCapture from './map-capture.js';
+import GIEPPlanService from '../services/giep-plan-service.js';
+import GIEPCalculator from '../services/giep-calculator-service.js';
 
 // ── HELPERS ────────────────────────────────────────────────────────────────
 const val  = (v, fallback = 'a renseigner') => (v != null && v !== '' && v !== '—') ? String(v) : fallback;
@@ -239,15 +241,15 @@ const ExportEngine = {
 
   _renderAllPlanches(session, terrain, maps, mode) {
     const ref = `${terrain.section ?? ''}${terrain.parcelle ?? ''}`;
-    const tp = mode === 'projet' ? 7 : 6; // total pages (densifié)
+    const tp = mode === 'projet' ? 6 : 5; // total pages (cover+identité fusionnées)
 
     let html = '';
-    html += this._renderCover(session, terrain, maps, mode, tp);
-    html += this._renderPlanche1(session, terrain, maps, ref, tp);
+    html += this._renderCoverIdentite(session, terrain, maps, mode, tp, ref);
     html += this._renderPlanche2_3(session, terrain, maps, ref, tp); // Topo + Risques fusionnés
 
     if (mode === 'projet') {
       html += this._renderPlanche4(session, terrain, maps, ref, tp);
+      html += this._renderPlancheGIEP(session, terrain, ref, tp);
     }
 
     html += this._renderPlanche5_6(session, terrain, maps, ref, tp); // Voisinage + Gabarit fusionnés
@@ -258,97 +260,55 @@ const ExportEngine = {
   },
 
   // ═══════════════════════════════════════════════════════════════
-  //  COVER PAGE
+  //  COVER + IDENTITE (fusionnées en 1 page)
   // ═══════════════════════════════════════════════════════════════
 
-  _renderCover(session, terrain, maps, mode, tp) {
+  _renderCoverIdentite(session, terrain, maps, mode, tp, ref) {
     const commune = (terrain.commune ?? 'Terrain').toUpperCase();
-    const ref = [terrain.section, terrain.parcelle].filter(Boolean).join(' ');
     const modeLabel = mode === 'projet' ? 'ANALYSE PROJET' : 'ANALYSE SITE';
     const uuid = session?.getOrCreateUUID?.()?.slice(-8) ?? '';
     const date = new Date().toLocaleDateString('fr-FR');
-    const score = window.TerlabScoreService?.computeGlobalScore?.(session);
 
     return `<div class="page">
       ${pageHead('Analyse de terrain · ENSA La Reunion')}
-      <div class="cover-body">
+      <div class="cover-body" style="padding-bottom:8px">
         <div class="mode-pill"><span class="mode-dot"></span>${modeLabel}</div>
         <div class="commune">${ref || commune}</div>
         <div class="parcelle-ref">${ref ? commune : ''}</div>
+      </div>
 
-        <div class="cover-grid">
-          <div class="sec">
+      <div class="pb" style="display:flex;flex-direction:column;gap:6px;padding:0 18px">
+        <div style="display:flex;gap:10px">
+          <div class="sec" style="flex:1;min-width:0">
+            ${sec('IDENTIFICATION')}
             ${row('Commune', terrain.commune)}
             ${row('Code INSEE', terrain.code_insee)}
-            ${row('Intercommunalite', terrain.intercommunalite)}
+            ${row('Section / Parcelle', `${val(terrain.section)} / ${val(terrain.parcelle)}`)}
             ${row('Contenance', terrain.contenance_m2 ? `${terrain.contenance_m2} m2` : null)}
+            ${row('Intercommunalite', terrain.intercommunalite)}
             ${row('Zone PLU', terrain.zone_plu, 'ac')}
             ${row('Altitude NGR', terrain.altitude_ngr != null ? `${terrain.altitude_ngr} m` : null)}
+            ${row('Orientation', terrain.orientation ?? terrain.orientation_terrain)}
+            ${row('Pente moy.', terrain.pente_moy_pct != null ? `${terrain.pente_moy_pct} %` : null)}
+            ${row('Adresse', terrain.adresse)}
+            ${row('Coordonnees', terrain.lat && terrain.lng ? `${Number(terrain.lat).toFixed(4)}, ${Number(terrain.lng).toFixed(4)}` : null)}
             ${row('Date', date)}
             ${row('Reference', uuid)}
           </div>
-          <div>
-            ${mapImg(maps, 'p01_situation_marked', 180, 'Situation', 'Mapbox · Satellite', maps?.cover_situation ? `<img src="${maps.cover_situation}" alt="Situation">` : undefined)}
-            ${score != null ? `
-            <div class="pot-grid">
-              <div class="pcrd">
-                <span class="pcl">AVANCEMENT</span>
-                <span class="pcv" style="color:${score >= 70 ? '#2E5C2E' : score >= 40 ? '#8B6A20' : '#C1652B'}">${score}%</span>
-                <span class="pcu">global</span>
-              </div>
-              <div class="pcrd">
-                <span class="pcl">MODE</span>
-                <span class="pcv" style="font-size:16px">${mode === 'projet' ? 'Projet' : 'Site'}</span>
-                <span class="pcu">${tp} planches</span>
-              </div>
-              <div class="pcrd">
-                <span class="pcl">FORMAT</span>
-                <span class="pcv" style="font-size:16px">A4</span>
-                <span class="pcu">portrait</span>
-              </div>
-            </div>` : ''}
+          <div style="flex:1;min-width:0">
+            ${mapImg(maps, 'p01_cadastre', 320, 'Parcelle · Cadastre', 'IGN · Mapbox Satellite')}
           </div>
+        </div>
+        <div style="display:flex;gap:6px">
+          ${mapImg(maps, 'cover_situation', 165, 'Ile · 1:500 000', 'Mapbox', svgSituation())}
+          ${mapImg(maps, 'p01_situation_marked', 165, 'Commune · 1:25 000', 'Mapbox Satellite')}
+          ${mapImg(maps, 'p01_situation', 165, 'Quartier · 1:5 000', 'Mapbox Satellite')}
         </div>
       </div>
       <div class="pg-foot">
         <span class="pf">TERLAB v1.0 · ENSA La Reunion · Document pedagogique non opposable</span>
         <span class="pf">${uuid} · ${date}</span>
       </div>
-    </div>`;
-  },
-
-  // ═══════════════════════════════════════════════════════════════
-  //  PLANCHE 1 — Identite parcelle
-  // ═══════════════════════════════════════════════════════════════
-
-  _renderPlanche1(_session, terrain, maps, ref, tp) {
-    return `<div class="page">
-      ${plancheHead('Identite du terrain', 2, tp, ref)}
-      <div class="pb pb2">
-        <div class="sec">
-          ${sec('DONNEES CADASTRALES')}
-          ${row('Commune', terrain.commune)}
-          ${row('Code INSEE', terrain.code_insee)}
-          ${row('Section / Parcelle', `${val(terrain.section)} / ${val(terrain.parcelle)}`)}
-          ${row('Contenance', terrain.contenance_m2 ? `${terrain.contenance_m2} m2` : null)}
-          ${row('Intercommunalite', terrain.intercommunalite)}
-          ${row('Altitude NGR', terrain.altitude_ngr != null ? `${terrain.altitude_ngr} m` : null)}
-
-          ${sec('COORDONNEES')}
-          ${row('Latitude', terrain.lat)}
-          ${row('Longitude', terrain.lng)}
-          ${row('Adresse', terrain.adresse)}
-
-          ${sec('ORIENTATION')}
-          ${row('Orientation', terrain.orientation ?? terrain.orientation_terrain)}
-          ${row('Pente moy.', terrain.pente_moy_pct != null ? `${terrain.pente_moy_pct} %` : null)}
-        </div>
-        <div>
-          ${mapImg(maps, 'p01_cadastre', 270, 'Cadastre parcelle', 'IGN · Mapbox Satellite')}
-          ${mapImg(maps, 'p01_situation', 196, 'Situation commune', 'Mapbox Streets', svgSituation())}
-        </div>
-      </div>
-      ${plancheFoot(terrain.commune, ref, 2, tp)}
     </div>`;
   },
 
@@ -405,7 +365,7 @@ const ExportEngine = {
       : '';
 
     return `<div class="page">
-      ${plancheHead('Analyse du site & Risques', 3, tp, ref)}
+      ${plancheHead('Analyse du site & Risques', 2, tp, ref)}
       <div class="pb pb3">
         <div class="sec">
           ${sec('TOPOGRAPHIE')}
@@ -450,7 +410,7 @@ const ExportEngine = {
           </div>` : ''}
         </div>
       </div>
-      ${plancheFoot(terrain.commune, ref, 3, tp)}
+      ${plancheFoot(terrain.commune, ref, 2, tp)}
     </div>`;
   },
 
@@ -469,7 +429,7 @@ const ExportEngine = {
     const mRow = (l, v) => v != null && v !== '' ? `<span class="phf-e" style="margin-right:12px"><strong>${l}</strong> ${v}</span>` : '';
 
     return `<div class="page">
-      ${plancheHead('Plan masse & Conformite', 4, tp, ref)}
+      ${plancheHead('Plan masse & Conformite', 3, tp, ref)}
       <div class="pb" style="display:flex;flex-direction:column;gap:4px">
         <div style="display:flex;flex-wrap:wrap;gap:2px 0;font-size:7.5pt;line-height:1.6">
           ${mRow('Emprise', metrics.emprise_m2 ? `${metrics.emprise_m2} m2` : null)}
@@ -482,18 +442,92 @@ const ExportEngine = {
           ${mRow('Veg.', metrics.vegetation_m2 ? `${metrics.vegetation_m2} m2` : null)}
           ${mRow('Amenites', metrics.amenites?.join(', '))}
         </div>
-        ${planMasseImg ? `
-        <div class="map-wrap" style="height:480px;flex:1">
-          <img src="${planMasseImg}" alt="Plan masse" style="object-fit:contain">
-          <span class="map-lbl">Plan masse</span>
-          <span class="map-src">TERLAB · Auto-plan</span>
-        </div>` : `
-        <div class="map-wrap" style="height:480px;flex:1">
-          ${svgPlaceholder('Plan masse')}
-          <span class="map-lbl">Plan masse</span>
-        </div>`}
+        <div style="display:flex;gap:6px;flex:1">
+          ${planMasseImg ? `
+          <div class="map-wrap" style="flex:3;min-width:0">
+            <img src="${planMasseImg}" alt="Plan masse" style="object-fit:contain">
+            <span class="map-lbl">Plan masse</span>
+            <span class="map-src">TERLAB · Auto-plan</span>
+          </div>` : `
+          <div class="map-wrap" style="flex:3;min-width:0">
+            ${svgPlaceholder('Plan masse')}
+            <span class="map-lbl">Plan masse</span>
+          </div>`}
+          ${this._visuals?.cadastreVector ? `
+          <div class="map-wrap" style="flex:2;min-width:0">
+            <img src="${this._visuals.cadastreVector}" alt="Plan cadastral" style="object-fit:contain">
+            <span class="map-lbl">Plan cadastral</span>
+            <span class="map-src">IGN · Cadastre vecteur WFS</span>
+          </div>` : ''}
+        </div>
       </div>
-      ${plancheFoot(terrain.commune, ref, 4, tp)}
+      ${plancheFoot(terrain.commune, ref, 3, tp)}
+    </div>`;
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  //  PLANCHE GIEP — Plan Gestion Integree Eaux Pluviales (auto)
+  // ═══════════════════════════════════════════════════════════════
+
+  _renderPlancheGIEP(session, terrain, ref, tp) {
+    // Calcul GIEP depuis session
+    const sessionData = {
+      terrain,
+      phases: {
+        7: session?.getPhase?.(7) ?? {},
+        8: session?.getPhase?.(8) ?? {},
+      },
+    };
+    const giepResult = GIEPCalculator.computeFromSession(sessionData);
+    if (!giepResult) return ''; // pas assez de données
+
+    // Proposal depuis le visuals ou la session
+    const proposal = this._visuals?.activeProposal ?? window._activeProposal ?? null;
+    if (!proposal?.bat) return ''; // pas d'étude de capacité
+
+    // Générer le plan GIEP SVG
+    const giepSVG = GIEPPlanService.generatePlan(session, proposal, giepResult);
+    if (!giepSVG) return '';
+
+    // Tableau hydraulique compact
+    const hydroHTML = `
+      <div style="display:flex;flex-wrap:wrap;gap:2px 12px;font-size:7.5pt;line-height:1.5">
+        <span><strong>Zone clim.</strong> ${giepResult.zone_nom}</span>
+        <span><strong>Tc</strong> ${giepResult.tc} min (K:${giepResult.tc_kirpich} C:${giepResult.tc_caquot} S:${giepResult.tc_sogreah})</span>
+        <span><strong>I T10</strong> ${giepResult.intensite_T10} mm/h</span>
+        <span><strong>C init.</strong> ${giepResult.coeffInit}</span>
+        <span><strong>C projet</strong> ${giepResult.coeffFinal}</span>
+        <span><strong>Q init.</strong> ${giepResult.debitInit} L/s</span>
+        <span><strong>Q projet</strong> ${giepResult.debitFinal} L/s</span>
+        <span><strong>Reduction</strong> <strong style="color:${giepResult.scoreColor}">${giepResult.reduction_pct}%</strong></span>
+        ${giepResult.infiltration ? `
+        <span><strong>V net</strong> ${giepResult.infiltration.V_net.toFixed(1)} m3</span>
+        <span><strong>S infilt.</strong> ${giepResult.infiltration.A_inf.toFixed(0)} m2</span>
+        <span><strong>S EV dispo</strong> ${giepResult.infiltration.A_dispo.toFixed(0)} m2</span>
+        <span><strong>${giepResult.infiltration.deficit > 0 ? 'Deficit' : 'Marge'}</strong>
+          <strong style="color:${giepResult.infiltration.deficit > 0 ? 'var(--danger)' : 'var(--success)'}">
+            ${Math.abs(giepResult.infiltration.deficit).toFixed(0)} m2
+          </strong></span>` : ''}
+      </div>`;
+
+    // Score badge
+    const scoreBadge = `<div style="text-align:center;margin:4px 0">
+      <span style="font-size:22pt;font-weight:bold;color:${giepResult.scoreColor};font-family:var(--font-serif)">${giepResult.score}<small>/100</small></span>
+      <span style="color:${giepResult.scoreColor};font-size:10pt;margin-left:8px">${giepResult.scoreLabel}</span>
+    </div>`;
+
+    return `<div class="page">
+      ${plancheHead('Plan GIEP — Gestion Integree Eaux Pluviales', 'GIEP', tp, ref)}
+      <div class="pb" style="display:flex;flex-direction:column;gap:4px">
+        ${scoreBadge}
+        ${hydroHTML}
+        <div class="map-wrap" style="flex:1;min-height:400px">
+          ${giepSVG}
+          <span class="map-lbl">Plan GIEP</span>
+          <span class="map-src">TERLAB · Methode rationnelle DEAL Reunion 2012</span>
+        </div>
+      </div>
+      ${plancheFoot(terrain.commune, ref, 'GIEP', tp)}
     </div>`;
   },
 
@@ -848,6 +882,9 @@ const ExportEngine = {
     const planSvg = document.getElementById('p11-svg');
     if (planSvg) v.planMasse = await this._svgToDataURL(planSvg, 1000, 700);
 
+    // Plan cadastre vecteur — esquisse SVG avec cadastre visible
+    v.cadastreVector = await this._captureCadastreVector();
+
     // Wind navigator SVG (phase 7)
     const windSvg = document.querySelector('#p07-wind-navigator svg');
     if (windSvg) v.windNav = await this._svgToDataURL(windSvg, 600, 600);
@@ -950,6 +987,51 @@ const ExportEngine = {
         img.src = url;
       } catch { resolve(null); }
     });
+  },
+
+  // Capture plan cadastre vecteur depuis EsquisseCanvas SVG
+  async _captureCadastreVector() {
+    try {
+      const ec = window.EsquisseCanvas;
+      if (!ec?._svg) return null;
+
+      // S'assurer que le cadastre vecteur est chargé et dessiné
+      if (!ec._cadastreVectorGeo) {
+        const features = await ec._loadCadastreVector?.();
+        if (!features) return null;
+        ec._drawCadastreVector(features);
+      }
+
+      // Créer un SVG isolé avec : cadastre vecteur + parcelle + nord
+      const svgNS = 'http://www.w3.org/2000/svg';
+      const svgClone = ec._svg.cloneNode(true);
+
+      // Ne garder que cadastre-vector-layer, parcelle, north
+      const keepers = new Set(['cadastre-vector-layer', 'parcelle-layer', 'north-indicator', 'scale-bar']);
+      for (const child of [...svgClone.children]) {
+        const id = child.getAttribute('id') ?? '';
+        if (!keepers.has(id) && id !== '') {
+          // Garder les defs (patterns, gradients)
+          if (child.tagName !== 'defs') child.remove();
+        }
+      }
+
+      // Dessiner la parcelle en surbrillance dans le clone
+      const parcelG = svgClone.querySelector('#parcelle-layer');
+      if (!parcelG) {
+        // Ajouter un outline parcelle
+        const g = document.createElementNS(svgNS, 'g');
+        g.setAttribute('id', 'parcelle-layer');
+        const parcelPolys = ec._svg.querySelectorAll('[id^="parcel-"]');
+        parcelPolys.forEach(p => g.appendChild(p.cloneNode(true)));
+        svgClone.appendChild(g);
+      }
+
+      return await this._svgToDataURL(svgClone, 800, 560);
+    } catch (e) {
+      console.warn('[ExportEngine] Capture cadastre vector failed:', e.message);
+      return null;
+    }
   },
 
   // ═══════════════════════════════════════════════════════════════

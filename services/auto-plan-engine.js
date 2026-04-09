@@ -338,9 +338,16 @@ const AutoPlanEngine = {
 
       if (maxW < 4 || maxL < 5) continue;
 
-      // Dimensionner bâtiment
-      const w = Math.min(maxW, rtaaW);
-      const l = Math.min(maxL, profMax);
+      // Dimensionner bâtiment — aligner sur l'axe long de l'enveloppe
+      let w = Math.min(maxW, rtaaW);
+      let l = Math.min(maxL, profMax);
+      // Si l'enveloppe est plus large que profonde, swapper w/l
+      const envBB = TA?.polyAABB(env);
+      if (envBB && envBB.w > envBB.h && w > l) {
+        [w, l] = [l, w];
+      } else if (envBB && envBB.h > envBB.w && l > w) {
+        [w, l] = [l, w];
+      }
       const emprise = w * l;
       if (emprise > maxEmprise) continue;
 
