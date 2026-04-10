@@ -150,6 +150,7 @@ const GIEPScore = {
           ${infiltHTML}
         </div>
         ${ouvragesHTML}
+        ${this.buildCBSBlock(sessionData)}
         <div class="gsw-note">${s.source_note}</div>
         <a href="https://www.reunion.developpement-durable.gouv.fr" target="_blank"
            rel="noopener" class="gsw-source-link">\u2192 DEAL Réunion</a>
