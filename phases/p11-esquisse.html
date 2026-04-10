@@ -104,6 +104,7 @@
       <button class="p11-tool" onclick="P11.zoomFit()"          title="Ajuster vue">⊙</button>
       <span class="p11-sep"></span>
       <button class="p11-tool" id="p11-btn-cadastre" onclick="P11.toggleCadastre()" title="Afficher/masquer le plan cadastral IGN">⊞ Cadastre</button>
+      <button class="p11-tool" id="p11-btn-contours" onclick="P11.toggleContours()" title="Afficher/masquer les courbes de niveau BIL">≈ Contours</button>
       <span class="p11-sep"></span>
       <button class="p11-tool" onclick="P11.exportSVG()"        title="Export SVG">↓ SVG</button>
     </div>
@@ -127,9 +128,30 @@
     </div>
   </div>
 
-  <!-- RIGHT PANEL : RTAA REPORT -->
+  <!-- RIGHT PANEL : 3D + RTAA REPORT -->
   <div class="p11-right" id="p11-rtaa-panel">
-    <div style="padding:20px;text-align:center;color:var(--muted)">
+
+    <!-- 3D Earthworks viewer -->
+    <div id="p11-3d-section" style="border-bottom:1px solid var(--border);background:#0d1117">
+      <div style="padding:6px 10px;display:flex;justify-content:space-between;align-items:center;font-family:var(--font-mono);font-size:9px;color:#a0aec0;background:rgba(0,0,0,.4)">
+        <span>◆ 3D Terrassement</span>
+        <span style="display:flex;gap:8px">
+          <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="p11-ew-tn"        checked style="width:10px;height:10px;margin:0">TN</label>
+          <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="p11-ew-platform"  checked style="width:10px;height:10px;margin:0">Plat.</label>
+          <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="p11-ew-cut"       checked style="width:10px;height:10px;margin:0">Déb.</label>
+          <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="p11-ew-fill"      checked style="width:10px;height:10px;margin:0">Rem.</label>
+          <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="p11-ew-talus"     checked style="width:10px;height:10px;margin:0">Talus</label>
+          <label style="display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="p11-ew-pilotis"   checked style="width:10px;height:10px;margin:0">Pil.</label>
+        </span>
+      </div>
+      <canvas id="p11-3d-canvas" style="width:100%;height:280px;display:block"></canvas>
+      <div id="p11-earthworks-panel" style="padding:8px 10px;font-family:var(--font-mono);font-size:9px;color:#cbd5e0;background:#161b22;border-top:1px solid #21262d">
+        <div style="color:#718096;font-size:8px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Sélectionnez une proposition</div>
+      </div>
+    </div>
+
+    <!-- RTAA Report -->
+    <div id="p11-rtaa-content" style="padding:20px;text-align:center;color:var(--muted)">
       <div style="font-size:32px;margin-bottom:8px;opacity:0.3">◎</div>
       <div style="font-size:10px">Sélectionnez une proposition pour lancer l'analyse RTAA</div>
     </div>
@@ -175,33 +197,145 @@ const P11 = {
     // Initialiser le canvas
     await EsquisseCanvas.init('p11-svg', session);
 
-    // Lancer l'analyse RTAA sur la proposition sélectionnée
+    // Initialiser le viewer 3D earthworks
+    await this._init3D();
+
+    // Lancer l'analyse RTAA + rendu 3D sur la proposition sélectionnée
     const prop = EsquisseCanvas._proposals?.[0];
     if (prop) {
       try {
         const report = await RTAAAnalyzer.analyze(session, { polygon: prop.polygon });
         SessionManager.saveRTAAReport(report);
-        RTAAPanel.render(report, document.getElementById('p11-rtaa-panel'));
+        RTAAPanel.render(report, document.getElementById('p11-rtaa-content'));
       } catch (e) {
         console.warn('[P11] Analyse RTAA initiale échouée:', e);
       }
+      this._render3D(prop);
     }
 
     // Écouter les mises à jour RTAA (drag reanalysis)
     window.addEventListener('terlab:rtaa-updated', (e) => {
-      RTAAPanel.render(e.detail.report, document.getElementById('p11-rtaa-panel'));
+      RTAAPanel.render(e.detail.report, document.getElementById('p11-rtaa-content'));
+    });
+
+    // Écouter les mises à jour earthworks pour rafraîchir le panneau
+    window.addEventListener('terlab:earthworks-updated', (e) => {
+      this._renderEarthworksPanel(e.detail.earthworks, e.detail.V_cut_csg, e.detail.V_fill_csg);
+    });
+
+    // Écouter les changements de proposition sélectionnée
+    window.addEventListener('terlab:proposal-selected', (e) => {
+      const newProp = e.detail.proposal;
+      if (newProp) {
+        this._render3D(newProp);
+        // Re-RTAA si analyzer dispo
+        RTAAAnalyzer?.analyze(SessionManager._data, { polygon: newProp.polygon }).then(report => {
+          SessionManager.saveRTAAReport(report);
+          RTAAPanel.render(report, document.getElementById('p11-rtaa-content'));
+        }).catch(err => console.warn('[P11] RTAA on selection failed:', err));
+      }
     });
   },
 
-  _pluRulesCache: null,
+  _gabarit3D: null,
 
-  async _loadPluRules() {
-    if (this._pluRulesCache) return this._pluRulesCache;
+  async _init3D() {
+    const canvas = document.getElementById('p11-3d-canvas');
+    if (!canvas || !window.THREE) return;
+    if (!window.GabaritThree) {
+      try {
+        const mod = await import('../components/gabarit-3d.js');
+        window.GabaritThree = mod.GabaritThree ?? mod.default;
+      } catch (e) {
+        console.warn('[P11] GabaritThree import failed:', e);
+        return;
+      }
+    }
+    this._gabarit3D = new window.GabaritThree(canvas);
+
+    // Toggles couches
+    const toggles = [
+      ['p11-ew-tn', 'tn'],
+      ['p11-ew-platform', 'platform'],
+      ['p11-ew-cut', 'cut'],
+      ['p11-ew-fill', 'fill'],
+      ['p11-ew-talus', 'talus'],
+      ['p11-ew-pilotis', 'pilotis'],
+    ];
+    for (const [id, layer] of toggles) {
+      const cb = document.getElementById(id);
+      if (cb) {
+        cb.addEventListener('change', () => {
+          this._gabarit3D?.toggleEarthworksLayer(layer, cb.checked);
+        });
+      }
+    }
+  },
+
+  _render3D(prop) {
+    if (!this._gabarit3D || !prop) return;
+    const session = SessionManager._data;
+    this._gabarit3D.loadCapacityStudy(prop, session, EsquisseCanvas._existingBuildings)
+      .catch(err => console.warn('[P11] 3D loadCapacityStudy failed:', err));
+  },
+
+  _renderEarthworksPanel(ew, V_cut_csg, V_fill_csg) {
+    const el = document.getElementById('p11-earthworks-panel');
+    if (!el || !ew) return;
+
+    const fmt = (v, unit = '', dec = 1) => v != null && isFinite(v) ? v.toFixed(dec) + unit : '—';
+    const ratioColor = ew.ratio_balance > 0.85 ? '#22c55e' : ew.ratio_balance > 0.7 ? '#f59e0b' : '#ef4444';
+    const stratColor = { A1: '#3b82f6', A3: '#a855f7', A4: '#f59e0b' }[ew.strategy.type] ?? '#6b7280';
+    const wallWarn = ew.needsRetainingWall
+      ? `<div style="color:#ef4444;margin-top:4px">⚠ Mur de soutènement requis (talus ${ew.hMaxTalus_m.toFixed(1)}m)</div>`
+      : '';
+    const csgNote = (V_cut_csg && Math.abs(V_cut_csg - ew.V_cut_m3) / Math.max(0.1, ew.V_cut_m3) > 0.15)
+      ? `<div style="color:#94a3b8;font-size:8px;margin-top:2px">CSG : déb. ${V_cut_csg.toFixed(0)} / rem. ${V_fill_csg.toFixed(0)} m³</div>`
+      : '';
+    const warnings = ew.warnings?.length
+      ? `<div style="color:#fbbf24;font-size:8px;margin-top:4px">${ew.warnings.map(w => '• ' + w).join('<br>')}</div>`
+      : '';
+
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+        <span style="color:${stratColor};font-weight:600">Stratégie ${ew.strategy.type}</span>
+        <span style="color:#718096;font-size:8px">${ew.source.toUpperCase()}</span>
+      </div>
+      <div style="color:#94a3b8;font-size:8px;margin-bottom:6px">${ew.strategy.reason}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px">
+        <div><span style="color:#718096">Cote projet :</span> <strong>${fmt(ew.H_platform_m, ' m', 2)}</strong></div>
+        <div><span style="color:#718096">Pente moy. :</span> <strong>${fmt(ew.slopeMean_pct, '%', 1)}</strong></div>
+        <div><span style="color:#dc2626">Déblai :</span> <strong>${fmt(ew.V_cut_m3, ' m³', 1)}</strong></div>
+        <div><span style="color:#2563eb">Remblai :</span> <strong>${fmt(ew.V_fill_m3, ' m³', 1)}</strong></div>
+        <div><span style="color:#718096">Talus amont :</span> <strong>${fmt(ew.hMaxCutAmont_m, ' m', 2)}</strong></div>
+        <div><span style="color:#718096">Talus aval :</span> <strong>${fmt(ew.hMaxFillAval_m, ' m', 2)}</strong></div>
+      </div>
+      <div style="margin-top:6px;padding-top:6px;border-top:1px solid #21262d">
+        <span style="color:#718096">Équilibre :</span>
+        <strong style="color:${ratioColor}">${(ew.ratio_balance * 100).toFixed(0)}%</strong>
+        <span style="color:#94a3b8;font-size:8px"> (1.00 = parfait 50/50)</span>
+      </div>
+      ${wallWarn}
+      ${csgNote}
+      ${warnings}
+    `;
+  },
+
+  _pluAdapter: null,
+
+  async _resolvePluCfg(codeInsee, zoneKey, secteurAvap = null) {
+    if (!codeInsee || !zoneKey) return null;
     try {
-      const resp = await fetch('../data/plu-rules.json');
-      this._pluRulesCache = await resp.json();
-    } catch { this._pluRulesCache = null; }
-    return this._pluRulesCache;
+      if (!this._pluAdapter) {
+        const { PLUP07Adapter } = await import('../services/plu-p07-adapter.js');
+        this._pluAdapter = new PLUP07Adapter();
+        await this._pluAdapter.loadRules('../data/plu-rules-reunion.json');
+      }
+      return this._pluAdapter.resolve(codeInsee, zoneKey, '1', { secteurAvap });
+    } catch (e) {
+      console.warn('[P11] PLU adapter failed:', e);
+      return null;
+    }
   },
 
   async _renderPLUConstraints(session) {
@@ -211,40 +345,61 @@ const P11 = {
     if (!el) return;
 
     // Clé zone PLU : P04 sauvegarde sous zone_plu (pas plu_zone)
-    const zoneKey = p4.zone_plu ?? terrain.zone_plu ?? p4.plu_zone ?? null;
+    const zoneKeyRaw = p4.zone_plu ?? terrain.zone_plu ?? p4.plu_zone ?? null;
+    const zoneKey = zoneKeyRaw ? zoneKeyRaw.split(' ')[0].trim() : null;
+    const codeInsee = terrain.code_insee ?? p4.code_insee ?? null;
+    const secteurAvap = p4.secteur_avap ?? terrain.secteur_avap ?? null;
 
-    // Fallback : charger les règles depuis plu-rules.json
-    let pluRule = null;
-    if (zoneKey) {
-      const rules = await this._loadPluRules();
-      const zoneId = zoneKey.split(' ')[0].trim();
-      pluRule = rules?.zones?.[zoneId] ?? null;
-    }
+    // Résolution exacte commune+zone via l'adapter unique
+    const cfg = await this._resolvePluCfg(codeInsee, zoneKey, secteurAvap);
+    const isExact = cfg && cfg._meta?.status === 'OK';
+    const reason  = cfg?._meta?.reason ?? null;
 
-    // Résoudre chaque valeur : session P4 → terrain → plu-rules.json → '—'
-    const he  = p4.hauteur_egout_m  ?? p4.hauteur_max_m   ?? pluRule?.he_max_m  ?? null;
-    const hf  = p4.hauteur_faitage_m ?? pluRule?.hf_max_m  ?? null;
-    const rv  = p4.recul_voie_m ?? p4.recul_voie_principale_m ?? pluRule?.recul_voie_m ?? null;
-    const rl  = p4.recul_lat_m ?? p4.recul_limite_sep_m ?? pluRule?.recul_sep_lat_m ?? null;
-    const rf  = p4.recul_fond_m ?? pluRule?.recul_sep_fond_m ?? null;
-    const ces = p4.ces_max ?? p4.emprise_sol_max_pct ?? null;
-    const perm = p4.permeabilite_min_pct ?? pluRule?.permeable_min_pct ?? null;
+    // Résoudre chaque valeur : session P4 → cfg adapter → '—'
+    const he  = p4.hauteur_egout_m  ?? p4.hauteur_max_m   ?? cfg?.plu?.heEgout   ?? cfg?.plu?.heMax ?? null;
+    const hf  = p4.hauteur_faitage_m ?? cfg?.plu?.hfFaitage ?? cfg?.plu?.heMax ?? null;
+    const rv  = p4.recul_voie_m ?? p4.recul_voie_principale_m ?? cfg?.reculs?.voie ?? null;
+    const rl  = p4.recul_lat_m ?? p4.recul_limite_sep_m ?? cfg?.reculs?.lat  ?? null;
+    const rf  = p4.recul_fond_m ?? cfg?.reculs?.fond ?? null;
+    const ces = p4.ces_max ?? p4.emprise_sol_max_pct ?? cfg?.plu?.emprMax ?? null;
+    const perm = p4.permeabilite_min_pct ?? cfg?.plu?.permMin ?? null;
+    const cbsMin = cfg?.plu?.cbs?.cbs_min_pct ?? null;
 
     const fmt = (v, suffix = '') => v != null ? v + suffix : '—';
 
+    // Bandeau statut résolution PLU
+    let statusBanner = '';
+    if (zoneKey && !isExact) {
+      const reasonLabel = {
+        COMMUNE_MISSING: `Commune ${codeInsee ?? '?'} absente du référentiel PLU`,
+        ZONE_MISSING:    `Zone "${zoneKey}" introuvable pour ${cfg?.commune ?? codeInsee}`,
+        RULES_NOT_LOADED:'Référentiel PLU non chargé',
+      }[reason] ?? 'Données PLU partielles — valeurs par défaut RTAA';
+      statusBanner = `<div class="plu-fallback-warn" style="background:rgba(245,158,11,.08);border-left:3px solid #f59e0b;padding:6px 10px;font-size:10px;color:#8a6d1b;border-radius:3px;margin-bottom:6px">⚠ ${reasonLabel}</div>`;
+    } else if (isExact && cfg?._meta?.warnings?.length) {
+      statusBanner = `<div class="plu-warn-list" style="background:rgba(59,130,246,.06);border-left:3px solid #3b82f6;padding:6px 10px;font-size:10px;color:#1e40af;border-radius:3px;margin-bottom:6px">${cfg._meta.warnings.length} avertissement(s) PLU — voir P04</div>`;
+    }
+
+    const labelZone = isExact && cfg?.label
+      ? cfg.label
+      : (zoneKey ? `${zoneKey}${reason ? ' (fallback)' : ''}` : '—');
+
     const constraints = [
-      { label: 'Zone PLU',          val: zoneKey ? `${zoneKey}${pluRule ? ' — ' + pluRule.label : ''}` : '—' },
+      { label: 'Zone PLU',          val: labelZone },
       { label: 'Hauteur égout',     val: fmt(he, ' m'), note: 'sablière/gouttière' },
       { label: 'Hauteur faîtage',   val: fmt(hf, ' m'), note: 'point le plus haut' },
       { label: 'Recul voie',        val: fmt(rv, ' m') },
       { label: 'Reculs latéraux',   val: fmt(rl, ' m') },
       { label: 'Recul fond',        val: fmt(rf, ' m') },
       { label: 'CES max',           val: ces ? (parseFloat(ces) > 1 ? ces + '%' : (ces * 100).toFixed(0) + '%') : '—' },
-      { label: 'COS max',           val: p4.cos_max ?? '—' },
+      { label: 'COS max',           val: p4.cos_max ?? cfg?.plu?.cos ?? '—' },
       { label: 'Perméabilité min',  val: fmt(perm, '%') },
     ];
+    if (cbsMin != null) {
+      constraints.push({ label: 'CBS minimum', val: fmt(cbsMin, '%'), note: 'biotope' });
+    }
 
-    el.innerHTML = constraints.map(c => `
+    el.innerHTML = statusBanner + constraints.map(c => `
       <div class="plu-row">
         <span class="plu-label">${c.label}${c.note ? ` <small>(${c.note})</small>` : ''}</span>
         <span class="plu-val">${c.val}</span>
@@ -278,6 +433,15 @@ const P11 = {
     if (btn) {
       btn.style.opacity = this._cadastreVisible ? '1' : '0.4';
       btn.title = this._cadastreVisible ? 'Masquer le plan cadastral IGN' : 'Afficher le plan cadastral IGN';
+    }
+  },
+
+  toggleContours() {
+    const visible = EsquisseCanvas.toggleContours();
+    const btn = document.getElementById('p11-btn-contours');
+    if (btn) {
+      btn.style.opacity = visible ? '1' : '0.4';
+      btn.title = visible ? 'Masquer les courbes de niveau BIL' : 'Afficher les courbes de niveau BIL';
     }
   },
 

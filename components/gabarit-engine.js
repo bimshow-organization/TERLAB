@@ -248,47 +248,50 @@ export class ConstraintSolver {
     // Non-constructible zones
     const zones_non_constructibles = [];
 
-    // Bande voie
+    // Pré-classer chaque arête par direction de sa normale extérieure
+    // (nord/sud/est/ouest) pour pouvoir générer des bandes qui suivent
+    // l'inclinaison réelle de la limite — jamais un rectangle bbox.
+    const edgeSides = this._classifyEdges(poly);
+
+    // Bande voie — toutes les arêtes de la parcelle qui regardent la voie
     voieSides.forEach(side => {
-      const zone = this._makeBande(poly, side, rVoie);
-      if (zone) zones_non_constructibles.push({
-        polygon: zone,
+      const bandes = this._makeBandeEdges(poly, edgeSides, side, rVoie);
+      bandes.forEach(({ polygon, edgeIdx }) => zones_non_constructibles.push({
+        polygon,
         label: `Recul voie ${rVoie}m`,
         type: 'voie',
         side,
-      });
+        edgeIdx,
+      }));
     });
 
-    // Bandes latérales
-    const lateralSides = ['nord', 'sud', 'est', 'ouest'].filter(s =>
-      !voieSides.includes(s) && !Object.values(fondSides).filter((v, i) =>
-        voieSides.includes(Object.keys(fondSides)[i]) && v === s).length
-    );
-    // Actually simpler: sides that are neither voie nor fond
+    // Bandes latérales : toutes les arêtes qui ne sont ni voie ni fond
     const fondSideList = voieSides.map(s => fondSides[s.toLowerCase()]).filter(Boolean);
     const latSides = ['nord', 'sud', 'est', 'ouest'].filter(s =>
       !voieSides.includes(s) && !fondSideList.includes(s)
     );
 
     latSides.forEach(side => {
-      const zone = this._makeBande(poly, side, rLat);
-      if (zone) zones_non_constructibles.push({
-        polygon: zone,
+      const bandes = this._makeBandeEdges(poly, edgeSides, side, rLat);
+      bandes.forEach(({ polygon, edgeIdx }) => zones_non_constructibles.push({
+        polygon,
         label: `Recul lat. ${rLat}m`,
         type: 'lateral',
         side,
-      });
+        edgeIdx,
+      }));
     });
 
-    // Bande fond
+    // Bande fond — arêtes opposées à la voie
     fondSideList.forEach(side => {
-      const zone = this._makeBande(poly, side, rFond);
-      if (zone) zones_non_constructibles.push({
-        polygon: zone,
+      const bandes = this._makeBandeEdges(poly, edgeSides, side, rFond);
+      bandes.forEach(({ polygon, edgeIdx }) => zones_non_constructibles.push({
+        polygon,
         label: `Recul fond ${rFond}m`,
         type: 'fond',
         side,
-      });
+        edgeIdx,
+      }));
     });
 
     // Zone constructible = inset polygon
@@ -299,14 +302,15 @@ export class ConstraintSolver {
     if (context.hasZoneN && rules.mitoyen_zone_n_bande_m) {
       zones_mitoyen_n = [];
       fondSideList.forEach(side => {
-        const zone = this._makeBande(poly, side, rules.mitoyen_zone_n_bande_m);
-        if (zone) zones_mitoyen_n.push({
-          polygon: zone,
+        const bandes = this._makeBandeEdges(poly, edgeSides, side, rules.mitoyen_zone_n_bande_m);
+        bandes.forEach(({ polygon, edgeIdx }) => zones_mitoyen_n.push({
+          polygon,
           label: `Mitoyen N — ${rules.mitoyen_zone_n_hauteur_limite}`,
           type: 'mitoyen_n',
           side,
+          edgeIdx,
           hauteur_limite: rules.mitoyen_zone_n_hauteur_limite,
-        });
+        }));
       });
     }
 
@@ -342,84 +346,309 @@ export class ConstraintSolver {
   }
 
   /**
-   * Create a bande (strip) polygon on one side of the bounding box
-   * side: 'nord'|'sud'|'est'|'ouest'
-   * d: distance in meters
+   * Classe chaque arête du polygone par la direction cardinale de sa
+   * normale extérieure (nord/sud/est/ouest). Y est orienté vers le bas
+   * (convention écran), donc nord = ny < 0, sud = ny > 0.
+   *
+   * @param {Array<{x,y}>} poly
+   * @returns {string[]} ['nord'|'sud'|'est'|'ouest', ...] indexé par arête
    */
-  _makeBande(poly, side, d) {
-    if (d <= 0) return null;
-    const b = bbox(poly);
-    switch (side) {
-      case 'nord':
-        return [
-          { x: b.minX, y: b.minY },
-          { x: b.maxX, y: b.minY },
-          { x: b.maxX, y: b.minY + d },
-          { x: b.minX, y: b.minY + d },
-        ];
-      case 'sud':
-        return [
-          { x: b.minX, y: b.maxY - d },
-          { x: b.maxX, y: b.maxY - d },
-          { x: b.maxX, y: b.maxY },
-          { x: b.minX, y: b.maxY },
-        ];
-      case 'ouest':
-        return [
-          { x: b.minX, y: b.minY },
-          { x: b.minX + d, y: b.minY },
-          { x: b.minX + d, y: b.maxY },
-          { x: b.minX, y: b.maxY },
-        ];
-      case 'est':
-        return [
-          { x: b.maxX - d, y: b.minY },
-          { x: b.maxX, y: b.minY },
-          { x: b.maxX, y: b.maxY },
-          { x: b.maxX - d, y: b.maxY },
-        ];
-      default:
-        return null;
+  _classifyEdges(poly) {
+    const n = poly.length;
+    const winding = polygonWinding(poly); // > 0 = CW (Y-down)
+    const sign = winding < 0 ? -1 : 1;
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const a = poly[i], b = poly[(i + 1) % n];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const len = Math.hypot(dx, dy);
+      if (len < 1e-9) { out.push(null); continue; }
+      // Normale intérieure (sign-corrigée selon winding)
+      const nxIn = sign * (-dy / len);
+      const nyIn = sign * ( dx / len);
+      // Normale extérieure
+      const nxOut = -nxIn, nyOut = -nyIn;
+      // Angle extérieur en degrés (0 = est, 90 = sud, 180 = ouest, 270 = nord)
+      const angDeg = ((Math.atan2(nyOut, nxOut) * 180 / Math.PI) + 360) % 360;
+      let side;
+      if (angDeg >= 315 || angDeg < 45)        side = 'est';
+      else if (angDeg >= 45  && angDeg < 135)  side = 'sud';
+      else if (angDeg >= 135 && angDeg < 225)  side = 'ouest';
+      else                                     side = 'nord';
+      out.push(side);
     }
+    return out;
+  }
+
+  /**
+   * Génère la bande d'exclusion pour UNE ARÊTE en décalant la limite
+   * vers l'intérieur. La bande suit l'inclinaison réelle de la limite —
+   * jamais un rectangle bbox.
+   *
+   * @param {Array<{x,y}>} poly  Polygone parcelle
+   * @param {number} i           Index de l'arête (poly[i] → poly[i+1])
+   * @param {number} d           Recul en mètres
+   * @param {number} sign        +1 ou -1 selon winding du polygone
+   * @returns {Array<{x,y}>|null}
+   */
+  _makeBandeEdge(poly, i, d, sign) {
+    if (d <= 0) return null;
+    const n = poly.length;
+    const p1 = poly[i], p2 = poly[(i + 1) % n];
+    const dx = p2.x - p1.x, dy = p2.y - p1.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 1e-6) return null;
+    // Normale intérieure (sign-corrigée selon winding)
+    const nxIn = sign * (-dy / len);
+    const nyIn = sign * ( dx / len);
+    // Quad : [limite_a, limite_b, limite_b + d*ninw, limite_a + d*ninw]
+    return [
+      { x: p1.x,             y: p1.y             },
+      { x: p2.x,             y: p2.y             },
+      { x: p2.x + nxIn * d,  y: p2.y + nyIn * d  },
+      { x: p1.x + nxIn * d,  y: p1.y + nyIn * d  },
+    ];
+  }
+
+  /**
+   * Génère toutes les bandes pour les arêtes d'une direction cardinale
+   * donnée. Une parcelle peut avoir plusieurs arêtes regardant la même
+   * direction (parcelle non orthogonale, en L, etc.).
+   *
+   * @param {Array<{x,y}>} poly
+   * @param {string[]} edgeSides  Pré-classification (cf _classifyEdges)
+   * @param {string} side         'nord'|'sud'|'est'|'ouest'
+   * @param {number} d            Recul en mètres
+   * @returns {{polygon, edgeIdx}[]}
+   */
+  _makeBandeEdges(poly, edgeSides, side, d) {
+    if (d <= 0) return [];
+    const winding = polygonWinding(poly);
+    const sign = winding < 0 ? -1 : 1;
+    const out = [];
+    for (let i = 0; i < poly.length; i++) {
+      if (edgeSides[i] !== side) continue;
+      const polygon = this._makeBandeEdge(poly, i, d, sign);
+      if (polygon) out.push({ polygon, edgeIdx: i });
+    }
+    return out;
   }
 }
 
 // ─── GabaritEngine (orchestrateur) ──────────────────────────────────
 
+/**
+ * GabaritEngine — version commune-aware (post-refacto P0-1).
+ *
+ * Source de vérité unique : data/plu-rules-reunion.json (24 communes).
+ * La résolution zone PLU passe par PLUP07Adapter (gestion AVAP, ref_zone,
+ * fuzzy match, fallback graceful avec status distinct).
+ *
+ * Le ConstraintSolver attend toujours un objet `rules` plat avec les clés
+ * recul_voie_m / he_max_m / etc. — `_flattenZoneRules()` traduit le format
+ * nesté de plu-rules-reunion.json vers ce format legacy.
+ */
 export class GabaritEngine {
   constructor() {
-    this.parcelSet = new ParcelSet();
-    this.solver = new ConstraintSolver();
-    this.rules = null;
+    this.parcelSet  = new ParcelSet();
+    this.solver     = new ConstraintSolver();
+    this._adapter   = null;             // PLUP07Adapter — chargé lazily
+    this._rulesUrl  = null;
+    this.currentCodeInsee = null;
     this.currentZone = null;
+    this.lastResolution = null;          // cfg complet du dernier resolve()
+    this._lastFlatRules = null;          // règles aplaties du dernier setZone (fallback)
   }
 
-  async loadRules(url = '../data/plu-rules.json') {
-    const resp = await fetch(url);
-    this.rules = await resp.json();
-    return this.rules;
+  /**
+   * Charge les règles PLU communales.
+   * @param {string} url — défaut data/plu-rules-reunion.json
+   * @returns {Promise<Object>} — l'objet rules brut (compat)
+   */
+  async loadRules(url = '../data/plu-rules-reunion.json') {
+    this._rulesUrl = url;
+    const { PLUP07Adapter } = await import('../services/plu-p07-adapter.js');
+    this._adapter = new PLUP07Adapter();
+    await this._adapter.loadRules(url);
+    return this._adapter._rules;
   }
 
-  setZone(zoneKey) {
-    this.currentZone = zoneKey;
-    this.parcelSet.zone = zoneKey;
-    this.parcelSet.rules = this.rules?.zones?.[zoneKey] ?? null;
+  /**
+   * Sélectionne une parcelle par commune + zone (signature changée).
+   * @param {string} codeInsee — code INSEE 5 chiffres (ex 97415 pour Saint-Paul)
+   * @param {string} zoneKey   — code zone PLU (ex U1a, AUa, Uavap…)
+   * @param {Object} [options] — { secteurAvap, zoneRtaa }
+   *
+   * Compat : si appelé en mode legacy `setZone(zoneKey)` (1 seul arg string
+   * sans préfixe numérique), on log un warning et on tente avec la dernière
+   * commune connue. À supprimer après audit complet.
+   */
+  setZone(codeInsee, zoneKey, options = {}) {
+    // Compat ascendante : setZone('U1a') sans commune → warn + fallback
+    if (zoneKey === undefined && typeof codeInsee === 'string' && !/^\d{5}$/.test(codeInsee)) {
+      console.warn('[GabaritEngine] setZone(zoneKey) deprecated — passez (codeInsee, zoneKey)');
+      zoneKey = codeInsee;
+      codeInsee = this.currentCodeInsee;
+    }
+
+    if (!this._adapter) {
+      console.error('[GabaritEngine] loadRules() doit être appelé avant setZone()');
+      return null;
+    }
+    if (!codeInsee) {
+      console.warn('[GabaritEngine] setZone : code INSEE manquant — résolution impossible');
+      this.currentZone = zoneKey;
+      this.parcelSet.zone = zoneKey;
+      this.parcelSet.rules = null;
+      this.lastResolution = null;
+      return null;
+    }
+
+    const cfg = this._adapter.resolve(codeInsee, zoneKey, options.zoneRtaa ?? '1', {
+      secteurAvap: options.secteurAvap,
+    });
+    this.currentCodeInsee = codeInsee;
+    this.currentZone      = cfg.zone_plu ?? zoneKey;
+    this._lastFlatRules   = this._flattenZoneRules(cfg);
+    this.parcelSet.zone   = this.currentZone;
+    this.parcelSet.rules  = this._lastFlatRules;
+    this.lastResolution   = cfg;
+    return cfg;
   }
 
   solve(parcelSet, zoneRules, context) {
+    // Si zoneRules est un cfg PLUP07Adapter (objet riche), aplatir
+    if (zoneRules && (zoneRules.plu || zoneRules.reculs?.voie != null)) {
+      zoneRules = this._flattenZoneRules(zoneRules);
+    }
+    // Cascade de fallback : args explicite → parcelSet.rules → dernier setZone
+    if (!zoneRules) zoneRules = (parcelSet ?? this.parcelSet)?.rules ?? this._lastFlatRules;
+    if (!zoneRules) {
+      console.warn('[GabaritEngine] solve() : aucune règle PLU disponible — appelez setZone() avant');
+      return null;
+    }
     return this.solver.solve(parcelSet ?? this.parcelSet, zoneRules, context);
   }
 
-  getZoneRules(zoneKey) {
-    return this.rules?.zones?.[zoneKey ?? this.currentZone] ?? null;
+  /**
+   * Récupère les règles d'une zone (format plat solver).
+   * @param {string} [codeInsee] — défaut commune courante
+   * @param {string} [zoneKey]   — défaut zone courante
+   */
+  getZoneRules(codeInsee, zoneKey) {
+    const insee = codeInsee ?? this.currentCodeInsee;
+    const zone  = zoneKey ?? this.currentZone;
+    if (!this._adapter || !insee || !zone) return null;
+    const cfg = this._adapter.resolve(insee, zone, '1');
+    return this._flattenZoneRules(cfg);
   }
 
-  getZoneList() {
-    if (!this.rules?.zones) return [];
-    return Object.entries(this.rules.zones).map(([key, z]) => ({
+  /**
+   * Liste les zones d'une commune.
+   * @param {string} [codeInsee] — défaut commune courante
+   * @returns {Array<{key, label, type, status}>}
+   */
+  getZoneList(codeInsee) {
+    const insee = codeInsee ?? this.currentCodeInsee;
+    if (!this._adapter?._rules || !insee) return [];
+    const communeData = this._adapter._rules.communes?.[insee];
+    if (!communeData?.zones) {
+      // Commune absente — aucune zone exacte ; on n'invente pas de fallback
+      return [];
+    }
+    return Object.entries(communeData.zones).map(([key, z]) => ({
       key,
-      label: `${key} — ${z.label}`,
+      label: `${key} — ${z.label ?? z.type ?? ''}`,
+      type:  z.type ?? '?',
     }));
+  }
+
+  /** Statut de la dernière résolution (OK / FALLBACK / reason) */
+  getResolutionStatus() {
+    if (!this.lastResolution) return null;
+    const m = this.lastResolution._meta ?? {};
+    return {
+      status:     m.status,
+      reason:     m.reason ?? null,
+      confidence: m.confidence ?? null,
+      warnings:   m.warnings ?? [],
+      commune:    this.lastResolution.commune,
+      zone:       this.lastResolution.zone_plu,
+      isExact:    m.status === 'OK',
+    };
+  }
+
+  /**
+   * Aplatit un cfg PLUP07Adapter (objet riche nesté) vers le format legacy
+   * attendu par ConstraintSolver. Conserve les clés exactes consommées par
+   * solver.solve() : recul_*_m, he/hf_*_m, permeable_min_pct, mitoyen_*.
+   */
+  _flattenZoneRules(cfg) {
+    if (!cfg) return null;
+    const plu = cfg.plu ?? {};
+    const r   = cfg.reculs ?? {};
+    return {
+      // Identité
+      label: cfg.label ?? cfg.zone_plu ?? '—',
+      zone:  cfg.zone_plu ?? null,
+
+      // Reculs (clés legacy attendues par ConstraintSolver)
+      recul_voie_m:     r.voie ?? 3,
+      recul_sep_lat_m:  r.lat  ?? 3,
+      recul_sep_fond_m: r.fond ?? 3,
+      distance_inter_batiments_m: plu.interBatMin ?? 4,
+
+      // Hauteurs
+      he_max_m: plu.heEgout ?? plu.heMax ?? 9,
+      hf_max_m: plu.hfFaitage ?? plu.heMax ?? 12,
+      he_bande_voie_m:        cfg.hauteurs_brutes?.he_bande_voie_m ?? null,
+      hf_bande_voie_m:        cfg.hauteurs_brutes?.hf_bande_voie_m ?? null,
+      bande_voie_profondeur_m: cfg.hauteurs_brutes?.bande_voie_profondeur_m ?? null,
+
+      // Annexes
+      annexe_hauteur_max_m:  plu.annexe_hf_max_m ?? null,
+      annexe_emprise_max_m2: plu.annexe_emprise_max_m2 ?? null,
+
+      // Emprise
+      emprise_sol_max_pct:   plu.emprMax ?? null,
+      emprise_sol_reglementee: plu.emprMax != null && plu.emprMax < 100,
+
+      // Perméabilité (avec conversion CBS via l'adapter quand applicable)
+      permeable_min_pct: plu.permMin ?? 30,
+
+      // CBS (réglementaire ou indicateur)
+      cbs: plu.cbs ?? null,
+
+      // Toiture
+      toit_versants_obligatoire: plu.versants_obligatoire ?? null,
+      toit_versants_pct_volume:  plu.versants_pct_volume ?? null,
+      toit_pente_min_pct:        plu.pente_toiture_min_pct ?? null,
+      toit_pente_max_pct:        plu.pente_toiture_max_pct ?? null,
+
+      // Mitoyen zone N (clés legacy)
+      mitoyen_zone_n_bande_m:        cfg.mitoyen_zone_n_bande_m ?? null,
+      mitoyen_zone_n_hauteur_limite: cfg.mitoyen_zone_n_hauteur_limite ?? null,
+
+      // Stationnement (passe-plat)
+      stationnement: {
+        logement_standard: plu.park_logement_std,
+        logement_aide:     plu.park_logement_aide,
+        visiteur_par_5lots: plu.park_visiteur_par5,
+        commerce_bureau:    plu.park_commerce_bureau,
+        hotel_par_2chambres: plu.park_hotel_par_2chambres,
+      },
+
+      // Logement aidé
+      quota_loge_aide: {
+        sdp_seuil_1_m2: plu.aide_seuil_m2,
+        pct_aide_seuil_1: plu.aide_pct,
+      },
+
+      // Métadonnées
+      _commune:    cfg.commune,
+      _code_insee: cfg.code_insee,
+      _meta:       cfg._meta,
+    };
   }
 }
 

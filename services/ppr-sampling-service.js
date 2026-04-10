@@ -30,6 +30,11 @@ const PPRSamplingService = {
       return { zones: {}, grid: [], dominant: 'W', hasInconstructible: false };
     }
 
+    // PEIGEO indisponible (HTTPS context) → pas de sampling possible.
+    if (PPRService.disabled) {
+      return { zones: {}, grid: [], dominant: 'W', hasInconstructible: false, disabled: true };
+    }
+
     // 1. Calculer la bbox et la grille d'échantillonnage
     const bbox = this._bbox(parcelGeo);
     const gridPoints = this._buildGrid(parcelGeo, bbox, 3); // pas de 3m

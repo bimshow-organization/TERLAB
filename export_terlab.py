@@ -46,14 +46,14 @@ Hébergé par BIMSHOW · MGA Architecture · Saint-Leu, La Réunion
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-MODULES TERLAB :
-  phases      → 15 fichiers HTML p00-p13 (phases pédagogiques)
-  components  → 30 composants JS partagés (session, map, export, aéraulique, gabarit…)
-  services    → 45 services JS métier (terrain, PLU, PPR, SDIS, LiDAR, envelope…)
-  data        → 45 fichiers JSON (meta, PLU 24 communes, SCoT 5 intercos, risques…)
-  assets      → 10 CSS (shell, map, print, esquisse, 3D, aéraulique…)
-  utils       → 9 utilitaires JS (coords UTM40S, COPC, GLB exporter…)
-  workers     → 2 workers JS (ifc-worker + dxf-worker)
+MODULES TERLAB (compte effectif déterminé au runtime via count_module) :
+  phases      → fichiers HTML p00-p13 (phases pédagogiques)
+  components  → composants JS partagés (session, map, export, aéraulique, gabarit…)
+  services    → services JS métier (terrain, PLU, PPR, SDIS, LiDAR, envelope…)
+  data        → fichiers JSON (meta, PLU communes, SCoT intercos, risques…)
+  assets      → CSS (shell, map, print, esquisse, 3D, aéraulique…)
+  utils       → utilitaires JS (coords UTM40S, COPC, GLB exporter…)
+  workers     → workers JS (ifc-worker + dxf-worker)
   stubs       → georisques-proxy.js (Firebase Function)
   shell       → index.html + accueil.html + index.js (SPA router)
   docs        → prompts/ + plu-schemas/ + .docs/
@@ -80,16 +80,27 @@ from collections import defaultdict
 # ─── Configuration ────────────────────────────────────────────────
 
 TERLAB_MODULES = {
-    'phases'     : '15 phases HTML pédagogiques (p00 → p13, dont p11 esquisse + fin-de-vie)',
-    'components' : '30 composants JS partagés (session, map, export, bridge, aéraulique, gabarit, 3D…)',
-    'services'   : '45 services JS métier (terrain, PLU, PPR, SDIS, LiDAR, envelope, plan masse…)',
-    'data'       : '45 JSON de configuration (phases-meta, PLU 24 communes, SCoT 5 intercos, risques…)',
-    'assets'     : '10 CSS (shell · map · print · esquisse · 3D · aéraulique · envirobat…)',
-    'utils'      : '9 utilitaires JS (coords UTM40S, COPC reader, GLB exporter, sun diagram…)',
-    'workers'    : '2 workers JS (ifc-worker IFC 2x3 + dxf-worker DXF export)',
+    'phases'     : 'phases HTML pédagogiques (p00 → p13, dont p07 + p11 esquisse)',
+    'components' : 'composants JS partagés (session, map, export, bridge, aéraulique, gabarit, 3D…)',
+    'services'   : 'services JS métier (terrain, PLU, PPR, SDIS, LiDAR, envelope, plan masse, BPF, CBS…)',
+    'data'       : 'JSON de configuration (phases-meta, PLU communes, SCoT intercos, risques…)',
+    'assets'     : 'CSS (shell · map · print · esquisse · 3D · aéraulique · envirobat…)',
+    'utils'      : 'utilitaires JS (coords UTM40S, COPC reader, GLB exporter, sun diagram, wind rose…)',
+    'workers'    : 'workers JS (ifc-worker IFC 2x3 + dxf-worker DXF export)',
     'stubs'      : 'Stubs à implémenter (georisques-proxy Firebase Function)',
     'shell'      : 'Shell SPA : index.html + accueil.html + index.js (router, injection phases)',
     'docs'       : 'Documentation : prompts/ + plu-schemas/ + .docs/',
+}
+
+# Sous-dossier + glob pattern pour le comptage runtime de chaque module
+MODULE_DIRS = {
+    'phases'     : ('phases',     '*.html'),
+    'components' : ('components', '*.js'),
+    'services'   : ('services',   '*.js'),
+    'data'       : ('data',       '*.json'),
+    'assets'     : ('assets',     '*.css'),
+    'utils'      : ('utils',      '*.js'),
+    'workers'    : ('workers',    '*.js'),
 }
 
 PHASE_MAP = {
@@ -103,8 +114,8 @@ PHASE_MAP = {
     'p07': ('esquisse',        'dark',  'Three.js gabarit + checks PLU auto + BIMSHOW bridge'),
     'p08': ('chantier',        'site',  'Risques sanitaires tropicaux + saison cyclonique'),
     'p09': ('carbone',         'green', 'ACV matériaux + Chart.js comparatif'),
-    'p10': ('entretien',       'earth', 'Durabilité tropicale + termites + corrosion'),
-    'p11': ('fin-de-vie',      'green', 'Économie circulaire + ILEVA + réemploi'),
+    'p10': ('entretien',       'earth', 'Durabilité tropicale + termites + corrosion (fusion P10+P11)'),
+    'p11': ('esquisse',        'dark',  'Plan masse SVG · enveloppes Pareto · jardin BPF · v2'),
     'p12': ('synthese',        'dark',  'Exports PDF A3/DXF/GLB/IFC + QR code Firebase'),
     'p13': ('world',           'world', 'Globe Köppen rotatif + partenariats ENSA La Réunion'),
 }
@@ -114,12 +125,16 @@ COMPOSANT_MAP = {
     'session-manager'       : 'UUID anonyme + localStorage + Firebase RTDB sync',
     'terlab-storage'        : 'Abstraction stockage session persistante',
     'map-viewer'            : 'Wrapper Mapbox GL v3 — 10 modes carte + profil + mesure',
+    'map-capture'           : 'Capture vues Mapbox dataURL JPEG HQ avant export',
     'bimshow-bridge'        : 'postMessage BIMSHOW — envoi GLB + réception snapshot',
     'bimshow-viewer'        : 'Viewer BIMSHOW embarqué iframe',
     'export-engine'         : 'PDF jsPDF A3 + DXF ASCII + GLB + JSON session',
     'source-modal'          : 'Modal références bibliographiques par phase',
     'demo-loader'           : 'Chargeur scénarios démo (ville/village/isolé)',
     'qr-code'               : 'QR code session TERLAB (3 méthodes + fallback)',
+    'mobile-controller'     : 'UI mobile : bottom sheet, tab bar, phase nav (≤800px)',
+    'diag-renderer'         : 'Wrapper diagrammes : héliodone canvas + rose des vents',
+    'section-profile-viewer': 'Coupes SVG A/B interactives avec annotations + zoom',
     # Esquisse & gabarit
     'esquisse-canvas'       : 'Canvas SVG plan masse Mapbox live overlay',
     'gabarit-3d'            : 'Viewer Three.js gabarit volumétrique',
@@ -166,6 +181,14 @@ SEP2 = '═' * 100
 
 
 # ─── Helpers ──────────────────────────────────────────────────────
+
+def count_module(root: Path, name: str) -> int | None:
+    """Compte les fichiers d'un module au runtime (top-level uniquement)."""
+    if name not in MODULE_DIRS: return None
+    subdir, pattern = MODULE_DIRS[name]
+    d = root / subdir
+    if not d.exists(): return 0
+    return sum(1 for _ in d.glob(pattern))
 
 def estimate_tokens(text: str) -> int:
     return len(text) // CHARS_PER_TOK
@@ -250,10 +273,12 @@ def build_project_context(root: Path) -> str:
         '  5. Thème CSS via document.documentElement.dataset.theme = \'xxx\'',
         '  6. Tout stub = .stub-warning dans l\'UI + commentaire // ⚠️ STUB',
         '',
-        '🗂 MODULES',
+        '🗂 MODULES (compte runtime)',
     ]
     for name, desc in TERLAB_MODULES.items():
-        lines.append(f'  {name:<14} {desc}')
+        c = count_module(root, name)
+        count_str = f'{c:>3} ' if c is not None else '    '
+        lines.append(f'  {name:<14}{count_str}{desc}')
 
     lines += ['',
               '📋 14 PHASES (0–13)',
@@ -291,7 +316,9 @@ def build_project_context(root: Path) -> str:
     # Index des fichiers présents
     lines += ['📁 FICHIERS DU PROJET', '']
     for module, desc in TERLAB_MODULES.items():
-        lines.append(f'  [{module}] {desc}')
+        c = count_module(root, module)
+        count_str = f' ({c} fichiers)' if c is not None else ''
+        lines.append(f'  [{module}]{count_str} {desc}')
 
     lines.append('')
     return '\n'.join(lines)
@@ -790,7 +817,7 @@ def main():
 
     # Vérification basique
     if not (root / 'index.html').exists() and not (root / 'phases').exists():
-        print(f'⚠️  Racine TERLAB introuvable : {root}')
+        print(f'[!] Racine TERLAB introuvable : {root}')
         print('   Vérifiez que vous êtes dans le dossier terlab/ ou passez --root chemin/')
         sys.exit(1)
 
@@ -840,23 +867,23 @@ def main():
     tokens     = estimate_tokens(content)
     lines      = content.count('\n')
 
-    print(f'\n✅ Export généré : {outfile}')
+    print(f'\n[OK] Export généré : {outfile}')
     print(f'   Taille   : {fmt_size(size_bytes)}')
     print(f'   Lignes   : {lines:,}')
-    print(f'   Tokens ≈ : {tokens:,}')
+    print(f'   Tokens ~ : {tokens:,}')
 
     if tokens > TOKEN_BUDGET:
-        print(f'\n⚠️  ATTENTION : {tokens:,} tokens > budget {TOKEN_BUDGET:,}')
+        print(f'\n[!] ATTENTION : {tokens:,} tokens > budget {TOKEN_BUDGET:,}')
         print('   Claude.ai accepte ~200K tokens. Utiliser un mode plus ciblé.')
         print('   Suggestions :')
         print('     python export_terlab.py --mode phase --phase p03')
         print('     python export_terlab.py --mode composant --composant map-viewer')
     else:
         pct = tokens * 100 // TOKEN_BUDGET
-        bar = '█' * (pct // 5) + '░' * (20 - pct // 5)
+        bar = '#' * (pct // 5) + '-' * (20 - pct // 5)
         print(f'   Budget    : [{bar}] {pct}% utilisé')
 
-    print(f'\n📋 USAGE CLAUDE :')
+    print(f'\nUSAGE CLAUDE :')
     if args.mode == 'audit':
         print(f'   1. Uploader {outfile} dans claude.ai')
         print(f'   2. "Analyse la structure de TERLAB et propose les priorités"')

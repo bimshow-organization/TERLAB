@@ -2,8 +2,14 @@
  * TERLAB · Composant Fiches enviroBAT-Réunion
  * Affiche des cartes-exemples avec thumbnail, résumé et lien PDF
  * Usage : EnvirobatCards.render(containerId, phaseId)
+ *
+ * Idempotent : wrappé dans un `if` pour que le `const` soit en scope
+ * de bloc et ne crashe pas si le fichier est ré-évalué (rechargement
+ * SPA, blob URL phase, etc.).
  */
-const EnvirobatCards = window.EnvirobatCards ?? (() => {
+if (typeof window !== 'undefined' && !window.EnvirobatCards) {
+
+const EnvirobatCards = (() => {
 
   const FICHES = [
     {
@@ -246,4 +252,6 @@ const EnvirobatCards = window.EnvirobatCards ?? (() => {
   return { render, getForPhase, FICHES };
 })();
 
-if (typeof window !== 'undefined') window.EnvirobatCards = EnvirobatCards;
+window.EnvirobatCards = EnvirobatCards;
+
+}

@@ -57,6 +57,11 @@ const EsquisseCanvas = {
   _capacityStudy: null,        // résultat CapacityStudyRenderer.generate()
   _envZones: null,             // zones inset calculées { voie, lat, fond, perm }
 
+  // ── COURBES DE NIVEAU + NGR (BIL) ──────────────────────────────
+  _contourData: null,          // résultat ContourService.fromBIL — { lines, interval, minAlt, maxAlt }
+  _cornerAlts:  null,          // résultat ParcelAltitudes.sampleParcelKeyPoints — [{ kind, coord, alt }]
+  _contoursVisible: true,      // toggle utilisateur (bouton P11)
+
   // ── INIT ───────────────────────────────────────────────────────
   async init(svgId, sessionData) {
     this._session  = sessionData ?? {};
@@ -104,6 +109,11 @@ const EsquisseCanvas = {
     this._parcelLocal = this._geoToLocal(this._parcelGeo);
     this._edgeTypes   = this._classifyEdges(this._session);
 
+    // Persister sur la session pour que les consommateurs aval (capacity-study,
+    // gabarit-3d, earthworks-service) y accèdent sans dépendre du composant.
+    this._session._parcelLocal = this._parcelLocal;
+    this._session._edgeTypes   = this._edgeTypes;
+
     // ── 3b. Validation géométrie robuste (TerrainP07Adapter) ─────
     if (window.TerrainP07Adapter) {
       const geojson = this._session?.terrain?.parcelle_geojson ?? this._session?.geojson;
@@ -149,6 +159,11 @@ const EsquisseCanvas = {
       this._injectMapboxContext();
     }
 
+    // ── 5b. Charger courbes BIL + NGR sommets (asynchrone, non-bloquant) ──
+    Promise.all([this._loadContoursOnce(), this._loadCornerAltsOnce()])
+      .then(() => { if (this._svg) this._fullRedraw(); })
+      .catch(e => console.warn('[EsquisseCanvas] BIL load failed:', e));
+
     // ── 6. Bind drag handlers ────────────────────────────────────
     this._boundDrag    = this._onDrag.bind(this);
     this._boundDragEnd = this._onDragEnd.bind(this);
@@ -193,9 +208,11 @@ const EsquisseCanvas = {
       this._injectDefs();
       this._drawBackground();
       this._drawPPRNZones();
+      this._drawContours();
       this._drawContext();
       this._drawParcel();
       this._drawReculs();
+      this._drawCornerNGR();
       this._drawNorthArrow();
       this._drawScale();
       if (this._proposals.length > 0) {
@@ -250,12 +267,14 @@ const EsquisseCanvas = {
     }
 
     this._drawPPRNZones();
+    this._drawContours();
     this._drawContext();
     this._drawParcel();
     this._drawReculs();
     if (this._proposals.length > 0) {
       this._renderProposal(this._selected);
     }
+    this._drawCornerNGR();
 
     // Fermer le groupe rotaté, puis dessiner N et échelle hors rotation
     this._svgRotGroup = null;
@@ -977,6 +996,119 @@ const EsquisseCanvas = {
     lower.pop();
     upper.pop();
     return lower.concat(upper);
+  },
+
+  // ── BIL : COURBES DE NIVEAU ────────────────────────────────────
+  // Une seule requête au montage. Bbox = parcelle + 12 m de marge.
+  async _loadContoursOnce() {
+    if (this._contourData || !window.ContourService || !window.BILTerrain) return;
+    if (!this._parcelGeo?.length) return;
+
+    let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+    for (const [lng, lat] of this._parcelGeo) {
+      if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
+      if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
+    }
+    const lat0 = (minLat + maxLat) / 2;
+    const padM = 12;
+    const dLat = padM / 111320;
+    const dLng = padM / (111320 * Math.cos(lat0 * Math.PI / 180));
+
+    try {
+      this._contourData = await window.ContourService.fromBIL(
+        { west: minLng - dLng, east: maxLng + dLng, south: minLat - dLat, north: maxLat + dLat },
+        { pixelSizeM: 1.5, maxDim: 220 }
+      );
+    } catch (e) {
+      console.warn('[EsquisseCanvas] contours BIL failed:', e.message);
+      this._contourData = null;
+    }
+  },
+
+  // ── BIL : NGR aux sommets parcelle ─────────────────────────────
+  async _loadCornerAltsOnce() {
+    if (this._cornerAlts || !window.ParcelAltitudes) return;
+    if (!this._parcelGeo?.length) return;
+    try {
+      const res = await window.ParcelAltitudes.sampleParcelKeyPoints(this._parcelGeo, { longEdgeM: 30 });
+      this._cornerAlts = res.points;
+    } catch (e) {
+      console.warn('[EsquisseCanvas] NGR sample failed:', e.message);
+      this._cornerAlts = null;
+    }
+  },
+
+  // ── DESSIN COURBES DE NIVEAU ──────────────────────────────────
+  _drawContours() {
+    if (!this._contoursVisible || !this._contourData?.lines?.length) return;
+    const g = this._el('g', { id: 'contour-layer', 'pointer-events': 'none' });
+    const interval = this._contourData.interval ?? 1;
+    const majorEvery = interval * 5;
+
+    for (const line of this._contourData.lines) {
+      const isMajor = Math.abs(line.level % majorEvery) < 0.01;
+      const pts = line.coords.map(c => this._project(c));
+      if (pts.length < 2) continue;
+      this._el('polyline', {
+        points: this._polyPoints(pts),
+        fill: 'none',
+        stroke: isMajor ? '#8a6e3e' : '#c4b396',
+        'stroke-width': isMajor ? 1.1 : 0.55,
+        opacity: isMajor ? 0.78 : 0.55,
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+      }, null, g);
+    }
+
+    // Label altitude sur la première courbe majeure (haut-gauche le plus visible)
+    let labeled = 0;
+    for (const line of this._contourData.lines) {
+      if (labeled >= 6) break;
+      const isMajor = Math.abs(line.level % majorEvery) < 0.01;
+      if (!isMajor || line.coords.length < 4) continue;
+      const mid = line.coords[Math.floor(line.coords.length / 2)];
+      const p = this._project(mid);
+      this._label(p.x + 2, p.y - 2, `${Math.round(line.level)} m`,
+        { size: 8, color: '#6a5430', bold: true, anchor: 'start' }, null, g);
+      labeled++;
+    }
+  },
+
+  // ── DESSIN NGR AUX SOMMETS ────────────────────────────────────
+  _drawCornerNGR() {
+    if (!this._cornerAlts?.length) return;
+    const g = this._el('g', { id: 'ngr-layer', 'pointer-events': 'none' });
+    for (const pt of this._cornerAlts) {
+      if (pt.alt == null) continue;
+      const p = this._project(pt.coord);
+      const isCorner = pt.kind === 'corner';
+      // Marqueur : croix pour corner, point pour mid-edge
+      if (isCorner) {
+        const r = 3;
+        this._el('line', { x1: p.x - r, y1: p.y, x2: p.x + r, y2: p.y, stroke: '#1e3a5f', 'stroke-width': 1.2 }, null, g);
+        this._el('line', { x1: p.x, y1: p.y - r, x2: p.x, y2: p.y + r, stroke: '#1e3a5f', 'stroke-width': 1.2 }, null, g);
+      } else {
+        this._el('circle', { cx: p.x, cy: p.y, r: 1.6, fill: '#1e3a5f' }, null, g);
+      }
+      // Étiquette altitude — fond papier semi-transparent pour lisibilité
+      const txt = `+${pt.alt.toFixed(1)}`;
+      const labelX = p.x + 5;
+      const labelY = p.y - 4;
+      this._el('rect', {
+        x: labelX - 1, y: labelY - 8,
+        width: txt.length * 4.8 + 2, height: 10,
+        fill: 'rgba(252,249,243,0.82)', rx: 1.5,
+      }, null, g);
+      this._label(labelX, labelY, txt,
+        { size: isCorner ? 8.5 : 7.5, color: '#1e3a5f', bold: isCorner, anchor: 'start' }, null, g);
+    }
+  },
+
+  // ── PUBLIC : toggle courbes (bouton P11) ──────────────────────
+  toggleContours(visible) {
+    this._contoursVisible = visible == null ? !this._contoursVisible : !!visible;
+    this._fullRedraw();
+    return this._contoursVisible;
   },
 
   // ── DESSIN CONTEXTE ────────────────────────────────────────────
@@ -3314,6 +3446,10 @@ const EsquisseCanvas = {
   selectProposal(idx) {
     this._renderProposal(idx);
     this._renderScorePanel();
+    // Notifier les consommateurs externes (P11 3D viewer, etc.)
+    window.dispatchEvent(new CustomEvent('terlab:proposal-selected', {
+      detail: { idx, proposal: this._proposals[idx] },
+    }));
   },
 
   // ── EXPORT ─────────────────────────────────────────────────────

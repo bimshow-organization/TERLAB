@@ -71,6 +71,25 @@ function clipSH(subject, clip) {
 }
 function distPtSeg(px, py, x1, y1, x2, y2) { const dx = x2 - x1, dy = y2 - y1, l2 = dx * dx + dy * dy; if (l2 < 1e-10) return Math.hypot(px - x1, py - y1); const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / l2)); return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy)); }
 
+// Coins perdus : quand deux reculs se croisent à un angle aigu, la zone
+// constructible perd un quadrilatère entre [parc[i-1], parc[i], zone[i-1], zone[i]].
+// Détection : si dist(parc[i], zone[i]) > seuil (en mètres), le coin est perdu.
+function lostCorners(parc, zone, seuilM = 1.2) {
+  if (!parc || !zone || parc.length !== zone.length || parc.length < 3) return [];
+  const corners = [];
+  const n = parc.length;
+  for (let i = 0; i < n; i++) {
+    const pc = parc[i], zc = zone[i];
+    const dist = Math.hypot(pc[0] - zc[0], pc[1] - zc[1]);
+    if (dist > seuilM) {
+      const prevP = parc[(i - 1 + n) % n];
+      const prevZ = zone[(i - 1 + n) % n];
+      corners.push([prevP, pc, zc, prevZ]);
+    }
+  }
+  return corners;
+}
+
 function poleOfInaccessibility(poly, prec = 1.5) {
   const bb = polyAABB(poly);
   let best = [(bb.x + bb.x1) / 2, (bb.y + bb.y1) / 2], bestD = -Infinity;
@@ -98,8 +117,12 @@ const PlanMasseCanvas = {
   _el: null,         // conteneur <div>
   _svg: null,        // <svg>
   _session: null,
-  _terrain: null,    // { poly, edgeTypes, reculs, area, plu }
+  _terrain: null,    // { poly, edgeTypes, reculs, area, plu, parcelGeo, geoOrigin }
   _ready: false,
+
+  // ── BIL : contours + NGR aux sommets ─────────────────────────────
+  _contourData: null,   // { lines, linesLocal:[{level,pts}], interval, minAlt, maxAlt }
+  _cornerAlts:  null,   // [{ kind, coord, alt, local:{x,y} }]
 
   S: {
     bat: { x: 5, y: 4, w: 10, l: 12 },
@@ -108,7 +131,7 @@ const PlanMasseCanvas = {
     edgeTypes: [],
     mitoyen: [],
     zoom: 1, panX: 0, panY: 0, wcx: 15, wcy: 15,
-    layers: { reculs: true, env: true, veg: true, parking: true, dims: true, pir: false },
+    layers: { reculs: true, env: true, veg: true, parking: true, dims: true, pir: false, contours: true, ngr: true },
     view: 'plan',  // 'plan' | 'coupe'
     _insetWarn: null,
   },
@@ -154,6 +177,14 @@ const PlanMasseCanvas = {
     const p7 = session?.phases?.[7]?.data ?? {};
     if (p7.niveaux) this.S.prog.nvMax = Math.min(parseInt(p7.niveaux) || 2, this.nvMaxPLU());
 
+    // Restaurer types d'arêtes et mitoyen depuis session si présents
+    if (Array.isArray(p7.pmc_edgeTypes) && p7.pmc_edgeTypes.length === this.S.edgeTypes.length) {
+      this.S.edgeTypes = [...p7.pmc_edgeTypes];
+    }
+    if (Array.isArray(p7.pmc_mitoyen) && p7.pmc_mitoyen.length === this.S.mitoyen.length) {
+      this.S.mitoyen = p7.pmc_mitoyen.map(Boolean);
+    }
+
     // Auto-placer bâtiment par PIR
     this._initBatFromPIR();
     this._resetView();
@@ -165,6 +196,11 @@ const PlanMasseCanvas = {
     // Premier rendu
     this.render();
     console.log(`[PMC] Plan masse canvas initialisé — terrain ${Math.round(this._terrain.area)} m²`);
+
+    // Charger BIL en arrière-plan (contours + NGR sommets), puis re-render
+    Promise.all([this._loadContoursOnce(), this._loadCornerAltsOnce()])
+      .then(() => { if (this._ready) this.render(); })
+      .catch(e => console.warn('[PMC] BIL load failed:', e));
 
     console.info('[PMC] Plan masse canvas initialisé — terrain', Math.round(this._terrain.area), 'm²');
     return this;
@@ -218,7 +254,80 @@ const PlanMasseCanvas = {
       constructible: (p4.zone_plu ?? 'U').charAt(0) !== 'A' && (p4.zone_plu ?? 'U').charAt(0) !== 'N',
     };
 
-    this._terrain = { poly, edgeTypes, reculs, area, plu, commune: terrain.commune ?? 'Commune', reference: terrain.reference ?? '' };
+    // Origine géographique = centroïde de la parcelle WGS84 (cohérent avec EsquisseCanvas._geoToLocal)
+    let parcelGeo = null, geoOrigin = null;
+    const geom = terrain?.parcelle_geojson;
+    if (geom?.type === 'Polygon')      parcelGeo = geom.coordinates[0];
+    else if (geom?.type === 'MultiPolygon') parcelGeo = geom.coordinates[0]?.[0];
+    if (parcelGeo?.length) {
+      // Supprimer point de fermeture GeoJSON
+      const r = parcelGeo;
+      if (r[0][0] === r[r.length - 1][0] && r[0][1] === r[r.length - 1][1]) {
+        parcelGeo = r.slice(0, -1);
+      }
+      const clng = parcelGeo.reduce((s, c) => s + c[0], 0) / parcelGeo.length;
+      const clat = parcelGeo.reduce((s, c) => s + c[1], 0) / parcelGeo.length;
+      geoOrigin = { clng, clat, LNG: 111320 * Math.cos(clat * Math.PI / 180), LAT: 111320 };
+    }
+
+    this._terrain = { poly, edgeTypes, reculs, area, plu, commune: terrain.commune ?? 'Commune', reference: terrain.reference ?? '', parcelGeo, geoOrigin };
+  },
+
+  // ── CONVERSION WGS84 → local mètres (cohérent avec EsquisseCanvas) ─
+  _geoToLocal(coords) {
+    const o = this._terrain?.geoOrigin;
+    if (!o) return coords.map(() => ({ x: 0, y: 0 }));
+    return coords.map(([lng, lat]) => ({
+      x:  (lng - o.clng) * o.LNG,
+      y: -(lat - o.clat) * o.LAT,
+    }));
+  },
+
+  // ── BIL : courbes de niveau (une seule fois) ───────────────────────
+  async _loadContoursOnce() {
+    if (this._contourData || !window.ContourService || !window.BILTerrain) return;
+    if (!this._terrain?.parcelGeo?.length) return;
+    const pg = this._terrain.parcelGeo;
+    let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+    for (const [lng, lat] of pg) {
+      if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
+      if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
+    }
+    const lat0 = (minLat + maxLat) / 2;
+    const padM = 8;
+    const dLat = padM / 111320;
+    const dLng = padM / (111320 * Math.cos(lat0 * Math.PI / 180));
+    try {
+      const data = await window.ContourService.fromBIL(
+        { west: minLng - dLng, east: maxLng + dLng, south: minLat - dLat, north: maxLat + dLat },
+        { pixelSizeM: 1.0, maxDim: 220 }
+      );
+      // Convertir chaque polyline WGS → local mètres (cohérent avec _terrain.poly)
+      data.linesLocal = data.lines.map(l => ({
+        level: l.level,
+        pts: this._geoToLocal(l.coords).map(p => [p.x, p.y]),
+      }));
+      this._contourData = data;
+    } catch (e) {
+      console.warn('[PMC] contours BIL failed:', e.message);
+      this._contourData = null;
+    }
+  },
+
+  async _loadCornerAltsOnce() {
+    if (this._cornerAlts || !window.ParcelAltitudes) return;
+    if (!this._terrain?.parcelGeo?.length) return;
+    try {
+      const res = await window.ParcelAltitudes.sampleParcelKeyPoints(this._terrain.parcelGeo, { longEdgeM: 30 });
+      // Pré-projeter en local pour rendu rapide
+      this._cornerAlts = res.points.map(pt => {
+        const [lp] = this._geoToLocal([pt.coord]);
+        return { ...pt, local: lp };
+      });
+    } catch (e) {
+      console.warn('[PMC] NGR sample failed:', e.message);
+      this._cornerAlts = null;
+    }
   },
 
   // ── ENVELOPPE ─────────────────────────────────────────────────────
@@ -278,13 +387,76 @@ const PlanMasseCanvas = {
 
   _snap(v) { return Math.round(v / SNAP) * SNAP; },
 
+  // Vérifie que les 4 coins du rectangle bâtiment sont dans la zone
+  // constructible (polygone réel, pas seulement sa bbox).
+  _batCornersInPoly(b, poly) {
+    if (!poly || poly.length < 3) return true;
+    const corners = [
+      [b.x,       b.y      ],
+      [b.x + b.w, b.y      ],
+      [b.x + b.w, b.y + b.l],
+      [b.x,       b.y + b.l],
+    ];
+    return corners.every(([px, py]) => ptInPoly(px, py, poly));
+  },
+
+  // Clamp dur du bâtiment dans la zone constructible.
+  // 1) clamp dimensions à la bbox de l'enveloppe
+  // 2) clamp position à la bbox de l'enveloppe
+  // 3) si un coin sort encore du polygone réel (parcelle non rectangulaire),
+  //    interpolation linéaire vers le PIR jusqu'à ce que les 4 coins rentrent.
   _clampBat() {
     const env = this.computeEnv();
     const b = this.S.bat;
+    if (!env || !env.poly || env.poly.length < 3) return;
+
+    // 1) Dimensions
     b.w = Math.max(MIN_W, Math.min(b.w, env.w));
     b.l = Math.max(MIN_L, Math.min(b.l, env.h));
+
+    // 2) Position bbox
     b.x = Math.max(env.x, Math.min(env.x1 - b.w, b.x));
     b.y = Math.max(env.y, Math.min(env.y1 - b.l, b.y));
+
+    // 3) Test polygone réel — early exit si déjà légal
+    if (this._batCornersInPoly(b, env.poly)) return;
+
+    // Converger vers le PIR par dichotomie : on garde les dimensions et on
+    // déplace le rectangle vers le point d'inaccessibilité jusqu'à ce que
+    // les 4 coins soient dans le polygone.
+    const pir = poleOfInaccessibility(env.poly, 1.5);
+    const cxTarget = pir[0] - b.w / 2;
+    const cyTarget = pir[1] - b.l / 2;
+    let lo = 0, hi = 1;
+    let bestX = b.x, bestY = b.y, found = false;
+    for (let iter = 0; iter < 16; iter++) {
+      const t = (lo + hi) / 2;
+      const tx = b.x + (cxTarget - b.x) * t;
+      const ty = b.y + (cyTarget - b.y) * t;
+      if (this._batCornersInPoly({ x: tx, y: ty, w: b.w, l: b.l }, env.poly)) {
+        bestX = tx; bestY = ty; found = true;
+        hi = t; // peut-on bouger moins ?
+      } else {
+        lo = t; // pas assez convergé
+      }
+    }
+    if (found) { b.x = this._snap(bestX); b.y = this._snap(bestY); }
+    else       { b.x = this._snap(cxTarget); b.y = this._snap(cyTarget); }
+
+    // Filet final : si dimensions trop grandes pour la zone, réduire
+    // itérativement jusqu'à atteindre une forme légale ou MIN.
+    let guard = 12;
+    while (guard-- > 0 && !this._batCornersInPoly(b, env.poly)) {
+      if (b.w > MIN_W) b.w = Math.max(MIN_W, b.w * 0.9);
+      if (b.l > MIN_L) b.l = Math.max(MIN_L, b.l * 0.9);
+      b.x = pir[0] - b.w / 2;
+      b.y = pir[1] - b.l / 2;
+      if (b.w === MIN_W && b.l === MIN_L) break;
+    }
+    b.x = this._snap(b.x);
+    b.y = this._snap(b.y);
+    b.w = this._snap(b.w);
+    b.l = this._snap(b.l);
   },
 
   // ── TRANSFORMS ─────────────────────────────────────────────────────
@@ -398,6 +570,35 @@ const PlanMasseCanvas = {
       parts.push(g + '</g>');
     }
 
+    // Courbes de niveau BIL (clipées sur la parcelle)
+    if (this.S.layers.contours && this._contourData?.linesLocal?.length) {
+      const interval = this._contourData.interval ?? 1;
+      const majorEvery = interval * 5;
+      let cg = `<g clip-path="url(#pmc-tc)" pointer-events="none">`;
+      for (const line of this._contourData.linesLocal) {
+        if (line.pts.length < 2) continue;
+        const isMajor = Math.abs(line.level % majorEvery) < 0.01;
+        const d = 'M' + line.pts.map(([x, y]) => {
+          const [sx, sy] = this._w2s(x, y);
+          return `${this._dd(sx)},${this._dd(sy)}`;
+        }).join(' L');
+        cg += `<path d="${d}" fill="none" stroke="${isMajor ? '#8a6e3e' : '#c4b396'}" stroke-width="${isMajor ? 1.0 : 0.6}" opacity="${isMajor ? 0.78 : 0.55}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      }
+      // Étiquettes altitude — sur les courbes majeures les plus longues
+      let labeled = 0;
+      const majorLines = this._contourData.linesLocal
+        .filter(l => Math.abs(l.level % majorEvery) < 0.01 && l.pts.length >= 4)
+        .sort((a, b) => b.pts.length - a.pts.length);
+      for (const line of majorLines) {
+        if (labeled >= 4) break;
+        const mid = line.pts[Math.floor(line.pts.length / 2)];
+        const [sx, sy] = this._w2s(mid[0], mid[1]);
+        cg += `<text x="${this._dd(sx + 2)}" y="${this._dd(sy - 2)}" font-family="'Inconsolata',monospace" font-size="9" font-weight="700" fill="#6a5430">${Math.round(line.level)} m</text>`;
+        labeled++;
+      }
+      parts.push(cg + '</g>');
+    }
+
     // Zone fills recul
     if (this.S.layers.reculs) {
       const envPoly = this.computeEnvPoly();
@@ -418,13 +619,28 @@ const PlanMasseCanvas = {
     parts.push(`<polygon points="${this._polyPts(t.poly)}" fill="none" stroke="rgba(100,88,68,.5)" stroke-width="1.5"/>`);
     parts.push(this._tx((x0 + x1) / 2, y0 - 1.6, `${t.area.toFixed(0)} m² · ${t.commune}`, 8.5, 'rgba(100,88,68,.7)'));
 
-    // Arêtes colorées
+    // Arêtes colorées — épaisseur double + label "MITOYEN" pour les
+    // arêtes latérales en limite (recul = 0 par règle binaire PLU)
     { const n = t.poly.length;
       for (let i = 0; i < n; i++) {
         const [p1x, p1y] = t.poly[i], [p2x, p2y] = t.poly[(i + 1) % n];
         const [sx1, sy1] = this._w2s(p1x, p1y), [sx2, sy2] = this._w2s(p2x, p2y);
-        const col = COL[this.S.edgeTypes[i]];
-        parts.push(`<line x1="${this._dd(sx1)}" y1="${this._dd(sy1)}" x2="${this._dd(sx2)}" y2="${this._dd(sy2)}" stroke="${col}" stroke-width="4" opacity=".68" stroke-linecap="round"/>`);
+        const type = this.S.edgeTypes[i];
+        const col = COL[type];
+        const isMit = type === 'lat' && this.S.mitoyen[i];
+        const sw = isMit ? 7 : 4;
+        const op = isMit ? 0.92 : 0.68;
+        parts.push(`<line x1="${this._dd(sx1)}" y1="${this._dd(sy1)}" x2="${this._dd(sx2)}" y2="${this._dd(sy2)}" stroke="${col}" stroke-width="${sw}" opacity="${op}" stroke-linecap="round"/>`);
+        if (isMit) {
+          // Label MITOYEN (0m) sur le milieu de l'arête
+          const mx = (p1x + p2x) / 2, my = (p1y + p2y) / 2;
+          const dx = p2x - p1x, dy = p2y - p1y, len = Math.hypot(dx, dy) || 1;
+          const nxu = -dy / len, nyu = dx / len;
+          const lx = mx + nxu * 1.0, ly = my + nyu * 1.0;
+          const [slx, sly] = this._w2s(lx, ly);
+          parts.push(`<rect x="${this._dd(slx - 30)}" y="${this._dd(sly - 9)}" width="60" height="13" fill="rgba(59,130,246,.92)" rx="2"/>`);
+          parts.push(`<text x="${this._dd(slx)}" y="${this._dd(sly + 1)}" text-anchor="middle" font-size="9" font-weight="700" fill="white" font-family="'Inconsolata',monospace">MITOYEN 0m</text>`);
+        }
       }
     }
 
@@ -451,6 +667,19 @@ const PlanMasseCanvas = {
           parts.push(`<rect x="${this._dd(slx - tw / 2)}" y="${this._dd(sly - 9)}" width="${this._dd(tw)}" height="12" fill="rgba(240,237,225,.8)" rx="2" clip-path="url(#pmc-tc)"/>`);
           parts.push(`<text x="${this._dd(slx)}" y="${this._dd(sly)}" text-anchor="middle" font-size="8.5" fill="${col}" font-family="'Inconsolata',monospace" font-weight="600" clip-path="url(#pmc-tc)">${tLabel} ${r}m</text>`);
         }
+      }
+    }
+
+    // Coins perdus (Fm.24c) — quadrilatères orange aux angles aigus
+    // Quand deux reculs se croisent à un angle < 90°, la zone perd un quadrilatère.
+    if (this.S.layers.reculs && this._terrain.plu.constructible) {
+      const corners = lostCorners(t.poly, env.poly, 1.2);
+      for (const corner of corners) {
+        const pts = corner.map(([x, y]) => this._w2s(x, y).map(v => this._dd(v)).join(',')).join(' ');
+        parts.push(`<polygon points="${pts}" fill="rgba(251,146,0,.35)" stroke="#F59E0B" stroke-width="1.1" stroke-dasharray="3,2"/>`);
+        const cx = corner.reduce((s, p) => s + p[0], 0) / corner.length;
+        const cy = corner.reduce((s, p) => s + p[1], 0) / corner.length;
+        parts.push(this._tx(cx, cy, 'coin perdu', 6.5, 'rgba(146,64,14,.85)'));
       }
     }
 
@@ -580,6 +809,28 @@ const PlanMasseCanvas = {
       <text x="${sb0x}" y="${sb0y + 4}" font-size="8" fill="#6B7280" font-family="'Inconsolata',monospace">0</text>
       <text x="${this._dd(sb0x + sc10)}" y="${sb0y + 4}" font-size="8" fill="#6B7280" font-family="'Inconsolata',monospace" text-anchor="end">10m</text>
     </g>`);
+
+    // NGR aux sommets parcelle (BIL)
+    if (this.S.layers.ngr && this._cornerAlts?.length) {
+      let ng = `<g pointer-events="none">`;
+      for (const pt of this._cornerAlts) {
+        if (pt.alt == null || !pt.local) continue;
+        const [sx, sy] = this._w2s(pt.local.x, pt.local.y);
+        const isCorner = pt.kind === 'corner';
+        if (isCorner) {
+          // Croix repère
+          ng += `<line x1="${this._dd(sx - 4)}" y1="${this._dd(sy)}" x2="${this._dd(sx + 4)}" y2="${this._dd(sy)}" stroke="#1e3a5f" stroke-width="1.4"/>`;
+          ng += `<line x1="${this._dd(sx)}" y1="${this._dd(sy - 4)}" x2="${this._dd(sx)}" y2="${this._dd(sy + 4)}" stroke="#1e3a5f" stroke-width="1.4"/>`;
+        } else {
+          ng += `<circle cx="${this._dd(sx)}" cy="${this._dd(sy)}" r="2" fill="#1e3a5f"/>`;
+        }
+        const txt = `+${pt.alt.toFixed(1)}`;
+        const tw = txt.length * 5.4 + 4;
+        ng += `<rect x="${this._dd(sx + 5)}" y="${this._dd(sy - 12)}" width="${this._dd(tw)}" height="11" fill="rgba(252,249,243,.88)" stroke="rgba(30,58,95,.35)" stroke-width=".4" rx="1.5"/>`;
+        ng += `<text x="${this._dd(sx + 7)}" y="${this._dd(sy - 4)}" font-family="'Inconsolata',monospace" font-size="${isCorner ? 9 : 8}" font-weight="${isCorner ? 700 : 500}" fill="#1e3a5f">${txt}</text>`;
+      }
+      parts.push(ng + '</g>');
+    }
 
     // Légende
     { const [lsx, lsy] = this._w2s(x0 + 0.5, y1 - 0.5); const lw = 96, lh = 50;
@@ -860,10 +1111,72 @@ const PlanMasseCanvas = {
 
   // ── API PUBLIQUE ──────────────────────────────────────────────────
 
+  // Cycle d'arête à 4 états — règle BINAIRE PLU :
+  //   voie → lat (Lmin)  → lat-mitoyen (0m)  → fond → voie...
+  // Le mitoyen est BINAIRE : 0m (en limite) ou Lmin. Jamais entre.
   cycleEdge(i) {
-    const types = ['voie', 'lat', 'fond'];
-    this.S.edgeTypes[i] = types[(types.indexOf(this.S.edgeTypes[i]) + 1) % 3];
+    const cur = this.S.edgeTypes[i];
+    const isMit = !!this.S.mitoyen[i];
+
+    if (cur === 'voie') {
+      this.S.edgeTypes[i] = 'lat';
+      this.S.mitoyen[i]   = false;
+    } else if (cur === 'lat' && !isMit) {
+      // lat → lat-mitoyen (toggle binaire)
+      this.S.mitoyen[i] = true;
+    } else if (cur === 'lat' && isMit) {
+      this.S.edgeTypes[i] = 'fond';
+      this.S.mitoyen[i]   = false;
+    } else if (cur === 'fond') {
+      this.S.edgeTypes[i] = 'voie';
+      this.S.mitoyen[i]   = false;
+    } else {
+      // Fallback
+      this.S.edgeTypes[i] = 'voie';
+      this.S.mitoyen[i]   = false;
+    }
+    this._persistEdgeState();
+    this._clampBat();
     this.render();
+  },
+
+  /**
+   * Active / désactive l'implantation en limite pour une arête latérale.
+   * Règle BINAIRE : 0m (mitoyen) OU Lmin (recul std), jamais entre.
+   * Toast de feedback si conditions critiques.
+   *
+   * @param {number} edgeIdx
+   * @param {boolean} isMitoyen
+   */
+  setMitoyen(edgeIdx, isMitoyen) {
+    if (!this._terrain || edgeIdx < 0 || edgeIdx >= this.S.mitoyen.length) return;
+    if (this.S.edgeTypes[edgeIdx] !== 'lat') {
+      console.warn('[PMC] setMitoyen ignoré : arête', edgeIdx, 'n\'est pas latérale');
+      return;
+    }
+    this.S.mitoyen[edgeIdx] = !!isMitoyen;
+    this._persistEdgeState();
+    this._clampBat();
+    this.render();
+    if (isMitoyen) {
+      const hLim = this._terrain.plu.heMax ?? 9;
+      window.TerlabToast?.show?.(
+        `Implantation en limite — H façade ≤ ${hLim}m, mur aveugle requis`,
+        'warning', 3500
+      );
+    }
+  },
+
+  toggleMitoyen(edgeIdx) {
+    this.setMitoyen(edgeIdx, !this.S.mitoyen[edgeIdx]);
+  },
+
+  // Persistance dans session.phases[7].data — picked up at save time
+  _persistEdgeState() {
+    const p7 = this._session?.phases?.[7]?.data;
+    if (!p7) return;
+    p7.pmc_edgeTypes = [...this.S.edgeTypes];
+    p7.pmc_mitoyen   = [...this.S.mitoyen];
   },
 
   setView(v) { this.S.view = v; this.render(); },

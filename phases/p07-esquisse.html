@@ -513,7 +513,7 @@
     <div id="pmc-container" style="width:100%;height:100%"></div>
     <div style="position:absolute;bottom:0;left:0;right:0;height:22px;background:var(--raised,#e2dbcd);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 10px;gap:20px;font:10px var(--font-mono);color:var(--muted)">
       <span id="pmc-terrain-info">—</span>
-      <span style="flex:1;text-align:center;color:var(--accent)" id="pmc-cursor">Cliquer arête → changer type · Drag bat → déplacer · Handles → redimensionner</span>
+      <span style="flex:1;text-align:center;color:var(--accent)" id="pmc-cursor">Cliquer arête → voie / lat / lat-mitoyen / fond · Drag bat → déplacer · Handles → redimensionner</span>
     </div>
   </div>
 
@@ -641,6 +641,18 @@
       <div id="gabarit-svg-container" style="flex:1;position:relative;overflow:hidden;border-right:1px solid rgba(255,255,255,0.08)"></div>
       <div id="gabarit-3d-container" style="flex:1;position:relative;overflow:hidden">
         <canvas id="gabarit-3d-canvas" style="width:100%;height:100%;display:block"></canvas>
+        <!-- Toggles couches earthworks -->
+        <div id="p07-ew-toggles" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.7);padding:6px 10px;border-radius:4px;font-family:'Inconsolata',monospace;font-size:9px;color:#cbd5e0;display:none">
+          <div style="margin-bottom:4px;font-weight:600;color:#a0aec0">Terrassement</div>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="p07-ew-tn"       checked style="width:11px;height:11px;margin:0">TN naturel</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="p07-ew-platform" checked style="width:11px;height:11px;margin:0">Plateforme</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="p07-ew-cut"      checked style="width:11px;height:11px;margin:0"><span style="color:#dc2626">Déblai</span></label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="p07-ew-fill"     checked style="width:11px;height:11px;margin:0"><span style="color:#2563eb">Remblai</span></label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="p07-ew-talus"    checked style="width:11px;height:11px;margin:0">Talus</label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="p07-ew-pilotis"  checked style="width:11px;height:11px;margin:0">Pilotis</label>
+        </div>
+        <!-- Panneau métriques earthworks -->
+        <div id="p07-earthworks-panel" style="position:absolute;bottom:8px;left:8px;right:8px;background:rgba(0,0,0,.78);padding:8px 12px;border-radius:4px;font-family:'Inconsolata',monospace;font-size:9px;color:#cbd5e0;display:none;max-height:140px;overflow:auto"></div>
       </div>
     </div>
   </div>
@@ -2194,14 +2206,37 @@ const GabaritUI = {
     ]);
 
     _gabaritEngine = new GabaritEngine();
-    _gabaritRules = await _gabaritEngine.loadRules('../data/plu-rules.json');
+    // Refacto P0-1 : on charge les règles multi-commune (plus de plu-rules.json legacy)
+    _gabaritRules = await _gabaritEngine.loadRules('../data/plu-rules-reunion.json');
     _gabaritPareto = new ParetoSolver();
 
-    // Populate zone selector
+    // Code INSEE de la parcelle courante (obligatoire pour résolution exacte)
+    const _terrain = SessionManager.getTerrain() ?? {};
+    const _codeInsee = _terrain.code_insee ?? p4.code_insee ?? null;
+
+    if (!_codeInsee) {
+      console.warn('[P07 gabarit] code_insee absent — la résolution PLU sera dégradée');
+    }
+
+    // Use zone from PLU adapter or session P4 if available
+    const realZone = window.TERLAB_PLU_CONFIG?.zone_plu;
+    const p4Zone = p4.zone_plu?.split(' ')[0]?.trim();
+    const targetZone = realZone ?? p4Zone ?? _gabaritZone;
+    if (targetZone) _gabaritZone = targetZone;
+
+    // Populate zone selector AVEC les zones de la commune réelle
     const select = document.getElementById('gabarit-zone-select');
     if (select) {
       select.innerHTML = '';
-      _gabaritEngine.getZoneList().forEach(z => {
+      const zones = _gabaritEngine.getZoneList(_codeInsee);
+      if (zones.length === 0 && _codeInsee) {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = `(commune ${_codeInsee} — données PLU non disponibles)`;
+        opt.disabled = true;
+        select.appendChild(opt);
+      }
+      zones.forEach(z => {
         const opt = document.createElement('option');
         opt.value = z.key;
         opt.textContent = z.label;
@@ -2210,15 +2245,21 @@ const GabaritUI = {
       });
     }
 
-    // Use zone from PLU adapter or session P4 if available
-    const realZone = window.TERLAB_PLU_CONFIG?.zone_plu;
-    const p4Zone = p4.zone_plu?.split(' ')[0]?.trim();
-    const targetZone = realZone ?? p4Zone;
-    if (targetZone && _gabaritRules.zones[targetZone]) {
-      _gabaritZone = targetZone;
-      if (select) select.value = targetZone;
+    // Résolution exacte commune + zone via PLUP07Adapter
+    const _secteurAvap = p4.secteur_avap ?? _terrain.secteur_avap ?? null;
+    _gabaritEngine.setZone(_codeInsee, _gabaritZone, { secteurAvap: _secteurAvap });
+
+    // Signaler explicitement le statut de résolution (OK / FALLBACK / reason)
+    const _status = _gabaritEngine.getResolutionStatus();
+    if (_status && !_status.isExact) {
+      console.warn(`[P07 gabarit] résolution PLU dégradée :`, _status);
+      window.TerlabToast?.show?.(
+        `Gabarit PLU : ${_status.reason ?? 'données partielles'} pour ${_codeInsee} ${_gabaritZone}`,
+        'warning', 5000
+      );
+    } else if (_status) {
+      console.info(`[P07 gabarit] PLU exact : ${_status.commune} ${_status.zone} (confiance ${(_status.confidence * 100).toFixed(0)}%)`);
     }
-    _gabaritEngine.setZone(_gabaritZone);
 
     // Init SVG renderer
     const svgContainer = document.getElementById('gabarit-svg-container');
@@ -2230,6 +2271,25 @@ const GabaritUI = {
     const canvas3d = document.getElementById('gabarit-3d-canvas');
     if (canvas3d && window.THREE) {
       _gabaritThree = new GabaritThree(canvas3d);
+      // Wire toggles couches earthworks
+      const toggles = [
+        ['p07-ew-tn', 'tn'],
+        ['p07-ew-platform', 'platform'],
+        ['p07-ew-cut', 'cut'],
+        ['p07-ew-fill', 'fill'],
+        ['p07-ew-talus', 'talus'],
+        ['p07-ew-pilotis', 'pilotis'],
+      ];
+      for (const [id, layer] of toggles) {
+        const cb = document.getElementById(id);
+        if (cb) cb.addEventListener('change', () => {
+          _gabaritThree?.toggleEarthworksLayer(layer, cb.checked);
+        });
+      }
+      // Écouter les mises à jour earthworks pour rafraîchir le panneau
+      window.addEventListener('terlab:earthworks-updated', (e) => {
+        GabaritUI._renderEarthworksPanel(e.detail.earthworks, e.detail.V_cut_csg, e.detail.V_fill_csg);
+      });
     }
 
     // Default demo parcel (20×30m rectangle)
@@ -2256,7 +2316,8 @@ const GabaritUI = {
 
   _solve() {
     if (!_gabaritReady) return;
-    const zoneRules = _gabaritEngine.getZoneRules(_gabaritZone);
+    // getZoneRules sans args = utilise le state (codeInsee + zone) du dernier setZone
+    const zoneRules = _gabaritEngine.getZoneRules();
     if (!zoneRules) return;
 
     const constraints = _gabaritEngine.solve(
@@ -2269,9 +2330,21 @@ const GabaritUI = {
     // Render 2D
     _gabaritSVG.render(_gabaritEngine.parcelSet, constraints, _gabaritSelectedSolution);
 
-    // Render 3D
+    // Render 3D — enveloppe + sol parcelle
     if (_gabaritThree) {
       _gabaritThree.update(_gabaritEngine.parcelSet, constraints, _gabaritSelectedSolution);
+
+      // Si une solution Pareto est sélectionnée, lancer en plus le pipeline
+      // earthworks pour visualiser les déblais/remblais sous l'emprise.
+      if (_gabaritSelectedSolution && constraints.emprise_constructible?.length >= 3) {
+        GabaritUI._renderEarthworksFor(_gabaritSelectedSolution, constraints);
+      } else {
+        // Pas de solution → masquer panneau earthworks
+        const panel = document.getElementById('p07-earthworks-panel');
+        const toggles = document.getElementById('p07-ew-toggles');
+        if (panel) panel.style.display = 'none';
+        if (toggles) toggles.style.display = 'none';
+      }
     }
 
     // Update metrics
@@ -2298,6 +2371,92 @@ const GabaritUI = {
     set('gab-m-constructible', `${Math.round(m.surface_constructible_m2)} m\u00b2`);
     set('gab-m-ratio', `${m.ratio_constructible_pct.toFixed(0)}%`);
     set('gab-m-hauteurs', `${m.hauteur_egout_max}m / ${m.hauteur_faitage_max}m`);
+  },
+
+  // Construit une emprise centrée à partir de la solution Pareto + emprise constructible
+  // puis appelle loadCapacityStudy pour déclencher tout le pipeline earthworks.
+  _renderEarthworksFor(solution, constraints) {
+    if (!_gabaritThree) return;
+    const empr = constraints.emprise_constructible;
+    if (!empr || empr.length < 3) return;
+
+    // Bbox de l'emprise constructible
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const p of empr) {
+      if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+    }
+    const factor = Math.sqrt((solution.emprise_pct ?? 50) / 100);
+    const w = (maxX - minX) * factor;
+    const h = (maxY - minY) * factor;
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+
+    // Footprint rectangulaire centré sur l'emprise (approximation pédagogique
+    // pour P07 — la vraie footprint trapézoïdale viendra de P11)
+    const footprint = [
+      { x: cx - w / 2, y: cy - h / 2 },
+      { x: cx + w / 2, y: cy - h / 2 },
+      { x: cx + w / 2, y: cy + h / 2 },
+      { x: cx - w / 2, y: cy + h / 2 },
+    ];
+
+    const proposal = {
+      polygon: footprint,
+      bat: { x: cx - w / 2, y: cy - h / 2, w, l: h },
+      niveaux: solution.nb_niveaux ?? 2,
+      hauteur: solution.hauteur_m ?? 6,
+      color: solution.color ?? '#3B82F6',
+      family: solution.family ?? 'P07',
+    };
+
+    const session = SessionManager._data;
+    _gabaritThree.loadCapacityStudy(proposal, session, null).catch(err => {
+      console.warn('[P07] earthworks loadCapacityStudy failed:', err);
+    });
+
+    // Afficher panneau + toggles
+    document.getElementById('p07-ew-toggles').style.display = 'block';
+    document.getElementById('p07-earthworks-panel').style.display = 'block';
+  },
+
+  _renderEarthworksPanel(ew, V_cut_csg, V_fill_csg) {
+    const el = document.getElementById('p07-earthworks-panel');
+    if (!el || !ew) return;
+
+    const fmt = (v, unit = '', dec = 1) => v != null && isFinite(v) ? v.toFixed(dec) + unit : '—';
+    const ratioColor = ew.ratio_balance > 0.85 ? '#22c55e' : ew.ratio_balance > 0.7 ? '#f59e0b' : '#ef4444';
+    const stratColor = { A1: '#3b82f6', A3: '#a855f7', A4: '#f59e0b' }[ew.strategy.type] ?? '#6b7280';
+    const wallWarn = ew.needsRetainingWall
+      ? `<div style="color:#ef4444;margin-top:4px">⚠ Mur de soutènement requis (talus ${ew.hMaxTalus_m.toFixed(1)}m)</div>`
+      : '';
+    const csgNote = (V_cut_csg && Math.abs(V_cut_csg - ew.V_cut_m3) / Math.max(0.1, ew.V_cut_m3) > 0.15)
+      ? `<div style="color:#94a3b8;font-size:8px;margin-top:2px">Vérif CSG : déb. ${V_cut_csg.toFixed(0)} / rem. ${V_fill_csg.toFixed(0)} m³</div>`
+      : '';
+    const warnings = ew.warnings?.length
+      ? `<div style="color:#fbbf24;font-size:8px;margin-top:4px">${ew.warnings.map(w => '• ' + w).join('<br>')}</div>`
+      : '';
+
+    el.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+        <span style="color:${stratColor};font-weight:600">Terrassement ${ew.strategy.type}</span>
+        <span style="color:#718096;font-size:8px">Source: ${ew.source.toUpperCase()}</span>
+      </div>
+      <div style="color:#94a3b8;font-size:8px;margin-bottom:6px">${ew.strategy.reason}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 8px">
+        <div><span style="color:#718096">Cote :</span> <strong>${fmt(ew.H_platform_m, ' m', 2)}</strong></div>
+        <div><span style="color:#dc2626">Déblai :</span> <strong>${fmt(ew.V_cut_m3, ' m³')}</strong></div>
+        <div><span style="color:#2563eb">Remblai :</span> <strong>${fmt(ew.V_fill_m3, ' m³')}</strong></div>
+        <div><span style="color:#718096">Pente moy :</span> <strong>${fmt(ew.slopeMean_pct, '%')}</strong></div>
+        <div><span style="color:#718096">Talus amont :</span> <strong>${fmt(ew.hMaxCutAmont_m, ' m', 2)}</strong></div>
+        <div><span style="color:#718096">Talus aval :</span> <strong>${fmt(ew.hMaxFillAval_m, ' m', 2)}</strong></div>
+      </div>
+      <div style="margin-top:6px;padding-top:6px;border-top:1px solid #21262d">
+        <span style="color:#718096">Équilibre 50/50 :</span>
+        <strong style="color:${ratioColor}">${(ew.ratio_balance * 100).toFixed(0)}%</strong>
+      </div>
+      ${wallWarn}${csgNote}${warnings}
+    `;
   },
 
   _renderPareto(solutions, zoneRules) {
@@ -2336,7 +2495,13 @@ const GabaritUI = {
 
   changeZone(zoneKey) {
     _gabaritZone = zoneKey;
-    _gabaritEngine.setZone(zoneKey);
+    // Conserver le code INSEE courant pour la résolution exacte
+    const _t = SessionManager.getTerrain() ?? {};
+    const _insee = _t.code_insee ?? _gabaritEngine.currentCodeInsee;
+    const _p4 = SessionManager.getPhase?.(4)?.data ?? {};
+    _gabaritEngine.setZone(_insee, zoneKey, {
+      secteurAvap: _p4.secteur_avap ?? _t.secteur_avap ?? null,
+    });
     _gabaritSelectedSolution = null;
     GabaritUI._solve();
   },

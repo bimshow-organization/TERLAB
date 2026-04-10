@@ -235,28 +235,89 @@ export class GabaritSVG {
 
   _renderSolution(empriseConstructible, solution) {
     if (!empriseConstructible || empriseConstructible.length < 3) return;
+
+    // Centroïde RÉEL de la zone constructible (pas centroïde de bbox)
+    const centroid = this._centroid(empriseConstructible);
+    const cx = centroid.x, cy = centroid.y;
+
+    // Rectangle candidat dimensionné depuis la bbox de la zone
     const bb = this._bbox(empriseConstructible);
     const factor = Math.sqrt(solution.emprise_pct / 100);
     const w = (bb.maxX - bb.minX) * factor;
     const h = (bb.maxY - bb.minY) * factor;
-    const cx = (bb.minX + bb.maxX) / 2;
-    const cy = (bb.minY + bb.maxY) / 2;
-    const solutionPoly = [
+
+    let solutionPoly = [
       { x: cx - w / 2, y: cy - h / 2 },
       { x: cx + w / 2, y: cy - h / 2 },
       { x: cx + w / 2, y: cy + h / 2 },
       { x: cx - w / 2, y: cy + h / 2 },
     ];
+
+    // CLIP contre la zone constructible — garantie absolue qu'on ne déborde pas
+    // (essentiel sur parcelles non rectangulaires : trapèze, polygone en L…)
+    const clipped = this._clipPolygon(solutionPoly, empriseConstructible);
+    if (clipped && clipped.length >= 3) solutionPoly = clipped;
+
+    // Aire minimale viable (10 m²) — sinon ne rien afficher
+    if (this._area(solutionPoly) < 10) return;
+
     const path = this._polyToPath(solutionPoly);
     this._addPath(this.layers.solution, path, {
       fill: `${solution.color}33`,
       stroke: solution.color,
       strokeWidth: 2.5
     });
-    // Label
-    this._addText(this.layers.labels, { x: cx, y: cy }, solution.label, {
+    // Label sur centroïde du polygone clippé (pas de la bbox)
+    const labelC = this._centroid(solutionPoly);
+    this._addText(this.layers.labels, labelC, solution.label, {
       fill: solution.color, fontSize: 11, fontWeight: 'bold', anchor: 'middle'
     });
+  }
+
+  /**
+   * Sutherland-Hodgman : clippe un polygone subject contre un polygone clip convexe.
+   * Polygones {x,y}. Le clip doit être convexe ; pour les parcelles convexes
+   * issues de insetPolygon c'est garanti.
+   */
+  _clipPolygon(subject, clip) {
+    if (!clip || clip.length < 3 || !subject || subject.length < 3) return [];
+    // Orientation : forcer CCW pour que cross >= 0 = intérieur
+    const sa = (() => {
+      let a = 0;
+      for (let i = 0; i < clip.length; i++) {
+        const p = clip[i], q = clip[(i + 1) % clip.length];
+        a += p.x * q.y - q.x * p.y;
+      }
+      return a / 2;
+    })();
+    const ccwClip = sa < 0 ? [...clip].reverse() : clip;
+    const cross = (a, b, p) => (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+    const isect = (a, b, c, d) => {
+      const x1 = a.x, y1 = a.y, x2 = b.x, y2 = b.y;
+      const x3 = c.x, y3 = c.y, x4 = d.x, y4 = d.y;
+      const den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+      if (Math.abs(den) < 1e-12) return { x: x2, y: y2 };
+      const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / den;
+      return { x: x1 + t * (x2 - x1), y: y1 + t * (y2 - y1) };
+    };
+    let output = [...subject];
+    for (let i = 0; i < ccwClip.length && output.length; i++) {
+      const input = output;
+      output = [];
+      const a = ccwClip[i], b = ccwClip[(i + 1) % ccwClip.length];
+      for (let j = 0; j < input.length; j++) {
+        const p = input[j], q = input[(j + 1) % input.length];
+        const pIn = cross(a, b, p) >= 0;
+        const qIn = cross(a, b, q) >= 0;
+        if (pIn) {
+          output.push(p);
+          if (!qIn) output.push(isect(a, b, p, q));
+        } else if (qIn) {
+          output.push(isect(a, b, p, q));
+        }
+      }
+    }
+    return output;
   }
 
   _renderParcels(parcelSet) {

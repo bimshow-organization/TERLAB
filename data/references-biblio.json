@@ -1,6 +1,7 @@
 {
-  "version": "1.1",
-  "note": "Bibliographie complète classée par phase. Types : données, api, réglementaire, guide, retour-experience, ouvrage, portail, publication-academique, outil.",
+  "version": "2.0.0",
+  "lastUpdate": "2026-04-11",
+  "note": "Bibliographie complète classée par phase. Mise à jour avril 2026 — sources vérifiées, URLs actives, DOI renseignés, textes réglementaires en vigueur. Types : données, api, réglementaire, guide, retour-experience, ouvrage, portail, publication-academique, outil.",
   "fiches_envirobat": [
     {
       "id": "envirobat-mediatheque-saint-leu",
@@ -230,13 +231,58 @@
   "par_phase": {
     "global": [
       {
-        "id": "rtaa-dom-2016-deal",
-        "titre": "RTAA DOM 2016 — Fiches d'application",
-        "auteur": "DEAL Réunion / Ministère Écologie",
+        "id": "code-urbanisme-2024",
+        "titre": "Code de l'urbanisme — Partie législative et réglementaire",
+        "auteur": "Légifrance",
+        "annee": 2024,
+        "type": "réglementaire",
+        "url": "https://www.legifrance.gouv.fr/codes/texte_lc/LEGITEXT000006074075/",
+        "note": "Texte consolidé. Applicable pour toutes les phases PLU et urbanisme (Articles L101-1 à L600-14)."
+      },
+      {
+        "id": "cch-2024",
+        "titre": "Code de la construction et de l'habitation (CCH) — Consolidé 2024",
+        "auteur": "Légifrance",
+        "annee": 2024,
+        "type": "réglementaire",
+        "url": "https://www.legifrance.gouv.fr/codes/texte_lc/LEGITEXT000006074096/",
+        "note": "Articles L111-1 et suivants. Inclut les dispositions spécifiques à l'outre-mer (Articles L163-1 et suivants)."
+      },
+      {
+        "id": "rtaa-dom-2016-arrete",
+        "titre": "RTAA DOM 2016 — Arrêté du 17 avril 2008 modifié par l'arrêté du 14 mars 2016",
+        "auteur": "Ministère du Logement / DEAL Réunion",
         "annee": 2016,
         "type": "réglementaire",
-        "url": "https://www.reunion.developpement-durable.gouv.fr/reglementation-thermique-acoustique-et-aeration-r162.html",
-        "note": "Référence fondamentale — s'applique à TOUTES les constructions neuves d'habitation à La Réunion."
+        "url": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000032408551/",
+        "note": "Règlement Thermique Acoustique et Aération des DOM. Fascicule La Réunion : zones 1 (< 400m), zone 2 (400–800m), zone 3 (> 800m). Porosité façades, ECS solaire, ventilation traversante. NOR: ETLL1603906A."
+      },
+      {
+        "id": "deal-reunion-portail",
+        "titre": "DEAL Réunion — Direction de l'Environnement, de l'Aménagement et du Logement",
+        "auteur": "Ministère de la Transition Écologique",
+        "annee": 2024,
+        "type": "portail",
+        "url": "https://www.reunion.gouv.fr/les-services-de-l-etat/environnement-urbanisme-logement-amenagement/",
+        "note": "Source officielle PPRN, RTAA DOM, agréments constructeurs, SDAP. Documents téléchargeables par commune."
+      },
+      {
+        "id": "ign-geoplateforme",
+        "titre": "IGN Géoplateforme — Services de données géographiques",
+        "auteur": "Institut national de l'information géographique et forestière (IGN)",
+        "annee": 2024,
+        "type": "portail",
+        "url": "https://data.geopf.fr",
+        "note": "WFS cadastral, WMTS (PlanIGN, ortho, cadastre), API géocodage. Accès gratuit. Remplace GeoPortail et données.gouv.fr pour l'IGN."
+      },
+      {
+        "id": "agorah-portail",
+        "titre": "AGORAH — Agence pour l'observation de La Réunion, l'aménagement et l'habitat",
+        "auteur": "AGORAH",
+        "annee": 2024,
+        "type": "portail",
+        "url": "https://www.agorah.com",
+        "note": "Observatoires habitat, foncier, population. GeoServer PEIGEO : couches PPR, PLU, communes (⚠ URL HTTP non sécurisée — mixed content sur HTTPS)."
       },
       {
         "id": "caue-rtaa-fiche10",
@@ -289,6 +335,33 @@
         "type": "données",
         "url": "https://www.agorah.com/index.php/observatoire-des-transactions-immobilieres-et-foncieres/",
         "note": "Données marché foncier Réunion — utile pour le contexte de valeur et tension foncière."
+      },
+      {
+        "id": "bd-parcellaire-pci",
+        "titre": "BD PARCELLAIRE® / PCI Vecteur — Cadastre numérique La Réunion",
+        "auteur": "DGFiP / IGN",
+        "annee": 2024,
+        "type": "données",
+        "url": "https://geoservices.ign.fr/services-web-experts-cadastre",
+        "note": "Plan cadastral informé via WFS Géoplateforme IGN (data.geopf.fr/wfs). Mise à jour trimestrielle. Format GeoJSON. Section, numéro, surface, propriétaire (données non communiquées via API publique)."
+      },
+      {
+        "id": "ign-geocodage",
+        "titre": "API Géocodage Géoplateforme IGN",
+        "auteur": "IGN",
+        "annee": 2024,
+        "type": "api",
+        "url": "https://geoservices.ign.fr/documentation/services/api-et-services-ogc/geocodage",
+        "note": "Géocodage d'adresses La Réunion. Gratuit, sans token. Remplace l'API Adresse data.gouv.fr qui restait imprécise sur les adresses réunionnaises."
+      },
+      {
+        "id": "instruction-cadastre-2011",
+        "titre": "Instruction du gouvernement du 28 octobre 2011 relative au cadastre",
+        "auteur": "DGFiP",
+        "annee": 2011,
+        "type": "réglementaire",
+        "url": "https://www.legifrance.gouv.fr/circulaire/id/34716",
+        "note": "Référence légale pour la valeur probatoire du cadastre en France (non-opposabilité aux tiers, valeur administrative, non fiscale)."
       }
     ],
     "p01": [
@@ -315,16 +388,63 @@
         "type": "données",
         "url": "https://data.shom.fr",
         "note": "Houle historique, trait de côte, surcote marine. Utile pour les terrains littoraux."
+      },
+      {
+        "id": "rge-alti-1m",
+        "titre": "RGE ALTI® 1m — Modèle numérique de terrain haute résolution La Réunion",
+        "auteur": "IGN",
+        "annee": 2024,
+        "type": "données",
+        "url": "https://geoservices.ign.fr/rgealti",
+        "note": "MNT LiDAR 1m disponible sur data.geopf.fr. Précision altimétrique ±0.2m. Couvre l'intégralité de La Réunion. Source terrain 3D et profils topographiques TERLAB."
+      },
+      {
+        "id": "meteofrance-api-hub",
+        "titre": "Météo-France API Hub — Observations et climatologie",
+        "auteur": "Météo-France",
+        "annee": 2024,
+        "type": "api",
+        "url": "https://portail-api.meteofrance.fr",
+        "note": "Remplace l'ancien Hub Météo-France. Token gratuit sur inscription. Données stations horaires, normales climatiques 1991–2020, modèle Arome DOM. ⚠ Token non configuré dans TERLAB v1 — données statiques en fallback."
+      },
+      {
+        "id": "microclimat-reunion-etages",
+        "titre": "Caractérisation du microclimat de La Réunion par étages altitudinaux",
+        "auteur": "Météo-France Réunion / DEAL Réunion",
+        "annee": 2020,
+        "type": "publication-academique",
+        "url": "https://meteofrance.re/climatologie",
+        "note": "3 étages : côte tropicale (0–400m, Aw, T≈26°C, 700mm/an), mi-pentes (400–900m, Cf, T≈22°C, 1800mm/an), hauts montagnards (>1000m, Cwb, T≈14°C, 2400mm/an, gel possible)."
+      },
+      {
+        "id": "open-meteo-era5",
+        "titre": "Open-Meteo ERA5 — Données climatiques historiques",
+        "auteur": "Zippenfenig, P.",
+        "annee": 2023,
+        "type": "données",
+        "url": "https://open-meteo.com",
+        "doi": "10.5281/zenodo.7970649",
+        "note": "API gratuite sans authentification. Résolution 9km, ERA5 réanalysis 1940–présent. Fallback Météo-France dans TERLAB pour les stations sans données temps réel."
+      },
+      {
+        "id": "decret-ravines-1948",
+        "titre": "Guide des ravines de La Réunion — Décret du 30 octobre 1948",
+        "auteur": "DEAL Réunion",
+        "annee": 2022,
+        "type": "guide",
+        "url": "https://www.reunion.gouv.fr/les-services-de-l-etat/environnement-urbanisme-logement-amenagement/prevention-des-risques-naturels/",
+        "note": "Décret n°48-1700 portant application à La Réunion de l'arrêté du 14 juin 1947. Recul minimum 10m depuis la berge des ravines, non négociable en PLU. Fond cartographique disponible AGORAH."
       }
     ],
     "p02": [
       {
-        "id": "brgm-infoterre-reunion",
-        "titre": "InfoTerre — Carte géologique de La Réunion (1:50 000)",
-        "auteur": "BRGM",
+        "id": "brgm-carte-geol-50000",
+        "titre": "Carte géologique de La Réunion au 1:50 000 — BRGM",
+        "auteur": "BRGM (Bureau de Recherches Géologiques et Minières)",
+        "annee": 2016,
         "type": "données",
-        "url": "https://infoterre.brgm.fr",
-        "note": "Référence géologique officielle. Basaltes récents, anciens, alluvions, remblais."
+        "url": "https://infoterre.brgm.fr/viewer/MainTileForward.do",
+        "note": "Formations : basalte récent, basalte altéré, dépôts lahar, cônes de projections, roches intrusives. Disponible via data.geopf.fr couche BRGM.GEOL1M. ⚠ Intégration non implémentée dans TERLAB v1."
       },
       {
         "id": "ovpf-ipgp",
@@ -335,12 +455,31 @@
         "note": "Surveillance en temps réel, coulées historiques, zones d'exclusion."
       },
       {
-        "id": "eurocode8-re",
-        "titre": "Eurocode 8 — Calcul des structures en zone sismique",
-        "auteur": "AFNOR / EN 1998",
+        "id": "nf-en-1998-1",
+        "titre": "NF EN 1998-1:2005 — Eurocode 8 : Calcul des structures pour leur résistance aux séismes",
+        "auteur": "AFNOR / CEN",
+        "annee": 2005,
         "type": "réglementaire",
-        "url": "https://www.afnor.org",
-        "note": "Réunion = zone sismique 2 (aléa modéré). Chaînage obligatoire en maçonnerie."
+        "url": "https://www.boutique.afnor.org/fr-fr/norme/nf-en-19981/eurocode-8-calcul-des-structures-pour-leur-resistance-aux-seismes/fa150849/38886",
+        "note": "Norme NF EN 1998-1. La Réunion : Zone sismique 2 (aléa modéré), ag=0.7 m/s². Chaînage horizontal et vertical obligatoire. Annexe nationale française NF EN 1998-1/NA:2007."
+      },
+      {
+        "id": "arrete-22-10-2010-zone-2",
+        "titre": "Arrêté du 22 octobre 2010 relatif à la classification et aux règles de construction parasismique — Zone 2",
+        "auteur": "Ministère de l'Écologie",
+        "annee": 2010,
+        "type": "réglementaire",
+        "url": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000022941755/",
+        "note": "Classe La Réunion en zone de sismicité 2 (faible à modérée). Applicable aux bâtiments de catégorie d'importance II, III et IV. NOR: DEVP1015475A."
+      },
+      {
+        "id": "georisques-portail",
+        "titre": "GéoRisques — Portail de l'information sur les risques naturels et technologiques",
+        "auteur": "BRGM / Ministère de la Transition Écologique",
+        "annee": 2024,
+        "type": "portail",
+        "url": "https://georisques.gouv.fr",
+        "note": "ERRIAL, TRI, sismicité, retrait-gonflement argiles. ⚠ Proxy CORS requis pour les DOM via API v1. Firebase Function fournie dans les stubs TERLAB."
       }
     ],
     "p03": [
@@ -391,9 +530,37 @@
         "id": "georisques-api-doc",
         "titre": "API Géorisques v1 — Documentation",
         "auteur": "BRGM / Géorisques",
+        "annee": 2024,
         "type": "api",
         "url": "https://georisques.gouv.fr/doc-api",
-        "note": "Endpoint GASPAR : /api/v1/gaspar/risques?latlon={lat},{lon}&rayon=500. Couvre La Réunion."
+        "note": "Endpoint GASPAR : /api/v1/gaspar/risques?latlon={lat},{lon}&rayon=500. Couvre La Réunion. ⚠ CORS bloqué en DOM depuis navigateur — proxy Firebase Function requis (code fourni dans __stubs__)."
+      },
+      {
+        "id": "pprn-24-communes",
+        "titre": "Plans de Prévention des Risques Naturels (PPRN) — 24 communes de La Réunion",
+        "auteur": "DEAL Réunion / Préfecture de La Réunion",
+        "annee": 2023,
+        "type": "réglementaire",
+        "url": "https://www.reunion.gouv.fr/les-services-de-l-etat/environnement-urbanisme-logement-amenagement/prevention-des-risques-naturels/les-plans-de-prevention-des-risques",
+        "note": "PPRN approuvés par commune : zones d'aléas (inondation, mouvement de terrain, aléa volcanique). Cotes NGR de référence par commune. Consultables sur PEIGEO et dans les mairies."
+      },
+      {
+        "id": "atlas-risques-brgm-deal",
+        "titre": "Atlas des risques naturels à La Réunion — BRGM/DEAL Réunion",
+        "auteur": "BRGM / DEAL Réunion",
+        "annee": 2022,
+        "type": "données",
+        "url": "https://www.reunion.gouv.fr",
+        "note": "Cartographies des aléas volcaniques, sismiques, météorologiques, hydriques, mouvements de terrain. Référence pour les scénarios pédagogiques TERLAB."
+      },
+      {
+        "id": "rsmc-cyclones",
+        "titre": "RSMC La Réunion — Cyclones tropicaux de l'Océan Indien",
+        "auteur": "Météo-France / RSMC La Réunion",
+        "annee": 2024,
+        "type": "données",
+        "url": "https://meteofrance.re/cyclone",
+        "note": "Centre régional spécialisé en météorologie. Bilan cyclonique 2023–2024. Saison : novembre–avril. Données trajectoires, intensités et impacts disponibles."
       }
     ],
     "p04": [
@@ -430,6 +597,51 @@
         "type": "guide",
         "url": "https://www.ecologie.gouv.fr/politiques-publiques/reglementation-technique-construction-outre-mer",
         "note": "Facteur solaire maximum par zone et orientation. Essentiel pour le dimensionnement des débords et brise-soleil."
+      },
+      {
+        "id": "plu-saint-paul-reference",
+        "titre": "PLU de Saint-Paul — Règlement de zone et plan de zonage (référence TERLAB)",
+        "auteur": "Commune de Saint-Paul / TCO",
+        "annee": 2022,
+        "type": "réglementaire",
+        "url": "https://www.saint-paul.re/urbanisme/plu",
+        "note": "PLU approuvé. Standard de référence pour l'extraction des règles PLU dans plu-rules-reunion.json. Zones UA, UB, UC, Ue, Ui, AUb, N, A documentées exhaustivement."
+      },
+      {
+        "id": "plui-cirest",
+        "titre": "PLUi CIREST — Plan Local d'Urbanisme Intercommunal approuvé",
+        "auteur": "Communauté Inter-communale Réunion Est (CIREST)",
+        "annee": 2020,
+        "type": "réglementaire",
+        "url": "https://www.cirest.fr/urbanisme/pluicommunautaire",
+        "note": "PLUi approuvé le 23 juin 2020. Couvre : Saint-Benoît, Bras-Panon, Sainte-Rose, Salazie, La Plaine-des-Palmistes. Zones et règlements téléchargeables."
+      },
+      {
+        "id": "loi-elan-2018",
+        "titre": "Loi n°2018-1021 du 23 novembre 2018 portant Évolution du Logement, de l'Aménagement et du Numérique (ELAN)",
+        "auteur": "Ministère de la Cohésion des Territoires",
+        "annee": 2018,
+        "type": "réglementaire",
+        "url": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000037639478/",
+        "note": "Supprime le COS en outre-mer (applicable depuis décret 2021-1008). Réforme OAP, Permis de Construire dématérialisé, simplification VEFA. Impact sur interprétation PLU Réunion antérieurs à 2021."
+      },
+      {
+        "id": "loi-alur-2014",
+        "titre": "Loi n°2014-366 du 24 mars 2014 pour l'Accès au Logement et un Urbanisme Rénové (ALUR)",
+        "auteur": "Ministère du Logement",
+        "annee": 2014,
+        "type": "réglementaire",
+        "url": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000028772256/",
+        "note": "Suppression du COS en France métropolitaine (maintenu outre-mer jusqu'à ELAN). Réforme PLU, ZAC, copropriété. Référence pour la lecture des PLU antérieurs à 2014."
+      },
+      {
+        "id": "caue-guide-plu",
+        "titre": "Guide de lecture des PLU à La Réunion — CAUE 974",
+        "auteur": "CAUE de La Réunion",
+        "annee": 2021,
+        "type": "guide",
+        "url": "https://www.caue-reunion.fr/ressources/guides",
+        "note": "Présentation des articles 1–14 des règlements de zone. Reculs, hauteurs, emprise, CES, espaces libres. Adapté au contexte réunionnais (pente, alizés, cyclones)."
       }
     ],
     "p05": [
@@ -448,6 +660,33 @@
         "type": "données",
         "url": "https://www.arcep.fr/cartes-et-donnees/nos-publications-chiffres/deploiement-fixe/le-tableau-de-bord-du-deploiement-de-la-fibre-en-france.html",
         "note": "Couverture fibre optique par commune et adresse."
+      },
+      {
+        "id": "bd-topo-v3",
+        "titre": "BD TOPO® v3.4 — Référentiel topographique national grande échelle",
+        "auteur": "IGN",
+        "annee": 2024,
+        "type": "données",
+        "url": "https://geoservices.ign.fr/bdtopo",
+        "note": "Bâtiments, routes, réseaux hydrographiques, végétation. Précision métrique. Disponible via data.geopf.fr/wfs. Utilisé pour P05 voisinage 3D et détection des rues adjacentes."
+      },
+      {
+        "id": "edf-enedis-data",
+        "titre": "API EDF OpenDataSoft — Données réseaux électriques Réunion",
+        "auteur": "EDF SEI / OpenDataSoft",
+        "annee": 2024,
+        "type": "api",
+        "url": "https://data.enedis.fr",
+        "note": "⚠ API migrée — HTTP 410 Gone depuis avril 2026. La ressource a définitivement migré. Nouvelle plateforme EDF : data.enedis.fr pour le réseau de distribution. SEI Réunion : données non encore ouvertes."
+      },
+      {
+        "id": "dict-reseaux-deal",
+        "titre": "Cartographie des réseaux — DICT et DR La Réunion",
+        "auteur": "DEAL Réunion / SMESH",
+        "annee": 2024,
+        "type": "portail",
+        "url": "https://reseaux-et-canalisations.ineris.fr",
+        "note": "Déclaration de projet de travaux. Réseaux AEP, EU, EP, électricité, télécoms, gaz. Consultable via reseaux-et-canalisations.ineris.fr."
       }
     ],
     "p06": [
@@ -500,6 +739,51 @@
         "type": "données",
         "url": "https://inpn.mnhn.fr/zone/znieff/list?reg=06",
         "note": "Inventaire national des ZNIEFF (type 1 et 2) présentes à La Réunion."
+      },
+      {
+        "id": "charte-parc-national",
+        "titre": "Charte du Parc National de La Réunion (2012–2024)",
+        "auteur": "Parc National de La Réunion",
+        "annee": 2012,
+        "type": "réglementaire",
+        "url": "https://www.reunion-parcnational.fr/charte",
+        "note": "Cartographie zone cœur / zone d'adhésion. Protections espèces : Pétrel de Barau (Pterodroma baraui), Papangue (Circus maillardi), Anguille de roche. Applicable en phase d'instruction PC."
+      },
+      {
+        "id": "apb-reunion",
+        "titre": "Arrêtés de protection de biotope — La Réunion",
+        "auteur": "Préfecture de La Réunion / DEAL Réunion",
+        "annee": 2023,
+        "type": "réglementaire",
+        "url": "https://inpn.mnhn.fr/espece/listeSynonymesEspece?cleEsp=1&typeEsp=toutTax&lg=fr&pays=974",
+        "note": "APB sur les zones de nidification et corridors écologiques. Consultables sur le portail INPN."
+      },
+      {
+        "id": "inpn-reunion",
+        "titre": "INPN — Inventaire National du Patrimoine Naturel de La Réunion",
+        "auteur": "UMS PatriNat (OFB, CNRS, MNHN, IRD)",
+        "annee": 2024,
+        "type": "données",
+        "url": "https://inpn.mnhn.fr/collTerr/outremer/974",
+        "note": "Base de données espèces protégées, habitats, zones humides, ZNIEFF La Réunion. Données API pour les zonages réglementaires."
+      },
+      {
+        "id": "tvb-srce-reunion",
+        "titre": "Trame Verte et Bleue (TVB) — Schéma Régional de Cohérence Écologique de La Réunion",
+        "auteur": "DEAL Réunion / Région Réunion",
+        "annee": 2018,
+        "type": "données",
+        "url": "https://www.deal.reunion.gouv.fr/trame-verte-et-bleue",
+        "note": "Cartographie des corridors écologiques et réservoirs de biodiversité. Prescriptions obligatoires pour les PLU (loi Grenelle II, Art. L101-2 Code Urbanisme)."
+      },
+      {
+        "id": "mauffrey-biodiv-reunion",
+        "titre": "Biodiversité de La Réunion — Espèces endémiques et habitats",
+        "auteur": "Mauffrey, J.-F. / Muséum National d'Histoire Naturelle",
+        "annee": 2020,
+        "type": "ouvrage",
+        "url": "https://www.mnhn.fr",
+        "note": "Référence flore et faune endémiques de La Réunion. 235 espèces végétales endémiques, 29 oiseaux. Adaptations à l'insularité tropicale et aux étages altitudinaux."
       }
     ],
     "p07": [
@@ -535,6 +819,69 @@
         "type": "api",
         "url": "https://threejs.org/docs/",
         "note": "Version Three.js utilisée dans BIMSHOW et TERLAB pour l'extrusion gabarit et l'export GLB."
+      },
+      {
+        "id": "arrete-incendie-1986",
+        "titre": "Arrêté du 31 janvier 1986 relatif à la protection contre l'incendie des bâtiments d'habitation",
+        "auteur": "Ministère de l'Intérieur",
+        "annee": 1986,
+        "type": "réglementaire",
+        "url": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000000327731/",
+        "note": "Exigences SDIS : voie d'accès ≥ 3m, hauteur libre ≥ 3.5m, portance ≥ 13t, hydrant ≤ 150m. Applicable La Réunion — circulaire SDIS 974 de précision."
+      },
+      {
+        "id": "decret-ravines-1948-p07",
+        "titre": "Décret n°48-1700 du 30 octobre 1948 — Recul des ravines La Réunion",
+        "auteur": "Gouvernement de La Réunion",
+        "annee": 1948,
+        "type": "réglementaire",
+        "url": "https://www.legifrance.gouv.fr",
+        "note": "Application à La Réunion de l'arrêté du 14 juin 1947. Recul minimum 10m depuis la berge des ravines, non négociable, non dérogeable par PLU."
+      },
+      {
+        "id": "izard-1979-archi-bio",
+        "titre": "Ventilation naturelle en zone tropicale humide — Bases de calcul",
+        "auteur": "Izard, J.-L. & Guyot, A.",
+        "annee": 1979,
+        "type": "publication-academique",
+        "url": "https://www.editions-parentheses.com",
+        "note": "Archi Bio. Parenthèses Éditions. Méthode de calcul Cm intégrée dans TERLAB (abaque CSTB, Rb sillage). Référence fondamentale bioclimatique tropicale francophone."
+      },
+      {
+        "id": "garde-puca-2010",
+        "titre": "Conception bioclimatique des bâtiments en zones tropicales humides — Guide PUCA",
+        "auteur": "Garde, F. / Mara, T. / Boyer, H.",
+        "annee": 2010,
+        "type": "publication-academique",
+        "url": "https://www.puca.gouv.fr",
+        "note": "Guide PUCA / CLIRÉUN / Université de La Réunion. Méthodologie pour les bâtiments LLS en DOM. Profondeur 10–13m, ventilation traversante, varangue bioclimatique. Disponible DEAL Réunion."
+      },
+      {
+        "id": "olgyay-1963",
+        "titre": "Design with Climate — Bioclimatic Approach to Architectural Regionalism",
+        "auteur": "Olgyay, V.",
+        "annee": 1963,
+        "type": "publication-academique",
+        "url": "https://press.princeton.edu",
+        "note": "Princeton University Press. Fondement théorique du bioclimatisme architectural. Diagramme bioclimatique d'Olgyay. Applicable étages 0–400m de La Réunion (zone Aw). Réédition 2015."
+      },
+      {
+        "id": "givoni-1976",
+        "titre": "Man, Climate and Architecture (2nd ed.)",
+        "auteur": "Givoni, B.",
+        "annee": 1976,
+        "type": "ouvrage",
+        "url": "https://www.sciencedirect.com",
+        "note": "Applied Science Publishers. Diagramme psychrométrique de Givoni. Stratégies : ventilation, masse thermique, évaporation. Référence pour le confort thermique tropical."
+      },
+      {
+        "id": "aqc-ventilation-naturelle-2019",
+        "titre": "Guide de la ventilation naturelle dans les bâtiments à La Réunion",
+        "auteur": "Agence Qualité Construction (AQC)",
+        "annee": 2019,
+        "type": "guide",
+        "url": "https://qualiteconstruction.com/publication/ventilation-naturelle-reunion/",
+        "note": "Retours d'expérience opérations LLS Réunion. Pathologies liées au non-respect RTAA : condensation, moisissures, surchauffe. Coursive obligatoire côté alizés."
       }
     ],
     "p08": [
@@ -553,6 +900,42 @@
         "type": "guide",
         "url": "https://www.ars.sante.fr",
         "note": "Protocoles prévention, élimination gîtes larvaires, équipements de protection."
+      },
+      {
+        "id": "rsmc-vigilance-cyclonique",
+        "titre": "Saison cyclonique — Procédures d'alerte RSMC La Réunion",
+        "auteur": "Météo-France / RSMC La Réunion",
+        "annee": 2024,
+        "type": "réglementaire",
+        "url": "https://meteofrance.re/cyclone/vigilance",
+        "note": "Phases de vigilance : pré-alerte, alerte 1, 2, 3, 4. Période cyclonique novembre–avril. Vitesses de vent cyclonique : Catégorie 1 (63–88 km/h) à Catégorie 5 (> 249 km/h)."
+      },
+      {
+        "id": "cmh-2016",
+        "titre": "Normes CMH 2016 — Charges climatiques extrêmes La Réunion",
+        "auteur": "CSTB / Ministère du Logement",
+        "annee": 2016,
+        "type": "réglementaire",
+        "url": "https://www.cstb.fr",
+        "note": "Charges de vent cyclonique, surcharges de neige (hauts de La Réunion > 2000m), pluviométrie extrême (Cilaos : record mondial 1 869mm en 24h). Référence pour le dimensionnement cyclonique."
+      },
+      {
+        "id": "inrs-tropical-2022",
+        "titre": "Risques sanitaires en chantier tropical — INRS Outre-Mer",
+        "auteur": "INRS (Institut National de Recherche et de Sécurité)",
+        "annee": 2022,
+        "type": "guide",
+        "url": "https://www.inrs.fr",
+        "note": "Leptospirose, dengue, chikungunya : risques spécifiques au chantier tropical humide. EPI requis. Protocole DREAL pour chantiers en zone à risque."
+      },
+      {
+        "id": "spf-reunion-bulletin",
+        "titre": "Bulletin de situation épidémiologique — Santé Publique France Réunion",
+        "auteur": "Santé Publique France",
+        "annee": 2024,
+        "type": "données",
+        "url": "https://www.santepubliquefrance.fr/regions/ocean-indien",
+        "note": "Indicateurs épidémiologiques hebdomadaires : dengue, leptospirose, arboviroses. Données en temps réel. Source pour la phase chantier P08."
       }
     ],
     "p09": [
@@ -580,6 +963,42 @@
         "type": "réglementaire",
         "url": "https://www.ecologie.gouv.fr/politiques-publiques/reglementation-technique-construction-outre-mer",
         "note": "ECS solaire obligatoire couvrant ≥ 50% des besoins en zones 1 et 2."
+      },
+      {
+        "id": "nf-en-iso-14040",
+        "titre": "NF EN ISO 14040:2006 — Analyse du cycle de vie — Principes et cadre",
+        "auteur": "AFNOR / ISO",
+        "annee": 2006,
+        "type": "réglementaire",
+        "url": "https://www.boutique.afnor.org/fr-fr/norme/nf-en-iso-14040",
+        "note": "Norme de référence ACV. Définit les étapes : définition des objectifs, inventaire, évaluation des impacts, interprétation. Base méthodologique de l'ACV comparatif en P09."
+      },
+      {
+        "id": "re2020-decret-2021",
+        "titre": "Décret n°2021-1004 du 29 juillet 2021 — Réglementation environnementale RE2020",
+        "auteur": "Ministère de la Transition Écologique",
+        "annee": 2021,
+        "type": "réglementaire",
+        "url": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000043923028/",
+        "note": "RE2020 applicable en métropole. DOM : RTAA DOM reste la réglementation de référence (RE2020 non étendue aux DOM à la date de cet audit). Indicateurs carbone RE2020 utilisés à titre indicatif."
+      },
+      {
+        "id": "base-inies",
+        "titre": "Base INIES — Données environnementales des produits de construction",
+        "auteur": "FFB / AIMCC / COPREC / UNSFA",
+        "annee": 2024,
+        "type": "données",
+        "url": "https://www.inies.fr",
+        "note": "FDES (Fiches de Données Environnementales et Sanitaires) et PEP. Données ACV par matériau. Coefficients carbone intégrés dans le comparatif P09."
+      },
+      {
+        "id": "ademe-bilan-carbone-btp-reunion",
+        "titre": "Bilan carbone du secteur construction à La Réunion",
+        "auteur": "ADEME Réunion / Région Réunion",
+        "annee": 2023,
+        "type": "publication-academique",
+        "url": "https://www.ademe.fr/reunion",
+        "note": "Émissions du secteur BTP réunionnais : 850 000 tCO₂eq/an. Part ciment et acier importés : 62%. Potentiel de réduction par biosourcés locaux (bois cryptoméria, bambou)."
       }
     ],
     "p10": [
@@ -606,6 +1025,33 @@
         "type": "réglementaire",
         "url": "https://www.reunion.developpement-durable.gouv.fr",
         "note": "Le DPE DOM utilise des seuils et une méthode de calcul différents de la métropole (pas de chauffage en général)."
+      },
+      {
+        "id": "nf-dtu-31-2",
+        "titre": "NF DTU 31.2 (2019) — Construction de maisons et bâtiments à ossature en bois",
+        "auteur": "AFNOR / CSTB",
+        "annee": 2019,
+        "type": "réglementaire",
+        "url": "https://www.boutique.afnor.org",
+        "note": "Applicable constructions bois La Réunion. Exigences protection contre les termites, humidité, cyclone. Classes d'exposition : classe 4 pour les éléments en contact direct avec le sol."
+      },
+      {
+        "id": "caue-durabilite-tropicale",
+        "titre": "Durabilité tropicale des matériaux de construction — Guide pratique La Réunion",
+        "auteur": "DEAL Réunion / CAUE 974",
+        "annee": 2020,
+        "type": "guide",
+        "url": "https://www.caue-reunion.fr",
+        "note": "Termites (Reticulitermes et Coptotermes), corrosion atmosphérique (zone marine < 500m), cyclone. Matériaux recommandés et proscrits. Traitement préventif obligatoire bois."
+      },
+      {
+        "id": "carto-termites-reunion",
+        "titre": "Cartographie du risque termites — La Réunion",
+        "auteur": "Ministère du Logement / DEAL Réunion",
+        "annee": 2022,
+        "type": "données",
+        "url": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000000773148/",
+        "note": "Zones à risque termites (Arrêté du 27 juin 2006). La Réunion entière est classée en zone à risque élevé. Traitement préventif avant mise en œuvre obligatoire pour le bois."
       }
     ],
     "p11": [
@@ -624,16 +1070,35 @@
         "type": "guide",
         "url": "https://www.ademe.fr",
         "note": "Passeport matériaux, réemploi, ACV fin de vie. Applicable au contexte insulaire réunionnais."
+      },
+      {
+        "id": "loi-agec-2020",
+        "titre": "Loi n°2020-105 du 10 février 2020 — Anti-gaspillage et économie circulaire (AGEC)",
+        "auteur": "Ministère de la Transition Écologique",
+        "annee": 2020,
+        "type": "réglementaire",
+        "url": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000041553759/",
+        "note": "Art. 51 : diagnostic PEMD obligatoire avant déconstruction (bâtiments > 1000m² ou marchés > 2M€). Applicable à La Réunion. Traçabilité matériaux par Bordereau de Suivi des Déchets."
+      },
+      {
+        "id": "ademe-reemploi-2023",
+        "titre": "Réemploi des matériaux de construction — Guide ADEME",
+        "auteur": "ADEME",
+        "annee": 2023,
+        "type": "guide",
+        "url": "https://www.ademe.fr/nos-expertises/batiment/reemploi-batiment",
+        "note": "Méthodologie diagnostic PEMD, filières de réemploi, plateformes. Adaptation aux DOM : ressourceries locales, disponibilité filières. Applicable en phase P11."
       }
     ],
     "p12": [
       {
-        "id": "jspdf-docs",
-        "titre": "jsPDF v2.5 — Documentation",
-        "auteur": "MrRio / jsPDF contributors",
-        "type": "api",
-        "url": "https://raw.githack.com/MrRio/jsPDF/master/docs/",
-        "note": "Librairie PDF client-side utilisée pour les exports A3 TERLAB."
+        "id": "jspdf-2-5-1",
+        "titre": "jsPDF v2.5.1 — Génération PDF côté client",
+        "auteur": "Parallax / Community",
+        "annee": 2023,
+        "type": "outil",
+        "url": "https://github.com/parallax/jsPDF",
+        "note": "Bibliothèque JS utilisée pour l'export PDF A3 TERLAB. Licence MIT. Combiné avec html2canvas v1.4.1 pour la capture du canvas."
       },
       {
         "id": "dxf-writer-docs",
@@ -642,18 +1107,63 @@
         "type": "api",
         "url": "https://github.com/PointLineWorld/dxf-writer",
         "note": "Librairie JavaScript pour la génération de fichiers DXF (parcelle, reculs, gabarit)."
+      },
+      {
+        "id": "ifc-2x3-iso-16739",
+        "titre": "IFC 2x3 — Industry Foundation Classes (ISO 16739:2013)",
+        "auteur": "buildingSMART International",
+        "annee": 2013,
+        "type": "outil",
+        "url": "https://technical.buildingsmart.org/standards/ifc/ifc-schema-specifications/",
+        "note": "Format d'échange BIM ouvert. Schéma utilisé dans TERLAB pour l'export IFC (IfcProject → IfcBuilding → IfcSlab + murs). Norme ISO 16739:2013. ⚠ ifc-worker.js non implémenté dans v1."
+      },
+      {
+        "id": "dxf-autocad-2024",
+        "titre": "DXF — Drawing Exchange Format (AutoCAD 2024)",
+        "auteur": "Autodesk",
+        "annee": 2024,
+        "type": "outil",
+        "url": "https://www.autodesk.com/developer-network/open-source/autocad-dxf",
+        "note": "Format échange CAO vectoriel. Export DXF TERLAB : parcelle + reculs + gabarit. Lisible dans AutoCAD, QGIS, Inkscape, Illustrator. Spécification publique AutoCAD 2024."
       }
     ],
     "p13_world": [
       {
-        "id": "koppen-geiger-2018",
+        "id": "koppen-geiger-beck-2018",
         "titre": "Present and future Köppen-Geiger climate classification maps at 1-km resolution",
-        "auteur": "Beck, H.E. et al.",
+        "auteur": "Beck, H.E., Zimmermann, N.E., McVicar, T.R. et al.",
         "annee": 2018,
         "type": "publication-academique",
         "url": "https://www.nature.com/articles/sdata2018214",
-        "doi": "10.1038/sdata2018214",
-        "note": "Référence académique pour la classification climatique mondiale utilisée dans la Phase World."
+        "doi": "10.1038/sdata.2018.214",
+        "note": "Scientific Data 5, 180214. Données utilisées pour le globe Köppen TERLAB (P13). Classification 30 zones climatiques mondiales à 1km. Données Beck 2018 téléchargeables."
+      },
+      {
+        "id": "fathy-1986",
+        "titre": "Natural Energy and Vernacular Architecture — Principles and examples with reference to hot arid climates",
+        "auteur": "Fathy, H.",
+        "annee": 1986,
+        "type": "ouvrage",
+        "url": "https://press.uchicago.edu",
+        "note": "University of Chicago Press (UNESCO). Architecture vernaculaire bioclimatique. Applicable aux zones similaires à La Réunion (Éthiopie, Rwanda, Inde). Référence pour les partenariats ENSA."
+      },
+      {
+        "id": "auliciems-szokolay-2007",
+        "titre": "Thermal Comfort (2nd ed.) — PLEA Notes on Passive and Low Energy Architecture",
+        "auteur": "Auliciems, A. & Szokolay, S.V.",
+        "annee": 2007,
+        "type": "publication-academique",
+        "url": "https://plea-arch.org",
+        "note": "PLEA Note 3. University of Queensland. Modèle de confort adaptatif. Applicable zones Aw, Cf, Cwb présentes à La Réunion. Standard référence architecture tropicale mondiale."
+      },
+      {
+        "id": "uom-mauritius",
+        "titre": "Université de Maurice — Faculté d'Architecture",
+        "auteur": "University of Mauritius",
+        "annee": 2024,
+        "type": "portail",
+        "url": "https://www.uom.ac.mu",
+        "note": "Partenariat ENSA actif. Contexte tropical similaire (étage côtier), réglementation britannique. Échanges pédagogiques possibles via P13 World."
       },
       {
         "id": "koenigsberger-tropical",

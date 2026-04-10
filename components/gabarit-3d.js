@@ -415,23 +415,115 @@ export class GabaritThree {
    * @param {Object} session        — session TERLAB
    * @param {Array}  existingBldgs  — résultat ExistingBuildings.analyse()
    */
-  loadCapacityStudy(proposal, session, existingBldgs) {
+  /**
+   * Charge une étude de capacité avec terrassement complet (déblais/remblais).
+   * Pipeline :
+   *   1. Échantillonner le TN sous l'emprise (LiDAR ou BIL)
+   *   2. Choisir stratégie (A1/A3/A4) selon pente et zone PPR
+   *   3. Calculer plateforme + V_cut/V_fill
+   *   4. Générer meshes (TN, plateforme, cut/fill CSG, talus, pilotis)
+   *   5. Poser le bâtiment sur la plateforme à H_platform + dalle
+   *
+   * @param {Object} proposal      { polygon, bat, niveaux, hauteur, color, ... }
+   * @param {Object} session       Session TERLAB (terrain, _parcelLocal, _edgeTypes)
+   * @param {Object} existingBldgs { footprints: [{poly,hauteur}, ...] }
+   */
+  async loadCapacityStudy(proposal, session, existingBldgs) {
     const THREE = window.THREE;
-    if (!THREE || !proposal?.bat) return;
+    if (!THREE) return;
 
     // Nettoyer les groupes
     for (const g of Object.values(this.groups)) {
       while (g.children.length) g.remove(g.children[0]);
     }
+    if (this._earthworksGroup) {
+      this.scene.remove(this._earthworksGroup);
+      this._earthworksGroup = null;
+    }
+    if (this._existingGroup) {
+      this.scene.remove(this._existingGroup);
+      this._existingGroup = null;
+    }
 
-    const bat = proposal.bat;
-    const nv = proposal.niveaux ?? 2;
-    const he = nv * 3;
-    const color = proposal.color ?? '#3B82F6';
+    // Récupérer la footprint : polygon préféré, fallback AABB
+    let footprint = proposal?.polygon;
+    if (!footprint || footprint.length < 3) {
+      const bat = proposal?.bat;
+      if (!bat) return;
+      footprint = [
+        { x: bat.x,         y: bat.y         },
+        { x: bat.x + bat.w, y: bat.y         },
+        { x: bat.x + bat.w, y: bat.y + bat.l },
+        { x: bat.x,         y: bat.y + bat.l },
+      ];
+    }
 
-    // Sol parcelle (si disponible via session)
+    const nv = proposal?.niveaux ?? 2;
+    const he = proposal?.hauteur ?? nv * 3;
+    const color = proposal?.color ?? '#3B82F6';
     const terrain = session?.terrain ?? {};
     const parcelLocal = session?._parcelLocal ?? [];
+
+    // ── EARTHWORKS : sample TN + stratégie + meshes ───────────────
+    let earthworks = null;
+    let groundY = 0;          // décalage Y de la scène (= -tnMin pour ramener à 0)
+    let H_platform_local = 0; // altitude plateforme dans le repère scène
+
+    const EWS = window.EarthworksService;
+    if (EWS) {
+      try {
+        earthworks = await EWS.computeEarthworks(footprint, session, { gridStep: 0.5 });
+        // Convention altitude unifiée TERLAB : Y=0 = TN min sous l'emprise
+        // (cf. earthworks-service header doc + altitudeReference helper)
+        groundY = earthworks.altitudeReference?.groundYRef ?? -(earthworks.tnMin_m ?? 0);
+        H_platform_local = (earthworks.H_platform_m ?? 0) + groundY;
+      } catch (err) {
+        console.warn('[GabaritThree] Earthworks failed:', err.message);
+      }
+    }
+
+    // Construire les meshes earthworks
+    if (earthworks && window.EarthworksMeshBuilder) {
+      try {
+        // Tenter import dynamique de three-bvh-csg
+        let csgLib = null;
+        try {
+          csgLib = await import('three-bvh-csg');
+        } catch (e) {
+          console.info('[GabaritThree] three-bvh-csg indisponible — cut/fill non volumétriques');
+        }
+        const builder = new window.EarthworksMeshBuilder(THREE, csgLib);
+        const meshes = builder.buildAll(earthworks, { groundY, useCSG: !!csgLib });
+
+        this._earthworksGroup = new THREE.Group();
+        this._earthworksGroup.name = 'earthworks';
+        this._earthworksMeshes = meshes;
+        this._earthworksLayers = {
+          tn: meshes.tnMesh,
+          platform: meshes.platformMesh,
+          cut: meshes.cutMesh,
+          fill: meshes.fillMesh,
+          talus: meshes.talusGroup,
+          pilotis: meshes.pilotisGroup,
+        };
+        if (meshes.tnMesh)        this._earthworksGroup.add(meshes.tnMesh);
+        if (meshes.platformMesh)  this._earthworksGroup.add(meshes.platformMesh);
+        if (meshes.cutMesh)       this._earthworksGroup.add(meshes.cutMesh);
+        if (meshes.fillMesh)      this._earthworksGroup.add(meshes.fillMesh);
+        if (meshes.talusGroup)    this._earthworksGroup.add(meshes.talusGroup);
+        if (meshes.pilotisGroup)  this._earthworksGroup.add(meshes.pilotisGroup);
+        this.scene.add(this._earthworksGroup);
+
+        // Notifier l'UI (panneau terrassement)
+        window.dispatchEvent(new CustomEvent('terlab:earthworks-updated', {
+          detail: { earthworks, V_cut_csg: meshes.V_cut_csg, V_fill_csg: meshes.V_fill_csg },
+        }));
+      } catch (err) {
+        console.warn('[GabaritThree] Earthworks mesh build failed:', err);
+      }
+    }
+
+    // ── Sol parcelle (sous le mesh TN, au niveau scène) ──────────
     if (parcelLocal.length >= 3) {
       const shape = new THREE.Shape();
       const first = parcelLocal[0];
@@ -442,48 +534,67 @@ export class GabaritThree {
       }
       shape.closePath();
       const geom = new THREE.ShapeGeometry(shape);
+      // Rotate to XZ plane and flip Z to align polygon.y → Three.z
       geom.rotateX(-Math.PI / 2);
-      const mat = new THREE.MeshStandardMaterial({ color: 0xd4c9a8, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+      geom.scale(1, 1, -1);
+      const mat = new THREE.MeshStandardMaterial({
+        color: 0xd4c9a8, side: THREE.DoubleSide,
+        transparent: true, opacity: 0.35,
+      });
       const mesh = new THREE.Mesh(geom, mat);
       mesh.receiveShadow = true;
-      mesh.position.y = 0.01;
+      mesh.position.y = -0.05; // sous le mesh TN
       this.groups.parcels.add(mesh);
     }
 
-    // Bâtiment proposé
-    const batGeom = new THREE.BoxGeometry(bat.w, he, bat.l);
-    const batMat = new THREE.MeshPhongMaterial({ color: new THREE.Color(color), transparent: true, opacity: 0.85 });
+    // ── Bâtiment proposé : extrudé depuis polygon, posé sur plateforme
+    const Y_base = H_platform_local + 0.25; // sur la dalle
+    const batShape = new THREE.Shape();
+    batShape.moveTo(footprint[0].x, footprint[0].y);
+    for (let i = 1; i < footprint.length; i++) {
+      batShape.lineTo(footprint[i].x, footprint[i].y);
+    }
+    batShape.closePath();
+    const batGeom = new THREE.ExtrudeGeometry(batShape, { depth: he, bevelEnabled: false });
+    batGeom.rotateX(-Math.PI / 2);
+    batGeom.scale(1, 1, -1);
+    const batMat = new THREE.MeshPhongMaterial({
+      color: new THREE.Color(color),
+      transparent: true, opacity: 0.85,
+    });
     const batMesh = new THREE.Mesh(batGeom, batMat);
-    batMesh.position.set(bat.x + bat.w / 2, he / 2, bat.y + bat.l / 2);
+    batMesh.position.y = Y_base;
     batMesh.castShadow = true;
     batMesh.receiveShadow = true;
+    batMesh.name = 'building-extruded';
     this.groups.solution.add(batMesh);
 
-    // Varangue nord (1.5m saillie)
-    const varW = bat.w, varD = 1.5, varH = 3;
-    const varGeom = new THREE.BoxGeometry(varW, varH, varD);
-    const varMat = new THREE.MeshPhongMaterial({ color: 0xd4a574, transparent: true, opacity: 0.7 });
-    const varMesh = new THREE.Mesh(varGeom, varMat);
-    varMesh.position.set(bat.x + bat.w / 2, varH / 2, bat.y + bat.l + varD / 2);
-    this.groups.solution.add(varMesh);
+    // Wireframe edges du bâtiment
+    const edges = new THREE.EdgesGeometry(batGeom);
+    const wire = new THREE.LineSegments(
+      edges,
+      new THREE.LineBasicMaterial({ color: new THREE.Color(color), opacity: 0.7, transparent: true }),
+    );
+    wire.position.y = Y_base;
+    this.groups.solution.add(wire);
 
     // Lignes de plancher
-    const linesMat = new THREE.LineBasicMaterial({ color: 0x666666 });
-    for (let i = 1; i <= nv; i++) {
-      const y = i * 3;
-      const pts = [
-        new THREE.Vector3(bat.x, y, bat.y),
-        new THREE.Vector3(bat.x + bat.w, y, bat.y),
-        new THREE.Vector3(bat.x + bat.w, y, bat.y + bat.l),
-        new THREE.Vector3(bat.x, y, bat.y + bat.l),
-        new THREE.Vector3(bat.x, y, bat.y),
-      ];
-      const lGeom = new THREE.BufferGeometry().setFromPoints(pts);
-      this.groups.solution.add(new THREE.Line(lGeom, linesMat));
+    const linesMat = new THREE.LineBasicMaterial({ color: 0x666666, opacity: 0.6, transparent: true });
+    for (let i = 1; i < nv; i++) {
+      const y = Y_base + i * 3;
+      const floorShape = batShape.clone();
+      const floorGeom = new THREE.ShapeGeometry(floorShape);
+      floorGeom.rotateX(-Math.PI / 2);
+      floorGeom.scale(1, 1, -1);
+      const floorEdges = new THREE.EdgesGeometry(floorGeom);
+      const floorLine = new THREE.LineSegments(floorEdges, linesMat);
+      floorLine.position.y = y;
+      this.groups.solution.add(floorLine);
     }
 
-    // Bâtiments existants
+    // ── Bâtiments existants (posés sur leur sol naturel) ──────────
     this._existingGroup = new THREE.Group();
+    this._existingGroup.name = 'existing-buildings';
     if (existingBldgs?.footprints?.length) {
       for (const fp of existingBldgs.footprints) {
         if (!fp.poly?.length) continue;
@@ -493,18 +604,47 @@ export class GabaritThree {
         shape.closePath();
         const extGeom = new THREE.ExtrudeGeometry(shape, { depth: fp.hauteur ?? 6, bevelEnabled: false });
         extGeom.rotateX(-Math.PI / 2);
-        const mat = new THREE.MeshPhongMaterial({ color: 0x94A3B8, transparent: true, opacity: 0.6 });
+        extGeom.scale(1, 1, -1);
+        const mat = new THREE.MeshPhongMaterial({
+          color: 0x94A3B8, transparent: true, opacity: 0.5,
+        });
         const mesh = new THREE.Mesh(extGeom, mat);
+        // Sample altitude TN sous le centroïde du footprint existant
+        let groundLocal = 0;
+        if (earthworks) {
+          const cx = fp.poly.reduce((s, p) => s + p[0], 0) / fp.poly.length;
+          const cy = fp.poly.reduce((s, p) => s + p[1], 0) / fp.poly.length;
+          // Approx : TN min de l'earthworks scaled (les bâtis existants sont hors emprise)
+          groundLocal = groundY + (earthworks.tnMean_m ?? 0);
+        }
+        mesh.position.y = groundLocal;
         mesh.castShadow = true;
         this._existingGroup.add(mesh);
       }
     }
     this.scene.add(this._existingGroup);
 
-    // Caméra auto
-    const cx = bat.x + bat.w / 2, cz = bat.y + bat.l / 2;
-    this.camera.position.set(cx - 30, he + 30, cz + 40);
-    this.camera.lookAt(cx, he / 2, cz);
+    // ── Caméra auto centrée sur l'emprise + plateforme ─────────────
+    const bbox = footprint.reduce(
+      (b, p) => ({
+        minX: Math.min(b.minX, p.x), maxX: Math.max(b.maxX, p.x),
+        minY: Math.min(b.minY, p.y), maxY: Math.max(b.maxY, p.y),
+      }),
+      { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity }
+    );
+    const cx = (bbox.minX + bbox.maxX) / 2;
+    const cz = (bbox.minY + bbox.maxY) / 2;
+    const span = Math.max(bbox.maxX - bbox.minX, bbox.maxY - bbox.minY) + he;
+    this.camera.position.set(cx - span * 0.9, H_platform_local + he + span * 0.7, cz + span * 1.1);
+    this.camera.lookAt(cx, H_platform_local + he / 2, cz);
+  }
+
+  /**
+   * Toggle visibilité d'une couche earthworks ('tn'|'platform'|'cut'|'fill'|'talus'|'pilotis').
+   */
+  toggleEarthworksLayer(layer, visible) {
+    const m = this._earthworksLayers?.[layer];
+    if (m) m.visible = visible;
   }
 
   /**

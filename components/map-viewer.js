@@ -497,26 +497,34 @@ const MapViewer = {
     m.setTerrain({ source: 'mapbox-dem', exaggeration: 1.2 });
 
     // ── PPR approuvés — AGORAH PEIGEO (GeoServer public) ───────
-    m.addSource('ppr-peigeo', PPRService.getPPRSourceConfig());
-    m.addLayer({
-      id: 'ppr-layer',
-      type: 'raster',
-      source: 'ppr-peigeo',
-      paint: { 'raster-opacity': 0.65 }
-    });
+    // Si PPRService est désactivé (HTTPS context), config = null → on
+    // skip directement la couche et on affiche la bannière de fallback.
+    const pprCfg = PPRService.getPPRSourceConfig();
+    if (pprCfg) {
+      m.addSource('ppr-peigeo', pprCfg);
+      m.addLayer({
+        id: 'ppr-layer',
+        type: 'raster',
+        source: 'ppr-peigeo',
+        paint: { 'raster-opacity': 0.65 }
+      });
 
-    // Fallback si PEIGEO indisponible
-    let pprFailed = false;
-    m.on('error', (e) => {
-      if (pprFailed) return;
-      const src = e.sourceId ?? e.source?.id;
-      if (src === 'ppr-peigeo') {
-        pprFailed = true;
-        console.warn('[Map] Tuiles PPR PEIGEO indisponibles');
-        m.setPaintProperty('ppr-layer', 'raster-opacity', 0);
-        this._showStubBanner('PPR PEIGEO indisponible — saisie manuelle requise');
-      }
-    });
+      // Fallback si PEIGEO indisponible (timeout, CORS, etc.)
+      let pprFailed = false;
+      m.on('error', (e) => {
+        if (pprFailed) return;
+        const src = e.sourceId ?? e.source?.id;
+        if (src === 'ppr-peigeo') {
+          pprFailed = true;
+          console.warn('[Map] Tuiles PPR PEIGEO indisponibles');
+          m.setPaintProperty('ppr-layer', 'raster-opacity', 0);
+          this._showStubBanner('PPR PEIGEO indisponible — saisie manuelle requise');
+        }
+      });
+    } else {
+      console.warn('[Map] PPRService désactivé:', PPRService.disabledReason);
+      this._showStubBanner('PPR PEIGEO indisponible (HTTPS) — saisie manuelle requise');
+    }
 
     // Couche simulation inondation — bathtub DEM
     m.addSource('flood-sim', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
@@ -574,26 +582,32 @@ const MapViewer = {
     }
 
     // ── PLU simplifié — AGORAH PEIGEO (GeoServer public) ───────
-    m.addSource('plu-peigeo', PPRService.getPLUSourceConfig());
-    m.addLayer({
-      id: 'plu-layer',
-      type: 'raster',
-      source: 'plu-peigeo',
-      paint: { 'raster-opacity': 0.55 }
-    });
+    const pluCfg = PPRService.getPLUSourceConfig();
+    if (pluCfg) {
+      m.addSource('plu-peigeo', pluCfg);
+      m.addLayer({
+        id: 'plu-layer',
+        type: 'raster',
+        source: 'plu-peigeo',
+        paint: { 'raster-opacity': 0.55 }
+      });
 
-    // Fallback si PEIGEO indisponible
-    let pluFailed = false;
-    m.on('error', (e) => {
-      if (pluFailed) return;
-      const src = e.sourceId ?? e.source?.id;
-      if (src === 'plu-peigeo') {
-        pluFailed = true;
-        console.warn('[Map] Tuiles PLU PEIGEO indisponibles');
-        m.setPaintProperty('plu-layer', 'raster-opacity', 0);
-        this._showStubBanner('PLU PEIGEO indisponible — API Carto IGN utilisée en fallback');
-      }
-    });
+      // Fallback si PEIGEO indisponible
+      let pluFailed = false;
+      m.on('error', (e) => {
+        if (pluFailed) return;
+        const src = e.sourceId ?? e.source?.id;
+        if (src === 'plu-peigeo') {
+          pluFailed = true;
+          console.warn('[Map] Tuiles PLU PEIGEO indisponibles');
+          m.setPaintProperty('plu-layer', 'raster-opacity', 0);
+          this._showStubBanner('PLU PEIGEO indisponible — API Carto IGN utilisée en fallback');
+        }
+      });
+    } else {
+      console.warn('[Map] PLU PEIGEO désactivé:', PPRService.disabledReason);
+      this._showStubBanner('PLU PEIGEO indisponible (HTTPS) — API Carto IGN utilisée en fallback');
+    }
 
     // Couche parcelle + reculs depuis session
     m.addSource('parcelle-p4', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });

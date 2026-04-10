@@ -346,7 +346,12 @@ const CapacityStudyRenderer = {
   renderThreeJS(canvasEl, session, proposal, prog, existingBldgs) {
     if (!canvasEl || !window.GabaritThree) return null;
     const scene = new window.GabaritThree(canvasEl);
-    scene.loadCapacityStudy(proposal, session, existingBldgs);
+    // loadCapacityStudy est async (échantillonnage TN + CSG) — on lance sans
+    // attendre, le rendu Three se met à jour automatiquement quand les meshes
+    // arrivent. L'événement 'terlab:earthworks-updated' notifie l'UI.
+    scene.loadCapacityStudy(proposal, session, existingBldgs).catch(err => {
+      console.warn('[CapacityStudyRenderer] loadCapacityStudy failed:', err);
+    });
     return scene;
   },
 

@@ -29,6 +29,7 @@
 import CadastreContextService from '../services/cadastre-context-service.js';
 import BdTopoService from '../services/bdtopo-service.js';
 import ContourService from '../services/contour-service.js';
+import ParcelAltitudes from '../services/parcel-altitudes.js';
 
 // ── ÉCHELLES NORMALISÉES (architecte) ────────────────────────────
 // diagonale parcelle (m) → { échelle, format }
@@ -58,6 +59,7 @@ const C = {
   road:         '#a8a195',
   contourMaj:   '#8a6e3e',
   contourMin:   '#c4b396',
+  ngr:          '#1e3a5f',
   reculPlu:     '#a78bfa',
   projet:       '#2563EB',
   text:         '#2a241c',
@@ -268,6 +270,16 @@ const SitePlanRenderer = {
       } catch (e) { console.warn('[SitePlan] contour failed:', e.message); }
     }
 
+    // Échantillonnage NGR aux sommets parcelle (BIL une seule requête)
+    if (cache.cornerAlts) {
+      ctx.cornerAlts = cache.cornerAlts;
+    } else if (fetchExternal && typeof window !== 'undefined' && window.BILTerrain) {
+      try {
+        const res = await ParcelAltitudes.sampleParcelKeyPoints(parcelGeo, { longEdgeM: 30 });
+        ctx.cornerAlts = res.points;
+      } catch (e) { console.warn('[SitePlan] NGR sample failed:', e.message); }
+    }
+
     // Couches projet (si demandé)
     if (withProject) {
       const p7 = session?.phases?.[7]?.data ?? {};
@@ -422,6 +434,11 @@ const SitePlanRenderer = {
     // Cotations périmétriques (toujours)
     layers.push(this._renderCotationsParcelle(parcelLocal, parcelMm, scale));
 
+    // ── 5b. NGR aux sommets (et milieux d'arêtes longues) ─────────
+    if (ctx.cornerAlts?.length) {
+      layers.push(this._renderNGRMarkers(ctx.cornerAlts, geoToMm));
+    }
+
     // ── 6. COUCHES PROJET (si demandé) ────────────────────────────
     if (withProject && ctx.project) {
       // Zones de recul PLU
@@ -532,6 +549,33 @@ const SitePlanRenderer = {
       let ang = Math.atan2(dy, dx) * 180 / Math.PI;
       if (ang > 90 || ang < -90) ang += 180;
       out.push(`<text x="${mx.toFixed(2)}" y="${my.toFixed(2)}" font-family="IBM Plex Mono, monospace" font-size="1.9" fill="${C.parcelTarget}" text-anchor="middle" transform="rotate(${ang.toFixed(1)} ${mx.toFixed(2)} ${my.toFixed(2)})">${lenM.toFixed(1)} m</text>`);
+    }
+    return out.join('\n');
+  },
+
+  // NGR aux sommets parcelle (et milieux d'arêtes longues)
+  _renderNGRMarkers(cornerAlts, geoToMm) {
+    const out = [];
+    for (const pt of cornerAlts) {
+      if (pt.alt == null || !pt.coord) continue;
+      const m = geoToMm(pt.coord);
+      const isCorner = pt.kind === 'corner';
+      // Marqueur
+      if (isCorner) {
+        const r = 0.9;
+        out.push(`<line x1="${(m.x - r).toFixed(2)}" y1="${m.y.toFixed(2)}" x2="${(m.x + r).toFixed(2)}" y2="${m.y.toFixed(2)}" stroke="${C.ngr}" stroke-width="0.3"/>`);
+        out.push(`<line x1="${m.x.toFixed(2)}" y1="${(m.y - r).toFixed(2)}" x2="${m.x.toFixed(2)}" y2="${(m.y + r).toFixed(2)}" stroke="${C.ngr}" stroke-width="0.3"/>`);
+      } else {
+        out.push(`<circle cx="${m.x.toFixed(2)}" cy="${m.y.toFixed(2)}" r="0.4" fill="${C.ngr}"/>`);
+      }
+      // Étiquette : "+34.5" en noir, fond papier semi-transparent
+      const txt = `+${pt.alt.toFixed(1)}`;
+      const fz = isCorner ? 2.0 : 1.7;
+      const tw = txt.length * fz * 0.55 + 0.6;
+      const tx = m.x + 1.2;
+      const ty = m.y - 1.2;
+      out.push(`<rect x="${(tx - 0.3).toFixed(2)}" y="${(ty - fz).toFixed(2)}" width="${tw.toFixed(2)}" height="${(fz + 0.4).toFixed(2)}" fill="rgba(252,249,243,0.88)" stroke="${C.ngr}" stroke-width="0.08" stroke-opacity="0.4" rx="0.3"/>`);
+      out.push(`<text x="${tx.toFixed(2)}" y="${ty.toFixed(2)}" font-family="IBM Plex Mono, monospace" font-size="${fz}" font-weight="${isCorner ? 700 : 500}" fill="${C.ngr}">${txt}</text>`);
     }
     return out.join('\n');
   },
