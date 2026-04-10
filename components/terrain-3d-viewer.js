@@ -76,15 +76,17 @@ const Terrain3D = {
 
     // Renderer
     this._renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, preserveDrawingBuffer: true });
-    this._renderer.setPixelRatio(window.devicePixelRatio);
+    this._renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this._renderer.shadowMap.enabled = true;
     this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this._renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this._renderer.toneMappingExposure = 1.1;
     this._renderer.setClearColor(0x080e18, 1);
     this._updateSize();
 
     // Scène
     this._scene = new THREE.Scene();
-    this._scene.fog = new THREE.Fog(0x080e18, 120, 280);
+    this._scene.fog = new THREE.Fog(0x080e18, 80, 400);
 
     // Caméra
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -140,29 +142,40 @@ const Terrain3D = {
     window.TerlabToast?.show('Vue 3D chargée', 'success', 1500);
   },
 
-  // ─── LUMIÈRES ─────────────────────────────────────────────────
+  // ─── LUMIÈRES — setup BIMSHOW-quality ──────────────────────────
+  // Source : web-app LightShadowsBimshow.js + shadow-config.ts
   _setupLights() {
     const scene = this._scene;
 
-    // Ambiance
-    scene.add(new THREE.AmbientLight(0x8899aa, 0.6));
+    // Ambiance réduite pour laisser les ombres respirer
+    scene.add(new THREE.AmbientLight(0x8899aa, 0.35));
 
-    // Lumière hémisphérique (ciel + sol)
-    const hemi = new THREE.HemisphereLight(0x99bbdd, 0x334422, 0.4);
+    // Lumière hémisphérique (ciel bleu + sol vert)
+    const hemi = new THREE.HemisphereLight(0x99bbdd, 0x334422, 0.45);
     scene.add(hemi);
 
     // Lumière directionnelle principale (soleil)
-    this._sunLight = new THREE.DirectionalLight(0xfff5e0, 1.2);
+    this._sunLight = new THREE.DirectionalLight(0xfff5e0, 1.4);
     this._sunLight.position.set(30, 60, 20);
     this._sunLight.castShadow = true;
-    this._sunLight.shadow.mapSize.set(1024, 1024);
+    // Shadow map haute qualité — source shadow-config.ts "high"
+    this._sunLight.shadow.mapSize.set(2048, 2048);
     this._sunLight.shadow.camera.near = 0.5;
-    this._sunLight.shadow.camera.far  = 300;
+    this._sunLight.shadow.camera.far  = 400;
     this._sunLight.shadow.camera.left = -80;
     this._sunLight.shadow.camera.right = 80;
     this._sunLight.shadow.camera.top  = 80;
     this._sunLight.shadow.camera.bottom = -80;
+    // Anti shadow-acne — source LightShadowsBimshow.js
+    this._sunLight.shadow.bias       = -0.001;
+    this._sunLight.shadow.normalBias =  1.0;
     scene.add(this._sunLight);
+    scene.add(this._sunLight.target);
+
+    // Lumière de contraste arrière (fill light)
+    const contrast = new THREE.DirectionalLight(0xaabbcc, 0.3);
+    contrast.position.set(-20, 15, -30);
+    scene.add(contrast);
   },
 
   // ─── BACKGROUND WIREFRAME SIMPLE ──────────────────────────────
@@ -284,12 +297,14 @@ const Terrain3D = {
       const meshSpan = Math.max(meshW, meshH);
       const sf = this.SCALE_FACTOR / meshSpan;
 
-      // Scale : X et Z (horiz) uniformes, Y (vertical) exagéré
+      // Scale : X et Y (horiz) uniformes, Z (BIL altitude) exagéré
       // Après rotation -90°X : BIL-z (alt) → Three-y, BIL-y (north) → Three-(-z)
-      topMesh.scale.set(sf, sf * this.VERTICAL_EXAG, sf);
+      // VEXAG sur scale.z car c'est BIL-z (altitude) qui, après rotation, devient world Y
+      topMesh.scale.set(sf, sf, sf * this.VERTICAL_EXAG);
       this._terrainSF = sf;
 
       // Positionner le mesh pour que le point le plus bas = EXTRUDE_DEPTH
+      // World Y du vertex le plus bas = bb.min.z * scale.z = bb.min.z * sf * VEXAG
       const altMin = bb.min.z * sf * this.VERTICAL_EXAG;
       topMesh.position.y = this.EXTRUDE_DEPTH - altMin;
 
@@ -297,11 +312,13 @@ const Terrain3D = {
       this._bilMeta = ud;
 
       // Calculer les scaledPts de la parcelle pour outline et slopes
+      // World Y = (alt - altMin_raw) * sf * VEXAG + EXTRUDE_DEPTH
+      const altRange = bb.max.z - bb.min.z;  // dénivelé en m
+      const altMidOffset = altRange / 2 * sf * this.VERTICAL_EXAG;
       const scaledPts = localPts.map(p => {
         const sx = (p.x - (minX + maxX) / 2) / meshSpan * this.SCALE_FACTOR;
         const sz = (p.z - (minZ + maxZ) / 2) / meshSpan * this.SCALE_FACTOR;
-        const altMid = (bb.min.z + bb.max.z) / 2 * sf * this.VERTICAL_EXAG;
-        return { x: sx, z: sz, y: altMid + this.EXTRUDE_DEPTH, lng: p.lng, lat: p.lat };
+        return { x: sx, z: sz, y: altMidOffset + this.EXTRUDE_DEPTH, lng: p.lng, lat: p.lat };
       });
       this._scaledPts = scaledPts;
 
@@ -605,17 +622,24 @@ const Terrain3D = {
     const count = norm.count;
     const colors = new Float32Array(count * 3);
 
-    // Classification RTAA DOM : pente en % → couleur
+    // Classification 5 classes GIEP (SlopesService) : pente en % → couleur
+    // Les normales sont dans l'espace BIL (pré-scale). Avec scale.z = sf*VEXAG,
+    // la pente réelle = tan(angle_exag) / VEXAG. On corrige ici.
+    const vexag = this.VERTICAL_EXAG || 0.4;
     for (let i = 0; i < count; i++) {
-      // BIL mesh : Z = altitude (up), donc normal.z = composante verticale
-      const ny = Math.abs(norm.getZ(i));
-      const slopePct = ny > 0.999 ? 0 : Math.tan(Math.acos(Math.min(ny, 1))) * 100;
+      // BIL mesh : Z = altitude, normal.z = composante verticale
+      const nz = Math.abs(norm.getZ(i));
+      // Pente géométrique brute (sans scale)
+      const slopePctRaw = nz > 0.999 ? 0 : Math.tan(Math.acos(Math.min(nz, 1))) * 100;
+      // Les normales du BIL ne sont pas affectées par le scale Three.js
+      // donc slopePctRaw = pente réelle (1:1). Pas besoin de corriger par VEXAG ici.
+      const slopePct = slopePctRaw;
 
-      let r, g, b;
-      if (slopePct > 15)       { r = 0.94; g = 0.27; b = 0.27; }  // rouge — G1 obligatoire
-      else if (slopePct > 5)   { r = 0.96; g = 0.62; b = 0.04; }  // ambre — fondations spéciales
-      else if (slopePct > 2)   { r = 0.00; g = 0.83; b = 1.00; }  // cyan — charpente adaptée
-      else                     { r = 0.18; g = 0.78; b = 0.60; }  // vert — aucune contrainte
+      const cat = SlopesService.classify(slopePct);
+      const hex = cat.color;
+      const r = ((hex >> 16) & 0xff) / 255;
+      const g = ((hex >> 8) & 0xff) / 255;
+      const b = (hex & 0xff) / 255;
 
       colors[i * 3] = r; colors[i * 3 + 1] = g; colors[i * 3 + 2] = b;
     }
@@ -793,13 +817,13 @@ const Terrain3D = {
       const horiz = Math.hypot(dx, dz);
       if (horiz < 0.5) continue;
 
-      const pctPente = Math.abs(dy / horiz) * 100 / (this._terrainSF ?? 1) / this.VERTICAL_EXAG;
+      // dy et horiz sont dans l'espace world (scaledPts), VEXAG déjà inclus dans dy
+      // pente réelle = (dy / VEXAG) / horiz * 100
+      const pctPente = Math.abs(dy / horiz) * 100 / this.VERTICAL_EXAG;
 
-      // Classification RTAA DOM
-      const color = pctPente > 15 ? 0xef4444
-                  : pctPente > 5  ? 0xf59e0b
-                  : pctPente > 2  ? 0x00d4ff
-                  :                  0x2dc89a;
+      // Classification 5 classes GIEP (SlopesService)
+      const cat   = SlopesService.classify(pctPente);
+      const color = cat.color;
 
       // Midpoint
       const mx = (a.x + b.x) / 2;
@@ -831,22 +855,35 @@ const Terrain3D = {
       this._scene.add(arrow);
       this._slopeArrows.push(arrow);
 
-      // Label pente
+      // Label pente — pill avec classification 5 classes
       const lv = document.createElement('canvas');
-      lv.width = 128; lv.height = 48;
+      lv.width = 200; lv.height = 64;
       const lx = lv.getContext('2d');
-      lx.fillStyle = 'rgba(0,0,0,0.7)';
-      lx.fillRect(0, 0, 128, 48);
-      lx.fillStyle = '#' + color.toString(16).padStart(6, '0');
-      lx.font = 'bold 16px Inconsolata, monospace';
+      const hexColor = '#' + color.toString(16).padStart(6, '0');
+      // Fond pill arrondi
+      lx.fillStyle = 'rgba(0,0,0,0.75)';
+      lx.beginPath();
+      lx.roundRect(4, 4, 192, 56, 12);
+      lx.fill();
+      // Barre couleur latérale
+      lx.fillStyle = hexColor;
+      lx.fillRect(4, 4, 6, 56);
+      // Texte pente
+      lx.fillStyle = hexColor;
+      lx.font = 'bold 22px Inconsolata, monospace';
       lx.textAlign = 'center';
-      lx.textBaseline = 'middle';
-      lx.fillText(pctPente.toFixed(1) + '%', 64, 24);
+      lx.textBaseline = 'top';
+      lx.fillText(pctPente.toFixed(1) + '%', 104, 8);
+      // Classification label
+      lx.fillStyle = 'rgba(255,255,255,0.7)';
+      lx.font = '13px Inter, sans-serif';
+      lx.fillText(cat.label, 104, 36);
+
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: new THREE.CanvasTexture(lv), depthTest: false, transparent: true, opacity: 0.9,
+        map: new THREE.CanvasTexture(lv), depthTest: false, transparent: true, opacity: 0.92,
       }));
       sp.position.set(mx, my + 2, -mz);
-      sp.scale.set(6, 2.5, 1);
+      sp.scale.set(8, 3, 1);
       sp.name = 'slope-label';
       this._scene.add(sp);
       this._slopeArrows.push(sp);
@@ -948,36 +985,227 @@ const Terrain3D = {
   _updateSun() {
     if (!this._sunLight) return;
     const sun = SunCalcService.getPosition(this._sunHour, this._sunDay, -21.1);
-    const r   = 80;
+    const r   = this._heliodonRadius ?? 80;
     const alt = sun.altitude * Math.PI / 180;
     const azi = (sun.azimuth + 180) * Math.PI / 180;  // + 180 car hémisphère sud
 
-    this._sunLight.position.set(
-      r * Math.cos(alt) * Math.sin(azi),
-      r * Math.sin(alt),
-      r * Math.cos(alt) * Math.cos(azi),
-    );
-    this._sunLight.intensity = Math.max(0, sun.altitude / 90) * 1.5;
+    const sx = r * Math.cos(alt) * Math.sin(azi);
+    const sy = r * Math.sin(alt);
+    const sz = r * Math.cos(alt) * Math.cos(azi);
+
+    this._sunLight.position.set(sx, sy, sz);
+    this._sunLight.target.position.set(0, this.EXTRUDE_DEPTH, 0);
+    this._sunLight.intensity = Math.max(0.1, sun.altitude / 90) * 1.6;
 
     // Couleur du soleil selon heure (chaud le matin/soir, blanc à midi)
     const t = Math.abs(this._sunHour - 12) / 6;
-    const r255 = Math.round(255);
-    const g255 = Math.round(255 - t * 60);
-    const b255 = Math.round(255 - t * 120);
-    this._sunLight.color.setRGB(r255/255, g255/255, b255/255);
+    this._sunLight.color.setRGB(1, 1 - t * 0.24, 1 - t * 0.47);
+
+    // Mettre à jour sphère soleil si hélidon actif
+    if (this._sunSphere) {
+      this._sunSphere.position.set(sx, sy, sz);
+      this._sunHelper?.position.set(sx, 0, sz); // projection au sol
+    }
   },
 
-  // ─── CENTRER CAMÉRA ───────────────────────────────────────────
+  // ─── HÉLIDON 3D — Parcours solaire La Réunion ─────────────────
+  // Source : web-app SunPathBimshow.js (porté vanilla Three.js)
+  // Arcs solstice été (rouge), hiver (bleu), équinoxe (vert) + sphère soleil
+  _heliodonVisible: false,
+
+  toggleHeliodon(on) {
+    this._heliodonVisible = on ?? !this._heliodonVisible;
+    if (this._heliodonVisible && !this._heliodonGroup) {
+      this._buildHeliodon();
+    }
+    if (this._heliodonGroup) {
+      this._heliodonGroup.visible = this._heliodonVisible;
+    }
+  },
+
+  _buildHeliodon() {
+    // Rayon du dôme = 1.4× bbox terrain (source SunPathBimshow.js L.42)
+    const target = this._terrainGroup ?? this._topMesh;
+    let radius = 60;
+    if (target) {
+      const sz = new THREE.Box3().setFromObject(target).getSize(new THREE.Vector3());
+      radius = Math.max(sz.x, sz.y, sz.z) * 1.4;
+    }
+    this._heliodonRadius = radius;
+    this._heliodonGroup = new THREE.Group();
+    this._heliodonGroup.name = 'heliodon';
+
+    // Dates clés : solstice été (172), hiver (355), équinoxe (80)
+    const arcs = [
+      { day: 172, color: 0xff4444, label: 'Solstice été (21 juin)' },
+      { day:  80, color: 0x44ff44, label: 'Équinoxe (21 mars)' },
+      { day: 355, color: 0x4488ff, label: 'Solstice hiver (21 déc.)' },
+    ];
+
+    for (const arc of arcs) {
+      const pts = [];
+      // Tracer la course du soleil heure par heure
+      for (let h = 5; h <= 19; h += 0.25) {
+        const sun = SunCalcService.getPosition(h, arc.day, -21.1);
+        if (sun.altitude <= 0) continue;
+        const alt = sun.altitude * Math.PI / 180;
+        const azi = (sun.azimuth + 180) * Math.PI / 180;
+        pts.push(new THREE.Vector3(
+          radius * Math.cos(alt) * Math.sin(azi),
+          radius * Math.sin(alt),
+          radius * Math.cos(alt) * Math.cos(azi),
+        ));
+      }
+      if (pts.length < 2) continue;
+
+      const geom = new THREE.BufferGeometry().setFromPoints(pts);
+      const line = new THREE.Line(geom, new THREE.LineBasicMaterial({
+        color: arc.color, linewidth: 2, transparent: true, opacity: 0.7,
+      }));
+      line.name = `sun-arc-${arc.day}`;
+      this._heliodonGroup.add(line);
+
+      // Label au zénith de l'arc
+      const midPt = pts[Math.floor(pts.length / 2)];
+      const lbl = this._makeTextSprite(arc.label, arc.color, 0.6);
+      lbl.position.copy(midPt).multiplyScalar(1.08);
+      this._heliodonGroup.add(lbl);
+    }
+
+    // Marqueurs horaires sur l'arc d'équinoxe
+    for (let h = 6; h <= 18; h++) {
+      const sun = SunCalcService.getPosition(h, 80, -21.1);
+      if (sun.altitude <= 0) continue;
+      const alt = sun.altitude * Math.PI / 180;
+      const azi = (sun.azimuth + 180) * Math.PI / 180;
+      const pt = new THREE.Vector3(
+        radius * Math.cos(alt) * Math.sin(azi),
+        radius * Math.sin(alt),
+        radius * Math.cos(alt) * Math.cos(azi),
+      );
+      // Petit point
+      const dot = new THREE.Mesh(
+        new THREE.SphereGeometry(radius * 0.008, 8, 8),
+        new THREE.MeshBasicMaterial({ color: 0xffffff }),
+      );
+      dot.position.copy(pt);
+      this._heliodonGroup.add(dot);
+      // Label heure
+      const hl = this._makeTextSprite(`${h}h`, 0xffffff, 0.4);
+      hl.position.copy(pt).multiplyScalar(1.06);
+      this._heliodonGroup.add(hl);
+    }
+
+    // Sphère soleil (position courante)
+    this._sunSphere = new THREE.Mesh(
+      new THREE.SphereGeometry(radius * 0.03, 16, 16),
+      new THREE.MeshBasicMaterial({ color: 0xffdd00 }),
+    );
+    this._sunSphere.name = 'sun-sphere';
+    this._heliodonGroup.add(this._sunSphere);
+
+    // Projection au sol (helper vertical)
+    const helperGeo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 1, 0),
+    ]);
+    this._sunHelper = new THREE.Line(helperGeo, new THREE.LineBasicMaterial({
+      color: 0xffdd00, transparent: true, opacity: 0.3,
+    }));
+    this._sunHelper.name = 'sun-helper';
+    this._heliodonGroup.add(this._sunHelper);
+
+    // Cercle horizon (anneau au sol)
+    const horizPts = [];
+    for (let a = 0; a <= Math.PI * 2; a += 0.05) {
+      horizPts.push(new THREE.Vector3(
+        radius * Math.cos(a), 0, radius * Math.sin(a),
+      ));
+    }
+    const horizLine = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(horizPts),
+      new THREE.LineBasicMaterial({ color: 0x666666, transparent: true, opacity: 0.25 }),
+    );
+    horizLine.name = 'horizon-ring';
+    this._heliodonGroup.add(horizLine);
+
+    // Cardinalités (N, S, E, O)
+    const cards = [
+      { lbl: 'N', a: Math.PI },
+      { lbl: 'S', a: 0 },
+      { lbl: 'E', a: Math.PI / 2 },
+      { lbl: 'O', a: -Math.PI / 2 },
+    ];
+    for (const cd of cards) {
+      const sp = this._makeTextSprite(cd.lbl, 0xaaaaaa, 0.5);
+      sp.position.set(
+        (radius + 3) * Math.sin(cd.a), 1, (radius + 3) * Math.cos(cd.a),
+      );
+      this._heliodonGroup.add(sp);
+    }
+
+    this._scene.add(this._heliodonGroup);
+    this._updateSun(); // positionner la sphère soleil
+  },
+
+  _makeTextSprite(text, color, scale) {
+    const cv = document.createElement('canvas');
+    cv.width = 128; cv.height = 48;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.beginPath(); ctx.roundRect(2, 2, 124, 44, 8); ctx.fill();
+    ctx.fillStyle = '#' + (color & 0xffffff).toString(16).padStart(6, '0');
+    ctx.font = 'bold 18px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 64, 24);
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: new THREE.CanvasTexture(cv), depthTest: false, transparent: true,
+    }));
+    sp.scale.set(8 * scale, 3 * scale, 1);
+    return sp;
+  },
+
+  // ─── CENTRER CAMÉRA — fitToView exact basé sur FOV ────────────
+  // Source : web-app smart-photo-utils.ts computeFitDistance
   _centerCamera() {
     const target = this._terrainGroup ?? this._topMesh;
     if (!target || !this._controls) return;
+
     const box  = new THREE.Box3().setFromObject(target);
     const c    = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3()).length();
+    const sz   = box.getSize(new THREE.Vector3());
+
+    // Distance optimale pour remplir ~80% du viewport
+    const fovRad = this._cam.fov * Math.PI / 180;
+    const aspect = this._cam.aspect || 1;
+    const margin = 0.80;
+    const dVert  = (sz.y * margin) / (2 * Math.tan(fovRad / 2));
+    const dHoriz = (Math.max(sz.x, sz.z) * margin) / (2 * Math.tan(fovRad / 2) * aspect);
+    const dist   = Math.max(dVert, dHoriz, 10);
+
+    // Vue 3/4 — léger décalage pour montrer le relief
+    const dir = new THREE.Vector3(0.6, 0.5, 0.7).normalize();
     this._controls.target.copy(c);
-    this._cam.position.set(c.x + size, c.y + size * 0.7, c.z + size);
+    this._cam.position.copy(c).addScaledVector(dir, dist);
     this._cam.lookAt(c);
     this._controls.update();
+
+    // Ajuster frustum ombres à la taille du terrain
+    this._fitShadowFrustum(box);
+  },
+
+  // ─── AJUSTER FRUSTUM OMBRES AU TERRAIN ──────────────────────
+  _fitShadowFrustum(box) {
+    if (!this._sunLight?.shadow) return;
+    const sz   = box.getSize(new THREE.Vector3());
+    const half = Math.max(sz.x, sz.y, sz.z) * 0.8;
+    const cam  = this._sunLight.shadow.camera;
+    cam.left   = -half;
+    cam.right  =  half;
+    cam.top    =  half;
+    cam.bottom = -half;
+    cam.far    = half * 4;
+    cam.updateProjectionMatrix();
   },
 
   // ─── LOOP DE RENDU ────────────────────────────────────────────
@@ -1058,10 +1286,13 @@ const Terrain3D = {
   getTextureMode() { return this._textureMode; },
 
   // ─── CAPTURE SCREENSHOT ───────────────────────────────────────
-  capture() {
+  capture(opts = {}) {
     if (!this._renderer) return null;
+    // Recadrer avant capture pour éviter le terrain minuscule dans le PDF
+    if (opts.reframe !== false) this._centerCamera();
+    // Forcer un rendu frais
     this._renderer.render(this._scene, this._cam);
-    return this._renderer.domElement.toDataURL('image/jpeg', 0.85);
+    return this._renderer.domElement.toDataURL('image/jpeg', 0.92);
   },
 
   // ─── DESTROY ─────────────────────────────────────────────────

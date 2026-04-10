@@ -76,7 +76,7 @@ function startServer() {
     // Attendre que le port soit réellement accessible via HTTP
     const http = require('http');
     const checkReady = (retries = 0) => {
-      if (retries > 30) { reject(new Error('Serveur non prêt après 15s')); return; }
+      if (retries > 120) { reject(new Error('Serveur non prêt après 60s')); return; }
       const req = http.get(`http://localhost:${PORT}/`, (res) => {
         res.resume();
         if (res.statusCode >= 200 && res.statusCode < 400) {
@@ -846,13 +846,18 @@ async function processOneTerrain(browser, runIndex) {
                 if (ph) sessionData.phases[i] = ph;
               }
 
-              // Recalculer la géométrie locale pour BpfBridge
+              // Recalculer la géométrie locale pour BpfBridge / GIEPPlanService
               const TA = window.TerrainP07Adapter;
               if (TA?.process && terrain.parcelle_geojson) {
                 const adapted = TA.process(terrain.parcelle_geojson);
                 if (adapted.valid) {
                   sessionData._parcelLocal = adapted.poly?.map(([x, y]) => ({ x, y })) ?? [];
                   sessionData._edgeTypes = TA.inferEdgeTypes?.(adapted.poly, sessionData) ?? [];
+                  // Propager au SessionManager : _renderPlancheGIEP lit session._parcelLocal
+                  if (session) {
+                    session._parcelLocal = sessionData._parcelLocal;
+                    session._edgeTypes   = sessionData._edgeTypes;
+                  }
                 }
               }
 
@@ -906,6 +911,49 @@ async function processOneTerrain(browser, runIndex) {
               }
             } catch (e) { console.warn('[PDF] PlanMasse:', e.message); }
           }
+
+          // ── Plan d'état des lieux + plan masse projet (SitePlanRenderer) ──
+          // Génère deux planches vectorielles (sans projet et avec projet) à
+          // l'échelle architecte normalisée. Réutilise les caches BDTOPO/cadastre
+          // déjà chargés par les phases.
+          try {
+            const mod = await import('/utils/site-plan-renderer.js');
+            const SPR = mod.default;
+            const sessionFull = window.SessionManager?.getSession?.()
+                              ?? { terrain: window.SessionManager?.getTerrain?.() ?? terrain };
+            // Hydrate la session avec le bâtiment courant si dispo
+            if (window.EsquisseCanvas?._buildingAABB) {
+              sessionFull.phases = sessionFull.phases ?? {};
+              sessionFull.phases[7] = sessionFull.phases[7] ?? { data: {} };
+              sessionFull.phases[7].data.building_aabb = window.EsquisseCanvas._buildingAABB;
+              sessionFull.phases[7].data.envZones      = window.EsquisseCanvas._envZones;
+            }
+            // 1. État des lieux (sans projet) — utilisable en P04
+            const etat = await SPR.build(sessionFull, { withProject: false });
+            if (etat?.svg && etat.svg.length > 200) {
+              const blob = new Blob([etat.svg], { type: 'image/svg+xml' });
+              visuals.siteEtatDesLieux = await new Promise(r => {
+                const reader = new FileReader();
+                reader.onload = () => r(reader.result);
+                reader.readAsDataURL(blob);
+              });
+              console.log('[PDF] Site état des lieux SVG : ' + Math.round(etat.svg.length / 1024) + 'K · 1/' + etat.meta.scale + ' ' + etat.meta.format);
+            }
+            // 2. Plan masse projet (avec bâtiment + reculs + végétation)
+            const projet = await SPR.build(sessionFull, {
+              withProject: true,
+              cache: { cadastre: etat?.meta?._cadastre, bdtopoBat: etat?.meta?._bdtopoBat, bdtopoRoutes: etat?.meta?._bdtopoRoutes },
+            });
+            if (projet?.svg && projet.svg.length > 200) {
+              const blob = new Blob([projet.svg], { type: 'image/svg+xml' });
+              visuals.sitePlanMasseProjet = await new Promise(r => {
+                const reader = new FileReader();
+                reader.onload = () => r(reader.result);
+                reader.readAsDataURL(blob);
+              });
+              console.log('[PDF] Site plan masse projet SVG : ' + Math.round(projet.svg.length / 1024) + 'K');
+            }
+          } catch (e) { console.warn('[PDF] SitePlanRenderer:', e.message); }
 
           // Coupe gabarit SVG
           if (CSR?.renderCoupeGabarit && proposal) {
@@ -980,6 +1028,85 @@ async function processOneTerrain(browser, runIndex) {
               const points = window.LidarService._lastPoints;
               let terrain3dOk = false;
 
+              // ── Helper : récupérer l'orthophoto IGN WMS et préparer le sampling RGB
+              // Inspiré de Lidar-fetcher/lidar-server/server.py — fetch_orthophoto +
+              // get_ortho_color, mais 100% navigateur (fetch + canvas + getImageData).
+              // Couche IGN BD ORTHO 50cm/px, EPSG:3857 Web Mercator.
+              async function _fetchOrthoForLidar(ptsLngLat) {
+                let lngMin = Infinity, lngMax = -Infinity, latMin = Infinity, latMax = -Infinity;
+                for (const p of ptsLngLat) {
+                  if (p[0] < lngMin) lngMin = p[0]; if (p[0] > lngMax) lngMax = p[0];
+                  if (p[1] < latMin) latMin = p[1]; if (p[1] > latMax) latMax = p[1];
+                }
+                // Marge 5 % pour couvrir les points en bord
+                const dlng = (lngMax - lngMin) * 0.05;
+                const dlat = (latMax - latMin) * 0.05;
+                lngMin -= dlng; lngMax += dlng; latMin -= dlat; latMax += dlat;
+
+                const R = 6378137;
+                const toMerc = (lng, lat) => [
+                  R * lng * Math.PI / 180,
+                  R * Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360)),
+                ];
+                const [wmMinX, wmMinY] = toMerc(lngMin, latMin);
+                const [wmMaxX, wmMaxY] = toMerc(lngMax, latMax);
+
+                // Cible 50 cm/px, plafond 1024 px côté max
+                const widthM = wmMaxX - wmMinX;
+                const heightM = wmMaxY - wmMinY;
+                const targetRes = 0.5;
+                let widthPx = Math.max(64, Math.round(widthM / targetRes));
+                let heightPx = Math.max(64, Math.round(heightM / targetRes));
+                const maxPx = 1024;
+                if (Math.max(widthPx, heightPx) > maxPx) {
+                  const k = maxPx / Math.max(widthPx, heightPx);
+                  widthPx = Math.max(64, Math.round(widthPx * k));
+                  heightPx = Math.max(64, Math.round(heightPx * k));
+                }
+
+                const params = new URLSearchParams({
+                  SERVICE: 'WMS',
+                  VERSION: '1.3.0',
+                  REQUEST: 'GetMap',
+                  LAYERS: 'ORTHOIMAGERY.ORTHOPHOTOS',
+                  CRS: 'EPSG:3857',
+                  BBOX: `${wmMinX},${wmMinY},${wmMaxX},${wmMaxY}`,
+                  WIDTH: String(widthPx),
+                  HEIGHT: String(heightPx),
+                  FORMAT: 'image/jpeg',
+                  STYLES: '',
+                });
+                const url = `https://data.geopf.fr/wms-r?${params}`;
+                const resp = await fetch(url);
+                if (!resp.ok) throw new Error('WMS HTTP ' + resp.status);
+                const blob = await resp.blob();
+                if (blob.size < 1000) throw new Error('WMS blob trop petit (' + blob.size + ' o)');
+                const bitmap = await createImageBitmap(blob);
+
+                const c = document.createElement('canvas');
+                c.width = widthPx; c.height = heightPx;
+                const ctx = c.getContext('2d');
+                ctx.drawImage(bitmap, 0, 0);
+                const imgData = ctx.getImageData(0, 0, widthPx, heightPx);
+                bitmap.close?.();
+
+                return {
+                  data: imgData.data,
+                  widthPx, heightPx,
+                  wmMinX, wmMinY, wmMaxX, wmMaxY,
+                  toMerc,
+                };
+              }
+
+              // Tenter de récupérer l'orthophoto (non bloquant : fallback colormap altitude)
+              let ortho = null;
+              try {
+                ortho = await _fetchOrthoForLidar(points.filter(p => Array.isArray(p) && p.length >= 3));
+                console.log('[PDF] Ortho LiDAR : ' + ortho.widthPx + 'x' + ortho.heightPx + 'px depuis IGN BD ORTHO');
+              } catch (e) {
+                console.warn('[PDF] Ortho LiDAR fetch échoué, fallback colormap altitude :', e.message);
+              }
+
               // Rendu point cloud Three.js direct depuis les points LiDAR
               const THREE = window.THREE;
               if (THREE?.WebGLRenderer) {
@@ -996,7 +1123,7 @@ async function processOneTerrain(browser, runIndex) {
                   const scene = new THREE.Scene();
                   scene.fog = new THREE.Fog(0xF5F0E8, 150, 350);
 
-                  // Lumières
+                  // Lumières (sans effet sur PointsMaterial mais utiles pour de futurs meshes)
                   scene.add(new THREE.AmbientLight(0xffffff, 0.6));
                   const sun = new THREE.DirectionalLight(0xfff5e0, 0.8);
                   sun.position.set(40, 60, 30);
@@ -1019,17 +1146,36 @@ async function processOneTerrain(browser, runIndex) {
 
                   const positions = new Float32Array(n * 3);
                   const colors = new Float32Array(n * 3);
+                  let orthoSampled = 0;
                   for (let i = 0; i < n; i++) {
                     const p = pts[i];
                     positions[i * 3]     = (p[0] - cx) * mlon;
                     positions[i * 3 + 1] = (p[2] - cz) * vExag;
                     positions[i * 3 + 2] = -(p[1] - cy) * mlat;
 
-                    // Couleur altitude : vert bas → brun haut
-                    const t = Math.max(0, Math.min(1, (p[2] - zMin) / dz));
-                    colors[i * 3]     = 0.18 + t * 0.5;  // R
-                    colors[i * 3 + 1] = 0.45 - t * 0.15; // G
-                    colors[i * 3 + 2] = 0.15 + t * 0.1;  // B
+                    // Couleur : sample orthophoto si dispo, sinon colormap altitude
+                    let r0, g0, b0;
+                    if (ortho) {
+                      const [mx, my] = ortho.toMerc(p[0], p[1]);
+                      const fx = (mx - ortho.wmMinX) / (ortho.wmMaxX - ortho.wmMinX);
+                      const fy = (ortho.wmMaxY - my) / (ortho.wmMaxY - ortho.wmMinY); // Y inversé image
+                      const px = Math.max(0, Math.min(ortho.widthPx - 1, Math.floor(fx * ortho.widthPx)));
+                      const py = Math.max(0, Math.min(ortho.heightPx - 1, Math.floor(fy * ortho.heightPx)));
+                      const idx = (py * ortho.widthPx + px) * 4;
+                      r0 = ortho.data[idx]     / 255;
+                      g0 = ortho.data[idx + 1] / 255;
+                      b0 = ortho.data[idx + 2] / 255;
+                      orthoSampled++;
+                    } else {
+                      // Fallback : colormap altitude (vert bas → brun haut)
+                      const t = Math.max(0, Math.min(1, (p[2] - zMin) / dz));
+                      r0 = 0.18 + t * 0.5;
+                      g0 = 0.45 - t * 0.15;
+                      b0 = 0.15 + t * 0.1;
+                    }
+                    colors[i * 3]     = r0;
+                    colors[i * 3 + 1] = g0;
+                    colors[i * 3 + 2] = b0;
                   }
 
                   const geom = new THREE.BufferGeometry();
@@ -1037,20 +1183,21 @@ async function processOneTerrain(browser, runIndex) {
                   geom.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
                   geom.computeBoundingSphere();
 
-                  const mat = new THREE.PointsMaterial({ size: 0.8, vertexColors: true, sizeAttenuation: true });
+                  // Taille de point augmentée pour qu'on perçoive bien la texture sat
+                  const mat = new THREE.PointsMaterial({ size: 1.1, vertexColors: true, sizeAttenuation: true });
                   const cloud = new THREE.Points(geom, mat);
                   scene.add(cloud);
 
-                  // Caméra axonométrique cadrée
+                  // Caméra axonométrique cadrée — vue plus oblique (~22° élévation)
+                  // pour bien lire le relief tout en gardant la texture lisible
                   const sphere = geom.boundingSphere;
                   const r = sphere.radius || 30;
                   const aspect = W / H;
                   const cam = new THREE.OrthographicCamera(-r * aspect, r * aspect, r, -r, 0.1, r * 10);
-                  // Vue axonométrique : 45° azimut, 35° élévation
                   cam.position.set(
-                    sphere.center.x + r * 1.2,
-                    sphere.center.y + r * 0.9,
-                    sphere.center.z + r * 1.2
+                    sphere.center.x + r * 1.3,
+                    sphere.center.y + r * 0.6,   // ↓ depuis 0.9 → caméra plus rasante
+                    sphere.center.z + r * 1.3,
                   );
                   cam.lookAt(sphere.center);
                   cam.updateProjectionMatrix();
@@ -1060,7 +1207,8 @@ async function processOneTerrain(browser, runIndex) {
                   if (snap.length > 500) {
                     visuals.terrain3d = snap;
                     terrain3dOk = true;
-                    console.log('[PDF] Terrain 3D point cloud LiDAR : ' + Math.round(snap.length / 1024) + 'K (' + n + ' pts, dz=' + Math.round(dz) + 'm)');
+                    const orthoTag = ortho ? `, ortho ${orthoSampled}/${n}` : ', colormap altitude';
+                    console.log('[PDF] Terrain 3D point cloud LiDAR : ' + Math.round(snap.length / 1024) + 'K (' + n + ' pts, dz=' + Math.round(dz) + 'm' + orthoTag + ')');
                   }
                   renderer.dispose();
                   geom.dispose();
@@ -1213,6 +1361,85 @@ async function processOneTerrain(browser, runIndex) {
 
     if (!pdfHtml || pdfHtml.length < 500) throw new Error('HTML planches vide ou trop court');
     log(`  📄 HTML généré : ${(pdfHtml.length / 1024).toFixed(0)} Ko`);
+
+    // ── Debug : sauver le HTML brut pour inspection ─────────────
+    try {
+      const htmlPath = path.join(OUT_DIR, `planches_${runId}.html`);
+      fs.writeFileSync(htmlPath, pdfHtml, 'utf-8');
+    } catch { /* non bloquant */ }
+
+    // ── Debug : dumper le plan masse SVG en standalone pour inspection inset ──
+    try {
+      const planMasseDataUrl = await page.evaluate(() => window.TerlabExport?._visuals?.planMasse ?? null);
+      if (planMasseDataUrl?.startsWith('data:image/svg+xml;base64,')) {
+        const svgB64 = planMasseDataUrl.split(',')[1];
+        const svgRaw = Buffer.from(svgB64, 'base64').toString('utf-8');
+        const svgPath = path.join(OUT_DIR, `planmasse_${runId}.svg`);
+        fs.writeFileSync(svgPath, svgRaw, 'utf-8');
+        log(`  🧭 Plan masse SVG dumpé : ${path.basename(svgPath)} (${(svgRaw.length / 1024).toFixed(1)} Ko)`);
+      }
+    } catch (e) { /* non bloquant */ }
+
+    // ── Debug : dumper le terrain 3D LiDAR (point cloud Three.js / SVG fallback) ──
+    try {
+      const terrain3dUrl = await page.evaluate(() => window.TerlabExport?._visuals?.terrain3d ?? null);
+      if (terrain3dUrl?.startsWith('data:image/jpeg;base64,')) {
+        const b64 = terrain3dUrl.split(',')[1];
+        const buf = Buffer.from(b64, 'base64');
+        const p = path.join(OUT_DIR, `lidar3d_${runId}.jpg`);
+        fs.writeFileSync(p, buf);
+        log(`  🛰  LiDAR 3D dumpé : ${path.basename(p)} (${(buf.length / 1024).toFixed(0)} Ko)`);
+      } else if (terrain3dUrl?.startsWith('data:image/svg+xml;base64,')) {
+        const svgRaw = Buffer.from(terrain3dUrl.split(',')[1], 'base64').toString('utf-8');
+        const p = path.join(OUT_DIR, `lidar3d_${runId}.svg`);
+        fs.writeFileSync(p, svgRaw, 'utf-8');
+        log(`  🛰  LiDAR 3D (SVG fallback) dumpé : ${path.basename(p)} (${(svgRaw.length / 1024).toFixed(1)} Ko)`);
+      }
+    } catch (e) { /* non bloquant */ }
+
+    // ── Debug : dumper le plan GIEP standalone ──
+    try {
+      const giepInfo = await page.evaluate(async () => {
+        const eng = window.TerlabExport;
+        const sess = window.SessionManager;
+        if (!eng || !sess) return { error: 'no engine/session' };
+        const terrain = sess.getTerrain?.() ?? {};
+        const proposal = eng._visuals?.activeProposal ?? window._activeProposal ?? null;
+        if (!proposal?.bat) return { error: 'no proposal.bat' };
+
+        const [calcMod, planMod] = await Promise.all([
+          import('./services/giep-calculator-service.js').catch(e => ({ __err: e.message })),
+          import('./services/giep-plan-service.js').catch(e => ({ __err: e.message })),
+        ]);
+        if (calcMod.__err) return { error: 'calc import: ' + calcMod.__err };
+        if (planMod.__err) return { error: 'plan import: ' + planMod.__err };
+        const Calc = calcMod.default ?? calcMod.GIEPCalculator;
+        const Plan = planMod.default ?? planMod.GIEPPlanService;
+
+        const sessionData = {
+          terrain,
+          _parcelLocal: sess._parcelLocal,
+          _edgeTypes: sess._edgeTypes,
+          phases: { 7: sess.getPhase?.(7) ?? {}, 8: sess.getPhase?.(8) ?? {} },
+        };
+        const giepResult = Calc?.computeFromSession?.(sessionData);
+        if (!giepResult) return { error: 'no giepResult', hasParcelLocal: Array.isArray(sess._parcelLocal), parcelLocalLen: sess._parcelLocal?.length ?? 0 };
+        const svg = Plan?.generatePlan?.(sess, proposal, giepResult);
+        return {
+          svg,
+          parcelLocalLen: sess._parcelLocal?.length ?? 0,
+          ouvrages: giepResult.ouvrages?.length ?? 0,
+          score: giepResult.score,
+        };
+      });
+      if (giepInfo?.svg) {
+        const svgPath = path.join(OUT_DIR, `giep_${runId}.svg`);
+        fs.writeFileSync(svgPath, giepInfo.svg, 'utf-8');
+        log(`  💧 GIEP SVG dumpé : ${path.basename(svgPath)} (${(giepInfo.svg.length / 1024).toFixed(1)} Ko, parcelLocal=${giepInfo.parcelLocalLen}, ouvrages=${giepInfo.ouvrages}, score=${giepInfo.score})`);
+      } else if (giepInfo?.error) {
+        log(`  ⚠ GIEP non généré : ${giepInfo.error} (parcelLocal=${giepInfo.parcelLocalLen ?? '?'})`);
+      }
+    } catch (e) { log(`  ⚠ GIEP debug failed: ${e.message}`); }
 
     // ── 7. Rendu PDF via Puppeteer ──────────────────────────────
     log('7. Rendu PDF A4…');

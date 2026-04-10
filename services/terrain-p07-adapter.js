@@ -194,44 +194,96 @@ const TerrainP07Adapter = {
   },
 
   /**
-   * Inset polygonal avec reculs par arête
-   * @param {Array} poly   — [[x,y]...] CCW local mètres
-   * @param {Array} reculs — [r0, r1, ...rn] un recul par arête
+   * Inset polygonal avec reculs par arête — Sutherland-Hodgman half-plane clipping.
+   *
+   * Cohérence géométrique : on PART du polygone parcelle puis, pour chaque arête
+   * dont R > 0, on clippe le polygone par le demi-plan situé du côté intérieur de
+   * la droite décalée. Méthode robuste pour reculs MIXTES (ex. voie=3, lat=0,
+   * fond=3) là où l'« extend & intersect » génère des spikes (lignes quasi-parallèles
+   * qui se coupent à l'infini, ex : 153 m sur une parcelle de 30 m).
+   *
+   * Le sens du polygone (CCW Y-haut OU CW Y-bas) est détecté et la normale rentrante
+   * est calculée en conséquence — aucun pré-flip, pas de réindexation des reculs.
+   *
+   * @param {Array} poly   — [[x,y]...] local mètres, orientation libre
+   * @param {Array} reculs — [r0, r1, ...rn] un recul par arête (arête i = poly[i]→poly[i+1])
    * @returns {{ env, ratio, collapsed, warnings }}
    */
   insetPoly(poly, reculs) {
     const n = poly.length;
     const warnings = [];
-    const bb = this.polyAABB(poly);
-    const diag = Math.hypot(bb.w, bb.h);
 
-    // Calculer arêtes décalées
-    const iedges = [];
+    if (n < 3) return { env: [], ratio: 0, collapsed: true, warnings: ['POLY_DEGENERE'] };
+
+    // Détection orientation : sign(A) > 0 ⇒ CCW math, rentrante = (-dy, dx).
+    // sign(A) < 0 ⇒ CW math (Y-inversé style SVG), rentrante = (dy, -dx).
+    const orient = this._signedArea(poly) >= 0 ? 1 : -1;
+
+    // Polygone courant (cloné), clippé itérativement par chaque demi-plan.
+    let clipped = poly.map(([x, y]) => [x, y]);
+
     for (let i = 0; i < n; i++) {
-      const [x1, y1] = poly[i], [x2, y2] = poly[(i + 1) % n];
-      const d = reculs[i] ?? 0;
-      const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy);
-      if (len < 0.01) { iedges.push([x1, y1, x2, y2]); continue; }
-      const nx = -dy / len, ny = dx / len;
-      iedges.push([x1 + nx * d, y1 + ny * d, x2 + nx * d, y2 + ny * d]);
+      const r = reculs[i] ?? 0;
+      if (r <= 0) continue; // arête sans contrainte
+
+      const [x1, y1] = poly[i];
+      const [x2, y2] = poly[(i + 1) % n];
+      const dx = x2 - x1, dy = y2 - y1;
+      const len = Math.hypot(dx, dy);
+      if (len < 0.01) continue;
+
+      // Normale rentrante (vers l'intérieur du polygone d'origine)
+      const nx = -dy / len * orient;
+      const ny =  dx / len * orient;
+
+      // Un point sur la droite décalée
+      const px = x1 + nx * r;
+      const py = y1 + ny * r;
+
+      // Demi-plan rentrant : on garde P tel que n·(P - p) ≥ 0
+      clipped = this._clipPolygonHalfPlane(clipped, px, py, nx, ny);
+      if (clipped.length < 3) break;
     }
 
-    // Intersection arêtes consécutives
-    const env = iedges.map((_, i) => {
-      const [x1, y1, x2, y2] = iedges[i];
-      const [x3, y3, x4, y4] = iedges[(i + 1) % n];
-      return this.lineIsect(x1, y1, x2, y2, x3, y3, x4, y4, diag);
-    });
-
-    // Détecter effondrement
+    const env = clipped;
     const envArea = this.polyArea(env);
     const polyAreaVal = this.polyArea(poly);
     const ratio = polyAreaVal > 0 ? envArea / polyAreaVal : 0;
     const collapsed = envArea <= 5;
 
     if (collapsed) warnings.push('INSET_COLLAPSED');
+    if (ratio > 1.001) warnings.push('INSET_OVERFLOW'); // garde-fou : env doit être ⊆ parcelle
 
     return { env, ratio, collapsed, warnings };
+  },
+
+  /**
+   * Sutherland-Hodgman : clippe un polygone par le demi-plan défini par un point
+   * (px, py) et une normale (nx, ny). On garde les sommets où n·(P - p) ≥ 0.
+   * Les arêtes qui traversent la droite sont coupées au point d'intersection.
+   * @returns {Array} nouveau polygone (peut être vide)
+   */
+  _clipPolygonHalfPlane(poly, px, py, nx, ny) {
+    const m = poly.length;
+    if (m === 0) return [];
+    const out = [];
+    const dist = (x, y) => nx * (x - px) + ny * (y - py);
+
+    for (let i = 0; i < m; i++) {
+      const [ax, ay] = poly[i];
+      const [bx, by] = poly[(i + 1) % m];
+      const da = dist(ax, ay);
+      const db = dist(bx, by);
+      const aIn = da >= 0;
+      const bIn = db >= 0;
+
+      if (aIn) out.push([ax, ay]);
+      if (aIn !== bIn) {
+        const t = da / (da - db); // intersection segment AB ↔ droite
+        out.push([ax + t * (bx - ax), ay + t * (by - ay)]);
+      }
+    }
+    return out;
   },
 
   /**

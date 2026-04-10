@@ -216,13 +216,88 @@ const GIEPCalculator = {
     };
   },
 
-  // ── Recommandation d'ouvrages ─────────────────────────────────────
+  // ── Recommandation d'ouvrages — 7 types GIEP ──────────────────────
+  // Source : GIEP-LA-REUNION simulateur.js OUVRAGES_CONFIG L.21–89
+  // Prioritaires : noues, jardins de pluie, fosses d'infiltration
+  // Secondaires : revêtements perméables, tranchées drainantes, structures alvéolaires, bassins
   _recommandOuvrages(deltaQ_Ls, surface_m2, existants = []) {
     const reco = [];
-    if (deltaQ_Ls > 8)   reco.push({ type: 'bassin_retention',    dim: `${Math.round(deltaQ_Ls * 0.4)} m³` });
-    if (deltaQ_Ls > 4)   reco.push({ type: 'noue_infiltration',   dim: `${Math.round(deltaQ_Ls * 2)} ml` });
-    if (surface_m2 > 80) reco.push({ type: 'toiture_vegetalisee', dim: `${Math.round(surface_m2 * 0.3)} m²` });
-    if (!existants.includes('pave_drainant')) reco.push({ type: 'revetement_drainant', dim: 'Accès/parking' });
+    const V_net = deltaQ_Ls * 600 / 1000; // volume net m³ (Tc ~10min)
+
+    // ── Prioritaires (toujours recommandés si deltaQ > 0)
+    if (deltaQ_Ls > 0.5) {
+      reco.push({
+        type: 'noue_infiltration', priority: true,
+        dim: `${Math.round(Math.max(10, deltaQ_Ls * 2))} ml`,
+        surface_m2: Math.round(deltaQ_Ls * 2 * 1.5), // 1.5m large
+        hauteur_m: 0.30,
+        note: 'Noues paysagères h: 0.30m, redents tous les 20m sur pente',
+      });
+    }
+    if (deltaQ_Ls > 1) {
+      reco.push({
+        type: 'jardin_pluie', priority: true,
+        dim: `${Math.round(V_net * 0.3 / 0.25)} m²`,
+        surface_m2: Math.round(V_net * 0.3 / 0.25),
+        hauteur_m: 0.25,
+        note: 'Jardins privatifs creux -0.20m max, point bas parcelle',
+      });
+    }
+    if (deltaQ_Ls > 2) {
+      reco.push({
+        type: 'fosse_infiltration', priority: true,
+        dim: `${Math.round(V_net * 0.2)} m³`,
+        surface_m2: Math.round(V_net * 0.2 / 0.5),
+        hauteur_m: 0.50,
+        note: "Fosses d'infiltration aux pieds de descentes EP",
+      });
+    }
+
+    // ── Secondaires (selon surface et contexte)
+    if (!existants.includes('pave_drainant')) {
+      reco.push({
+        type: 'revetement_drainant', priority: false,
+        dim: 'Accès/parking',
+        surface_m2: Math.round(surface_m2 * 0.05),
+        note: 'Stabilisé perméable cheminements, dalles alvéolées parking',
+      });
+    }
+    if (deltaQ_Ls > 4 && !existants.includes('tranchee')) {
+      reco.push({
+        type: 'tranchee_drainante', priority: false,
+        dim: `${Math.round(deltaQ_Ls * 1.5)} ml`,
+        surface_m2: Math.round(deltaQ_Ls * 1.5 * 0.6),
+        hauteur_m: 0.60,
+        note: 'Tranchées drainantes périphériques, grave drainante',
+      });
+    }
+    if (deltaQ_Ls > 6 && surface_m2 > 500) {
+      reco.push({
+        type: 'structure_alveolaire', priority: false,
+        dim: `${Math.round(V_net * 0.15)} m³`,
+        surface_m2: Math.round(V_net * 0.15 / 0.4),
+        hauteur_m: 0.40,
+        note: 'Structures alvéolaires sous parking/voirie',
+      });
+    }
+    if (deltaQ_Ls > 8) {
+      reco.push({
+        type: 'bassin_retention', priority: false,
+        dim: `${Math.round(V_net * 0.25)} m³`,
+        surface_m2: Math.round(V_net * 0.25 / 0.8),
+        hauteur_m: 0.80,
+        note: 'Bassin de rétention — zone de surverse finale en point bas',
+      });
+    }
+    if (surface_m2 > 80 && !existants.includes('toiture_verte')) {
+      reco.push({
+        type: 'toiture_vegetalisee', priority: false,
+        dim: `${Math.round(surface_m2 * 0.3)} m²`,
+        surface_m2: Math.round(surface_m2 * 0.3),
+        note: 'Toiture végétalisée extensive (substrate 8-12cm)',
+      });
+    }
+
     return reco;
   },
 };

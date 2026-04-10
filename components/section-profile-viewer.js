@@ -254,9 +254,13 @@ const SectionProfileViewer = {
     const cW = W - m.left - m.right;
     const cH = H - m.top - m.bottom;
 
-    // Data ranges
-    const dists = data.map(p => p.distance_m);
-    const alts  = data.map(p => p.altitude_m).filter(a => a != null);
+    // Data ranges (filtrer NaN et null)
+    const dists = data.map(p => p.distance_m).filter(Number.isFinite);
+    const alts  = data.map(p => p.altitude_m).filter(Number.isFinite);
+    if (!alts.length || !dists.length) {
+      el.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 ${W} ${H}"><rect width="${W}" height="${H}" fill="var(--card, #1a1814)" rx="4"/><text x="${W/2}" y="${H/2}" text-anchor="middle" fill="#8b7355" font-size="10">Pas de données altimétriques</text></svg>`;
+      return;
+    }
     const minD = Math.min(...dists), maxD = Math.max(...dists);
     const minA = Math.min(...alts),  maxA = Math.max(...alts);
     const range = (maxA - minA) * cfg.verticalExaggeration;
@@ -312,7 +316,7 @@ const SectionProfileViewer = {
 
     // Terrain path (clipped)
     parts.push(`<g clip-path="url(#clip-${sectionId})">`);
-    const validData = data.filter(p => p.altitude_m != null);
+    const validData = data.filter(p => Number.isFinite(p.altitude_m) && Number.isFinite(p.distance_m));
     const pathD = this._buildPath(validData, sx, sy, cfg.smoothing);
 
     if (pathD) {

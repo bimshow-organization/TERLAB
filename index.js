@@ -175,9 +175,12 @@ async function init() {
 
     setSplash('Token Mapbox…', 50);
     // Token public Mapbox (pk.* = client-side, non secret)
-    const _pk = ['pk.eyJ1IjoiYmltc2hvdyIsImEiOi', 'JjbW5vYTJ4d2oxdzZzMnFzbTZwdmp3NnJ1In0', '.JYT9Kofu8088LsnoNU16qw'];
-    AppState.mapboxToken = localStorage.getItem('terlab_mapbox_token') || _pk.join('');
-    localStorage.setItem('terlab_mapbox_token', AppState.mapboxToken);
+    const _pk = ['pk.eyJ1IjoiYmltc2hvdyIsImEiOi', 'JjbW5yYm55bmkwMGxqMnJxdjU5YXNwcTRrIn0', '.yyUHXQXrvsD2wfSzxP0P0A'];
+    const defaultToken = _pk.join('');
+    // Purger les anciens tokens invalides du localStorage
+    const stored = localStorage.getItem('terlab_mapbox_token');
+    if (stored && stored !== defaultToken) localStorage.removeItem('terlab_mapbox_token');
+    AppState.mapboxToken = localStorage.getItem('terlab_mapbox_custom') || defaultToken;
 
     // Namespace TERLAB — évite les collisions avec BIMSHOW globals
     window.TERLAB = window.TERLAB ?? {};
@@ -398,7 +401,7 @@ const Router = {
     if (!token || !token.startsWith('pk.')) {
       Toast.show('Token invalide — doit commencer par pk.', 'error'); return;
     }
-    localStorage.setItem('terlab_mapbox_token', token);
+    localStorage.setItem('terlab_mapbox_custom', token);
     AppState.mapboxToken = token;
     document.getElementById('modal-token').hidden = true;
     MapViewer.setToken(token);
@@ -483,14 +486,24 @@ async function loadPhase(id) {
   // 3. Injecter le HTML (SANS les scripts — innerHTML ne les exécute pas)
   const container = document.getElementById('phase-container');
 
-  // Extraire les scripts AVANT d'injecter
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = html;
-  const scripts = Array.from(tempDiv.querySelectorAll('script'));
-  scripts.forEach(s => s.remove()); // Retirer du DOM temporaire
+  // ═════════════════════════════════════════════════════
+  // Extraire les scripts du HTML brut via regex AVANT innerHTML
+  // (innerHTML peut corrompre le textContent des scripts inline)
+  // ═════════════════════════════════════════════════════
+  const rawScripts = [];
+  const htmlClean = html.replace(/<script([^>]*)>([\s\S]*?)<\/script>/gi, (_, attrs, body) => {
+    const srcMatch = attrs.match(/src=["']([^"']+)["']/);
+    const typeMatch = attrs.match(/type=["']([^"']+)["']/);
+    rawScripts.push({
+      src: srcMatch ? srcMatch[1] : null,
+      type: typeMatch ? typeMatch[1] : null,
+      body: body
+    });
+    return ''; // Retirer le script du HTML
+  });
 
   // Injecter le HTML nettoyé
-  container.innerHTML = tempDiv.innerHTML;
+  container.innerHTML = htmlClean;
   container.dataset.phase = id;
 
   // ═════════════════════════════════════════════════════
@@ -512,30 +525,46 @@ async function loadPhase(id) {
   }
 
   // ═════════════════════════════════════════════════════
-  // FIX CRITIQUE — Réexécuter les scripts extirpés
-  // Les scripts avec type="module" ajoutés via appendChild
-  // s'exécutent correctement, contrairement à innerHTML.
+  // Réexécuter les scripts extraits du HTML brut
+  // Les erreurs de chargement sont rapportées mais NON fatales
+  // (l'init globale ne doit pas mourir parce qu'un script de phase échoue)
   // ═════════════════════════════════════════════════════
-  for (const oldScript of scripts) {
+  for (const info of rawScripts) {
     const newScript = document.createElement('script');
 
-    if (oldScript.src) {
+    if (info.src) {
       // Script externe
-      newScript.src = oldScript.src;
-      if (oldScript.type) newScript.type = oldScript.type;
-      await new Promise((res, rej) => {
-        newScript.onload = res;
-        newScript.onerror = rej;
-        document.head.appendChild(newScript);
-      });
+      newScript.src = info.src;
+      if (info.type) newScript.type = info.type;
+      try {
+        await new Promise((res, rej) => {
+          newScript.onload = res;
+          newScript.onerror = () => rej(new Error(`script load failed: ${info.src}`));
+          document.head.appendChild(newScript);
+        });
+      } catch (e) {
+        console.warn('[loadPhase] script externe échoué :', e.message);
+      }
     } else {
-      // Script inline — réecrire les imports relatifs pour qu'ils fonctionnent
-      // depuis document.head (base URL = racine terlab/)
-      newScript.type = oldScript.type || 'text/javascript';
-      newScript.textContent = oldScript.textContent;
-      document.head.appendChild(newScript);
-      // Nettoyer après exécution
-      setTimeout(() => newScript.remove(), 500);
+      // Script inline → Blob URL pour exécution fiable + await
+      // Réécrire les imports relatifs ../xxx en chemins absolus (Blob URLs n'ont pas de base hiérarchique)
+      const baseUrl = new URL('.', window.location.href).href;
+      let code = info.body
+        .replace(/from\s+['"]\.\.\/(.*?)['"]/g, `from '${baseUrl}$1'`)
+        .replace(/import\(\s*['"]\.\.\/(.*?)['"]\s*\)/g, `import('${baseUrl}$1')`);
+      const blob = new Blob([code], { type: 'text/javascript' });
+      newScript.type = info.type || 'text/javascript';
+      newScript.src = URL.createObjectURL(blob);
+      try {
+        await new Promise((res, rej) => {
+          newScript.onload = res;
+          newScript.onerror = () => rej(new Error(`inline script load failed (phase ${id})`));
+          document.head.appendChild(newScript);
+        });
+      } catch (e) {
+        console.warn('[loadPhase] script inline échoué :', e.message);
+      }
+      URL.revokeObjectURL(newScript.src);
     }
   }
 
@@ -1636,12 +1665,14 @@ const ProjectMenu = {
       document.getElementById('pm-file-import')?.click();
     });
 
-    // Logout
+    // Logout (Firebase signOut + clear localStorage)
     this._dropdown.querySelector('#pm-btn-logout')?.addEventListener('click', () => {
-      Toast.confirm(`Se deconnecter de ${window.TERLAB_USER_EMAIL} ?`, () => {
-        localStorage.removeItem('terlab_user_email');
-        localStorage.removeItem('terlab_auth');
-        window.TERLAB_USER_EMAIL = null;
+      Toast.confirm(`Se deconnecter de ${window.TERLAB_USER_EMAIL} ?`, async () => {
+        try {
+          await window.TerlabLogin?.logout();
+        } catch (e) {
+          console.warn('logout error', e);
+        }
         document.getElementById('btn-login').title = 'Connexion';
         Toast.show('Deconnecte', 'info', 2000);
         this.render();

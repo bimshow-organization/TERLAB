@@ -63,6 +63,64 @@ const BdTopoService = {
     }
   },
 
+  // Récupère les tronçons de route (voies) — BDTOPO_V3:troncon_de_route
+  async fetchRoutes(lat, lng, radius_m = 300) {
+    const d = radius_m / 111000;
+    const bbox = `${lng - d},${lat - d},${lng + d},${lat + d},EPSG:4326`;
+
+    const params = new URLSearchParams({
+      SERVICE:      'WFS',
+      VERSION:      '2.0.0',
+      REQUEST:      'GetFeature',
+      TYPENAMES:    'BDTOPO_V3:troncon_de_route',
+      OUTPUTFORMAT: 'application/json',
+      COUNT:        '100',
+      BBOX:         bbox
+    });
+
+    try {
+      const res = await fetch(`${this.WFS_BASE}?${params}`, { signal: AbortSignal.timeout(10000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const geojson = await res.json();
+      geojson.features = (geojson.features || []).filter(f => f.geometry);
+      return geojson;
+    } catch (e) {
+      console.warn('[BdTopo] fetchRoutes failed:', e.message);
+      return null;
+    }
+  },
+
+  // Normalise les tronçons BDTOPO en format esquisse {nom, type, points, largeur}
+  routesToStreets(routesGeojson) {
+    if (!routesGeojson?.features?.length) return [];
+    return routesGeojson.features
+      .filter(f => f.geometry?.type === 'LineString' || f.geometry?.type === 'MultiLineString')
+      .map(f => {
+        const p = f.properties ?? {};
+        const coords = f.geometry.type === 'LineString'
+          ? f.geometry.coordinates
+          : f.geometry.coordinates[0]; // first line of MultiLineString
+        // Classifier importance → type esquisse
+        const imp = (p.importance ?? '').toString();
+        const nature = (p.nature ?? '').toLowerCase();
+        let type = 'road';
+        if (imp === '1' || imp === '2' || nature.includes('autoroute') || nature.includes('nationale'))
+          type = 'primary';
+        else if (imp === '3' || nature.includes('départementale'))
+          type = 'secondary';
+        else if (nature.includes('chemin') || nature.includes('sentier'))
+          type = 'path';
+        return {
+          nom:     p.nom_voie_gauche ?? p.nom_voie_droite ?? p.nom_1_gauche ?? p.nom_1_droite ?? '',
+          type,
+          points:  coords,
+          largeur: parseFloat(p.largeur_de_chaussee) || null,
+          nature:  p.nature ?? null,
+          source:  'bdtopo',
+        };
+      });
+  },
+
   // Extrait le nom de la ravine la plus proche
   findNearestRavine(coursEauGeoJson, lat, lng) {
     if (!coursEauGeoJson?.features?.length) return null;

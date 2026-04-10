@@ -942,8 +942,12 @@ const P00 = {
   // CASCADE D'ENRICHISSEMENT AUTO
   // ═══════════════════════════════════════════════════════════════
   async runEnrichment() {
+    // Éviter les enrichissements concurrents (doublons event listener / multi-click)
+    if (window._enrichmentRunning) return;
+    window._enrichmentRunning = true;
+
     const terrain = SessionManager.getTerrain();
-    if (!terrain.lat || !terrain.lng) return;
+    if (!terrain.lat || !terrain.lng) { window._enrichmentRunning = false; return; }
 
     const panel   = document.getElementById('enrichment-panel');
     const spinner = document.getElementById('enrich-loading');
@@ -1076,6 +1080,7 @@ const P00 = {
       if (alertEl) alertEl.style.display = 'none';
       window.TerlabToast?.show('Site analysé — aucun risque PPR détecté ✓', 'success', 4000);
     }
+    window._enrichmentRunning = false;
   },
 
   _enrichedData: null,
@@ -1177,8 +1182,12 @@ const P00 = {
   }
 };
 
-// ─── Écouter les événements carte ─────────────────────────────────
-window.addEventListener('terlab:parcelle-found', e => {
+// ─── Écouter les événements carte (une seule fois) ──────────────────
+// Supprimer l'ancien listener s'il existe (évite doublons sur session reload)
+if (window._p00ParcelleHandler) {
+  window.removeEventListener('terlab:parcelle-found', window._p00ParcelleHandler);
+}
+window._p00ParcelleHandler = e => {
   if (e.detail?.properties) {
     P00._fillFromFeature(e.detail);
     // Afficher le panneau de confirmation (sauf si multi-sélection gère son propre flux)
@@ -1186,7 +1195,8 @@ window.addEventListener('terlab:parcelle-found', e => {
       P00._showTerrainConfirm(e.detail);
     }
   }
-});
+};
+window.addEventListener('terlab:parcelle-found', window._p00ParcelleHandler);
 
 // ─── Coordonnées curseur ───────────────────────────────────────────
 const map = MapViewer.getMap();

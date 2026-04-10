@@ -1,7 +1,10 @@
 // TERLAB · terrain-svg-service.js · Visualisation SVG du terrain
 // Porté depuis terrain-svg.js GIEP — adapté ES module + design system TERLAB
 // v2 : supporte le vrai polygone GeoJSON (plus seulement rectangle)
+// v3 : flèches pente 5 classes visibles (fond pill), flow lines, labels haute lisibilité
 // ENSA La Réunion · MGA Architecture
+
+import SlopesService from './slopes-service.js';
 
 const TERRAIN_COLORS = {
   terrain:    'rgba(154, 120, 32, 0.06)',
@@ -174,6 +177,9 @@ const TerrainSVG = {
         <marker id="arrow-pente" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
           <polygon points="0 0, 8 3, 0 6" fill="${TERRAIN_COLORS.pente}"/>
         </marker>
+        <marker id="arrow-flow" markerWidth="6" markerHeight="5" refX="5" refY="2.5" orient="auto">
+          <polygon points="0 0, 6 2.5, 0 5" fill="${TERRAIN_COLORS.pente}" opacity="0.5"/>
+        </marker>
       </defs>
 
       <!-- Titre -->
@@ -182,6 +188,9 @@ const TerrainSVG = {
             font-family="var(--font-mono, monospace)">
         Géométrie du Terrain
       </text>
+
+      <!-- Flow lines (sous le polygone) -->
+      ${this._renderFlowLines(poly, tx, ty, pente, exposition)}
 
       <!-- Polygone terrain -->
       <polygon points="${polyPts}"
@@ -308,6 +317,9 @@ const TerrainSVG = {
         <marker id="arrow-ravine" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
           <polygon points="0 0, 8 3, 0 6" fill="${TERRAIN_COLORS.ravine}"/>
         </marker>
+        <marker id="arrow-flow" markerWidth="6" markerHeight="5" refX="5" refY="2.5" orient="auto">
+          <polygon points="0 0, 6 2.5, 0 5" fill="${TERRAIN_COLORS.pente}" opacity="0.5"/>
+        </marker>
       </defs>
 
       <text x="${W / 2}" y="16" text-anchor="middle"
@@ -380,19 +392,64 @@ const TerrainSVG = {
   // ═══════════════════════════════════════════════════════════════
 
   _renderPenteArrowAt(cx, cy, len, pente_pct, exposition) {
-    const couleur = pente_pct > 5 ? '#ef4444' : pente_pct > 2 ? '#f59e0b' : '#3cb860';
+    const cat = SlopesService.classify(pente_pct);
+    const couleur = cat.hex;
     const angle = EXPO_ANGLES[exposition] ?? 90;
     const rad = (angle * Math.PI) / 180;
     const x2 = cx + Math.cos(rad) * len;
     const y2 = cy + Math.sin(rad) * len;
+
+    // Label position (perpendiculaire à la flèche pour lisibilité)
+    const mx = (cx + x2) / 2, my = (cy + y2) / 2;
+    const perpOff = 14;
+    const lx = mx - Math.sin(rad) * perpOff;
+    const ly = my + Math.cos(rad) * perpOff;
+
+    const labelText = `${Math.abs(pente_pct).toFixed(1)}%`;
+    const labelW = labelText.length * 6.5 + 8;
+
     return `
+      <!-- Flèche pente principale -->
       <line x1="${cx}" y1="${cy}" x2="${x2}" y2="${y2}"
-            stroke="${couleur}" stroke-width="2" marker-end="url(#arrow-pente)" opacity="0.85"/>
-      <text x="${(cx + x2) / 2 + 10}" y="${(cy + y2) / 2}"
-            font-size="10" fill="${couleur}" font-weight="bold"
+            stroke="${couleur}" stroke-width="2.5" marker-end="url(#arrow-pente)" opacity="0.9"/>
+      <!-- Pill label visible -->
+      <rect x="${lx - labelW / 2}" y="${ly - 8}" width="${labelW}" height="16"
+            rx="8" fill="white" stroke="${couleur}" stroke-width="1" opacity="0.92"/>
+      <text x="${lx}" y="${ly + 4}"
+            text-anchor="middle" font-size="10" fill="${couleur}" font-weight="700"
             font-family="var(--font-mono, monospace)">
-        ${Math.abs(pente_pct).toFixed(1)}%
+        ${labelText}
+      </text>
+      <!-- Classification label -->
+      <rect x="${lx - 40}" y="${ly + 8}" width="80" height="13"
+            rx="6" fill="${couleur}" opacity="0.15"/>
+      <text x="${lx}" y="${ly + 18}"
+            text-anchor="middle" font-size="7.5" fill="${couleur}" font-weight="600"
+            font-family="var(--font-mono, monospace)">
+        ${cat.label}
       </text>`;
+  },
+
+  // ── Flow lines — chemins d'écoulement SVG ─────────────────────
+  _renderFlowLines(poly, tx, ty, pente_pct, exposition) {
+    if (!pente_pct || pente_pct < 0.1 || !exposition) return '';
+
+    const localPoly = poly.map(([x, y]) => [x, y]);
+    const flowLines = SlopesService.computeFlowLines(localPoly, pente_pct, exposition, 10);
+    if (!flowLines.length) return '';
+
+    const cat = SlopesService.classify(pente_pct);
+    let out = '';
+    for (const line of flowLines) {
+      if (line.length < 2) continue;
+      const pts = line.map(p => `${tx(p.x).toFixed(1)},${ty(p.y).toFixed(1)}`).join(' ');
+      out += `
+        <polyline points="${pts}"
+                  fill="none" stroke="${cat.hex}" stroke-width="1.2"
+                  stroke-dasharray="3,4" opacity="0.45"
+                  marker-end="url(#arrow-flow)"/>`;
+    }
+    return out;
   },
 
   _renderRavineIndicator(x, y, w, h, distance_m) {

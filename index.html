@@ -59,25 +59,33 @@
 
 <!-- jsPDF + html2canvas supprimés — PDF via print-template.html + window.print() -->
 
-<!-- Firebase (BIMSHOW preprod1) -->
+<!-- Firebase (BIMSHOW) -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
   import { getDatabase, ref, set, get } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
-  import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+  import {
+    getAuth,
+    onAuthStateChanged,
+    setPersistence,
+    browserLocalPersistence,
+    signInAnonymously
+  } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
-  // Config chargee depuis config/firebase-config.js (exclu du git)
-  // Fallback : stub si fichier absent
+  // Loader : firebase-config.js (local, gitignored) → firebase-config.public.js (commité)
   let firebaseConfig = null;
-  let TERLAB_ACCESS_CODE = 'TERLAB2026';
   try {
     const mod = await import('./config/firebase-config.js');
     firebaseConfig = mod.firebaseConfig;
-    if (mod.TERLAB_ACCESS_CODE) TERLAB_ACCESS_CODE = mod.TERLAB_ACCESS_CODE;
   } catch {
-    console.info('TERLAB: config/firebase-config.js absent — session locale seulement');
+    try {
+      const mod = await import('./config/firebase-config.public.js');
+      firebaseConfig = mod.firebaseConfig;
+      console.info('TERLAB: config Firebase publique chargée');
+    } catch {
+      console.warn('TERLAB: aucune config Firebase trouvée — session locale seulement');
+    }
   }
 
-  window.TERLAB_ACCESS_CODE = TERLAB_ACCESS_CODE;
   window.TERLAB_DB = null;
 
   if (firebaseConfig?.apiKey) {
@@ -86,21 +94,32 @@
       const db   = getDatabase(app);
       const auth = getAuth(app);
 
+      // Persistance localStorage : la session BIMSHOW survit aux refresh
+      await setPersistence(auth, browserLocalPersistence);
+
       window.TERLAB_DB     = db;
       window.TERLAB_AUTH   = auth;
       window.TERLAB_FB_REF = ref;
       window.TERLAB_FB_SET = set;
       window.TERLAB_FB_GET = get;
 
-      // Auth anonyme automatique
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
+      // Synchroniser l'état d'auth depuis Firebase (login fait sur accueil.html)
+      onAuthStateChanged(auth, async (user) => {
+        if (user && !user.isAnonymous) {
+          // Utilisateur BIMSHOW connecté
+          window.TERLAB_UID         = user.uid;
+          window.TERLAB_USER_EMAIL  = user.email;
+          localStorage.setItem('terlab_user_email', user.email || '');
+          localStorage.setItem('terlab_auth', '1');
+          console.info('TERLAB: BIMSHOW user', user.email);
+        } else if (user && user.isAnonymous) {
           window.TERLAB_UID = user.uid;
-          console.info('TERLAB: Firebase auth OK — uid', user.uid.slice(-8));
+          console.info('TERLAB: anonymous uid', user.uid.slice(-8));
+        } else {
+          // Pas de user → fallback anonyme pour permettre les writes RTDB côté démo
+          try { await signInAnonymously(auth); }
+          catch (e) { console.warn('TERLAB: auth anonyme échoué', e.message); }
         }
-      });
-      await signInAnonymously(auth).catch(e => {
-        console.warn('TERLAB: auth anonyme échoué', e.message);
       });
     } catch(e) {
       console.warn('TERLAB: Firebase init failed — session locale seulement', e.message);
@@ -479,26 +498,42 @@
   </div>
 </div>
 
-<!-- Login TERLAB -->
+<!-- Login BIMSHOW -->
 <div class="modal-backdrop" id="modal-login" role="dialog" aria-labelledby="modal-login-title" aria-modal="true" hidden>
   <div class="modal-box" style="max-width:380px">
     <div class="modal-head">
-      <h2 id="modal-login-title" class="modal-title">Connexion TERLAB</h2>
+      <h2 id="modal-login-title" class="modal-title">Connexion BIMSHOW</h2>
     </div>
     <div class="modal-body">
-      <p class="modal-text">Entrez votre adresse mail ENSA et le code d'acces fourni par l'enseignant.</p>
-      <input type="email" id="terlab-login-email" class="modal-input" placeholder="prenom.nom@reunion.archi.fr" aria-label="Adresse email" autocomplete="email"/>
-      <input type="text" id="terlab-login-code" class="modal-input" placeholder="Code d'acces" aria-label="Code acces" autocomplete="off" style="margin-top:8px"/>
+      <p class="modal-text">Connectez-vous avec votre compte BIMSHOW pour accéder à TERLAB.</p>
+      <input type="email" id="terlab-login-email" class="modal-input" placeholder="prenom.nom@bimshow.io" aria-label="Adresse email" autocomplete="email"/>
+      <input type="password" id="terlab-login-password" class="modal-input" placeholder="Mot de passe BIMSHOW" aria-label="Mot de passe" autocomplete="current-password" style="margin-top:8px"/>
       <p class="modal-hint" id="terlab-login-error" style="color:var(--danger);display:none"></p>
     </div>
     <div class="modal-foot">
-      <button class="modal-btn-primary" onclick="TerlabLogin.submit()">Se connecter</button>
+      <button class="modal-btn-primary" id="terlab-login-submit-btn" onclick="TerlabLogin.submit()">Se connecter</button>
       <button class="modal-btn-ghost" onclick="TerlabLogin.close()">Annuler</button>
     </div>
   </div>
 </div>
 
-<script>
+<script type="module">
+import {
+  signInWithEmailAndPassword,
+  signOut
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+function mapAuthError(code) {
+  if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found'))
+    return 'Email ou mot de passe incorrect';
+  if (code.includes('invalid-email'))      return 'Adresse email invalide';
+  if (code.includes('too-many-requests'))  return 'Trop de tentatives — réessayez plus tard';
+  if (code.includes('network-request-failed')) return 'Pas de connexion réseau';
+  if (code.includes('user-disabled'))      return 'Ce compte est désactivé';
+  if (code.includes('operation-not-allowed')) return 'Méthode email/password non activée';
+  return 'Erreur : ' + code;
+}
+
 window.TerlabLogin = {
   open() {
     document.getElementById('modal-login').hidden = false;
@@ -507,54 +542,88 @@ window.TerlabLogin = {
   close() {
     document.getElementById('modal-login').hidden = true;
     document.getElementById('terlab-login-error').style.display = 'none';
+    document.getElementById('terlab-login-email').value = '';
+    document.getElementById('terlab-login-password').value = '';
   },
-  submit() {
-    const email = document.getElementById('terlab-login-email').value.trim();
-    const code  = document.getElementById('terlab-login-code').value.trim();
-    const err   = document.getElementById('terlab-login-error');
+  async submit() {
+    const email    = document.getElementById('terlab-login-email').value.trim();
+    const password = document.getElementById('terlab-login-password').value;
+    const err      = document.getElementById('terlab-login-error');
+    const btn      = document.getElementById('terlab-login-submit-btn');
+
+    err.style.display = 'none';
+    err.textContent = '';
 
     if (!email || !email.includes('@')) {
       err.textContent = 'Adresse email invalide';
       err.style.display = 'block';
       return;
     }
-    if (code !== window.TERLAB_ACCESS_CODE) {
-      err.textContent = 'Code d\'acces incorrect';
+    if (!password) {
+      err.textContent = 'Mot de passe requis';
+      err.style.display = 'block';
+      return;
+    }
+    if (!window.TERLAB_AUTH) {
+      err.textContent = 'Firebase non initialisé';
       err.style.display = 'block';
       return;
     }
 
-    // Stocker l'email dans la session et dans Firebase
-    window.TERLAB_USER_EMAIL = email;
-    localStorage.setItem('terlab_user_email', email);
-    localStorage.setItem('terlab_auth', '1');
+    btn.disabled = true;
+    const oldLabel = btn.textContent;
+    btn.textContent = 'Connexion…';
 
-    if (window.SessionManager) {
-      window.SessionManager.saveTerrain({ student_email: email });
+    try {
+      await signInWithEmailAndPassword(window.TERLAB_AUTH, email, password);
+      // onAuthStateChanged (script Firebase init) met à jour TERLAB_USER_EMAIL
+      // et localStorage automatiquement.
+      if (window.SessionManager) {
+        window.SessionManager.saveTerrain({ student_email: email });
+      }
+      if (window.TERLAB_DB && window.TERLAB_UID) {
+        const userRef = window.TERLAB_FB_REF(window.TERLAB_DB, `terlab/users/${window.TERLAB_UID}`);
+        window.TERLAB_FB_SET(userRef, { email, connected_at: new Date().toISOString() }).catch(() => {});
+      }
+      const tbtn = document.getElementById('btn-login');
+      if (tbtn) tbtn.title = email;
+      this.close();
+      window.TerlabToast?.show(`Connecté : ${email}`, 'success', 3000);
+    } catch (e) {
+      err.textContent = mapAuthError(e?.code || e?.message || '');
+      err.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = oldLabel;
     }
-
-    // Sauvegarder dans RTDB si connecte
-    if (window.TERLAB_DB && window.TERLAB_UID) {
-      const userRef = window.TERLAB_FB_REF(window.TERLAB_DB, `terlab/users/${window.TERLAB_UID}`);
-      window.TERLAB_FB_SET(userRef, { email, connected_at: new Date().toISOString() }).catch(() => {});
+  },
+  async logout() {
+    if (window.TERLAB_AUTH) {
+      try { await signOut(window.TERLAB_AUTH); } catch (e) { console.warn(e); }
     }
-
-    // Mettre a jour le bouton login
-    const btn = document.getElementById('btn-login');
-    if (btn) btn.title = email;
-
-    this.close();
-    window.TerlabToast?.show(`Connecte : ${email}`, 'success', 3000);
+    localStorage.removeItem('terlab_user_email');
+    localStorage.removeItem('terlab_auth');
+    window.TERLAB_USER_EMAIL = null;
   },
   restore() {
+    // L'état est restauré automatiquement par Firebase Auth (persistance localStorage)
+    // via onAuthStateChanged dans le script Firebase d'init en haut de page.
     const email = localStorage.getItem('terlab_user_email');
-    if (email && localStorage.getItem('terlab_auth')) {
+    if (email) {
       window.TERLAB_USER_EMAIL = email;
       const btn = document.getElementById('btn-login');
       if (btn) btn.title = email;
     }
   }
 };
+
+// Submit on Enter dans le champ password
+document.getElementById('terlab-login-password')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') window.TerlabLogin.submit();
+});
+document.getElementById('terlab-login-email')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('terlab-login-password').focus();
+});
 
 // Brancher le bouton login existant (si pas connecté → ouvre le login)
 // Si connecté, le ProjectMenu (index.js) gère le dropdown avec déconnexion

@@ -5,6 +5,7 @@
 // v2.1 : intégration TopoCaseService — contraintes pente dans _prog + panel UI
 
 import TopoCaseService from '../services/topo-case-service.js';
+import BdTopoService from '../services/bdtopo-service.js';
 
 const EsquisseCanvas = {
 
@@ -424,15 +425,118 @@ const EsquisseCanvas = {
     // ── Plan cadastral IGN (parcelles + bati + routes) ───────────
     this._injectCadastreLayer();
 
+    // ── Cadastre vecteur WFS — charger même en mode Mapbox ───────
+    this._loadCadastreVector().then(features => {
+      if (features) {
+        this._cadastreVisible = true;
+        this._drawCadastreVector(features);
+      }
+    });
+
+    // ── BDTOPO WFS — bâtiments + routes (remplace queryRenderedFeatures) ──
+    const center = this._centroidGeo(this._parcelGeo);
+    if (!center?.[0]) return;
+    const [clng, clat] = center;
+
+    this._fetchBdTopoContext(clat, clng);
+  },
+
+  // Fetch BDTOPO bâtiments + routes via WFS IGN, fallback Mapbox queryRenderedFeatures
+  async _fetchBdTopoContext(lat, lng) {
+    const map = this._map;
+    let bdtopoOk = false;
+
+    try {
+      // Lancer bâtiments et routes en parallèle
+      const [batGeoJson, routesGeoJson] = await Promise.all([
+        BdTopoService.fetchBatiments(lat, lng, 300),
+        BdTopoService.fetchRoutes(lat, lng, 300),
+      ]);
+
+      // ── Bâtiments BDTOPO ──────────────────────────────────────
+      if (batGeoJson?.features?.length) {
+        bdtopoOk = true;
+        const allBuildings = batGeoJson.features
+          .filter(f => f.geometry?.type === 'Polygon' || f.geometry?.type === 'MultiPolygon')
+          .map(f => {
+            const coords = f.geometry.type === 'Polygon'
+              ? f.geometry.coordinates[0]
+              : f.geometry.coordinates[0][0];
+            const p = f.properties ?? {};
+            return {
+              pts:     coords,
+              hauteur: parseFloat(p.hauteur) || null,
+              usage:   (p.usage_1 ?? p.nature ?? 'batiment').toLowerCase(),
+              label:   p.usage_1 ?? null,
+              source:  'bdtopo',
+            };
+          });
+
+        const mapVoisins = [];
+        const mapBatiParcelle = [];
+        for (const b of allBuildings) {
+          if (this._polygonsOverlap(b.pts, this._parcelGeo)) {
+            mapBatiParcelle.push(b);
+          } else {
+            mapVoisins.push(b);
+          }
+        }
+
+        if (mapVoisins.length > 0) {
+          this._voisinsGeo = mapVoisins;
+        }
+
+        // Bâtiments existants SUR la parcelle
+        if (mapBatiParcelle.length > 0) {
+          const existing = this._session?.phases?.[5]?.data?.batiments_parcelle
+            ?? this._session?.terrain?.batiments_parcelle ?? [];
+          if (existing.length === 0) {
+            const batiData = mapBatiParcelle.map(b => ({
+              geojson: { type: 'Polygon', coordinates: [b.pts] },
+              hauteur: b.hauteur,
+              usage: b.usage,
+              source: 'bdtopo',
+            }));
+            if (!this._session.terrain) this._session.terrain = {};
+            this._session.terrain.batiments_parcelle = batiData;
+          }
+        }
+
+        console.info(`[EsquisseCanvas] BDTOPO bâtiments: ${allBuildings.length} (${mapVoisins.length} voisins, ${mapBatiParcelle.length} sur parcelle)`);
+      }
+
+      // ── Routes BDTOPO ─────────────────────────────────────────
+      if (routesGeoJson?.features?.length) {
+        const streets = BdTopoService.routesToStreets(routesGeoJson);
+        if (streets.length > 0) {
+          this._streetsGeo = streets;
+          console.info(`[EsquisseCanvas] BDTOPO routes: ${streets.length} tronçons`);
+        }
+      }
+
+    } catch (e) {
+      console.warn('[EsquisseCanvas] BDTOPO WFS failed, fallback Mapbox:', e.message);
+    }
+
+    // ── Fallback Mapbox queryRenderedFeatures si BDTOPO vide ────
+    if (!bdtopoOk && map) {
+      this._fallbackMapboxContext(map);
+    }
+
+    // Redessiner le contexte avec les nouvelles données
+    this._fullRedraw();
+  },
+
+  // Ancien comportement Mapbox comme fallback
+  _fallbackMapboxContext(map) {
     const center = this._centroidGeo(this._parcelGeo);
     const centerPx = map.project(center);
-
     const bbox = [
       [centerPx.x - 200, centerPx.y - 200],
       [centerPx.x + 200, centerPx.y + 200],
     ];
 
-    // Batiments voisins
+    // Bâtiments Mapbox
     const buildingFeatures = [
       ...map.queryRenderedFeatures(bbox, { layers: ['building'] }),
       ...map.queryRenderedFeatures(bbox, { layers: ['building-extrusion', 'buildings'] }),
@@ -451,7 +555,6 @@ const EsquisseCanvas = {
         };
       });
 
-    // Séparer voisins (hors parcelle) et bâtiments existants (sur parcelle)
     const mapVoisins = [];
     const mapBatiParcelle = [];
     for (const b of allBuildings) {
@@ -462,7 +565,9 @@ const EsquisseCanvas = {
       }
     }
 
-    // Routes
+    if (mapVoisins.length > 0) this._voisinsGeo = mapVoisins;
+
+    // Routes Mapbox
     const roadLayers = ['road-simple', 'road-primary', 'road-secondary',
                         'road-street', 'road-minor', 'road', 'roads'];
     const roadFeatures = map.queryRenderedFeatures(bbox, { layers: roadLayers });
@@ -476,30 +581,25 @@ const EsquisseCanvas = {
       }))
       .slice(0, 20);
 
-    // Merger avec les donnees session (session prioritaire si Mapbox vide)
-    if (mapVoisins.length > 0) {
-      this._voisinsGeo = mapVoisins;
-    }
-    if (mapStreets.length > 0) {
-      this._streetsGeo = mapStreets;
-    }
-    // Bâtiments existants SUR la parcelle (Mapbox → session si pas déjà renseigné)
+    if (mapStreets.length > 0) this._streetsGeo = mapStreets;
+
+    // Bâtiments existants sur parcelle
     if (mapBatiParcelle.length > 0) {
       const existing = this._session?.phases?.[5]?.data?.batiments_parcelle
         ?? this._session?.terrain?.batiments_parcelle ?? [];
       if (existing.length === 0) {
-        // Injecter les footprints Mapbox comme bâtiments existants
         const batiData = mapBatiParcelle.map(b => ({
           geojson: { type: 'Polygon', coordinates: [b.pts] },
           hauteur: b.hauteur,
           usage: b.usage,
           source: 'mapbox',
         }));
-        // Stocker dans la session terrain pour que _drawContext() les affiche
         if (!this._session.terrain) this._session.terrain = {};
         this._session.terrain.batiments_parcelle = batiData;
       }
     }
+
+    console.info('[EsquisseCanvas] Fallback Mapbox context:', allBuildings.length, 'bâtiments,', mapStreets.length, 'routes');
   },
 
   // ── COUCHE CADASTRALE IGN ──────────────────────────────────────
@@ -668,16 +768,23 @@ const EsquisseCanvas = {
     return undefined;
   },
 
-  // Toggle visibilite couche cadastrale
+  // Toggle visibilite couche cadastrale (vecteur SVG prioritaire, raster en fond)
   async toggleCadastre(visible) {
     this._cadastreVisible = visible;
 
-    // Mode Mapbox : toggle du layer raster
+    // Mode Mapbox : toggle raster + vecteur SVG overlay
     const map = this._map;
     if (map) {
       const vis = visible ? 'visible' : 'none';
       if (map.getLayer('cadastre-ign-raster')) {
         map.setLayoutProperty('cadastre-ign-raster', 'visibility', vis);
+      }
+      // Vecteur SVG overlay (parcelles avec numéros)
+      if (visible) {
+        const features = this._cadastreVectorGeo ?? await this._loadCadastreVector();
+        if (features) this._drawCadastreVector(features);
+      } else {
+        this._svg?.querySelectorAll('#cadastre-vector-layer').forEach(el => el.remove());
       }
       return;
     }
@@ -882,21 +989,39 @@ const EsquisseCanvas = {
       const pts = this._map ? this._projectAll(rue.points) : this._localToSvg(
         Array.isArray(rue.points[0]) ? this._geoToLocal(rue.points) : rue.points
       );
-      const strokeW = rue.type === 'primary' ? 10 : rue.type === 'secondary' ? 7 : 5;
+      // Largeur BDTOPO en mètres → pixels SVG (approx), sinon par type
+      const isPath = rue.type === 'path';
+      let strokeW;
+      if (rue.largeur && rue.largeur > 0) {
+        strokeW = Math.max(3, Math.min(16, rue.largeur * 1.5));
+      } else {
+        strokeW = rue.type === 'primary' ? 10 : rue.type === 'secondary' ? 7 : isPath ? 3 : 5;
+      }
       this._el('polyline', {
         points: this._polyPoints(pts),
-        fill: 'none', stroke: '#c8d0d8', 'stroke-width': strokeW,
+        fill: 'none', stroke: isPath ? '#b8c4a8' : '#c8d0d8', 'stroke-width': strokeW,
         'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+        ...(isPath ? { 'stroke-dasharray': '4 3' } : {}),
       }, null, g);
-      this._el('polyline', {
-        points: this._polyPoints(pts),
-        fill: 'none', stroke: '#e8ecf0', 'stroke-width': 1,
-        'stroke-dasharray': '8 6', 'stroke-linecap': 'round',
-      }, null, g);
-      if (rue.nom && pts.length >= 2) {
+      if (!isPath) {
+        this._el('polyline', {
+          points: this._polyPoints(pts),
+          fill: 'none', stroke: '#e8ecf0', 'stroke-width': 1,
+          'stroke-dasharray': '8 6', 'stroke-linecap': 'round',
+        }, null, g);
+      }
+      // Label : nom de voie, ou nature BDTOPO (chemin, sentier...) si pas de nom
+      const label = rue.nom || (rue.nature && rue.source === 'bdtopo' ? rue.nature : '');
+      if (label && pts.length >= 2) {
         const mid = pts[Math.floor(pts.length / 2)];
-        this._label(mid.x, mid.y - strokeW / 2 - 3, rue.nom,
+        this._label(mid.x, mid.y - strokeW / 2 - 3, label,
           { size: 8, color: '#889aaa', anchor: 'middle' }, null, g);
+      }
+      // Afficher largeur chaussée BDTOPO
+      if (rue.largeur && pts.length >= 2) {
+        const mid = pts[Math.floor(pts.length / 2)];
+        this._label(mid.x, mid.y + strokeW / 2 + 8, `${rue.largeur}m`,
+          { size: 7, color: '#99aabb', anchor: 'middle' }, null, g);
       }
     }
 
@@ -1247,33 +1372,30 @@ const EsquisseCanvas = {
 
     if (offsetEdges.length < 3) return [];
 
-    // Seuil de distance max pour une intersection valide
-    // (au-dela, l'angle est trop aigu et l'intersection diverge)
+    // Guard "spike" : seul un point d'intersection vraiment aberrant (≫ diagonale AABB)
+    // est rejeté — on garde la cohérence géométrique pour les angles aigus, même
+    // lorsque le sommet inset s'éloigne fortement du sommet d'origine (ex. R/sin(θ/2)).
     const bx = this._bboxLocal(cw);
-    const maxDim = Math.max(bx.maxX - bx.minX, bx.maxY - bx.minY);
-    const maxIntersectDist = maxDim * 0.3;
+    const diag = Math.hypot(bx.maxX - bx.minX, bx.maxY - bx.minY);
+    const spikeMax = 3 * diag;
 
-    // Intersections successives — rejeter les points aberrants (angles aigus)
+    // Intersections successives des droites prolongées
     const result = [];
     for (let i = 0; i < offsetEdges.length; i++) {
       const j  = (i + 1) % offsetEdges.length;
-      const pt = this._intersect(offsetEdges[i].p1, offsetEdges[i].p2, offsetEdges[j].p1, offsetEdges[j].p2);
-      if (pt && isFinite(pt.x) && isFinite(pt.y)) {
-        // Verifier que l'intersection n'est pas aberrante
-        // Le point devrait etre proche du sommet original correspondant
-        const origIdx = (offsetEdges[i].orig + 1) % n;
-        const origPt = cw[origIdx];
-        const dist = Math.hypot(pt.x - origPt.x, pt.y - origPt.y);
+      const ei = offsetEdges[i], ej = offsetEdges[j];
+      const pt = this._intersect(ei.p1, ei.p2, ej.p1, ej.p2);
+      if (!pt || !isFinite(pt.x) || !isFinite(pt.y)) continue;
 
-        if (dist < maxIntersectDist) {
-          result.push(pt);
-        } else {
-          // Angle trop aigu : utiliser le milieu des points offset les plus proches
-          result.push({
-            x: (offsetEdges[i].p2.x + offsetEdges[j].p1.x) / 2,
-            y: (offsetEdges[i].p2.y + offsetEdges[j].p1.y) / 2,
-          });
-        }
+      // Spike check : distance au point de couture (fin i ↔ début j)
+      const seamX = (ei.p2.x + ej.p1.x) / 2;
+      const seamY = (ei.p2.y + ej.p1.y) / 2;
+      const dist = Math.hypot(pt.x - seamX, pt.y - seamY);
+      if (dist > spikeMax) {
+        // Vraiment dégénéré (lignes quasi-parallèles divergentes) : couture
+        result.push({ x: seamX, y: seamY });
+      } else {
+        result.push(pt);
       }
     }
 
@@ -3309,7 +3431,9 @@ const EsquisseCanvas = {
     const a1 = b.y - a.y, b1 = a.x - b.x, c1 = a1 * a.x + b1 * a.y;
     const a2 = q.y - p.y, b2 = p.x - q.x, c2 = a2 * p.x + b2 * p.y;
     const det = a1 * b2 - a2 * b1;
-    if (Math.abs(det) < 1e-10) return { x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 };
+    // Parallèles : retourner le point de couture (fin de l'arête i, début de l'arête j)
+    // — PAS le milieu de l'arête j entière, qui injecterait un sommet hors géométrie.
+    if (Math.abs(det) < 1e-10) return { x: (b.x + p.x) / 2, y: (b.y + p.y) / 2 };
     return { x: (c1 * b2 - c2 * b1) / det, y: (a1 * c2 - a2 * c1) / det };
   },
 

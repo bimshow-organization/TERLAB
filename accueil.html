@@ -434,6 +434,7 @@ html, body { overflow: auto; }
   border: 1px solid var(--border);
   border-radius: 8px;
 }
+.auth-guest[hidden], .auth-user[hidden] { display: none; }
 .auth-guest-msg {
   font-family: var(--font-body);
   font-size: 0.85rem;
@@ -541,10 +542,10 @@ html, body { overflow: auto; }
   <div class="tl-modal-overlay" id="login-modal">
     <div class="tl-modal">
       <div class="tl-modal-icon" style="background:rgba(154,120,32,0.12)">🔑</div>
-      <div class="tl-modal-title">Connexion TERLAB</div>
-      <div class="tl-modal-msg">Entrez votre adresse mail ENSA et le code d'accès fourni par l'enseignant.</div>
-      <input type="email" id="login-email" class="accueil-login-input" placeholder="prenom.nom@reunion.archi.fr" autocomplete="email"/>
-      <input type="text" id="login-code" class="accueil-login-input" placeholder="Code d'accès" autocomplete="off" style="margin-top:8px"/>
+      <div class="tl-modal-title">Connexion BIMSHOW</div>
+      <div class="tl-modal-msg">Connectez-vous avec votre compte BIMSHOW pour accéder à TERLAB.</div>
+      <input type="email" id="login-email" class="accueil-login-input" placeholder="prenom.nom@bimshow.io" autocomplete="email"/>
+      <input type="password" id="login-password" class="accueil-login-input" placeholder="Mot de passe BIMSHOW" autocomplete="current-password" style="margin-top:8px"/>
       <p class="accueil-login-error" id="login-error"></p>
       <div class="tl-modal-actions" style="margin-top:16px">
         <button class="tl-modal-btn tl-modal-btn-cancel" id="login-cancel">Annuler</button>
@@ -624,21 +625,55 @@ html, body { overflow: auto; }
 
 <script type="module">
 import TerlabStorage from './components/terlab-storage.js';
+import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
-// ── Config access code ────────────────────────────────────
-let TERLAB_ACCESS_CODE = 'TERLAB2026';
+// ── Config Firebase BIMSHOW ───────────────────────────────
+// Loader : préfère firebase-config.js (local, gitignored) puis
+// firebase-config.public.js (commité, déployé sur GitHub Pages).
+let firebaseConfig = null;
 try {
   const mod = await import('./config/firebase-config.js');
-  if (mod.TERLAB_ACCESS_CODE) TERLAB_ACCESS_CODE = mod.TERLAB_ACCESS_CODE;
-} catch { /* config absente — code par défaut */ }
+  firebaseConfig = mod.firebaseConfig;
+} catch {
+  try {
+    const mod = await import('./config/firebase-config.public.js');
+    firebaseConfig = mod.firebaseConfig;
+  } catch {
+    console.error('TERLAB: aucune config Firebase trouvée');
+  }
+}
+
+// ── Init Firebase Auth ────────────────────────────────────
+let auth = null;
+if (firebaseConfig?.apiKey) {
+  try {
+    const app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    // Persistance localStorage (par défaut, mais on l'explicite)
+    await setPersistence(auth, browserLocalPersistence);
+    window.TERLAB_AUTH = auth;
+  } catch (e) {
+    console.error('TERLAB: init Firebase échoué', e);
+  }
+}
 
 // ── Auth state ────────────────────────────────────────────
+let _currentUser = null;
+
 function isLoggedIn() {
-  return !!(localStorage.getItem('terlab_user_email') && localStorage.getItem('terlab_auth'));
+  return !!_currentUser;
 }
 
 function getEmail() {
-  return localStorage.getItem('terlab_user_email') || '';
+  return _currentUser?.email || '';
 }
 
 function updateAuthUI() {
@@ -653,12 +688,33 @@ function updateAuthUI() {
   }
 }
 
+// Écouteur Firebase : source de vérité unique pour l'état d'auth
+if (auth) {
+  onAuthStateChanged(auth, (user) => {
+    _currentUser = user;
+    if (user) {
+      // Miroir localStorage pour compat avec index.js / phases
+      localStorage.setItem('terlab_user_email', user.email || '');
+      localStorage.setItem('terlab_auth', '1');
+      window.TERLAB_USER_EMAIL = user.email;
+      window.TERLAB_UID = user.uid;
+    } else {
+      localStorage.removeItem('terlab_user_email');
+      localStorage.removeItem('terlab_auth');
+      window.TERLAB_USER_EMAIL = null;
+      window.TERLAB_UID = null;
+    }
+    updateAuthUI();
+    render();
+  });
+}
+
 // ── Login modal ───────────────────────────────────────────
 function openLogin() {
   const overlay = document.getElementById('login-modal');
   overlay.classList.add('tl-modal-visible');
   document.getElementById('login-email').value = '';
-  document.getElementById('login-code').value = '';
+  document.getElementById('login-password').value = '';
   document.getElementById('login-error').textContent = '';
   setTimeout(() => document.getElementById('login-email').focus(), 100);
 }
@@ -667,32 +723,61 @@ function closeLogin() {
   document.getElementById('login-modal').classList.remove('tl-modal-visible');
 }
 
-function submitLogin() {
-  const email = document.getElementById('login-email').value.trim();
-  const code  = document.getElementById('login-code').value.trim();
-  const err   = document.getElementById('login-error');
+async function submitLogin() {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const err      = document.getElementById('login-error');
+  const submitBtn = document.getElementById('login-submit');
+
+  err.textContent = '';
 
   if (!email || !email.includes('@')) {
     err.textContent = 'Adresse email invalide';
     return;
   }
-  if (code !== TERLAB_ACCESS_CODE) {
-    err.textContent = 'Code d\'accès incorrect';
+  if (!password) {
+    err.textContent = 'Mot de passe requis';
+    return;
+  }
+  if (!auth) {
+    err.textContent = 'Firebase non initialisé — vérifiez la config';
     return;
   }
 
-  localStorage.setItem('terlab_user_email', email);
-  localStorage.setItem('terlab_auth', '1');
-  closeLogin();
-  updateAuthUI();
-  render();
+  submitBtn.disabled = true;
+  const oldLabel = submitBtn.textContent;
+  submitBtn.textContent = 'Connexion…';
+
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    closeLogin();
+    // updateAuthUI() est appelé automatiquement par onAuthStateChanged
+  } catch (e) {
+    // Mappage des erreurs Firebase Auth vers messages FR
+    const msg = mapAuthError(e?.code || e?.message || '');
+    err.textContent = msg;
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = oldLabel;
+  }
 }
 
-function logout() {
-  localStorage.removeItem('terlab_user_email');
-  localStorage.removeItem('terlab_auth');
-  updateAuthUI();
-  render();
+function mapAuthError(code) {
+  if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found'))
+    return 'Email ou mot de passe incorrect';
+  if (code.includes('invalid-email'))      return 'Adresse email invalide';
+  if (code.includes('too-many-requests'))  return 'Trop de tentatives — réessayez dans quelques minutes';
+  if (code.includes('network-request-failed')) return 'Pas de connexion réseau';
+  if (code.includes('user-disabled'))      return 'Ce compte est désactivé';
+  if (code.includes('operation-not-allowed')) return 'Méthode email/password non activée sur ce projet Firebase';
+  return 'Erreur de connexion : ' + code;
+}
+
+async function logout() {
+  if (auth) {
+    try { await signOut(auth); } catch (e) { console.warn('signOut error', e); }
+  }
+  // onAuthStateChanged se charge du reste
 }
 
 document.getElementById('btn-auth-login')?.addEventListener('click', openLogin);
@@ -702,8 +787,11 @@ document.getElementById('login-cancel')?.addEventListener('click', closeLogin);
 document.getElementById('login-modal')?.addEventListener('click', (e) => {
   if (e.target === e.currentTarget) closeLogin();
 });
-document.getElementById('login-code')?.addEventListener('keydown', (e) => {
+document.getElementById('login-password')?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') submitLogin();
+});
+document.getElementById('login-email')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('login-password').focus();
 });
 
 // ── État ────────────────────────────────────────────────────

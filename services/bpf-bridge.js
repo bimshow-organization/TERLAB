@@ -196,58 +196,69 @@ function _lineIntersect(a1, a2, b1, b2) {
   return { x: a1.x + t * d1x, y: a1.y + t * d1y };
 }
 
-// Offset polygon per-edge (même logique que EnvelopeGenerator._offsetPolygon)
-// Gère polygones complexes N sommets avec normales intérieures par arête
+// Inset polygonal par arête — Sutherland-Hodgman half-plane clipping.
+// Robuste pour reculs MIXTES (voie≠lat≠fond) : on clippe la parcelle par chaque
+// demi-plan rentrant, on n'extrapole jamais les droites (sinon spikes pour les
+// arêtes quasi-parallèles → arbres plantés hors parcelle).
 function _offsetPolygonPerEdge(pts, edgeTypes, reculs) {
   const n = pts.length;
   if (n < 3) return [];
 
-  // Déterminer le winding (signé)
+  // Aire signée Shoelace → orientation
   let sa = 0;
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n;
     sa += pts[i].x * pts[j].y - pts[j].x * pts[i].y;
   }
-  sa /= 2;
-  // En espace Y-inverse (SVG), sa > 0 = CW visuellement
-  const cw = sa > 0 ? pts : [...pts].reverse();
-  const et = sa > 0 ? edgeTypes : [...edgeTypes].reverse();
+  // sa > 0 = CCW math (Y-haut), normale rentrante = (-dy, dx) ; sinon (dy, -dx).
+  const orient = sa >= 0 ? 1 : -1;
 
-  const offsetEdges = [];
+  // Polygone clippé itérativement
+  let clipped = pts.map(p => ({ x: p.x, y: p.y }));
+
   for (let i = 0; i < n; i++) {
     const j = (i + 1) % n;
-    const dx = cw[j].x - cw[i].x;
-    const dy = cw[j].y - cw[i].y;
-    const len = Math.hypot(dx, dy);
-    if (len < 0.01) {
-      if (offsetEdges.length > 0) offsetEdges.push({ ...offsetEdges[offsetEdges.length - 1] });
-      continue;
-    }
-    // Normale intérieure : (+dy/len, -dx/len)
-    const nx = dy / len, ny = -dx / len;
-    const type = et[i] ?? 'lateral';
+    const type = edgeTypes[i] ?? 'lateral';
     const r = type === 'voie' ? reculs.voie : type === 'fond' ? reculs.fond : reculs.lat;
-    offsetEdges.push({
-      p1: { x: cw[i].x + nx * r, y: cw[i].y + ny * r },
-      p2: { x: cw[j].x + nx * r, y: cw[j].y + ny * r },
-    });
-  }
-  if (offsetEdges.length < 3) return [];
+    if (!(r > 0)) continue;
 
-  // Clamp bbox pour éviter les sommets aberrants
-  const bx = _bbox(cw);
-  const margin = Math.max(bx.maxX - bx.minX, bx.maxY - bx.minY) * 0.5;
-  const result = [];
-  for (let i = 0; i < offsetEdges.length; i++) {
-    const j = (i + 1) % offsetEdges.length;
-    const pt = _lineIntersect(offsetEdges[i].p1, offsetEdges[i].p2, offsetEdges[j].p1, offsetEdges[j].p2);
-    if (pt && isFinite(pt.x) && isFinite(pt.y)) {
-      pt.x = Math.max(bx.minX - margin, Math.min(bx.maxX + margin, pt.x));
-      pt.y = Math.max(bx.minY - margin, Math.min(bx.maxY + margin, pt.y));
-      result.push(pt);
+    const ax = pts[i].x, ay = pts[i].y;
+    const bx = pts[j].x, by = pts[j].y;
+    const dx = bx - ax, dy = by - ay;
+    const len = Math.hypot(dx, dy);
+    if (len < 0.01) continue;
+
+    const nx = -dy / len * orient;
+    const ny =  dx / len * orient;
+    const px = ax + nx * r;
+    const py = ay + ny * r;
+
+    clipped = _clipHalfPlane(clipped, px, py, nx, ny);
+    if (clipped.length < 3) return [];
+  }
+
+  return _polyArea(clipped) >= 1 ? clipped : [];
+}
+
+// Sutherland-Hodgman : garde les points P tels que n·(P - p) ≥ 0
+function _clipHalfPlane(poly, px, py, nx, ny) {
+  const m = poly.length;
+  if (m === 0) return [];
+  const out = [];
+  const dist = (x, y) => nx * (x - px) + ny * (y - py);
+  for (let i = 0; i < m; i++) {
+    const a = poly[i], b = poly[(i + 1) % m];
+    const da = dist(a.x, a.y);
+    const db = dist(b.x, b.y);
+    const aIn = da >= 0;
+    const bIn = db >= 0;
+    if (aIn) out.push({ x: a.x, y: a.y });
+    if (aIn !== bIn) {
+      const t = da / (da - db);
+      out.push({ x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) });
     }
   }
-  return (result.length >= 3 && _polyArea(result) >= 1) ? result : [];
+  return out;
 }
 
 // Inset uniforme (tous les bords au même recul)
@@ -649,9 +660,12 @@ const BpfBridge = {
         return false;
       };
 
+      // Garde-fou : un point doit être DANS la zone ET DANS la parcelle.
+      // Évite que des arbres atterrissent hors parcelle si la zone bavait
+      // (legacy bug : inset spike → poly extrapolé hors parcelle).
       const positions = _poissonDisk(
         bounds, minDist, 30, rng,
-        (x, y) => _pointInPolygon(x, y, poly),
+        (x, y) => _pointInPolygon(x, y, poly) && _pointInPolygon(x, y, parcelLocal),
         excludeFn
       );
 

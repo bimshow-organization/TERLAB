@@ -7,6 +7,9 @@
 import MapCapture from './map-capture.js';
 import GIEPPlanService from '../services/giep-plan-service.js';
 import GIEPCalculator from '../services/giep-calculator-service.js';
+import DiagRenderer from './diag-renderer.js';
+import { buildCoupeSVGDocument } from '../utils/coupe-renderer.js';
+import { loadPhrases, pickShort, buildPluContext } from '../services/rapport-phrases-engine.js';
 
 // ── HELPERS ────────────────────────────────────────────────────────────────
 const val  = (v, fallback = 'a renseigner') => (v != null && v !== '' && v !== '—') ? String(v) : fallback;
@@ -23,6 +26,14 @@ const row = (label, value, cls = '') => {
   const isAuto = typeof value === 'string' && value.includes('≈');
   return `<div class="fr"><span class="fl">${label}</span><span class="fv ${cls}${isAuto ? ' au' : ''}">${v}</span></div>`;
 };
+
+/** Petite phrase contextuelle italique sous une row (depuis rapport-phrases.json) */
+const tag = (phrase) => phrase
+  ? `<div class="fr-tag" style="font-size:6.6pt;color:#6a6860;font-style:italic;padding:0 4px 3px 6px;line-height:1.25;margin-top:-1px">${phrase}</div>`
+  : '';
+
+/** Row + phrase contextuelle en dessous */
+const rowTag = (label, value, phrase, cls = '') => row(label, value, cls) + tag(phrase);
 
 /** Section title */
 const sec = (title) => `<div class="stitle">${title}</div>`;
@@ -163,6 +174,9 @@ const ExportEngine = {
       this._autoFields = enrichResult.autoFields;
       this._enrichedPhases = enrichResult.phases;
 
+      // ── Dictionnaire de phrases contextuelles (rapport-phrases.json) ──
+      this._phrasesDict = await loadPhrases();
+
       // ── Garde de qualite ──
       const score = session?.audit?.globalScore ?? window.TerlabScoreService?.computeGlobalScore?.(session) ?? 0;
       if (score < 40) {
@@ -241,7 +255,9 @@ const ExportEngine = {
 
   _renderAllPlanches(session, terrain, maps, mode) {
     const ref = `${terrain.section ?? ''}${terrain.parcelle ?? ''}`;
-    const tp = mode === 'projet' ? 6 : 5; // total pages (cover+identité fusionnées)
+    // Total pages : cover+identité (1) + planche 2_3 (2) + [4 + GIEP en mode projet] + 5_6 (5/3) + 7 (synthèse fusionnée)
+    // Site : 4 pages   ·   Projet : 6 pages
+    const tp = mode === 'projet' ? 6 : 4;
 
     let html = '';
     html += this._renderCoverIdentite(session, terrain, maps, mode, tp, ref);
@@ -253,8 +269,7 @@ const ExportEngine = {
     }
 
     html += this._renderPlanche5_6(session, terrain, maps, ref, tp); // Voisinage + Gabarit fusionnés
-    html += this._renderPlanche7(session, terrain, maps, ref, tp);
-    html += this._renderPlanche8(session, terrain, maps, ref, tp);
+    html += this._renderPlanche7(session, terrain, maps, ref, tp);    // Synthèse + Audit + Sources fusionnés
 
     return html;
   },
@@ -354,8 +369,65 @@ const ExportEngine = {
       AU: 'A urbaniser', AUs: 'A urbaniser strict', N: 'Naturelle', A: 'Agricole',
     };
 
+    // Phrases contextuelles PLU (rapport-phrases.json)
+    const phrasesDict  = this._phrasesDict ?? {};
+    const pluCtx       = buildPluContext(terrain, p4);
+    const phZone       = pickShort(phrasesDict, 'plu', 'zone',       pluCtx);
+    const phHauteur    = pickShort(phrasesDict, 'plu', 'hauteur',    pluCtx);
+    const phEmprise    = pickShort(phrasesDict, 'plu', 'emprise',    pluCtx);
+    const phReculVoie  = pickShort(phrasesDict, 'plu', 'recul_voie', pluCtx);
+    const phReculLat   = pickShort(phrasesDict, 'plu', 'recul_lat',  pluCtx);
+    const phReculFond  = pickShort(phrasesDict, 'plu', 'recul_fond', pluCtx);
+
+    // Format helpers pour les reculs (m, accepte 0)
+    const reculVal = (v) => v != null ? `${v} m` : null;
+    // Affichage du fond : "idem latéral" si non différencié dans le PLU
+    const reculFondLabel = (p4.recul_fond_m == null && p4.recul_limite_sep_m != null)
+      ? 'idem latéral'
+      : reculVal(p4.recul_fond_m);
+
     const pprSnap = terrain.snap_ppr ?? this._visuals?.phaseSnaps?.[3] ?? null;
     const reculsSnap = this._visuals?.reculsCanvas ?? null;
+
+    // Bioclimatique (héliodone + rose des vents MF)
+    const helioImg = this._visuals?.heliodone ?? null;
+    const windImg  = this._visuals?.windRose  ?? null;
+    const windMeta = this._visuals?.windMeta  ?? {};
+
+    // Flèche vent dominant pour overlay sur la carte PPRN
+    // Convention météo : "vent du E" = vent VENANT de l'Est → flèche pointant vers l'Ouest
+    const SECTOR_AZIMUTH = {
+      N: 0, NNE: 22.5, NE: 45, ENE: 67.5, E: 90, ESE: 112.5, SE: 135, SSE: 157.5,
+      S: 180, SSO: 202.5, SO: 225, OSO: 247.5, O: 270, ONO: 292.5, NO: 315, NNO: 337.5,
+    };
+    const dirAz = windMeta.dominantDir != null ? SECTOR_AZIMUTH[windMeta.dominantDir] : null;
+    // Path dessiné pointant vers le HAUT (Nord, y négatif) pour qu'une rotation = azimut.
+    // Le vent "va vers" l'opposé de sa direction d'origine ⇒ rotation = az + 180°.
+    const arrowRot = dirAz != null ? (dirAz + 180) % 360 : null;
+    // Path ondulé (deux cubiques en S inverse) + tête de flèche triangulaire au bout.
+    const wavyPath = 'M 0 28 C -9 18, 9 8, 0 -2 C -9 -12, 9 -22, 0 -32';
+    const arrowHead = 'M -8 -24 L 0 -36 L 8 -24 Z';
+    const windArrowSvg = (arrowRot != null) ? `
+      <svg class="wind-arrow" viewBox="-44 -44 88 88" xmlns="http://www.w3.org/2000/svg"
+           style="position:absolute;top:4px;right:4px;width:62px;height:62px;pointer-events:none">
+        <!-- Repère N fixe (non rotaté), petit, en haut-gauche -->
+        <g opacity="0.85">
+          <line x1="-36" y1="-30" x2="-36" y2="-40" stroke="#1C1C1A" stroke-width="1.2" stroke-linecap="round"/>
+          <text x="-36" y="-22" text-anchor="middle" font-family="monospace" font-size="9" font-weight="bold" fill="#1C1C1A">N</text>
+        </g>
+        <!-- Flèche ondulée rotatée -->
+        <g transform="rotate(${arrowRot.toFixed(1)})">
+          <!-- Halo blanc pour lisibilité sur fond satellite -->
+          <path d="${wavyPath}" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
+          <path d="${arrowHead}" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="4" stroke-linejoin="round" opacity="0.85"/>
+          <!-- Trait terracotta -->
+          <path d="${wavyPath}" fill="none" stroke="#C1652B" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="${arrowHead}" fill="#C1652B" stroke="#C1652B" stroke-width="1.2" stroke-linejoin="round"/>
+        </g>
+        <!-- Label dir au bas, fixe -->
+        <text x="0" y="42" text-anchor="middle" font-family="monospace" font-size="10" font-weight="bold"
+              fill="#C1652B" stroke="#FFFFFF" stroke-width="2.5" paint-order="stroke">${windMeta.dominantDir}</text>
+      </svg>` : '';
 
     // PPRN hors zone — message explicite
     const pprnHorsZoneMsg = !zone
@@ -392,22 +464,51 @@ const ExportEngine = {
           ${pprSnap ? `
           <div class="map-wrap" style="height:140px">
             <img src="${pprSnap}" alt="Carte PPR">
-            <span class="map-lbl">Carte PPR</span>
+            ${windArrowSvg}
+            <span class="map-lbl">Carte PPR${windMeta.dominantDir ? ` · vent ${windMeta.dominantDir}` : ''}</span>
             <span class="map-src">AGORAH PEIGEO</span>
-          </div>` : mapImg(maps, 'p03_ppr', 140, 'PPR — Vue rapprochee', 'AGORAH PEIGEO')}
+          </div>` : `<div class="map-wrap" style="height:140px">
+            ${maps?.p03_ppr ? `<img src="${maps.p03_ppr}" alt="PPR — Vue rapprochee">` : svgPlaceholder('PPR — Vue rapprochee')}
+            ${windArrowSvg}
+            <span class="map-lbl">PPR — Vue rapprochee${windMeta.dominantDir ? ` · vent ${windMeta.dominantDir}` : ''}</span>
+            <span class="map-src">AGORAH PEIGEO</span>
+          </div>`}
         </div>
         <div class="sec">
           ${sec('PLU & RECULS')}
-          ${zonePlu ? `<div class="hbox"><p>Zone <strong>${zonePlu}</strong> — ${pluDesc[zonePlu] ?? ''}</p></div>` : ''}
-          ${row('Hauteur max', p4.hauteur_max_m ? `${p4.hauteur_max_m} m` : null)}
-          ${row('Emprise sol', p4.emprise_sol_max_pct ? `${p4.emprise_sol_max_pct} %` : null)}
-          ${row('Reculs V / L / F', [p4.recul_voie_principale_m, p4.recul_limite_sep_m, p4.recul_fond_m].filter(Boolean).join(' / ') || null)}
+          ${zonePlu ? `<div class="hbox"><p>Zone <strong>${zonePlu}</strong> — ${pluDesc[zonePlu] ?? ''}</p></div>${tag(phZone)}` : ''}
+          ${rowTag('Hauteur max', p4.hauteur_max_m ? `${p4.hauteur_max_m} m` : null, phHauteur)}
+          ${rowTag('Emprise sol', p4.emprise_sol_max_pct ? `${p4.emprise_sol_max_pct} %` : null, phEmprise)}
+          ${rowTag('Recul voirie',  reculVal(p4.recul_voie_principale_m), phReculVoie)}
+          ${rowTag('Recul latéral', reculVal(p4.recul_limite_sep_m),      phReculLat)}
+          ${rowTag('Recul fond',    reculFondLabel,                        phReculFond)}
 
           ${reculsSnap ? `
           <div class="map-wrap" style="height:130px">
             <img src="${reculsSnap}" alt="Schema reculs">
             <span class="map-lbl">Schema des reculs</span>
           </div>` : ''}
+        </div>
+        <div class="sec">
+          ${sec('BIOCLIMATIQUE')}
+          ${(helioImg || windImg) ? `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            ${helioImg ? `
+            <div class="map-wrap" style="height:135px;background:#f5f4f1">
+              <img src="${helioImg}" alt="Heliodone" style="object-fit:contain">
+              <span class="map-lbl">Héliodone${windMeta.lat != null ? ` · φ=${windMeta.lat.toFixed(2)}°` : ''}</span>
+            </div>` : ''}
+            ${windImg ? `
+            <div class="map-wrap" style="height:135px;background:#f5f4f1">
+              <img src="${windImg}" alt="Rose des vents" style="object-fit:contain">
+              <span class="map-lbl">Rose vents${windMeta.stationName ? ` · ${windMeta.stationName}` : ''}</span>
+              <span class="map-src">${windMeta.source ?? '—'}</span>
+            </div>` : ''}
+          </div>
+          ${row('Dir. dominante', windMeta.dominantDir)}
+          ${row('Vitesse moy.', windMeta.meanSpeed != null ? `${windMeta.meanSpeed} m/s` : null)}
+          ${row('Période', windMeta.period)}
+          ` : `<div class="hbox" style="background:#F5F0E8;padding:4px 8px;font-size:7.5pt"><p style="margin:0">Diagrammes bioclimatiques non disponibles (latitude/longitude manquantes)</p></div>`}
         </div>
       </div>
       ${plancheFoot(terrain.commune, ref, 2, tp)}
@@ -418,7 +519,7 @@ const ExportEngine = {
   //  PLANCHE 4 — Plan masse & Conformite (mode projet)
   // ═══════════════════════════════════════════════════════════════
 
-  _renderPlanche4(_session, terrain, _maps, ref, tp) {
+  _renderPlanche4(session, terrain, _maps, ref, tp) {
     const proposal = this._visuals?.activeProposal ?? window._activeProposal ?? null;
     const planMasseImg = this._visuals?.planMasse ?? null;
 
@@ -427,6 +528,55 @@ const ExportEngine = {
 
     // Métriques en bande horizontale compacte
     const mRow = (l, v) => v != null && v !== '' ? `<span class="phf-e" style="margin-right:12px"><strong>${l}</strong> ${v}</span>` : '';
+
+    // ── Tableau Pareto : 6 variantes A1→C2 ──────────────────────────
+    // Récupérer toutes les variantes (auto_plan_solutions sauvé en phase 7)
+    const p7data = session?.getPhase?.(7)?.data ?? {};
+    const allSolutions = (p7data.auto_plan_solutions ?? [])
+      .filter(s => s.family !== 'X0' && s.bat) // exclure non-constructibles
+      // Tri stable A1→C2 (familles ordonnées par densité décroissante)
+      .sort((a, b) => (a.family ?? 'Z').localeCompare(b.family ?? 'Z'));
+
+    const activeFamily = proposal?.family ?? null;
+
+    const paretoTable = allSolutions.length >= 2 ? `
+      <div style="display:flex;flex-direction:column;font-size:6.5pt;line-height:1.35;border:0.5px solid #d8d3c4;border-radius:1.5px;overflow:hidden">
+        <div style="display:grid;grid-template-columns:14px 38px 1fr 22px 32px 26px 28px 28px 26px;gap:0;background:#ede8d8;font-weight:bold;padding:1.5px 3px;border-bottom:0.5px solid #d8d3c4">
+          <span></span>
+          <span>Var.</span>
+          <span>Strategie</span>
+          <span style="text-align:right">Niv.</span>
+          <span style="text-align:right">SDP</span>
+          <span style="text-align:right">Lgts</span>
+          <span style="text-align:right">CES</span>
+          <span style="text-align:right">Perm.</span>
+          <span style="text-align:right">Score</span>
+        </div>
+        ${allSolutions.map(s => {
+          const isActive = s.family === activeFamily;
+          const bgColor = isActive ? 'background:#fef3c7;' : '';
+          const star = isActive ? '★' : '';
+          const empPct = s.empPct != null ? Math.round(s.empPct) : '—';
+          const permPct = s.permPct != null ? Math.round(s.permPct) : '—';
+          const sp = s.spTot != null ? Math.round(s.spTot) : '—';
+          const sc = s.score != null ? s.score.toFixed(2) : '—';
+          const dot = s.color ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${s.color};vertical-align:middle"></span>` : '';
+          return `<div style="display:grid;grid-template-columns:14px 38px 1fr 22px 32px 26px 28px 28px 26px;gap:0;padding:1.5px 3px;${bgColor}border-bottom:0.3px solid #ece7d6">
+            <span style="text-align:center;color:#c1652b;font-weight:bold">${star}</span>
+            <span style="font-weight:bold">${dot} ${s.family ?? '?'}</span>
+            <span style="color:#6a6860">${s.label ?? '?'}</span>
+            <span style="text-align:right">R+${(s.niveaux ?? 1) - 1}</span>
+            <span style="text-align:right">${sp} m²</span>
+            <span style="text-align:right">${s.nLgts ?? '—'}</span>
+            <span style="text-align:right">${empPct}%</span>
+            <span style="text-align:right">${permPct}%</span>
+            <span style="text-align:right;font-weight:bold">${sc}</span>
+          </div>`;
+        }).join('')}
+        <div style="font-size:5.5pt;color:#8a8773;padding:1.5px 4px;background:#faf7ec;font-style:italic">
+          Score Pareto = densite x permeabilite x conformite (PLU + RTAA + COS)
+        </div>
+      </div>` : '';
 
     return `<div class="page">
       ${plancheHead('Plan masse & Conformite', 3, tp, ref)}
@@ -442,11 +592,12 @@ const ExportEngine = {
           ${mRow('Veg.', metrics.vegetation_m2 ? `${metrics.vegetation_m2} m2` : null)}
           ${mRow('Amenites', metrics.amenites?.join(', '))}
         </div>
+        ${paretoTable}
         <div style="display:flex;gap:6px;flex:1">
           ${planMasseImg ? `
           <div class="map-wrap" style="flex:3;min-width:0">
             <img src="${planMasseImg}" alt="Plan masse" style="object-fit:contain">
-            <span class="map-lbl">Plan masse</span>
+            <span class="map-lbl">Plan masse · variante ${activeFamily ?? '?'}</span>
             <span class="map-src">TERLAB · Auto-plan</span>
           </div>` : `
           <div class="map-wrap" style="flex:3;min-width:0">
@@ -540,7 +691,8 @@ const ExportEngine = {
     const p7 = this._getPhaseData(session, 7);
     const p8 = this._getPhaseData(session, 8);
     const pluRules = terrain._pluRules;
-    const num = tp >= 7 ? (tp === 7 ? 5 : 6) : 5;
+    // Site mode (tp=4) → page 3 ; Projet mode (tp=6) → page 5 (après cover, 2_3, 4, GIEP)
+    const num = tp >= 6 ? 5 : 3;
 
     const reseauLabels = {
       reseau_public: 'Reseau public', captage_prive: 'Captage prive', inconnu: 'Inconnu',
@@ -652,9 +804,9 @@ const ExportEngine = {
   // ═══════════════════════════════════════════════════════════════
 
   _renderPlanche7(session, terrain, _maps, ref, tp) {
-    const num = tp - 1;
+    const num = tp;
 
-    // Phase progress
+    // ── Phase progress ────────────────────────────────────────────
     const phases = [
       { n: 0,  label: 'Identification' }, { n: 1,  label: 'Topographie' },
       { n: 2,  label: 'Geologie' },       { n: 3,  label: 'Risques PPRN' },
@@ -677,50 +829,13 @@ const ExportEngine = {
       </div>`;
     }).join('');
 
-    // Commentaire global
+    // ── Commentaire global ────────────────────────────────────────
     const p12 = session?.getPhase?.(12)?.data ?? {};
     const commentaire = p12.commentaire_global ?? null;
     const enseignant = p12.enseignant ?? null;
 
-    return `<div class="page">
-      ${plancheHead('Checklist & Audit', num, tp, ref)}
-      <div class="pb pb3">
-        <div class="sec">
-          ${sec('PROGRESSION DES PHASES')}
-          ${progressHtml}
-        </div>
-        <div class="sec">
-          ${sec('INFORMATIONS SESSION')}
-          ${row('UUID', session?.getOrCreateUUID?.()?.slice(-8))}
-          ${row('Date export', new Date().toLocaleDateString('fr-FR'))}
-          ${row('Enseignant', enseignant)}
-
-          ${commentaire ? `
-          ${sec('COMMENTAIRE GENERAL')}
-          <div class="hbox"><p>${commentaire}</p></div>` : ''}
-
-          ${sec('AVERTISSEMENT')}
-          <div class="hbox">
-            <p>Ce document est produit avec TERLAB v1.0, outil pedagogique de l'ENSA La Reunion.
-            Il <strong>ne se substitue pas</strong> aux documents reglementaires officiels
-            (PPRN, PLU, CU, ERP, attestations techniques).</p>
-          </div>
-        </div>
-      </div>
-      ${plancheFoot(terrain.commune, ref, num, tp)}
-    </div>`;
-  },
-
-  // ═══════════════════════════════════════════════════════════════
-  //  PLANCHE 8 — Synthese & Conclusions
-  // ═══════════════════════════════════════════════════════════════
-
-  _renderPlanche8(_session, terrain, _maps, ref, tp) {
-    const num = tp;
-
-    // Build synthesis items
+    // ── Synthèse des enjeux ───────────────────────────────────────
     const items = [];
-
     // Positif
     if (terrain.zone_plu && /^U/.test(terrain.zone_plu))
       items.push({ icon: '+', cls: 'p', text: `Zone ${terrain.zone_plu} — terrain urbanisable` });
@@ -730,7 +845,6 @@ const ExportEngine = {
       items.push({ icon: '+', cls: 'p', text: 'Desserte eau potable reseau public' });
     if (terrain.electricite === 'disponible')
       items.push({ icon: '+', cls: 'p', text: 'Raccordement electrique disponible' });
-
     // Vigilance
     if (terrain.zone_pprn && /^[BR]/.test(terrain.zone_pprn))
       items.push({ icon: '!', cls: 'a', text: `Zone PPR ${terrain.zone_pprn} — contraintes fortes` });
@@ -738,37 +852,41 @@ const ExportEngine = {
       items.push({ icon: '!', cls: 'a', text: `Pente moyenne ${terrain.pente_moy_pct}% — terrassements importants` });
     if (terrain.distance_ravine_m != null && terrain.distance_ravine_m < 50)
       items.push({ icon: '!', cls: 'a', text: `Ravine a ${terrain.distance_ravine_m} m — vigilance eaux pluviales` });
-
     // Negatif
     if (terrain.zone_pprn === 'R1' || terrain.zone_pprn === 'R2')
       items.push({ icon: '-', cls: 'm', text: 'Zone rouge PPR — inconstructible' });
     if (terrain.assainissement === 'ANC')
       items.push({ icon: '-', cls: 'm', text: 'Assainissement non collectif — etude filiere requise' });
-
     if (items.length === 0) {
       items.push({ icon: '?', cls: 'a', text: 'Analyse incomplete — completer les phases pour obtenir la synthese' });
     }
-
     const synthHtml = items.map(it =>
       `<div class="synth-row"><span class="si ${it.cls}">${it.icon}</span><span class="st">${it.text}</span></div>`
     ).join('');
 
-    // Potentiel
+    // ── Potentiel constructif ─────────────────────────────────────
     const contenance = parseFloat(terrain.contenance_m2) || 0;
     const pluRules = terrain._pluRules;
     const empMax = pluRules?.plu?.emprMax ?? 60;
-    const heMax = pluRules?.plu?.heMax ?? 9;
+    const heMax  = pluRules?.plu?.heMax ?? 9;
     const empriseEst = Math.round(contenance * empMax / 100);
-    const sdpEst = empriseEst * Math.floor(heMax / 3);
+    const sdpEst     = empriseEst * Math.floor(heMax / 3);
+
+    // ── Sources utilisées ─────────────────────────────────────────
+    const windMeta = this._visuals?.windMeta ?? {};
+    const sources = this._getSourcesUsed(terrain, windMeta);
+    const sourcesHtml = sources.map(s =>
+      `<div class="fr"><span class="fl">${s.lbl}</span><span class="fv">${s.src}</span></div>`
+    ).join('');
 
     return `<div class="page">
-      ${plancheHead('Synthese & Conclusions', num, tp, ref)}
+      ${plancheHead('Synthèse, audit & sources', num, tp, ref)}
       <div class="pb pb3">
+        <!-- Colonne gauche : Synthèse + Potentiel + Prochaines étapes -->
         <div class="sec">
           ${sec('SYNTHESE DES ENJEUX')}
           ${synthHtml}
-        </div>
-        <div class="sec">
+
           ${sec('POTENTIEL CONSTRUCTIF ESTIME')}
           <div class="pot-grid" style="grid-template-columns:1fr 1fr">
             <div class="pcrd">
@@ -799,9 +917,68 @@ const ExportEngine = {
           <div class="synth-row"><span class="si a">3</span><span class="st">Consulter le PLU en mairie pour les regles specifiques</span></div>
           <div class="synth-row"><span class="si a">4</span><span class="st">Developper l'esquisse architecturale en atelier</span></div>
         </div>
+
+        <!-- Colonne droite : Audit + Sources + Avertissement -->
+        <div class="sec">
+          ${sec('PROGRESSION DES PHASES')}
+          ${progressHtml}
+
+          ${sec('SOURCES UTILISEES')}
+          ${sourcesHtml}
+
+          ${sec('INFORMATIONS SESSION')}
+          ${row('UUID', session?.getOrCreateUUID?.()?.slice(-8))}
+          ${row('Date export', new Date().toLocaleDateString('fr-FR'))}
+          ${row('Enseignant', enseignant)}
+
+          ${commentaire ? `
+          ${sec('COMMENTAIRE GENERAL')}
+          <div class="hbox"><p>${commentaire}</p></div>` : ''}
+
+          ${sec('AVERTISSEMENT')}
+          <div class="hbox">
+            <p>Ce document est produit avec TERLAB v1.0, outil pedagogique de l'ENSA La Reunion.
+            Il <strong>ne se substitue pas</strong> aux documents reglementaires officiels
+            (PPRN, PLU, CU, ERP, attestations techniques).</p>
+          </div>
+        </div>
       </div>
       ${plancheFoot(terrain.commune, ref, num, tp)}
     </div>`;
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  //  SOURCES — utilisé par la planche fusionnée Audit + Synthèse
+  // ═══════════════════════════════════════════════════════════════
+
+  _getSourcesUsed(terrain, windMeta) {
+    // Sources actives selon les données récupérées par l'enrichissement
+    const sources = [
+      { lbl: 'Cadastre PARCELLAIRE EXPRESS', src: 'IGN Géoplateforme · WFS' },
+      { lbl: 'Fond satellite & relief',      src: 'Mapbox GL JS' },
+    ];
+    if (terrain?.parcelle_geojson)
+      sources.push({ lbl: 'Géocodage commune INSEE', src: 'geo.api.gouv.fr' });
+    if (terrain?.altitude_ngr != null || terrain?.alt_min_dem != null)
+      sources.push({ lbl: 'Altimétrie · MNT BIL',     src: 'IGN Alti · API publique' });
+    if (terrain?.lidar_source === 'lidar_hd' || terrain?.alt_min_dem != null)
+      sources.push({ lbl: 'Nuage de points LiDAR HD', src: 'IGN LiDAR HD · COPC' });
+    if (terrain?.zone_pprn != null || terrain?.ppr_label != null)
+      sources.push({ lbl: 'PPRN — Plan Prévention Risques', src: 'AGORAH PEIGEO · WMS' });
+    if (terrain?.zone_plu != null)
+      sources.push({ lbl: 'Zonage PLU communal',      src: 'API Carto IGN · GPU' });
+    if (terrain?.geologie_type != null)
+      sources.push({ lbl: 'Géologie · cartes 1/50 000', src: 'BRGM InfoTerre · WMS' });
+    if (terrain?.station_meteo != null)
+      sources.push({ lbl: 'Données climatiques station',  src: 'Météo-France Réunion' });
+    if (windMeta?.source === 'MF-precomputed')
+      sources.push({ lbl: 'Rose des vents · station MF', src: `Météo-France · ${windMeta.stationName ?? '—'}` });
+    else if (windMeta?.source === 'ERA5-Open-Meteo')
+      sources.push({ lbl: 'Rose des vents · réanalyse',  src: 'Open-Meteo ERA5 · ECMWF' });
+    sources.push({ lbl: 'Bâti & voirie · BD TOPO',       src: 'IGN BD TOPO · WFS' });
+    sources.push({ lbl: 'Règles RTAA DOM 974',           src: 'DEAL Réunion' });
+    sources.push({ lbl: 'Fiches Envirobat Réunion',       src: 'Envirobat-Réunion · PDF' });
+    return sources;
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -935,21 +1112,45 @@ const ExportEngine = {
       if (snap) v.phaseSnaps[i] = snap;
     }
 
+    // ── Diagrammes bioclimatiques (héliodone + rose des vents MF) ───────────
+    // Génère deux canvas off-screen 600px → dataURL PNG.
+    // Source vent : station Météo-France pré-calculée < 8 km, fallback ERA5 Open-Meteo.
+    // Mode "minimal" : pas de légendes intra-canvas (l'export-engine ajoute ses
+    // propres pills .map-lbl par-dessus, et la station/v̄/dir vont dans le row meta).
+    try {
+      const r = await DiagRenderer.renderDiagrams(window.SessionManager, { size: 600, minimal: true });
+      v.heliodone = r.heliCanvas.toDataURL('image/png');
+      v.windRose  = r.windCanvas.toDataURL('image/png');
+      v.windMeta  = {
+        stationName: r.windData?.stationName ?? null,
+        dominantDir: r.windData?.dominantDir ?? null,
+        meanSpeed:   r.windData?.meanSpeed ?? null,
+        source:      r.windData?.source ?? null,
+        period:      r.windData?.period ?? null,
+        lat:         r.lat,
+      };
+      console.log('[PDF] Bioclim : héliodone φ=' + r.lat.toFixed(2) + '° + rose ' + (r.windData?.dominantDir ?? '?') + ' (' + (r.windData?.source ?? '?') + ')');
+    } catch (e) { console.warn('[PDF] Bioclim capture error:', e); }
+
     // Active proposal (mode projet)
     v.activeProposal = window._activeProposal ?? null;
 
-    // Coupe gabarit SVG (mode projet)
+    // Coupe N-S gabarit PLU + toiture 2 pans (utils/coupe-renderer.js)
+    // ⚠️  hé mesuré depuis le sol AVAL (point le plus bas adjacent au bâtiment),
+    //     pente terrain lue dans la session — pas de valeur hardcodée.
     try {
-      const CSR = window.CapacityStudyRenderer;
-      const proposal = v.activeProposal;
-      if (CSR && proposal && window.SessionManager) {
-        const svgStr = CSR.renderCoupeGabarit(window.SessionManager, proposal, null);
-        if (svgStr && svgStr.length > 50) {
-          const svgEl = new DOMParser().parseFromString(svgStr, 'image/svg+xml').documentElement;
-          v.coupeGabarit = await this._svgToDataURL(svgEl, 840, 400);
-        }
+      const sm = window.SessionManager;
+      if (sm?._data) {
+        const svgDoc = buildCoupeSVGDocument(sm._data, {
+          width:  1200,
+          height: 500,
+          forPDF: true,
+          isDark: false,
+        });
+        const svgEl = new DOMParser().parseFromString(svgDoc, 'image/svg+xml').documentElement;
+        v.coupeGabarit = await this._svgToDataURL(svgEl, 1200, 500);
       }
-    } catch (e) { console.warn('[PDF] Coupe gabarit capture error:', e); }
+    } catch (e) { console.warn('[PDF] Coupe N-S capture error:', e); }
 
     console.log('[PDF] Visuels captures :', Object.keys(v).filter(k => v[k]).join(', '));
     return v;

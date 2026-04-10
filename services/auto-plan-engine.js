@@ -186,6 +186,16 @@ const AutoPlanEngine = {
       heMax = Math.min(heMax, realPlu.hauteur_absolue_max_m);
     }
 
+    // AVAP proximité patrimoniale : He cappée par bâtiment de référence voisin +1 niveau
+    const avap = (typeof window !== 'undefined' ? window.TERLAB_PLU_CONFIG?.avap : null) ?? null;
+    if (avap?.proximite) {
+      const hRef = parseFloat(p4.avap_h_reference_m ?? 0);
+      if (hRef > 0) {
+        heMax = Math.min(heMax, hRef + 3);
+        console.info('[AutoPlan] AVAP proximité : He cappée à', heMax, 'm (référence', hRef, 'm + 1 niveau)');
+      }
+    }
+
     // Alignement voie → recul voie = 0
     let reculVoie = parseFloat(p4.recul_voie_principale_m ?? p4.recul_voie_m ?? p4.recul_avant_m ?? 3) || 3;
     if (realPlu.voie_alignement === true) {

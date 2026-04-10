@@ -14,10 +14,10 @@
     <span class="ts-item">Interco <strong id="ts-interco-p4">—</strong></span>
   </div>
 
-  <!-- Toggle cadastre / Plan IGN -->
-  <div style="display:flex;gap:6px;padding:4px 13px 8px">
-    <button class="map-ctl-btn" id="btn-toggle-cadastre-p4" onclick="P04.toggleCadastre()">🗂 Cadastre</button>
-    <button class="map-ctl-btn" id="btn-toggle-plan-p4" onclick="P04.togglePlan()">🗺 Plan IGN</button>
+  <!-- Plan état des lieux SVG (remplace canvas Mapbox) -->
+  <div style="display:flex;gap:6px;padding:4px 13px 8px;align-items:center;flex-wrap:wrap">
+    <button class="map-ctl-btn" id="btn-export-etat" onclick="P04.exportEtatPDF()">📄 Plan d'état des lieux PDF</button>
+    <span id="site-plan-meta-p4" style="font-family:var(--font-mono);font-size:9px;color:var(--muted)"></span>
   </div>
 
   <!-- Zone PLU -->
@@ -43,6 +43,25 @@
     </div>
     <div class="zone-a-alert" id="zone-a-alert" style="display:none">
       🔴 <strong>Zone A — Agricole.</strong> Constructibilité quasi nulle. Seul le logement de l'exploitant agricole peut être autorisé sous conditions strictes. Un projet résidentiel nécessite une révision du PLU (2–5 ans de procédure).
+    </div>
+    <div id="avap-secteur-row" class="field-row" style="display:none">
+      <label class="field-label" for="avap-secteur">Secteur AVAP (Saint-Denis)</label>
+      <select id="avap-secteur" class="field-select" onchange="P04.updateSecteurAvap()">
+        <option value="S1">S1 — Damier nord + Jardin de l'État</option>
+        <option value="S2">S2 — Hyper-centre cathédrale</option>
+        <option value="S3">S3 — Quartiers verts résidentiels</option>
+        <option value="S4" selected>S4 — Maréchal Leclerc + Bas Rivière</option>
+        <option value="S5">S5 — Petite-Île + Saint-Jacques</option>
+        <option value="S6">S6 — Entrées de ville</option>
+      </select>
+      <div style="font-size:10px;color:var(--text2);margin-top:4px;line-height:1.4">
+        AVAP approuvée 26/10/2013 — avis conforme ABF requis. Règle de proximité patrimoniale : He limitée par bâtiments de référence voisins.
+      </div>
+      <div class="field-row" style="margin-top:6px">
+        <label class="field-label" for="avap-h-ref" style="font-size:10px">Hauteur bâtiment de référence voisin (m) — laisser 0 si aucun</label>
+        <input type="number" id="avap-h-ref" class="field-input" value="0" min="0" max="30" step="0.5" style="width:80px"
+               onchange="SessionManager.savePhase(4, { avap_h_reference_m: this.value })">
+      </div>
     </div>
     <div class="plu-links" id="plu-links"></div>
   </div>
@@ -200,7 +219,7 @@
   </div>
 </div>
 
-<div class="map-area"><div id="map" style="width:100%;height:100%"></div><div id="map-stub-banner" style="display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(167,139,250,.85);color:#000;padding:5px 14px;border-radius:4px;font-family:monospace;font-size:10px"></div></div>
+<div class="map-area"><div id="site-plan-svg-p4" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#fcf9f3;overflow:auto"><div id="site-plan-loading" style="font-family:monospace;font-size:11px;color:#6b5c3e">Chargement du plan d'état des lieux…</div></div></div>
 
 <div class="right-panel">
   <div class="rp-section">
@@ -329,27 +348,63 @@ const SessionManager = window.SessionManager;
 const INTERCOS_URLS = { CINOR:'https://www.cinor.re', CIREST:'https://www.cirest.fr', CASUD:'https://www.casud.re', TCO:'https://www.tco.re' };
 const PLUService = window.PLUService;
 const GpuService = window.GpuService;
-const MapViewer  = window.TerlabMap;
+// MapViewer Mapbox retiré : la zone carte est maintenant rendue par SitePlanRenderer
 
 const P04 = {
-  _cadastreOn: true,
-  _planOn: false,
+  _sitePlan: null,    // résultat SitePlanRenderer.build (cache pour export)
 
-  toggleCadastre() {
-    this._cadastreOn = !this._cadastreOn;
-    MapViewer?.toggleCadastre?.(this._cadastreOn);
-    document.getElementById('btn-toggle-cadastre-p4')?.classList.toggle('active', this._cadastreOn);
+  // ─── Plan d'état des lieux SVG (remplace l'ancien canvas Mapbox) ───
+  async renderEtatDesLieux() {
+    const container = document.getElementById('site-plan-svg-p4');
+    const meta      = document.getElementById('site-plan-meta-p4');
+    if (!container) return;
+    try {
+      const mod = await import('../utils/site-plan-renderer.js');
+      const SitePlanRenderer = mod.default;
+      const session = SessionManager.getSession?.() ?? { terrain: SessionManager.getTerrain() };
+      const result  = await SitePlanRenderer.build(session, { withProject: false });
+      this._sitePlan = result;
+      container.innerHTML = result.svg;
+      if (meta) {
+        meta.textContent = `1/${result.meta.scale} · ${result.meta.format} · diag ${Math.round(result.meta.diag)} m`;
+      }
+    } catch (e) {
+      console.warn('[P04] renderEtatDesLieux failed:', e);
+      container.innerHTML = `<div style="font-family:monospace;font-size:11px;color:#a78bfa;padding:14px">Erreur rendu plan : ${e.message}</div>`;
+    }
   },
-  togglePlan() {
-    this._planOn = !this._planOn;
-    MapViewer?.togglePlanIGN?.(this._planOn);
-    document.getElementById('btn-toggle-plan-p4')?.classList.toggle('active', this._planOn);
+
+  async exportEtatPDF() {
+    if (!this._sitePlan) {
+      window.TerlabToast?.show('Plan en cours de génération…', 'info', 2000);
+      await this.renderEtatDesLieux();
+    }
+    if (!this._sitePlan) return;
+    const mod = await import('../utils/site-plan-renderer.js');
+    const html = mod.default.wrapForPrint(this._sitePlan);
+    // Pipeline : iframe + window.print() (cohérent avec export-engine.js)
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+    document.body.appendChild(iframe);
+    iframe.srcdoc = html;
+    iframe.onload = () => {
+      try { iframe.contentWindow.focus(); iframe.contentWindow.print(); }
+      finally { setTimeout(() => iframe.remove(), 1500); }
+    };
   },
 
   updateZone() {
     const z = document.getElementById('zone-plu')?.value;
     document.getElementById('zone-a-alert').style.display = z === 'A' ? 'block' : 'none';
+    // Afficher le sélecteur AVAP si zone Uavap détectée
+    const isAvap = z?.toLowerCase?.().includes('avap') || z?.toLowerCase?.().includes('uavap');
+    document.getElementById('avap-secteur-row').style.display = isAvap ? '' : 'none';
     SessionManager.saveTerrain({ zone_plu: z });
+    if (isAvap) this.updateSecteurAvap();
+  },
+  updateSecteurAvap() {
+    const s = document.getElementById('avap-secteur')?.value ?? 'S4';
+    SessionManager.savePhase(4, { secteur_avap: s });
   },
   updateReculs() {
     const v = parseFloat(document.getElementById('r-voie')?.value ?? 0);
@@ -622,6 +677,8 @@ P04._showPluAmbiguites = function(cfg) {
 
 window.P04 = P04;
 P04._initSolarDiagram();
+// Lance le rendu du plan d'état des lieux dès que la session terrain est dispo
+P04.renderEtatDesLieux();
 
 // ─── Auto-fetch SCOT ────────────────────────────────────────────
 (async () => {
@@ -683,6 +740,10 @@ P04._initSolarDiagram();
       zone_plu_type: plu.typeZone,
       zone_plu_constructible: plu.constructible,
     });
+    // Afficher le sélecteur AVAP si zone AVAP détectée
+    const isAvap = plu.zone?.toLowerCase?.().includes('avap');
+    document.getElementById('avap-secteur-row').style.display = isAvap ? '' : 'none';
+    if (isAvap) P04.updateSecteurAvap();
   } catch (e) {
     console.warn('[P04] PLU auto-fetch failed:', e.message);
     // Auto-détection échouée → afficher le sélecteur manuel

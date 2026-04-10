@@ -42,6 +42,33 @@ function _insetPoly(poly, reculs) {
 function polyArea(pts) { let s = 0; for (let i = 0, n = pts.length; i < n; i++) { const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % n]; s += x1 * y2 - x2 * y1; } return Math.abs(s) / 2; }
 function polyAABB(p) { const xs = p.map(v => v[0]), ys = p.map(v => v[1]); return { x: Math.min(...xs), y: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) }; }
 function ptInPoly(px, py, poly) { let inside = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) inside = !inside; } return inside; }
+
+// ── Sutherland-Hodgman pour [x,y] ─────────────────────────────────
+// En espace SVG (Y-down), un polygone CW visuel a signedArea < 0.
+// On reverse le clip dans ce cas pour que cross >= 0 = intérieur.
+function _signedAreaArr(pts) { let a = 0; for (let i = 0, n = pts.length; i < n; i++) { const j = (i + 1) % n; a += pts[i][0] * pts[j][1] - pts[j][0] * pts[i][1]; } return a / 2; }
+function clipSH(subject, clip) {
+  if (!clip || clip.length < 3 || !subject || subject.length < 3) return [];
+  const sa = _signedAreaArr(clip);
+  const ccwClip = sa < 0 ? [...clip].reverse() : clip;
+  const cross  = (a, b, p) => (b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0]);
+  const isect  = (a, b, c, d) => { const r = lineIsect(a[0], a[1], b[0], b[1], c[0], c[1], d[0], d[1]); return [r[0], r[1]]; };
+  let output = [...subject];
+  const n = ccwClip.length;
+  for (let i = 0; i < n && output.length; i++) {
+    const input = output;
+    output = [];
+    const a = ccwClip[i], b = ccwClip[(i + 1) % n];
+    for (let j = 0; j < input.length; j++) {
+      const p = input[j], q = input[(j + 1) % input.length];
+      const pIn = cross(a, b, p) >= 0;
+      const qIn = cross(a, b, q) >= 0;
+      if (pIn) { output.push(p); if (!qIn) output.push(isect(a, b, p, q)); }
+      else if (qIn) output.push(isect(a, b, p, q));
+    }
+  }
+  return output;
+}
 function distPtSeg(px, py, x1, y1, x2, y2) { const dx = x2 - x1, dy = y2 - y1, l2 = dx * dx + dy * dy; if (l2 < 1e-10) return Math.hypot(px - x1, py - y1); const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / l2)); return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy)); }
 
 function poleOfInaccessibility(poly, prec = 1.5) {
@@ -137,6 +164,7 @@ const PlanMasseCanvas = {
 
     // Premier rendu
     this.render();
+    console.log(`[PMC] Plan masse canvas initialisé — terrain ${Math.round(this._terrain.area)} m²`);
 
     console.info('[PMC] Plan masse canvas initialisé — terrain', Math.round(this._terrain.area), 'm²');
     return this;
@@ -168,10 +196,15 @@ const PlanMasseCanvas = {
 
     const area = polyArea(poly) || parseFloat(terrain.contenance_m2 ?? 600);
 
+    // Règle BINAIRE latérale : 0 (mitoyen) OU Lmin (recul std), jamais entre.
+    // Lmin = max(valeur PLU, 3m) — minimum réglementaire La Réunion.
+    // La mitoyenneté est gérée per-arête via S.mitoyen[i] dans edgeRecul().
+    const Lraw = parseFloat(p4.recul_limite_sep_m ?? p4.recul_lat_m ?? pluCfg?.reculs?.lat ?? 3);
+    const Lmin = (Number.isFinite(Lraw) && Lraw > 0) ? Lraw : 3;
     const reculs = {
       voie: parseFloat(p4.recul_voie_m ?? p4.recul_avant_m ?? pluCfg?.reculs?.voie ?? 3) || 3,
       fond: parseFloat(p4.recul_fond_m ?? pluCfg?.reculs?.fond ?? 3) || 3,
-      lat: parseFloat(p4.recul_lat_m ?? pluCfg?.reculs?.lat ?? 0) || 0,
+      lat:  Math.max(Lmin, 0),  // jamais inférieur au minimum réglementaire
     };
 
     const emprMaxRaw = parseFloat(p4.ces_max ?? pluCfg?.plu?.emprMax ?? 60);
@@ -190,9 +223,14 @@ const PlanMasseCanvas = {
 
   // ── ENVELOPPE ─────────────────────────────────────────────────────
 
+  // Recul effectif d'une arête. Latéral = BINAIRE (0 mitoyen, sinon Lmin).
+  // Voie / fond : valeur PLU directe.
   edgeRecul(i) {
     const t = this.S.edgeTypes[i];
-    if (t === 'lat' && this.S.mitoyen[i]) return 0;
+    if (t === 'lat') {
+      // Règle binaire stricte : mitoyen → 0, sinon recul standard
+      return this.S.mitoyen[i] ? 0 : (this._terrain.reculs.lat ?? 0);
+    }
     return this._terrain.reculs[t] ?? 0;
   },
 
@@ -444,8 +482,24 @@ const PlanMasseCanvas = {
       parts.push(this._tx(pkx + pkw / 2, pkbb + pkl / 2, `${m.parkReq} PK`, 9, 'rgba(70,60,50,.7)'));
     }
 
-    // Bâtiment
-    if (this._terrain.plu.constructible) {
+    // Bâtiment — filet de sécurité : clip contre la zone constructible ET la
+    // parcelle, puis vérification de surface minimale (12 m²). Si la forme
+    // résultante est trop petite, on n'affiche RIEN et on remonte un warning.
+    const SURFACE_MIN_M2 = 12;
+    const batRect = [
+      [b.x,         b.y],
+      [b.x + b.w,   b.y],
+      [b.x + b.w,   b.y + b.l],
+      [b.x,         b.y + b.l],
+    ];
+    const batClipped = clipSH(clipSH(batRect, env.poly), t.poly);
+    const batClippedArea = batClipped.length >= 3 ? polyArea(batClipped) : 0;
+    const batSafe = batClippedArea >= SURFACE_MIN_M2;
+    if (!batSafe) {
+      this.S._insetWarn = `Bâtiment hors zone constructible (clip = ${batClippedArea.toFixed(1)} m²) — repositionnez ou ajustez les reculs`;
+    }
+
+    if (this._terrain.plu.constructible && batSafe) {
       const blocs = this.getBlocRects(m);
       blocs.forEach((bl, bi) => {
         const [bsx, bsy] = this._w2s(bl.x, bl.y + bl.l);
@@ -844,6 +898,18 @@ const PlanMasseCanvas = {
     if (!this._terrain.plu.constructible) return;
     this._initBatFromPIR();
     this.render();
+  },
+
+  /** Recharger le terrain depuis la session (après chargement PLU asynchrone) */
+  rebuild(session) {
+    if (session) this._session = session;
+    this._buildTerrain();
+    this.S.edgeTypes = [...this._terrain.edgeTypes];
+    this.S.mitoyen = new Array(this._terrain.poly.length).fill(false);
+    this._initBatFromPIR();
+    this._resetView();
+    this.render();
+    console.log(`[PMC] Rebuild — terrain ${Math.round(this._terrain.area)} m²`);
   },
 
   resetView() { this._resetView(); this.render(); },

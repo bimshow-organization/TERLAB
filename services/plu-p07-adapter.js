@@ -30,12 +30,13 @@ export class PLUP07Adapter {
 
   /* ── Résolution ──────────────────────────────────────────── */
 
-  resolve(codeInsee, zonePlu, zoneRtaa = '1') {
+  resolve(codeInsee, zonePlu, zoneRtaa = '1', options = {}) {
     const warnings = [];
 
     if (!this._loaded || !this._rules) {
       return this._fallback(codeInsee, zonePlu, zoneRtaa,
-        ['plu-rules-reunion.json non chargé — utilisation valeurs par défaut'], 0);
+        ['plu-rules-reunion.json non chargé — utilisation valeurs par défaut'],
+        0, 'RULES_NOT_LOADED');
     }
 
     // Trouver commune par code INSEE ou par nom
@@ -49,7 +50,17 @@ export class PLUP07Adapter {
       console.warn(`plu-p07-adapter: commune ${codeInsee} (${communeName}) absente de plu-rules-reunion.json — valeurs par défaut RTAA`);
       window.TerlabToast?.show(`PLU ${communeName} : données non disponibles — valeurs RTAA par défaut`, 'warning', 5000);
       return this._fallback(codeInsee, zonePlu, zoneRtaa,
-        [`Commune ${codeInsee} (${communeName}) absente de plu-rules-reunion.json`], 0);
+        [`Commune ${codeInsee} (${communeName}) absente de plu-rules-reunion.json`],
+        0, 'COMMUNE_MISSING');
+    }
+
+    // ── Vérification age de la donnée PLU ──────────────────────
+    const dateApprob = communeData.meta?.plu_date_approbation;
+    if (dateApprob) {
+      const ageYears = (Date.now() - new Date(dateApprob).getTime()) / (365.25 * 24 * 3600 * 1000);
+      if (ageYears > 8) {
+        warnings.push(`ℹ PLU approuvé en ${dateApprob.slice(0,4)} (${Math.floor(ageYears)} ans) — vérifier les modifications récentes`);
+      }
     }
 
     // Trouver zone
@@ -82,7 +93,59 @@ export class PLUP07Adapter {
         }
       } else {
         return this._fallback(codeInsee, zonePlu, zoneRtaa,
-          [`Zone "${zonePlu}" introuvable dans commune ${codeInsee}`], 0.3);
+          [`Zone "${zonePlu}" introuvable dans commune ${codeInsee}`],
+          0.3, 'ZONE_MISSING');
+      }
+    }
+
+    // ── Résolution AVAP : si zone contient des secteurs (S1-S6) ──
+    let avapData = null;
+    if (zoneData.secteurs) {
+      const secteurKey = options.secteurAvap ?? 'S1';
+      const secteur = zoneData.secteurs[secteurKey];
+      if (secteur) {
+        avapData = {
+          secteur:    secteurKey,
+          label:      secteur.label,
+          caractere:  secteur.caractere,
+          proximite:  zoneData.regles_proximite_patrimoniale ?? null,
+          prescriptions: zoneData.prescriptions_architecturales ?? null,
+          espaces_libres: zoneData.espaces_libres ?? null,
+          dependances: zoneData.dependances_front_rue ?? null,
+        };
+        // Aplatir les règles du secteur dans le format attendu par le pipeline
+        const sr = secteur.reculs ?? {};
+        const sh = secteur.hauteurs ?? {};
+        const se = secteur.emprise ?? {};
+        zoneData = {
+          ...zoneData,
+          reculs: {
+            voie_principale_m: this._parseReculAvap(sr.voie, 4),
+            voie_alignement:   sr.voie?.includes?.('Alignement') ?? false,
+            sep_lat_m:         this._parseReculAvap(sr.sep_lat, 4),
+            sep_lat_limite_autorisee: sr.sep_lat?.includes?.('limites') ?? true,
+            inter_batiments_m: Array.isArray(sr.entre_batiments_meme_parcelle_m)
+              ? sr.entre_batiments_meme_parcelle_m[0] : (sr.entre_batiments_meme_parcelle_m ?? 4),
+            voie_note: sr.voie,
+            sep_lat_note: sr.sep_lat,
+          },
+          hauteurs: {
+            hf_max_m:  sh.H_max_m ?? null,
+            he_max_m:  sh.He_max_m ?? null,
+            h_max_m:   sh.H_max_m ?? null,
+            hauteur_note: `AVAP ${secteurKey} : ${sh.He_niveaux ?? ''}`,
+          },
+          emprise: {
+            emprise_sol_max_pct: se.emprise_sol_max_pct ?? 70,
+          },
+          _meta: zoneData._meta,
+        };
+        warnings.push(`ℹ Zone AVAP secteur ${secteurKey} — ${secteur.label}`);
+        if (sh.proximite_patrimoniale) {
+          warnings.push('ℹ Règle de proximité patrimoniale AVAP active : He limitée par bâtiments de référence voisins');
+        }
+      } else {
+        warnings.push(`Secteur AVAP "${secteurKey}" introuvable — vérifiez le document graphique AVAP`);
       }
     }
 
@@ -145,7 +208,14 @@ export class PLUP07Adapter {
 
       plu: {
         emprMax:      this._v(zoneData.emprise?.emprise_sol_max_pct, 60),
-        permMin:      this._v(zoneData.permeabilite?.permeable_min_pct, 30),
+        // permMin : valeur PLU directe OU conversion CBS (cas Saint-Pierre EcoPLU)
+        // Les zones Saint-Pierre n'ont pas permeable_min_pct mais cbs.gt250m2_cbs_min_pct.
+        // Le CBS représente une surface ÉCO-équivalente : on l'utilise comme proxy pédagogique.
+        permMin:      this._v(
+                        zoneData.permeabilite?.permeable_min_pct,
+                        zoneData.cbs?.gt250m2_cbs_min_pct,
+                        zoneData.cbs?.cbs_min_pct,
+                        30),
         heMax:        this._v(zoneData.hauteurs?.hf_max_m,
                               zoneData.hauteurs?.he_max_m,
                               zoneData.hauteurs?.h_max_m, 9),
@@ -196,6 +266,21 @@ export class PLUP07Adapter {
         aide_pct:       zoneData.logement_aide?.pct_seuil_1
                      ?? zoneData.logement_aide?.pct_aide
                      ?? regles.logement_aide_pct ?? null,
+        // CBS — Coefficient de Biotope par Surface (légal Saint-Pierre, indicateur ailleurs)
+        cbs: zoneData.cbs ? {
+          cbs_min_pct:           zoneData.cbs.gt250m2_cbs_min_pct ?? zoneData.cbs.cbs_min_pct ?? null,
+          cbs_min_pct_lt250:     zoneData.cbs.lte250m2_cbs_min_pct ?? null,
+          pleine_terre_min_pct:  zoneData.cbs.gt250m2_pleine_terre_min_pct
+                              ?? zoneData.cbs.pleine_terre_min_pct ?? null,
+          pleine_terre_min_pct_lt250: zoneData.cbs.lte250m2_pleine_terre_min_pct ?? null,
+          derogation_hauteur:    zoneData.cbs.cbs_gt60pct_derogation_hauteur
+                              ?? zoneData.cbs.cbs_gt70pct_derogation_hauteur ?? false,
+          derogation_seuil_pct:  zoneData.cbs.cbs_gt70pct_derogation_hauteur ? 70
+                              : (zoneData.cbs.cbs_gt60pct_derogation_hauteur ? 60 : null),
+          source:                `${commune} — PLU zone ${resolvedZoneKey}`,
+          reglementaire:         true,
+          note:                  zoneData.cbs.note ?? null,
+        } : null,
         // Notes pédagogiques (textes PLU détaillés)
         notes: {
           hauteur:      zoneData.hauteurs?.hauteur_note ?? zoneData.hauteurs?.note ?? null,
@@ -205,6 +290,9 @@ export class PLUP07Adapter {
           reculs_lat:   zoneData.reculs?.sep_lat_note ?? null,
         },
       },
+
+      // Données AVAP spécifiques (null si hors AVAP)
+      avap: avapData,
 
       _meta: {
         confidence,
@@ -291,6 +379,14 @@ export class PLUP07Adapter {
     return fallback;
   }
 
+  /** Parse un recul AVAP depuis une chaîne comme "Alignement ou retrait 4m min..." */
+  _parseReculAvap(str, fallback) {
+    if (str == null) return fallback;
+    if (typeof str === 'number') return str;
+    const m = str.match(/(\d+(?:[.,]\d+)?)\s*m\s*min/);
+    return m ? parseFloat(m[1].replace(',', '.')) : fallback;
+  }
+
   /** Cherche une zone similaire par troncation progressive du nom */
   _findSimilarZone(zones, zonePlu) {
     if (!zones || !zonePlu) return null;
@@ -331,7 +427,9 @@ export class PLUP07Adapter {
   /** Calcule la confiance en fonction des données disponibles */
   _computeConfidence(zoneData, warnings) {
     const base = zoneData?._meta?.confidence ?? zoneData?._confidence ?? 1.0;
-    const penalty = warnings.length * 0.1;
+    // Ne pas pénaliser les warnings informatifs (préfixe ℹ ou ⚠)
+    const realWarnings = warnings.filter(w => !w.startsWith('ℹ') && !w.startsWith('⚠'));
+    const penalty = realWarnings.length * 0.1;
     const criticalMissing = [
       zoneData?.emprise?.emprise_sol_max_pct,
       zoneData?.permeabilite?.permeable_min_pct,
@@ -341,8 +439,11 @@ export class PLUP07Adapter {
     return Math.max(0, Math.min(1, base - penalty - criticalMissing * 0.15));
   }
 
-  /** Retourne une config de fallback avec données par défaut */
-  _fallback(codeInsee, zonePlu, zoneRtaa, warnings, confidence = 0.3) {
+  /**
+   * Retourne une config de fallback avec données par défaut.
+   * @param {string} reason — RULES_NOT_LOADED | COMMUNE_MISSING | ZONE_MISSING | UNKNOWN
+   */
+  _fallback(codeInsee, zonePlu, zoneRtaa, warnings, confidence = 0.3, reason = 'UNKNOWN') {
     return {
       id: 'FALLBACK', label: `${zonePlu} (données non disponibles)`,
       commune: codeInsee, code_insee: codeInsee, zone_plu: zonePlu,
@@ -354,9 +455,16 @@ export class PLUP07Adapter {
         zone: zonePlu, type: 'U', sous_type: null, interBatMin: 4,
         loi_littoral: false, usages: {}, versants_obligatoire: true, ebc: false,
         park_logement_std: 2, park_logement_aide: 1, park_visiteur_par5: 1,
-        aide_seuil_m2: null, aide_pct: null,
+        aide_seuil_m2: null, aide_pct: null, cbs: null,
       },
-      _meta: { confidence, status: 'FALLBACK', warnings, source: 'fallback', last_update: null },
+      _meta: {
+        confidence,
+        status: 'FALLBACK',
+        reason,
+        warnings,
+        source: 'fallback',
+        last_update: null,
+      },
     };
   }
 }

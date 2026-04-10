@@ -35,15 +35,21 @@ const TerrainAnalysis = {
         { lng: (bbox[0] + bbox[2]) / 2, lat: (bbox[1] + bbox[3]) / 2 }, // centre
       ];
 
-      // API IGN altimétrie batch (GET, plus fiable que POST)
+      // API IGN altimétrie batch (GET, plus fiable que POST) — retry sur 429
       const lons = corners.map(c => c.lng).join('|');
       const lats = corners.map(c => c.lat).join('|');
       const altiUrl = `https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json`
-        + `?lon=${lons}&lat=${lats}&resource=ign_rge_alti_wld&delimiter=|&zonly=true`;
+        + `?lon=${lons}&lat=${lats}&resource=ign_rge_alti_wld&delimiter=|&zonly=false`;
 
-      const res = await fetch(altiUrl, { signal: AbortSignal.timeout(8000) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      let data;
+      for (let attempt = 0; attempt <= 3; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt - 1)));
+        const res = await fetch(altiUrl, { signal: AbortSignal.timeout(8000) });
+        if (res.status === 429 && attempt < 3) continue;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        data = await res.json();
+        break;
+      }
       const elevations = data?.elevations?.map(e => e.z) ?? [];
 
       if (elevations.length < 4) throw new Error('Pas assez de points');

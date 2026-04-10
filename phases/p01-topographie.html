@@ -417,6 +417,27 @@
     </div>
   </div>
 
+  <!-- ═══ BIOCLIMATIQUE — Héliodone + Rose des vents Météo-France ═══ -->
+  <div class="form-section anim-slide-up" id="p01-bioclim-section">
+    <div class="fs-head">Bioclimatique <span class="sg-badge">Météo-France</span></div>
+    <div class="bioclim-row" id="p01-bioclim-row">
+      <div class="bioclim-col">
+        <div class="bioclim-label" id="p01-helio-label">Héliodone — chargement…</div>
+        <canvas id="p01-helio-canvas" class="bioclim-canvas" aria-label="Héliodone"></canvas>
+      </div>
+      <div class="bioclim-col">
+        <div class="bioclim-label" id="p01-wind-label">Rose des vents — chargement…</div>
+        <canvas id="p01-wind-canvas" class="bioclim-canvas" aria-label="Rose des vents"></canvas>
+      </div>
+    </div>
+    <div class="bioclim-meta" id="p01-bioclim-meta">—</div>
+    <div style="padding:6px 12px 4px">
+      <button class="topo-btn" onclick="P01.refreshBioclim(true)" id="p01-bioclim-refresh" style="width:100%">
+        ↻ Recharger les diagrammes
+      </button>
+    </div>
+  </div>
+
   <!-- ═══ ENSOLEILLEMENT (SunState synchro) ═══ -->
   <div class="form-section anim-slide-up" id="p01-sun-section" style="padding:8px 13px;border-bottom:1px solid var(--border)">
     <div class="sg-section-head"><span class="sg-sun-icon">&#9788;</span> Ensoleillement <span class="sg-badge">SunCalc</span></div>
@@ -717,6 +738,14 @@
 .section-split-controls { display:flex; gap:4px; }
 .section-split-profile { flex:1; overflow:hidden; padding:8px; }
 .section-split-profile svg { width:100%; height:100%; }
+
+/* ── Bioclimatique (héliodone + rose des vents MF) ───────────── */
+#p01-bioclim-section { padding:8px 13px; border-bottom:1px solid var(--border); }
+.bioclim-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:6px 0 4px; }
+.bioclim-col { display:flex; flex-direction:column; align-items:center; }
+.bioclim-label { font-family:var(--font-mono); font-size:9px; color:var(--faint); text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px; text-align:center; }
+.bioclim-canvas { width:100%; max-width:160px; aspect-ratio:1/1; border-radius:4px; background:var(--raised); }
+.bioclim-meta { font-family:var(--font-mono); font-size:9px; color:var(--muted); padding:4px 0 0; text-align:center; line-height:1.4; }
 </style>
 
 <!-- ═══════════════════ SCRIPT PHASE 1 ══════════════════════════ -->
@@ -1913,6 +1942,95 @@ P01._syncSunUI = function() {
 
 window.P01 = P01;
 P01._initSunOverlay();
+
+// ── Bioclimatique : héliodone + rose des vents Météo-France ────────────
+P01._bioclimLoaded = false;
+
+P01.refreshBioclim = async function(force = false) {
+  const t = SessionManager?.getTerrain?.() ?? {};
+  const lat = parseFloat(t.lat), lng = parseFloat(t.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    document.getElementById('p01-helio-label').textContent = 'Héliodone — terrain non défini';
+    document.getElementById('p01-wind-label').textContent  = 'Rose des vents — terrain non défini';
+    return;
+  }
+  if (P01._bioclimLoaded && !force) return;
+
+  try {
+    const mod = await import('../components/diag-renderer.js');
+    const isDark = document.documentElement.dataset.theme === 'dark';
+    const r = await mod.renderDiagrams(SessionManager, { size: 320, isDark });
+
+    // Héliodone
+    const helioCanvas = document.getElementById('p01-helio-canvas');
+    if (helioCanvas) {
+      helioCanvas.width  = r.heliCanvas.width;
+      helioCanvas.height = r.heliCanvas.height;
+      helioCanvas.getContext('2d').drawImage(r.heliCanvas, 0, 0);
+      document.getElementById('p01-helio-label').textContent =
+        `Héliodone · φ = ${lat.toFixed(2)}°`;
+    }
+
+    // Rose des vents
+    const windCanvas = document.getElementById('p01-wind-canvas');
+    if (windCanvas) {
+      windCanvas.width  = r.windCanvas.width;
+      windCanvas.height = r.windCanvas.height;
+      windCanvas.getContext('2d').drawImage(r.windCanvas, 0, 0);
+      document.getElementById('p01-wind-label').textContent =
+        `Rose des vents · ${r.windData.dominantDir ?? '—'} dominant`;
+    }
+
+    // Méta-données station
+    const meta = document.getElementById('p01-bioclim-meta');
+    if (meta) {
+      const parts = [
+        r.windData.stationName,
+        r.windData.meanSpeed != null ? `v̄ ${r.windData.meanSpeed} m/s` : null,
+        r.windData.source,
+        r.windData.period ? `(${r.windData.period})` : null,
+      ].filter(Boolean);
+      meta.textContent = parts.join(' · ') || '—';
+    }
+
+    // Auto-fill du slider direction vent dominant (Aéraulique) si pas déjà touché
+    const windSlider = document.getElementById('p01-wind-dir');
+    const windSliderVal = document.getElementById('p01-wind-dir-val');
+    if (windSlider && r.windData.dominantDir) {
+      // Index secteur 16 → degré (centre du secteur)
+      const SECTOR_LABELS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
+      const idx = SECTOR_LABELS.indexOf(r.windData.dominantDir);
+      if (idx >= 0) {
+        const deg = Math.round(idx * 22.5);
+        // Marquer comme auto-rempli (l'utilisateur peut toujours overrider)
+        if (!windSlider.dataset.userTouched) {
+          windSlider.value = deg;
+          if (windSliderVal) windSliderVal.textContent = deg + '°';
+        }
+      }
+    }
+
+    P01._bioclimLoaded = true;
+    console.log('[P01] Bioclim chargé : ' + r.windData.stationName + ' (' + r.windData.source + ')');
+  } catch (err) {
+    console.warn('[P01] Bioclim erreur :', err);
+    document.getElementById('p01-helio-label').textContent = '⚠ Erreur héliodone';
+    document.getElementById('p01-wind-label').textContent  = '⚠ Erreur rose des vents';
+  }
+};
+
+// Marquer le slider comme touché par l'utilisateur (désactive l'auto-fill futur)
+(() => {
+  const ws = document.getElementById('p01-wind-dir');
+  if (ws) ws.addEventListener('input', () => { ws.dataset.userTouched = '1'; }, { once: true });
+})();
+
+// Charger au montage si le terrain est déjà défini
+if (SessionManager?.getTerrain?.()?.lat) {
+  setTimeout(() => P01.refreshBioclim(false), 600);
+}
+// Recharger après confirmation terrain (P00)
+window.addEventListener('terlab:terrain-confirmed', () => P01.refreshBioclim(true));
 
 // Validation automatique aéraulique
 window.addEventListener('terlab:aeraulique-score', () => {

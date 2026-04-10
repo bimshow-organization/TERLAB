@@ -6,7 +6,7 @@
 const IGN_BATCH = {
   MAX_POINTS: 5000,
   BATCH_SIZE: 50,       // Points par requête (TERLAB = usage léger)
-  CONCURRENCY: 2,
+  CONCURRENCY: 1,       // Sérialisé pour éviter les 429 IGN
   RETRY_MAX: 3,
   RETRY_BASE_DELAY_MS: 500,
 };

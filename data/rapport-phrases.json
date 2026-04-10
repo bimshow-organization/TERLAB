@@ -58,20 +58,47 @@
 
   "plu": {
     "zone": [
-      { "cond": { "zone_plu_type": "U" }, "text": "Le terrain est situé en zone urbaine ({zone_plu}). Les constructions y sont autorisées dans le respect du règlement de zone." },
-      { "cond": { "zone_plu_type": "AU" }, "text": "Le terrain est classé en zone à urbaniser ({zone_plu}). L'ouverture à l'urbanisation est conditionnée à la réalisation d'une opération d'aménagement d'ensemble ou à l'équipement progressif de la zone." },
-      { "cond": { "zone_plu_type": "A" }, "text": "Le terrain est en zone agricole ({zone_plu}). La constructibilité y est quasi nulle : seul le logement de l'exploitant peut être autorisé. Un changement de destination nécessite une révision du PLU." },
-      { "cond": { "zone_plu_type": "N" }, "text": "Le terrain est en zone naturelle ({zone_plu}). La constructibilité est interdite sauf exceptions limitées (STECAL). Ce classement s'oppose à tout projet de construction courante." }
+      { "cond": { "zone_plu_type": "U" }, "short": "Zone urbaine constructible — règlement de zone applicable.", "text": "Le terrain est situé en zone urbaine ({zone_plu}). Les constructions y sont autorisées dans le respect du règlement de zone." },
+      { "cond": { "zone_plu_type": "AU" }, "short": "Zone à urbaniser — ouverture conditionnée à un aménagement d'ensemble.", "text": "Le terrain est classé en zone à urbaniser ({zone_plu}). L'ouverture à l'urbanisation est conditionnée à la réalisation d'une opération d'aménagement d'ensemble ou à l'équipement progressif de la zone." },
+      { "cond": { "zone_plu_type": "A" }, "short": "Zone agricole — constructibilité quasi nulle hors logement d'exploitant.", "text": "Le terrain est en zone agricole ({zone_plu}). La constructibilité y est quasi nulle : seul le logement de l'exploitant peut être autorisé. Un changement de destination nécessite une révision du PLU." },
+      { "cond": { "zone_plu_type": "N" }, "short": "Zone naturelle — construction interdite sauf STECAL.", "text": "Le terrain est en zone naturelle ({zone_plu}). La constructibilité est interdite sauf exceptions limitées (STECAL). Ce classement s'oppose à tout projet de construction courante." }
     ],
     "reculs": [
-      { "cond": { "recul_voie_m_gte": 5 }, "text": "Le recul imposé de {recul_voie_m} m par rapport à la voie consomme une part significative de la parcelle. Sur un terrain de faible largeur, cela peut réduire considérablement l'emprise constructible." },
-      { "cond": { "recul_voie_m": 0 }, "text": "L'implantation à l'alignement est autorisée (voire obligatoire), ce qui permet d'optimiser l'emprise constructible et de créer un front bâti urbain." }
+      { "cond": { "recul_voie_m": 0 }, "short": "Implantation à l'alignement autorisée — emprise optimisée.", "text": "L'implantation à l'alignement est autorisée (voire obligatoire), ce qui permet d'optimiser l'emprise constructible et de créer un front bâti urbain." },
+      { "cond": { "recul_voie_m_gte": 5 }, "short": "Reculs importants — enveloppe constructible sensiblement réduite.", "text": "Le recul imposé de {recul_voie_m} m par rapport à la voie consomme une part significative de la parcelle. Sur un terrain de faible largeur, cela peut réduire considérablement l'emprise constructible." },
+      { "cond": { "always": true }, "short": "Reculs réglementaires à respecter pour caler l'enveloppe constructible." }
+    ],
+    "recul_voie": [
+      { "cond": { "missing": "recul_voie_m" }, "short": "Recul voirie non renseigné — vérifier l'article 6 du règlement de zone." },
+      { "cond": { "recul_voie_m": 0 }, "short": "Implantation à l'alignement autorisée — front bâti possible." },
+      { "cond": { "recul_voie_m_gt": 0, "recul_voie_m_lt": 5 }, "short": "Recul modéré ({recul_voie_m} m) — bande inconstructible faible en façade rue." },
+      { "cond": { "recul_voie_m_gte": 5 }, "short": "Recul important ({recul_voie_m} m) — emprise constructible amputée côté rue." },
+      { "cond": { "always": true }, "short": "Bande de recul à respecter par rapport à la voie publique." }
+    ],
+    "recul_lat": [
+      { "cond": { "missing": "recul_lat_m" }, "short": "Recul latéral non renseigné — vérifier l'article 7 du règlement de zone." },
+      { "cond": { "recul_lat_m": 0 }, "short": "Implantation en limite séparative autorisée — mitoyenneté possible." },
+      { "cond": { "recul_lat_m_gt": 0, "recul_lat_m_lte": 3 }, "short": "Retrait latéral réglementaire ({recul_lat_m} m) — bande étroite à respecter." },
+      { "cond": { "recul_lat_m_gt": 3 }, "short": "Retrait latéral conséquent ({recul_lat_m} m) — limite l'emprise sur la largeur de parcelle." },
+      { "cond": { "always": true }, "short": "Distance minimale à respecter aux limites séparatives latérales." }
+    ],
+    "recul_fond": [
+      { "cond": { "recul_fond_undiff": true }, "short": "PLU sans distinction fond / latéral — règle des limites séparatives applicable." },
+      { "cond": { "recul_fond_m": 0 }, "short": "Implantation possible en fond de parcelle." },
+      { "cond": { "recul_fond_m_gt": 0, "recul_fond_m_lte": 4 }, "short": "Recul de fond modéré ({recul_fond_m} m) — préserve un espace tampon arrière." },
+      { "cond": { "recul_fond_m_gt": 4 }, "short": "Recul de fond important ({recul_fond_m} m) — décale fortement le bâti vers la voie." },
+      { "cond": { "always": true }, "short": "Distance minimale à respecter en fond de parcelle." }
     ],
     "hauteur": [
-      { "cond": { "hauteur_max_m_lte": 7 }, "text": "La hauteur maximale de {hauteur_max_m} m limite les constructions à R+1 (+ combles éventuels). Cette contrainte de gabarit orientera vers de l'habitat individuel ou du petit collectif." },
-      { "cond": { "hauteur_max_m_gte": 7, "hauteur_max_m_lte": 10 }, "text": "La hauteur maximale de {hauteur_max_m} m autorise des constructions jusqu'en R+2, compatibles avec du collectif de densité moyenne." },
-      { "cond": { "hauteur_max_m_gte": 10 }, "text": "La hauteur maximale de {hauteur_max_m} m permet des constructions en R+3 ou plus, adaptées à un programme collectif dense répondant aux objectifs de densification du SCoT." },
+      { "cond": { "hauteur_max_m_lte": 7 }, "short": "Gabarit R+1 maxi — habitat individuel ou petit collectif.", "text": "La hauteur maximale de {hauteur_max_m} m limite les constructions à R+1 (+ combles éventuels). Cette contrainte de gabarit orientera vers de l'habitat individuel ou du petit collectif." },
+      { "cond": { "hauteur_max_m_gte": 7, "hauteur_max_m_lte": 10 }, "short": "Gabarit R+2 — collectif de densité moyenne envisageable.", "text": "La hauteur maximale de {hauteur_max_m} m autorise des constructions jusqu'en R+2, compatibles avec du collectif de densité moyenne." },
+      { "cond": { "hauteur_max_m_gte": 10 }, "short": "Gabarit R+3 ou plus — collectif dense compatible objectifs SCoT.", "text": "La hauteur maximale de {hauteur_max_m} m permet des constructions en R+3 ou plus, adaptées à un programme collectif dense répondant aux objectifs de densification du SCoT." },
       { "cond": { "pente_pct_gte": 10 }, "text": "Sur un terrain en pente ({pente_pct}%), la hauteur de {hauteur_max_m} m se mesure au droit de chaque facade, incluant les déblais et remblais par rapport au terrain naturel. Cette contrainte est particulièrement pénalisante et peut réduire le gabarit réel à R+1 en partie haute." }
+    ],
+    "emprise": [
+      { "cond": { "emprise_sol_max_pct_lte": 30 }, "short": "Emprise contrainte — compacité du bâti nécessaire.", "text": "L'emprise au sol limitée à {emprise_sol_max_pct}% impose une conception compacte. La SDP devra être obtenue en jouant sur les niveaux plutôt que sur l'étalement." },
+      { "cond": { "emprise_sol_max_pct_gt": 30, "emprise_sol_max_pct_lt": 50 }, "short": "Emprise modérée — implantation à optimiser.", "text": "L'emprise au sol de {emprise_sol_max_pct}% offre une marge d'implantation modérée. L'arbitrage entre emprise au sol et nombre de niveaux sera déterminant." },
+      { "cond": { "emprise_sol_max_pct_gte": 50 }, "short": "Emprise généreuse — flexibilité d'implantation.", "text": "L'emprise au sol de {emprise_sol_max_pct}% laisse une grande souplesse d'implantation. Les contraintes dimensionnantes seront ailleurs (reculs, hauteurs, perméabilité)." }
     ],
     "stationnement": [
       { "cond": { "programme": "collectif_aide" }, "text": "Le stationnement pour les logements aidés est fixé à 1 place par logement, avec 1 place visiteur par tranche de 10 logements. Cette exigence réduite par rapport au logement libre permet d'optimiser l'emprise au sol." },

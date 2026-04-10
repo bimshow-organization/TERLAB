@@ -88,6 +88,19 @@
 <!-- ═══════════════════ COLONNE DROITE — EXPORTS ═════════════════ -->
 <div class="right-panel">
 
+  <!-- Coupe N-S — prévisualisation live -->
+  <div class="rp-section" id="p12-coupe">
+    <div class="rp-head">Coupe N-S · Gabarit PLU</div>
+    <div class="preview-coupe" style="padding:8px 10px">
+      <p class="diag-label" id="coupe-label" style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin:0 0 6px;text-transform:uppercase;letter-spacing:.08em">Coupe N-S · Gabarit PLU · chargement…</p>
+      <svg id="preview-coupe"
+           viewBox="0 0 760 340"
+           preserveAspectRatio="xMidYMid meet"
+           style="width:100%;border-radius:6px;display:block;background:var(--card)"
+           aria-label="Coupe N-S gabarit PLU"></svg>
+    </div>
+  </div>
+
   <!-- Wind Score Dashboard — Sprint 4 -->
   <div class="rp-section" id="p12-wind-score">
     <div class="rp-head">Synthèse Aéraulique</div>
@@ -239,8 +252,34 @@
 </style>
 
 <script type="module">
+import { drawCoupeSVG } from '../utils/coupe-renderer.js';
+
 const SessionManager = window.SessionManager;
 const GIEPScore      = window.GIEPScore;
+
+// ─── Coupe N-S — prévisualisation live ──────────────────────────
+function initCoupePreview() {
+  try {
+    const session = SessionManager?._data;
+    if (!session) {
+      document.getElementById('coupe-label').textContent = '⚠️ STUB — Session indisponible';
+      return;
+    }
+    drawCoupeSVG('preview-coupe', session, {
+      isDark: document.documentElement.dataset.theme === 'dark',
+    });
+    const pente = session?.terrain?.pente_moy_pct ?? session?.terrain?.pente_moy ?? 3;
+    const heMax = SessionManager.getPhase(4)?.data?.hauteur_max_m
+               ?? SessionManager.getPhase(4)?.data?.hauteur_egout_m ?? 9;
+    const zone  = (SessionManager.getPhase(4)?.data?.zone_plu ?? 'Uc').toString().split(' ')[0];
+    document.getElementById('coupe-label').textContent =
+      `Coupe N-S · ${zone} · pente ${pente}% · hé ${heMax}m · 2 pans`;
+  } catch (err) {
+    console.error('[p12] Erreur coupe :', err);
+    const el = document.getElementById('coupe-label');
+    if (el) el.textContent = '⚠️ STUB — Coupe non disponible';
+  }
+}
 
 const PHASE_NAMES = ['Identification','Topographie','Géologie','Risques','PLU','Voisinage','Biodiversité','Esquisse','Chantier','Carbone','Entretien','Fin de vie','Synthèse','World'];
 
@@ -441,6 +480,7 @@ const P12 = {
 
 P12.init();
 P12.buildWindDashboard();
+initCoupePreview();
 
 // ─── SDIS 974 Synthèse ────────────────────────────────────────
 const sdisStates = SessionManager.getPhase(8)?.data?.acces_pompiers_states ?? {};

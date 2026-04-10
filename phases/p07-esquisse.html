@@ -226,6 +226,9 @@
         <button class="bim-btn" onclick="window.P07?.exportDXFGabarit()">
           📐 Export DXF
         </button>
+        <button class="bim-btn" onclick="window.P07?.exportPlanMassePDF()">
+          📄 Plan masse PDF
+        </button>
       </div>
     </div>
     <div class="stub-warning">⚠️ STUB — Export IFC via ifc-worker.js non implémenté. GLB disponible pour BIMSHOW.</div>
@@ -537,6 +540,7 @@
       <button class="t3d-btn" id="t3d-btn-dims" onclick="window.P07?.toggleDims()">Cotes</button>
       <button class="t3d-btn active" id="t3d-btn-contours" onclick="window.P07?.toggleContours()">Contours</button>
       <button class="t3d-btn" id="t3d-btn-sun" onclick="window.P07?.toggleSun()">Soleil</button>
+      <button class="t3d-btn" id="t3d-btn-heliodon" onclick="window.P07?.toggleHeliodon()">H&eacute;liodon</button>
       <div style="height:4px"></div>
       <button class="t3d-btn active" id="t3d-btn-tex-ortho" onclick="window.P07?.setTexture('ortho')">Ortho</button>
       <button class="t3d-btn" id="t3d-btn-tex-elev" onclick="window.P07?.setTexture('elevation')">Altitude</button>
@@ -571,10 +575,11 @@
 
     <!-- Légende pentes -->
     <div class="t3d-legend">
-      <div class="t3d-legend-title">Pentes RTAA</div>
-      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:#2dc89a"></div>&lt; 2 % &mdash; Plat</div>
-      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:#00d4ff"></div>2&ndash;5 % &mdash; Mod&eacute;r&eacute;</div>
-      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:#f59e0b"></div>5&ndash;15 % &mdash; Fort</div>
+      <div class="t3d-legend-title">Pentes GIEP</div>
+      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:#dc2626"></div>&lt; 0.5 % &mdash; Stagnation EP</div>
+      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:#f59e0b"></div>0.5&ndash;2 % &mdash; Faible</div>
+      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:#22c55e"></div>2&ndash;5 % &mdash; Optimale</div>
+      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:#f59e0b"></div>5&ndash;15 % &mdash; Forte</div>
       <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:#ef4444"></div>&gt; 15 % &mdash; G1 requis</div>
     </div>
 
@@ -923,7 +928,8 @@ async function initP07Real() {
     const zonePlu   = p4.zone_plu?.split(' ')[0] ?? ter.zone_plu ?? 'U3b';
     const zoneRtaa  = ter.zone_rtaa ?? '1';
 
-    const pluConfig = pluAdapter.resolve(codeInsee, zonePlu, zoneRtaa);
+    const secteurAvap = p4.secteur_avap ?? ter.secteur_avap ?? null;
+    const pluConfig = pluAdapter.resolve(codeInsee, zonePlu, zoneRtaa, { secteurAvap });
 
     // Afficher warnings si données dégradées ou ambiguës
     if (pluConfig._meta.warnings.length > 0 || pluConfig._meta.confidence < 0.8) {
@@ -967,6 +973,17 @@ async function initP07Real() {
     }
 
     TERRAIN_REEL = pluConfig;
+
+    // Copier le polygone réel dans la session pour PlanMasseCanvas
+    if (pluConfig.poly?.length >= 3) {
+      SessionManager._data._parcelLocal = pluConfig.poly.map(p => ({ x: p[0], y: p[1] }));
+      SessionManager._data._edgeTypes = pluConfig.edgeTypes;
+      SessionManager._data.pluConfig = pluConfig;
+      // Si PMC déjà initialisé, reconstruire avec le vrai polygone
+      if (window.PlanMasseCanvas?._ready) {
+        window.PlanMasseCanvas.rebuild(SessionManager._data);
+      }
+    }
 
     // 5. Mettre à jour la terrain-strip avec données PLU réelles
     if (pluConfig.area) {
@@ -1359,6 +1376,35 @@ const P07 = {
   exportIFC()  { window.TerlabToast?.show('Export IFC — STUB. Voir __stubs__/ifc-worker.js', 'warning', 5000); },
   exportDXFGabarit() { window.TerlabExport?.generateDXF?.(); },
 
+  // Plan masse PDF (état des lieux + projet) — moteur SitePlanRenderer
+  async exportPlanMassePDF() {
+    try {
+      const mod = await import('../utils/site-plan-renderer.js');
+      const session = SessionManager.getSession?.() ?? { terrain: SessionManager.getTerrain() };
+      // Récupérer le bâtiment courant depuis EsquisseCanvas si dispo
+      if (window.EsquisseCanvas?._buildingAABB) {
+        session.phases = session.phases ?? {};
+        session.phases[7] = session.phases[7] ?? { data: {} };
+        session.phases[7].data.building_aabb = window.EsquisseCanvas._buildingAABB;
+        session.phases[7].data.envZones      = window.EsquisseCanvas._envZones;
+      }
+      window.TerlabToast?.show('Génération du plan masse…', 'info', 2000);
+      const result = await mod.default.build(session, { withProject: true });
+      const html = mod.default.wrapForPrint(result);
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+      document.body.appendChild(iframe);
+      iframe.srcdoc = html;
+      iframe.onload = () => {
+        try { iframe.contentWindow.focus(); iframe.contentWindow.print(); }
+        finally { setTimeout(() => iframe.remove(), 1500); }
+      };
+    } catch (e) {
+      console.error('[P07] exportPlanMassePDF failed:', e);
+      window.TerlabToast?.show('Export plan masse échoué : ' + e.message, 'error', 5000);
+    }
+  },
+
   // ─── Aéraulique (Sprint 3) ──────────────────────────────────
   _aerauliqueInited: false,
 
@@ -1442,6 +1488,7 @@ let _viewIs3D     = false;
 let _viewMode     = 'planmasse'; // 'planmasse' | 'plancoupe' | 'map' | '3d' | 'esquisse' | 'coupe' | 'gabarit'
 let _pmcReady     = false;
 let _sunVisible   = false;
+let _heliodonOn   = false;
 let _slopesOn     = true;
 let _dimsOn       = true;
 let _contoursOn   = true;
@@ -1632,6 +1679,15 @@ Object.assign(P07, {
     const btn = document.getElementById('t3d-btn-contours');
     if (btn) btn.classList.toggle('active', _contoursOn);
     if (btn) btn.textContent = _contoursOn ? 'Contours' : 'Contours \u25cb';
+  },
+
+  // Hélidon (parcours solaire 3D)
+  toggleHeliodon() {
+    _heliodonOn = !_heliodonOn;
+    Terrain3D.toggleHeliodon(_heliodonOn);
+    const btn = document.getElementById('t3d-btn-heliodon');
+    if (btn) btn.classList.toggle('active', _heliodonOn);
+    if (btn) btn.textContent = _heliodonOn ? 'Héliodon' : 'Héliodon \u25cb';
   },
 
   // ── Panneau soleil (SunState synchro) ──────────────────

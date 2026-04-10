@@ -3030,26 +3030,217 @@
           "Modification simplifiée n°8 approuvée février 2024"
         ],
         "source": "Règlement PLU Saint-Denis — GPU DU_97411 — 97411_reglement_20240220.pdf",
-        "note": "PLU ancien (2004) modifié 8 fois. Prospect L≥H appliqué dans plusieurs zones. Hauteur H = faîtage ou acrotère."
+        "note": "PLU ancien (2004) modifié 8 fois. Prospect L≥H appliqué dans plusieurs zones. Hauteur H = faîtage ou acrotère. AVAP = servitude d'utilité publique annexée au PLU, 6 secteurs patrimoniaux avec règles de hauteur, emprise et proximité patrimoniale spécifiques.",
+        "source_avap": "Règlement AVAP Saint-Denis approuvé 26 octobre 2013 — Atelier E. Blanc D. Duché architectes urbanistes — AUH Ingénierie"
       },
       "zones": {
         "Uavap": {
           "label": "Zone AVAP — patrimoine historique centre-ville",
           "type": "U",
           "sous_type": "patrimoine_avap",
-          "reculs": {
-            "voie_note": "Régi par le règlement AVAP"
+          "avap_source": "Règlement AVAP approuvé 26 octobre 2013 — Atelier E. Blanc D. Duché architectes urbanistes",
+          "avap_note": "L'AVAP est une servitude d'utilité publique annexée au PLU. Tous travaux modifiant l'aspect d'un immeuble (bâti ou non) soumis à avis conforme de l'Architecte des Bâtiments de France.",
+          "secteurs": {
+            "S1": {
+              "label": "Nord du damier + quartier Jardin de l'État / Gibert des Molières",
+              "caractere": "Tissu mixte, bâtiments à forte valeur patrimoniale (préfecture, DDE, cases créoles), équipements publics, parcellaire serré",
+              "reculs": {
+                "voie": "Alignement ou retrait 4m min (≤R+1+C) / 5m min (>R+1+C)",
+                "voie_alignement_niveaux_min": 2,
+                "sep_lat": "Sur 1 ou plusieurs limites ou retrait 4m (≤R+1+C) / 5m (>R+1+C)",
+                "entre_batiments_meme_parcelle_m": [
+                  4,
+                  5
+                ],
+                "entre_batiments_note": "4m si les 2 ≤R+1+C, 5m si l'un >R+1+C"
+              },
+              "hauteurs": {
+                "H_max_m": 14,
+                "He_max_m": 9.5,
+                "He_niveaux": "RDC+2 étages + Comble ou attique",
+                "proximite_patrimoniale": true
+              },
+              "emprise": {
+                "emprise_sol_max_pct": 70,
+                "emprise_sol_max_pct_petit_parcelle_200m2": 80
+              }
+            },
+            "S2": {
+              "label": "Hyper-centre commercial + quartier cathédrale",
+              "caractere": "Forte composante patrimoniale, monuments historiques (Cathédrale, Hôtel de Ville, Case Deramond Barre), balcons filants, commerces de détail",
+              "reculs": {
+                "voie": "Alignement ou retrait 4m min (≤R+1+C) / 5m min (>R+1+C)",
+                "voie_alignement_niveaux_min": 2,
+                "sep_lat": "D'une limite latérale à l'autre (mitoyenneté obligatoire des 2 côtés) si front <20m. Si front ≥20m, mitoyenneté possible sur 1 seul côté + retrait 4m/5m de l'autre",
+                "sep_lat_note": "Ordre continu imposé — parcelles <20m front : mitoyenneté totale",
+                "entre_batiments_meme_parcelle_m": [
+                  4,
+                  5
+                ],
+                "entre_batiments_note": "4m si les 2 ≤R+1+C, 5m si l'un >R+1+C"
+              },
+              "hauteurs": {
+                "H_max_m": 14,
+                "He_max_m": 9.5,
+                "He_niveaux": "RDC+2 étages + Comble ou attique",
+                "proximite_patrimoniale": true
+              },
+              "emprise": {
+                "emprise_sol_max_pct": 70,
+                "emprise_sol_max_pct_petit_parcelle_200m2": 80
+              }
+            },
+            "S3": {
+              "label": "Quartiers verts résidentiels (F. Guyon / de Gaulle / Ah-Sam + bas rue Pasteur)",
+              "caractere": "Forte dominante cases créoles, équipements scolaires, implantation en cœur de parcelle, densité d'espaces verts à préserver",
+              "reculs": {
+                "voie": "Alignement ou retrait 4m min (≤R+1+C) / 5m min (>R+1+C) — retrait obligatoire",
+                "voie_alignement_niveaux_min": 2,
+                "sep_lat": "Sur limites ou retrait 4m (≤R+1+C) / 5m (>R+1+C). Retrait imposé par rapport à au moins 1 limite séparative",
+                "entre_batiments_meme_parcelle_m": [
+                  4,
+                  5
+                ],
+                "entre_batiments_note": "4m si les 2 ≤R+1+C, 5m si l'un >R+1+C"
+              },
+              "hauteurs": {
+                "H_max_m": 14,
+                "He_max_m": 9.5,
+                "He_niveaux": "RDC+2 étages + Comble ou attique",
+                "proximite_patrimoniale": true
+              },
+              "emprise": {
+                "emprise_sol_max_pct": 60,
+                "emprise_sol_max_pct_petit_parcelle_200m2": 70
+              }
+            },
+            "S4": {
+              "label": "Maréchal Leclerc (J. Chatel→F. Guyon) + Fénelon/Philibert + Bas de la Rivière + haut Petite-Île",
+              "caractere": "Quartiers d'habitat, peu de bâtiments patrimoniaux, topographie en pente vers la mer. Augmentation de hauteur admise. Bas de la Rivière : préservation lisibilité des remparts.",
+              "reculs": {
+                "voie": "Alignement ou retrait 4m min (≤R+1+C) / 5m min (>R+1+C)",
+                "voie_alignement_niveaux_min": 2,
+                "sep_lat": "Sur 1 ou plusieurs limites ou retrait 4m (≤R+1+C) / 5m (>R+1+C)",
+                "entre_batiments_meme_parcelle_m": [
+                  4,
+                  5
+                ],
+                "entre_batiments_note": "4m si les 2 ≤R+1+C, 5m si l'un >R+1+C"
+              },
+              "hauteurs": {
+                "H_max_m": 16,
+                "He_max_m": 12,
+                "He_niveaux": "RDC+3 étages + Comble ou attique",
+                "bas_riviere": {
+                  "note": "H limitée à hauteur max du rempart en vis-à-vis −3m. Dans bande de 50m du pied du rempart : H peut atteindre hauteur rempart −5m",
+                  "reference": "Document graphique AVAP"
+                },
+                "proximite_patrimoniale": true
+              },
+              "emprise": {
+                "emprise_sol_max_pct": 70,
+                "emprise_sol_max_pct_petit_parcelle_200m2": 80
+              }
+            },
+            "S5": {
+              "label": "Petite-Île et Saint-Jacques",
+              "caractere": "Constructions basses autour des églises Saint-Jacques et de la Délivrance, aspect préservé, échelle modeste",
+              "reculs": {
+                "voie": "Alignement ou retrait 3m min",
+                "voie_niveaux": "Totalité des niveaux droits",
+                "sep_lat": "Sur limites ou retrait 3m min",
+                "entre_batiments_meme_parcelle_m": 4
+              },
+              "hauteurs": {
+                "H_max_m": 11,
+                "He_max_m": 6.5,
+                "He_niveaux": "RDC+1 étage + Comble",
+                "proximite_patrimoniale": true
+              },
+              "emprise": {
+                "emprise_sol_max_pct": 60,
+                "emprise_sol_max_pct_petit_parcelle_200m2": 70
+              }
+            },
+            "S6": {
+              "label": "Franges nord-est (pointe des jardins→rue de l'Est) + Boulevard sud",
+              "caractere": "Tissu hétérogène déstructuré, faible teneur patrimoniale, entrées de ville. Mutation pour recomposition d'image urbaine cohérente.",
+              "reculs": {
+                "voie": "Alignement ou retrait 4m min (≤R+1+C) / 5m min (>R+1+C)",
+                "voie_alignement_niveaux_min": 2,
+                "sep_lat": "Sur 1 ou plusieurs limites ou retrait 4m (≤R+1+C) / 5m (>R+1+C)",
+                "entre_batiments_meme_parcelle_m": [
+                  4,
+                  5
+                ],
+                "entre_batiments_note": "4m si les 2 ≤R+1+C, 5m si l'un >R+1+C"
+              },
+              "hauteurs": {
+                "H_max_m": 18,
+                "He_max_m": 16,
+                "He_niveaux": "RDC+5 étages + Comble ou attique",
+                "proximite_patrimoniale": true
+              },
+              "emprise": {
+                "emprise_sol_max_pct": 80
+              }
+            }
           },
-          "hauteurs": {
-            "note": "Régi par le règlement AVAP"
+          "regles_proximite_patrimoniale": {
+            "description": "Règle spécifique AVAP : lorsqu'une construction neuve est située à proximité d'un bâtiment de référence, des contraintes de hauteur supplémentaires s'appliquent.",
+            "batiments_reference": [
+              "Monuments historiques inscrits ou classés",
+              "Bâtiments d'intérêt architectural traditionnel",
+              "Bâtiments d'intérêt architectural 20e siècle",
+              "Bâtiments reconstruits d'aspect traditionnel"
+            ],
+            "proximite_definition": {
+              "meme_cote_voie": "Bâtiment de référence jouxtant la construction à édifier",
+              "cote_oppose_voie": "Bâtiment de référence en vis-à-vis direct (parcelles touchées par la projection du linéaire de façade)",
+              "angle_voies": "Bâtiment de référence en vis-à-vis ou en angle opposé"
+            },
+            "regle_hauteur": "He de la construction ne peut excéder de plus de 1 niveau celle du bâtiment de référence à proximité",
+            "deux_references": "Si 2 bâtiments de référence : c'est le moins élevé qui sert de référence",
+            "rdc_calage": "Si le bâtiment nouveau jouxte une construction de référence avec balcons filants, le niveau RDC est calé sur celui des balcons existants",
+            "rattrapage_retrait": "Pour parcelles jouxtant des constructions en retrait, une décroissance de hauteur peut être imposée pour éviter l'effet pignon aveugle",
+            "batiment_angle": "S'il existe des constructions R+1/R+2 aux autres angles du carrefour, la hauteur peut être imposée dans des gabarits similaires",
+            "services_publics": "Constructions et installations nécessaires aux services publics ou d'intérêt collectif : hauteur non réglementée"
           },
-          "emprise": {
-            "note": "Régi par le règlement AVAP"
+          "prescriptions_architecturales": {
+            "batiments_traditionnels": "Conservation, restauration ou reconstitution dans le respect du mode constructif d'origine. Démolition interdite ou sous conditions. Extension possible si respect ordonnancement général et parti architectural initial.",
+            "batiments_20e_siecle": "Même logique de conservation. Matériaux d'origine à préserver.",
+            "constructions_nouvelles": "Volumes simples, couverture à pentes ou terrasse selon conditions. Un seul niveau de comble. Proportion façade/couverture ≥ 2/3 – 1/3.",
+            "couverture_combles": "Un seul niveau de comble autorisé. Toiture terrasse possible combinée à pentes, pour RDC en intérieur de parcelle, constructions épaisses (terrasson ≤25%), attiques, maisons individuelles.",
+            "energie_solaire": "ECS solaire ≥50% des besoins. Capteurs à fleur du matériau (pentes) ou invisibles depuis espace public (terrasses). Réservoirs en intérieur ou cours/jardins, jamais en couverture.",
+            "climatiseurs_reservoirs": "Interdits en couverture sauf dispositif ajouré masquant, dans gabarits autorisés"
+          },
+          "espaces_libres": {
+            "recul_voie_vegetalise": true,
+            "plantations_pleine_terre_epaisseur_min_m": 0.8,
+            "arbres_ratio": "1 arbre / 100m² de terrain non bâti",
+            "stationnement_front_rue": "Interdit",
+            "habitat_collectif_espace_libre_min": "5m² / 100m² de surface plancher",
+            "materiaux_sols": "Calades, dallettes basalte, briques, revêtement sablé"
+          },
+          "dependances_front_rue": {
+            "largeur_max_m": 4,
+            "hauteur_acrotere_max_m": 3,
+            "hauteur_faitage_pente_douce_max_m": 3,
+            "hauteur_egout_pente_forte_max_m": 2.5,
+            "hauteur_faitage_pente_forte_max_m": 4,
+            "pente_douce_max_pct": 25,
+            "pente_forte_range_pct": "30-140",
+            "lineaire_libre_min_m": 8,
+            "parcelle_sup_20m_espacement_min_m": 8
           },
           "_meta": {
-            "confidence": 0.7,
+            "confidence": 0.95,
+            "source_pdf": "Saint-Denis-Reunion-reglememt_AVAP_approuve_oct_2013.pdf",
+            "source_date": "2013-10-26",
             "ambiguites": [
-              "Règles renvoyées au règlement AVAP, non extractibles du PLU seul"
+              "Secteurs AVAP (S1-S6) indépendants des zones PLU — superposition réglementaire",
+              "Document graphique AVAP nécessaire pour identifier le secteur d'une parcelle",
+              "Hauteurs Bas de la Rivière (S4) dépendent de la hauteur du rempart en vis-à-vis (document graphique)"
             ]
           }
         },

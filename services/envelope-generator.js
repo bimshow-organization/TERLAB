@@ -24,15 +24,45 @@ const EnvelopeGenerator = {
       hFaitage = Math.min(hFaitage, realPlu.hauteur_absolue_max_m);
     }
 
+    // ── AVAP : règle de proximité patrimoniale ────────────────
+    const avap = (typeof window !== 'undefined' ? window.TERLAB_PLU_CONFIG?.avap : null) ?? null;
+    let hEgout = parseFloat(realPlu.heEgout ?? realPlu.heMax ?? p4.hauteur_max_m ?? p4.hauteur_egout_m ?? 7) || 7;
+    if (avap?.proximite) {
+      // Si bâtiment de référence voisin renseigné (hauteur connue),
+      // He ne peut excéder de plus de 1 niveau (~3m) la hauteur du bâtiment de référence
+      const hRef = parseFloat(p4.avap_h_reference_m ?? 0);
+      if (hRef > 0) {
+        const heMaxProximite = hRef + 3; // +1 niveau ≈ 3m
+        hEgout = Math.min(hEgout, heMaxProximite);
+        hFaitage = Math.min(hFaitage, heMaxProximite + 4); // comble max ~4m au-dessus égout
+      }
+    }
+
+    // Règle BINAIRE latérale : 0 si mitoyen, sinon Lmin (jamais valeur intermédiaire)
+    // Lmin = recul réglementaire PLU avec plancher 3m (minimum standard La Réunion).
+    // Mitoyenneté détectée via flags p7 (mitoyen_g/d/lateral) ou alignement voie PLU.
+    const p7data    = session?.phases?.[7]?.data ?? {};
+    const isMitoyen = !!(p7data.mitoyen_lateral || p7data.mitoyen_g || p7data.mitoyen_d
+                       || p7data.implantation_limite_sep === true);
+    // Plancher dur à 3m — un slider PLU <3 est IGNORÉ (binarité stricte).
+    // 3m = minimum réglementaire La Réunion pour limite séparative non mitoyenne.
+    const LmRaw     = parseFloat(p4.recul_limite_sep_m ?? p4.recul_lat_m ?? realPlu.recul_lat ?? 3);
+    const LM_FLOOR  = 3;
+    const Lmin      = Math.max(Number.isFinite(LmRaw) ? LmRaw : 0, LM_FLOOR);
+    const reculLat  = isMitoyen ? 0 : Lmin;
+
     const PLU = {
       recul_voie:    reculVoie,
       recul_fond:    parseFloat(p4.recul_fond_m  ?? 3)                       || 3,
-      recul_lat:     parseFloat(p4.recul_limite_sep_m ?? p4.recul_lat_m ?? 0) || 0,
-      h_egout:       parseFloat(p4.hauteur_max_m ?? p4.hauteur_egout_m ?? 7) || 7,
+      recul_lat:     reculLat,            // BINAIRE : 0 (mitoyen) OU Lmin
+      lat_mitoyen:   isMitoyen,           // pour _ruleOblique et debug
+      lat_lmin:      Lmin,                // mémorisé pour validation
+      h_egout:       hEgout,
       h_faitage:     hFaitage,
       ces_max:       parseFloat(p4.emprise_sol_max_pct ? p4.emprise_sol_max_pct / 100 : p4.ces_max ?? 0.7) || 0.7,
       cos_max:       parseFloat(realPlu.cos ?? p4.cos_max ?? 2.1) || 2.1,
       niveaux:       parseInt(p4.niveaux_max ?? 2)                           || 2,
+      avap_proximite: !!(avap?.proximite),
     };
 
     // ── 2. Zone constructible (SetBack) ─────────────────────────
@@ -137,12 +167,33 @@ const EnvelopeGenerator = {
       if (enU) proposals.push(enU);
     }
 
-    // ── 4b. Filet de securite : clipper contre la parcelle elle-meme ──
-    // Aucune enveloppe ne doit jamais deborder de la parcelle
+    // Oblique : aligné sur la limite latérale la plus longue
+    // (essentiel quand mitoyen=true ou parcelle non orthogonale)
+    const lateralIdx = this._longestLateralEdge(parcel, edges);
+    if (lateralIdx >= 0) {
+      const oblique = this._ruleOblique(zone, parcel, edges, lateralIdx, PLU, ctx);
+      if (oblique) proposals.push(oblique);
+    }
+
+    // ── 4b. Filet de securite : double clip + filtre surface minimale ──
+    // 1. Clip contre la zone constructible (reculs respectés)
+    // 2. Clip contre la parcelle brute (double sécurité)
+    // 3. Rejet en dessous de 12 m² (forme non viable)
+    const SURFACE_MIN_M2 = 12;
     for (const prop of proposals) {
+      prop.polygon = this._clipSH(prop.polygon, zone);
       prop.polygon = this._clipSH(prop.polygon, parcel);
       prop.surface = this._area(prop.polygon);
+      if (prop.surface < SURFACE_MIN_M2) {
+        prop.polygon = [];
+        prop.surface = 0;
+        prop.score   = -1; // sera trié en dernier puis filtré
+      }
     }
+    // Filtrer les propositions vides ou trop petites
+    const filtered = proposals.filter(p => p.surface >= SURFACE_MIN_M2 && p.polygon.length >= 3);
+    proposals.length = 0;
+    proposals.push(...filtered);
 
     // ── 5. Score Pareto pour chaque proposition ──────────────────
     const parcelArea = parseFloat(terrain.contenance_m2 ?? this._area(parcel));
@@ -159,24 +210,17 @@ const EnvelopeGenerator = {
   },
 
   // ── SHAPE RULE : COMPACT ───────────────────────────────────────
+  // Construit depuis le centroïde RÉEL de la zone (pas centroïde bbox).
+  // PIR utilisé en priorité car plus stable sur formes concaves.
   _ruleCompact(zone, plu, ctx) {
-    const bbox    = this._bbox(zone);
-    const W       = bbox.maxX - bbox.minX;
-    const H       = bbox.maxY - bbox.minY;
-    const STarget = Math.min(W * H * plu.ces_max, W * H * 0.9);
-    const aspect  = this._optimalAspect(ctx);
-    let w, h;
-    if (W / H > 1) {
-      h = Math.sqrt(STarget / aspect);
-      w = STarget / h;
-    } else {
-      w = Math.sqrt(STarget * aspect);
-      h = STarget / w;
-    }
-    w = Math.min(w, W);
-    h = Math.min(h, H);
+    const bbox = this._bbox(zone);
+    const zW   = bbox.maxX - bbox.minX;
+    const zH   = bbox.maxY - bbox.minY;
+    const area = this._area(zone);
+    if (area < 12) return null;
 
-    // Centre optimal : PIR si disponible, sinon centroïde bbox
+    // Centre : PIR si disponible (plus robuste pour formes concaves),
+    // sinon centroïde des sommets de la zone (pas de la bbox)
     let cx, cy;
     const TA2 = typeof window !== 'undefined' ? window.TerrainP07Adapter : null;
     if (TA2?.poleOfInaccessibility) {
@@ -185,18 +229,26 @@ const EnvelopeGenerator = {
       cx = pirX;
       cy = pirY;
     } else {
-      cx = (bbox.minX + bbox.maxX) / 2;
-      cy = (bbox.minY + bbox.maxY) / 2;
+      cx = zone.reduce((s, p) => s + p.x, 0) / zone.length;
+      cy = zone.reduce((s, p) => s + p.y, 0) / zone.length;
     }
 
-    const polygon = [
-      { x: cx - w/2, y: cy - h/2 },
-      { x: cx + w/2, y: cy - h/2 },
-      { x: cx + w/2, y: cy + h/2 },
-      { x: cx - w/2, y: cy + h/2 },
+    // Aspect bioclimatique (axe long perpendiculaire au soleil)
+    const aspect = this._optimalAspect(ctx);
+    let bW = Math.sqrt(area * plu.ces_max * aspect);
+    let bH = bW / aspect;
+    bW = Math.min(bW, zW * 0.92);
+    bH = Math.min(bH, zH * 0.92);
+
+    const raw = [
+      { x: cx - bW / 2, y: cy - bH / 2 },
+      { x: cx + bW / 2, y: cy - bH / 2 },
+      { x: cx + bW / 2, y: cy + bH / 2 },
+      { x: cx - bW / 2, y: cy + bH / 2 },
     ];
 
-    const clipped = this._clipSH(polygon, zone);
+    // Clip contre la zone — filet de sécurité (le post-loop le fera aussi)
+    const clipped = this._clipSH(raw, zone);
     if (clipped.length < 3) return null;
 
     return {
@@ -215,36 +267,36 @@ const EnvelopeGenerator = {
   },
 
   // ── SHAPE RULE : LINEAIRE ──────────────────────────────────────
+  // Façade voie longue, profondeur courte (RTAA DOM optimisée).
+  // Ancré sur le bas réel de la zone (côté voie en SVG Y-down = maxY).
   _ruleLineaire(zone, parcelLocal, edgeTypes, plu, ctx) {
-    const voieIdx = edgeTypes.indexOf('voie');
-    if (voieIdx < 0) return null;
+    const bbox = this._bbox(zone);
+    const zW   = bbox.maxX - bbox.minX;
+    const zH   = bbox.maxY - bbox.minY;
+    const area = this._area(zone);
+    if (area < 15 || zW < 6) return null;
 
-    const n  = parcelLocal.length;
-    const j  = (voieIdx + 1) % n;
-    const vA = parcelLocal[voieIdx];
-    const vB = parcelLocal[j];
+    // Profondeur max : limitée par PLU (prof_max) ET par la hauteur de zone
+    const profMaxPLU = plu.prof_max ?? 15;
+    const profMax    = Math.min(profMaxPLU, zH * 0.45);
+    if (profMax < 4) return null;
 
-    const dx  = vB.x - vA.x, dy = vB.y - vA.y;
-    const len = Math.hypot(dx, dy);
-    if (len < 3) return null;
+    // Largeur cible : utilise la largeur de zone, plafonnée par CES
+    const largeur = Math.min(zW * 0.90, (area * plu.ces_max) / profMax);
+    if (largeur < 5) return null;
 
-    const bbox  = this._bbox(zone);
-    const L     = len * 0.85;
-    const zoneD = Math.abs(bbox.maxY - bbox.minY);
-    const D     = Math.min(zoneD * 0.6, L * plu.ces_max / 1.5);
+    const cx     = (bbox.minX + bbox.maxX) / 2;
+    const yVoie  = bbox.maxY;             // côté voie (bas en Y-down)
+    const yArr   = yVoie - profMax;       // arrière du bâtiment
 
-    const cx   = (bbox.minX + bbox.maxX) / 2;
-    const yBot = bbox.maxY;
-    const yTop = yBot - D;
-
-    const polygon = [
-      { x: cx - L/2, y: yTop },
-      { x: cx + L/2, y: yTop },
-      { x: cx + L/2, y: yBot },
-      { x: cx - L/2, y: yBot },
+    const raw = [
+      { x: cx - largeur / 2, y: yArr  },
+      { x: cx + largeur / 2, y: yArr  },
+      { x: cx + largeur / 2, y: yVoie },
+      { x: cx - largeur / 2, y: yVoie },
     ];
 
-    const clipped = this._clipSH(polygon, zone);
+    const clipped = this._clipSH(raw, zone);
     if (clipped.length < 3) return null;
 
     return {
@@ -263,36 +315,35 @@ const EnvelopeGenerator = {
   },
 
   // ── SHAPE RULE : EN L ─────────────────────────────────────────
+  // Construit depuis les coins réels de la zone (pas des proportions
+  // arbitraires de la bbox). Le clip final supprime tout débordement
+  // dans les coins concaves.
   _ruleEnL(zone, parcelLocal, edgeTypes, plu, ctx) {
-    const bbox  = this._bbox(zone);
-    const W     = bbox.maxX - bbox.minX;
-    const H     = bbox.maxY - bbox.minY;
-    const SMax  = Math.min(W * H * plu.ces_max, this._area(zone) * 0.75);
+    const bbox = this._bbox(zone);
+    const x0   = bbox.minX, y0 = bbox.minY;
+    const zW   = bbox.maxX - bbox.minX;
+    const zH   = bbox.maxY - bbox.minY;
+    if (zW < 8 || zH < 8) return null;
 
-    const L1   = W * 0.75;
-    const l1   = SMax / (L1 + W * 0.4);
-    const l2   = W * 0.35;
-    const H2   = H * 0.65;
+    const montantW = Math.min(zW * 0.32, 5.5);   // m — épaisseur du montant
+    const barreH   = Math.min(zH * 0.30, 8.0);   // m — épaisseur de la barre voie
+    const barreW   = Math.min(zW * 0.82, 13.0);  // m — longueur de la barre voie
 
-    const viewRight = (ctx.viewDir - ctx.voieAzimuth + 360) % 360 > 180;
-
-    const polygon = viewRight ? [
-      { x: bbox.minX,       y: bbox.minY         },
-      { x: bbox.minX + L1,  y: bbox.minY         },
-      { x: bbox.minX + L1,  y: bbox.minY + l1    },
-      { x: bbox.maxX,       y: bbox.minY + l1    },
-      { x: bbox.maxX,       y: bbox.minY + l1 + H2 },
-      { x: bbox.minX,       y: bbox.minY + l1 + H2 },
-    ] : [
-      { x: bbox.maxX - L1,  y: bbox.minY         },
-      { x: bbox.maxX,       y: bbox.minY         },
-      { x: bbox.maxX,       y: bbox.minY + l1 + H2 },
-      { x: bbox.minX,       y: bbox.minY + l1 + H2 },
-      { x: bbox.minX,       y: bbox.minY + l1    },
-      { x: bbox.maxX - L1,  y: bbox.minY + l1    },
+    //  1────2
+    //  │    │  ← montant fond
+    //  │    3────4
+    //  │         │  ← barre voie
+    //  6─────────5
+    const raw = [
+      { x: x0,            y: y0 },                  // 1 fond gauche
+      { x: x0 + montantW, y: y0 },                  // 2 fond, fin montant
+      { x: x0 + montantW, y: y0 + zH - barreH },    // 3 coin intérieur
+      { x: x0 + barreW,   y: y0 + zH - barreH },    // 4 barre droite haut
+      { x: x0 + barreW,   y: y0 + zH },             // 5 voirie droite
+      { x: x0,            y: y0 + zH },             // 6 voirie gauche
     ];
 
-    const clipped = this._clipSH(polygon, zone);
+    const clipped = this._clipSH(raw, zone);
     if (clipped.length < 3) return null;
 
     return {
@@ -300,6 +351,87 @@ const EnvelopeGenerator = {
       familyKey:     'EN_L',
       strategy:      'sprawl',
       strategyLabel: 'Etale — L bioclimatique',
+      polygon:       clipped,
+      polygonGeo:    null,
+      surface:       this._area(clipped),
+      hauteur:       plu.h_egout,
+      niveaux:       plu.niveaux,
+      scoreData:     null,
+      score:         0,
+    };
+  },
+
+  // ── SHAPE RULE : OBLIQUE ──────────────────────────────────────
+  // Bâtiment aligné parallèlement à une limite latérale réelle de la
+  // parcelle (mitoyen ou recul L). Utile quand la parcelle n'est pas
+  // alignée aux axes — le bâtiment suit la géométrie réelle.
+  // edgeIdx = index de l'arête latérale dans parcelLocal/edgeTypes.
+  _ruleOblique(zone, parcelLocal, edgeTypes, edgeIdx, plu, ctx) {
+    if (!parcelLocal || edgeIdx == null) return null;
+    const n  = parcelLocal.length;
+    if (n < 3 || edgeIdx < 0 || edgeIdx >= n) return null;
+
+    const p1 = parcelLocal[edgeIdx];
+    const p2 = parcelLocal[(edgeIdx + 1) % n];
+    const dx = p2.x - p1.x, dy = p2.y - p1.y;
+    const l  = Math.hypot(dx, dy);
+    if (l < 6) return null;
+
+    // Vecteur unitaire le long de la limite
+    const u = { x: dx / l, y: dy / l };
+    // Normale potentielle (les deux orientations sont essayées plus bas
+    // car le sens "intérieur" dépend du winding du polygon parcelle).
+    const vCandidates = [
+      { x: -dy / l, y:  dx / l },  // rotation +90° math
+      { x:  dy / l, y: -dx / l },  // rotation -90° math (sens opposé)
+    ];
+
+    // Recul latéral BINAIRE déjà calculé (0 mitoyen, sinon Lmin)
+    const rLat = plu.recul_lat;
+    const rV   = plu.recul_voie;
+    const rF   = plu.recul_fond;
+
+    // Profondeur disponible le long de la limite
+    const profDispo = l - rV - rF;
+    if (profDispo < 4) return null;
+
+    const batL = Math.min(profDispo * 0.72, 18);
+    const bbox = this._bbox(zone);
+    const zW   = bbox.maxX - bbox.minX;
+    const batW = Math.min(7, zW * 0.45);
+    if (batW < 4) return null;
+
+    // Essayer les deux normales et garder celle qui produit la plus
+    // grande surface clippée (= celle qui pointe vers l'intérieur).
+    let bestClipped = [];
+    let bestArea    = 0;
+    for (const v of vCandidates) {
+      const O = {
+        x: p1.x + u.x * rV + v.x * rLat,
+        y: p1.y + u.y * rV + v.y * rLat,
+      };
+      const raw = [
+        { x: O.x,                              y: O.y                              },
+        { x: O.x + v.x * batW,                 y: O.y + v.y * batW                 },
+        { x: O.x + v.x * batW + u.x * batL,    y: O.y + v.y * batW + u.y * batL    },
+        { x: O.x + u.x * batL,                 y: O.y + u.y * batL                 },
+      ];
+      const c = this._clipSH(raw, zone);
+      if (c.length >= 3) {
+        const a = this._area(c);
+        if (a > bestArea) { bestArea = a; bestClipped = c; }
+      }
+    }
+    if (bestArea < 12) return null;
+    const clipped = bestClipped;
+
+    return {
+      family:        'Oblique',
+      familyKey:     'OBLIQUE',
+      strategy:      plu.lat_mitoyen ? 'mitoyen' : 'aligne',
+      strategyLabel: plu.lat_mitoyen
+        ? 'Mitoyen — implantation en limite séparative'
+        : 'Aligne — paralele a la limite',
       polygon:       clipped,
       polygonGeo:    null,
       surface:       this._area(clipped),
@@ -364,10 +496,12 @@ const EnvelopeGenerator = {
     // 2. Vue mer/montagne
     const viewScore = this._computeViewScore(prop, ctx);
 
-    // 3. Conformite PLU
+    // 3. Conformite PLU (CES + AVAP proximité)
     const ces       = parcelArea > 0 ? surf / parcelArea : 0;
     const cesScore  = ces > 0 && ces <= plu.ces_max ? 1 : Math.max(0, 1 - (ces - plu.ces_max) / plu.ces_max);
-    const pluScore  = cesScore;
+    // Malus AVAP : si proximité patrimoniale active et hauteur > h_egout cap
+    const avapPenalty = plu.avap_proximite && prop.hauteur > plu.h_egout ? 0.2 : 0;
+    const pluScore  = Math.max(0, cesScore - avapPenalty);
 
     // 4. Espace jardin restant
     const gardenPct  = parcelArea > 0 ? 1 - surf / parcelArea : 0;
@@ -437,6 +571,19 @@ const EnvelopeGenerator = {
     const viewDiff  = Math.abs((ctx.voieAzimuth - ctx.viewDir + 360) % 360);
     const dirScore  = Math.max(0, 1 - viewDiff / 180);
     return (altScore + dirScore) / 2;
+  },
+
+  // Index de l'arête latérale la plus longue (-1 si aucune)
+  _longestLateralEdge(parcel, edgeTypes) {
+    if (!parcel || parcel.length < 3) return -1;
+    let bestIdx = -1, bestLen = 0;
+    for (let i = 0; i < parcel.length; i++) {
+      if (edgeTypes[i] !== 'lateral' && edgeTypes[i] !== 'lat') continue;
+      const j = (i + 1) % parcel.length;
+      const len = Math.hypot(parcel[j].x - parcel[i].x, parcel[j].y - parcel[i].y);
+      if (len > bestLen) { bestLen = len; bestIdx = i; }
+    }
+    return bestIdx;
   },
 
   _voieAzimuth(parcelLocal, edgeTypes) {
@@ -598,12 +745,14 @@ const EnvelopeGenerator = {
   },
 
   // Sutherland-Hodgman clipping
-  // CORRIGE : force le clip polygon en CCW pour que cross >= 0 = interieur
+  // En espace SVG (Y-down) : un polygone CW visuel a signedArea < 0.
+  // Pour que cross(a,b,p) >= 0 = "intérieur", on doit reverser quand sa < 0.
+  // (avant : test inversé → cross >= 0 ne sélectionnait JAMAIS l'intérieur,
+  //  donc le clip retournait [] et tout bâtiment disparaissait)
   _clipSH(subject, clip) {
-    // S'assurer que clip est CCW (cross product positif = interieur)
-    // En espace Y-inverse, signedArea > 0 = CW visuellement → il faut inverser
+    if (!clip || clip.length < 3 || !subject || subject.length < 3) return [];
     const sa = this._signedAreaSH(clip);
-    const ccwClip = sa > 0 ? [...clip].reverse() : clip;
+    const ccwClip = sa < 0 ? [...clip].reverse() : clip;
 
     const cross  = (a, b, p) => (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
     const isect  = (a, b, c, d) => this._intersectLines(a, b, c, d);
