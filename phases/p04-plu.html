@@ -133,6 +133,56 @@
     </div>
   </div>
 
+  <!-- Détails réglementaires PLU (richesse cachée : stationnement, logement aidé, CBS, toiture) -->
+  <details class="form-section anim-slide-up" id="plu-details-block" style="display:none">
+    <summary style="cursor:pointer;padding:8px 13px;font-size:12px;font-weight:600;color:var(--text);user-select:none">
+      📖 Détails réglementaires PLU <span id="plu-details-count" style="font-size:9px;color:var(--muted);font-weight:400">—</span>
+    </summary>
+    <div style="padding:0 13px 12px;font-size:11px;line-height:1.6">
+
+      <!-- Bloc CBS — Coefficient de Biotope -->
+      <div id="plu-cbs-block" style="display:none;margin-top:8px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-left:3px solid #16a34a;border-radius:var(--r-sm)">
+        <div style="font-weight:600;color:#16a34a;margin-bottom:4px">🌿 CBS — Coefficient de Biotope par Surface
+          <span id="plu-cbs-badge" style="font-size:8px;background:var(--success2);color:var(--success);padding:2px 6px;border-radius:3px;margin-left:6px;font-family:var(--font-mono)">RÉGLEMENTAIRE</span>
+        </div>
+        <div id="plu-cbs-content" style="color:var(--text2)"></div>
+      </div>
+
+      <!-- Bloc Stationnement -->
+      <div id="plu-stationnement-block" style="display:none;margin-top:8px">
+        <div style="font-weight:600;color:var(--accent);margin-bottom:4px">🅿 Stationnement</div>
+        <div id="plu-stationnement-content" style="color:var(--text2)"></div>
+      </div>
+
+      <!-- Bloc Logement aidé -->
+      <div id="plu-aide-block" style="display:none;margin-top:8px">
+        <div style="font-weight:600;color:var(--accent);margin-bottom:4px">🏘 Logements aidés (LLS / LLTS / PLS)</div>
+        <div id="plu-aide-content" style="color:var(--text2)"></div>
+      </div>
+
+      <!-- Bloc Toiture -->
+      <div id="plu-toiture-block" style="display:none;margin-top:8px">
+        <div style="font-weight:600;color:var(--accent);margin-bottom:4px">🏠 Toiture</div>
+        <div id="plu-toiture-content" style="color:var(--text2)"></div>
+      </div>
+
+      <!-- Bloc Contraintes spéciales -->
+      <div id="plu-contraintes-block" style="display:none;margin-top:8px">
+        <div style="font-weight:600;color:var(--accent);margin-bottom:4px">⚠ Contraintes spécifiques</div>
+        <div id="plu-contraintes-content" style="color:var(--text2)"></div>
+      </div>
+
+      <div style="margin-top:10px;font-size:9px;color:var(--muted);font-family:var(--font-mono)">
+        Source : règlement PLU communal · données extraites par PLUP07Adapter · ces règles seront utilisées en P07 (esquisse).
+      </div>
+    </div>
+  </details>
+
+  <!-- Bandeau âge données PLU -->
+  <div id="plu-age-warning" style="display:none;margin:8px 13px;padding:6px 10px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-left:3px solid #f59e0b;border-radius:var(--r-sm);font-size:10px;color:#8a6d1b">
+    <strong>⏱ PLU ancien :</strong> <span id="plu-age-text">—</span>. Vérifier les modifications récentes sur le Géoportail de l'Urbanisme.
+  </div>
+
   <!-- SCoT — Armature urbaine & densité -->
   <div class="form-section anim-slide-up">
     <div class="fs-head">SCoT intercommunal <span id="scot-badge" style="display:none;font-size:8px;background:var(--success2);color:var(--success);padding:2px 6px;border-radius:3px;margin-left:6px;font-family:var(--font-mono)">AUTO</span><span id="scot-statut-badge" style="display:none;font-size:8px;padding:2px 6px;border-radius:3px;margin-left:6px;font-family:var(--font-mono)"></span></div>
@@ -675,6 +725,149 @@ P04._showPluAmbiguites = function(cfg) {
   );
 };
 
+// ── Affichage de la richesse PLU (CBS, stationnement, logement aidé, toiture, contraintes)
+P04._renderPluDetails = function(cfg) {
+  const block = document.getElementById('plu-details-block');
+  if (!block || !cfg?.plu) return;
+
+  const plu = cfg.plu;
+  let blocksShown = 0;
+  const fmt = (v, suffix = '') => v == null ? '—' : `${v}${suffix}`;
+
+  // ── CBS ──────────────────────────────────────────────────────
+  const cbsBlock   = document.getElementById('plu-cbs-block');
+  const cbsContent = document.getElementById('plu-cbs-content');
+  const cbsBadge   = document.getElementById('plu-cbs-badge');
+  if (plu.cbs && plu.cbs.cbs_min_pct != null) {
+    cbsBlock.style.display = 'block';
+    blocksShown++;
+    const lt250 = plu.cbs.cbs_min_pct_lt250 != null
+      ? `<div>· Parcelle ≤ 250 m² : <strong>CBS ≥ ${plu.cbs.cbs_min_pct_lt250} %</strong></div>` : '';
+    const ptLine = plu.cbs.pleine_terre_min_pct != null
+      ? `<div>· Pleine terre minimum : <strong>${plu.cbs.pleine_terre_min_pct} %</strong> de la parcelle</div>` : '';
+    const derog = plu.cbs.derogation_hauteur && plu.cbs.derogation_seuil_pct
+      ? `<div style="margin-top:4px;color:#16a34a">🎁 Bonus hauteur si CBS &gt; ${plu.cbs.derogation_seuil_pct} %</div>` : '';
+    cbsContent.innerHTML = `
+      <div>· Parcelle &gt; 250 m² : <strong>CBS ≥ ${plu.cbs.cbs_min_pct} %</strong></div>
+      ${lt250}
+      ${ptLine}
+      ${derog}
+      <div style="margin-top:6px;font-size:9px;color:var(--muted);font-family:var(--font-mono)">${plu.cbs.source ?? ''}</div>
+      <div style="margin-top:6px;font-size:10px;color:var(--text2);line-height:1.5">
+        <strong>Méthode :</strong> CBS = surface éco-aménageable / surface parcelle.
+        Coefficients : imperméable=0 · semi-perméable=0,5 · dalle plantée=0,7 · toiture végétalisée=0,7 · pleine terre=1,0.
+      </div>`;
+    // Sauvegarder en session pour CBSCalculator.computeFromSession
+    SessionManager.savePhase(4, { plu_cbs: {
+      cbs_min_pct: plu.cbs.cbs_min_pct,
+      pleine_terre_min_pct: plu.cbs.pleine_terre_min_pct,
+      source: plu.cbs.source,
+    }});
+  } else {
+    // CBS pédagogique non réglementaire
+    cbsBlock.style.display = 'block';
+    blocksShown++;
+    cbsBadge.textContent = 'INDICATEUR';
+    cbsBadge.style.background = 'rgba(107,114,128,.15)';
+    cbsBadge.style.color = '#6b7280';
+    cbsContent.innerHTML = `
+      <div style="font-size:10px;color:var(--text2);line-height:1.5">
+        Cette commune n'utilise pas le CBS dans son PLU. TERLAB peut néanmoins le calculer
+        comme <strong>indicateur écologique pédagogique</strong> en P08/P12.
+      </div>
+      <div style="margin-top:6px;font-size:10px;color:var(--text2);line-height:1.5">
+        <strong>Méthode (Saint-Pierre Ua5 / biotope Berlin) :</strong>
+        imperméable=0 · semi-perméable=0,5 · dalle plantée=0,7 · toiture végétalisée=0,7 · pleine terre=1,0.
+      </div>
+      <div style="margin-top:4px;font-size:10px;color:var(--text2)">Cible pédagogique : CBS &gt; 30 % (bon) · &gt; 60 % (excellent)</div>`;
+    SessionManager.savePhase(4, { plu_cbs: null });
+  }
+
+  // ── Stationnement ────────────────────────────────────────────
+  const stBlock = document.getElementById('plu-stationnement-block');
+  const stContent = document.getElementById('plu-stationnement-content');
+  const stRows = [];
+  if (plu.park_logement_std != null)  stRows.push(`Logement libre : <strong>${plu.park_logement_std}</strong> place(s) / logement`);
+  if (plu.park_logement_aide != null) stRows.push(`Logement aidé : <strong>${plu.park_logement_aide}</strong> place(s) / logement`);
+  if (plu.park_visiteur_par5 != null) stRows.push(`Visiteurs : <strong>${plu.park_visiteur_par5}</strong> / 5 logements`);
+  if (plu.park_commerce_bureau)        stRows.push(`Commerce/bureau : ${plu.park_commerce_bureau}`);
+  if (plu.park_hotel_par_2chambres)    stRows.push(`Hôtel : ${plu.park_hotel_par_2chambres} pl / 2 chambres`);
+  if (stRows.length) {
+    stBlock.style.display = 'block';
+    blocksShown++;
+    stContent.innerHTML = stRows.map(r => `<div>· ${r}</div>`).join('');
+  } else {
+    stBlock.style.display = 'none';
+  }
+
+  // ── Logement aidé ────────────────────────────────────────────
+  const aideBlock = document.getElementById('plu-aide-block');
+  const aideContent = document.getElementById('plu-aide-content');
+  if (plu.aide_seuil_m2 || plu.aide_pct) {
+    aideBlock.style.display = 'block';
+    blocksShown++;
+    aideContent.innerHTML = `
+      ${plu.aide_seuil_m2 ? `<div>· Seuil de déclenchement : <strong>${plu.aide_seuil_m2} m²</strong> SDP</div>` : ''}
+      ${plu.aide_pct ? `<div>· Quota minimum : <strong>${plu.aide_pct} %</strong> de la SDP</div>` : ''}`;
+  } else {
+    aideBlock.style.display = 'none';
+  }
+
+  // ── Toiture ──────────────────────────────────────────────────
+  const toitBlock = document.getElementById('plu-toiture-block');
+  const toitContent = document.getElementById('plu-toiture-content');
+  const toitRows = [];
+  if (plu.versants_obligatoire) toitRows.push('Toiture à versants <strong>obligatoire</strong>');
+  if (plu.versants_pct_volume)  toitRows.push(`Versants : <strong>${plu.versants_pct_volume} %</strong> du volume`);
+  if (plu.pente_toiture_min_pct || plu.pente_toiture_max_pct) {
+    const min = plu.pente_toiture_min_pct ?? '?';
+    const max = plu.pente_toiture_max_pct ?? '?';
+    toitRows.push(`Pente : <strong>${min} – ${max} %</strong>`);
+  }
+  if (toitRows.length) {
+    toitBlock.style.display = 'block';
+    blocksShown++;
+    toitContent.innerHTML = toitRows.map(r => `<div>· ${r}</div>`).join('');
+  } else {
+    toitBlock.style.display = 'none';
+  }
+
+  // ── Contraintes spécifiques ──────────────────────────────────
+  const ctrBlock = document.getElementById('plu-contraintes-block');
+  const ctrContent = document.getElementById('plu-contraintes-content');
+  const ctrRows = [];
+  if (plu.ebc) ctrRows.push('🌳 EBC — Espace Boisé Classé : défrichement interdit');
+  if (plu.loi_littoral) ctrRows.push('🌊 Loi Littoral applicable');
+  if (cfg.reculs?.ravine) ctrRows.push(`Recul ravine : <strong>${cfg.reculs.ravine} m</strong>`);
+  if (cfg.reculs?.dpm) ctrRows.push(`Recul DPM (domaine public maritime) : <strong>${cfg.reculs.dpm} m</strong>`);
+  if (plu.bonus_logement_social) ctrRows.push(`🎁 Bonus hauteur logement social : ${plu.bonus_logement_social}`);
+  if (ctrRows.length) {
+    ctrBlock.style.display = 'block';
+    blocksShown++;
+    ctrContent.innerHTML = ctrRows.map(r => `<div>· ${r}</div>`).join('');
+  } else {
+    ctrBlock.style.display = 'none';
+  }
+
+  // Afficher le panneau si au moins un bloc est renseigné
+  if (blocksShown > 0) {
+    block.style.display = 'block';
+    block.open = false; // dépliable mais fermé par défaut
+    document.getElementById('plu-details-count').textContent =
+      `(${blocksShown} thème${blocksShown > 1 ? 's' : ''} : CBS, stationnement, aide, toiture, contraintes)`;
+  }
+
+  // ── Bandeau âge données PLU ──────────────────────────────────
+  const ageW = (cfg._meta?.warnings ?? []).find(w => /PLU approuvé en/.test(w));
+  if (ageW) {
+    const banner = document.getElementById('plu-age-warning');
+    if (banner) {
+      banner.style.display = 'block';
+      document.getElementById('plu-age-text').textContent = ageW.replace(/^ℹ /, '');
+    }
+  }
+};
+
 window.P04 = P04;
 P04._initSolarDiagram();
 // Lance le rendu du plan d'état des lieux dès que la session terrain est dispo
@@ -874,6 +1067,8 @@ P04.renderEtatDesLieux();
 
     // Afficher les ambiguïtés / warnings pour que l'utilisateur vérifie
     P04._showPluAmbiguites(cfg);
+    // Exposer la richesse PLU (CBS, stationnement, logement aidé, toiture, contraintes)
+    P04._renderPluDetails(cfg);
 
     console.info(`[P04] PLU auto-fill: ${cfg.label} (confiance ${(cfg._meta?.confidence * 100).toFixed(0)}%)`);
   } catch (e) {
@@ -908,6 +1103,7 @@ document.getElementById('zone-plu')?.addEventListener('change', async function()
     document.getElementById('plu-rules-badge').style.display = 'inline';
     P04.updateReculs();
     P04._showPluAmbiguites(cfg);
+    P04._renderPluDetails(cfg);
   } catch (e) { console.warn('[P04] PLU re-fill failed:', e); }
 });
 

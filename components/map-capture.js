@@ -104,14 +104,15 @@ const MapCapture = {
     const cx = (px ?? w / 2) * ratio;
     const cy = (py ?? h / 2) * ratio;
 
-    // Hors canvas → skip
-    if (cx < -30 || cx > w + 30 || cy < -30 || cy > h + 30) {
+    // Hors canvas → skip (marge élargie pour la nouvelle taille + halo)
+    if (cx < -60 || cx > w + 60 || cy < -60 || cy > h + 60) {
       const dataUrl = tmp.toDataURL('image/jpeg', 0.92);
       tmp.width = 0; tmp.height = 0;
       return dataUrl;
     }
 
-    const spikes = 5, outerR = 28, innerR = 12;
+    // Étoile x1.5 vs ancien 28/12 — couleur rouge brique TERLAB (#C1652B)
+    const spikes = 5, outerR = 42, innerR = 18;
     ctx.beginPath();
     for (let i = 0; i < spikes * 2; i++) {
       const r = i % 2 === 0 ? outerR : innerR;
@@ -122,16 +123,16 @@ const MapCapture = {
     }
     ctx.closePath();
 
-    // Halo
-    ctx.shadowColor = 'rgba(193, 101, 43, 0.6)';
-    ctx.shadowBlur = 12;
-    ctx.fillStyle = 'rgba(221, 200, 154, 0.95)';
+    // Halo terracotta agrandi pour lisibilité sur fond satellite
+    ctx.shadowColor = 'rgba(193, 101, 43, 0.7)';
+    ctx.shadowBlur = 18;
+    ctx.fillStyle = '#C1652B'; // rouge brique TERLAB
     ctx.fill();
     ctx.shadowBlur = 0;
 
-    // Contour terracotta
-    ctx.strokeStyle = 'rgba(193, 101, 43, 0.8)';
-    ctx.lineWidth = 1.8;
+    // Contour blanc pour contraste sur fonds sombres comme clairs
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.lineWidth = 2.4;
     ctx.stroke();
 
     const dataUrl = tmp.toDataURL('image/jpeg', 0.92);
