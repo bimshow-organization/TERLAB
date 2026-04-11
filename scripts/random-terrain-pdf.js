@@ -1070,58 +1070,82 @@ async function processOneTerrain(browser, runIndex) {
             } catch (e) { console.warn('[PDF] CoupeGabarit:', e.message); }
           }
 
-          // Profils terrain depuis LiDAR (si points disponibles)
-          // Bug fixé : LidarService.getProfileFromPoints() renvoie {distance_m, altitude_m}
-          // mais TerrainProfile.render() lit {distance, altitude} → remap obligatoire,
-          // sinon SVG produit avec NaN partout (invisible).
-          if (window.LidarService?._lastPoints || terrain.parcelle_geojson) {
-            try {
-              const TP = window.TerrainProfile;
-              const LS = window.LidarService;
-              if (TP?.render && LS?.getProfileFromPoints && LS._lastPoints?.length) {
-                const geojson = terrain.parcelle_geojson;
-                const coords = geojson?.coordinates?.[0] ?? geojson?.coordinates?.[0]?.[0];
-                if (coords?.length >= 2) {
-                  // Helper : profil LiDAR → SVG dataURL via TerrainProfile.render
-                  const renderProfile = async (start, end, title) => {
-                    const profile = LS.getProfileFromPoints(LS._lastPoints, start, end, 8);
-                    if (!profile?.length || profile.length < 3) return null;
-                    // Remap distance_m/altitude_m → distance/altitude
-                    const data = profile.map(p => ({ distance: p.distance_m, altitude: p.altitude_m }));
-                    const tmpDiv = document.createElement('div');
-                    tmpDiv.style.cssText = 'position:absolute;left:-9999px;width:700px;height:220px';
-                    document.body.appendChild(tmpDiv);
-                    try {
-                      const svg = TP.render(data, tmpDiv, { width: 700, height: 220, title });
-                      if (!svg) return null;
-                      const str = TP.toSVGString?.(svg) ?? new XMLSerializer().serializeToString(svg);
-                      const blob = new Blob([str], { type: 'image/svg+xml' });
-                      return await new Promise(r => { const rd = new FileReader(); rd.onload = () => r(rd.result); rd.readAsDataURL(blob); });
-                    } finally {
-                      tmpDiv.remove();
-                    }
-                  };
+          // ── Coupes terrain A et B ─────────────────────────────────────
+          // Strategie 2 sources avec fallback :
+          // 1. PRIMARY = IGNElevationService.getProfile() → API IGN BIL (toujours dispo)
+          // 2. FALLBACK = LidarService.getProfileFromPoints + LS._rawPoints (HD si dispo)
+          // Logs explicites a chaque etape pour ne plus echouer silencieusement.
+          try {
+            const TP = window.TerrainProfile;
+            const IGN = window.IGNElevationService;
+            const LS = window.LidarService;
+            const geojson = terrain.parcelle_geojson;
+            const coords = geojson?.coordinates?.[0] ?? geojson?.coordinates?.[0]?.[0];
+            console.log('[PDF] Coupes : TP=' + !!TP?.render + ' IGN=' + !!IGN?.getProfile + ' coords=' + (coords?.length ?? 0));
+            if (TP?.render && coords?.length >= 4) {
+              const lidarPts = LS?._rawPoints ?? LS?._lastPoints ?? null;
+              const hasLidar = !!(LS?.getProfileFromPoints && lidarPts?.length);
+              console.log('[PDF] Coupes : source=' + (hasLidar ? `LiDAR (${lidarPts.length} pts)` : 'IGN BIL API'));
 
-                  // Coupe A : axe long (sommet 0 → sommet opposé)
-                  const idxOppA = Math.floor(coords.length / 2);
-                  const dataUrlA = await renderProfile(coords[0], coords[idxOppA], 'Coupe A — Longitudinale');
-                  if (dataUrlA) {
-                    visuals.sectionA = dataUrlA;
-                    console.log('[PDF] Section A SVG : ' + Math.round(dataUrlA.length / 1024) + 'K');
-                  }
-
-                  // Coupe B : axe perpendiculaire (sommet 1/4 → sommet 3/4)
-                  const idxStartB = Math.floor(coords.length / 4);
-                  const idxEndB   = Math.floor(coords.length * 3 / 4);
-                  const dataUrlB = await renderProfile(coords[idxStartB], coords[idxEndB], 'Coupe B — Perpendiculaire');
-                  if (dataUrlB) {
-                    visuals.sectionB = dataUrlB;
-                    console.log('[PDF] Section B SVG : ' + Math.round(dataUrlB.length / 1024) + 'K');
+              const renderProfile = async (start, end, title) => {
+                let profile = null;
+                // 1. Essai LiDAR (HD)
+                if (hasLidar) {
+                  const lidProf = LS.getProfileFromPoints(lidarPts, start, end, 8);
+                  if (lidProf?.length >= 4) profile = lidProf;
+                  else console.log('[PDF] Coupe ' + title + ' : LiDAR rendu ' + (lidProf?.length ?? 0) + ' pts -> fallback IGN');
+                }
+                // 2. Fallback IGN BIL
+                if (!profile && IGN?.getProfile) {
+                  try {
+                    profile = await IGN.getProfile(start[0], start[1], end[0], end[1], 20);
+                  } catch (e) {
+                    console.warn('[PDF] IGN getProfile error : ' + e.message);
                   }
                 }
+                if (!profile?.length || profile.length < 3) {
+                  console.warn('[PDF] Coupe ' + title + ' : profil vide');
+                  return null;
+                }
+                const data = profile.map(p => ({ distance: p.distance_m, altitude: p.altitude_m }));
+                const tmpDiv = document.createElement('div');
+                tmpDiv.style.cssText = 'position:absolute;left:-9999px;width:700px;height:220px';
+                document.body.appendChild(tmpDiv);
+                try {
+                  const svg = TP.render(data, tmpDiv, { width: 700, height: 220, title });
+                  if (!svg) return null;
+                  const str = TP.toSVGString?.(svg) ?? new XMLSerializer().serializeToString(svg);
+                  const blob = new Blob([str], { type: 'image/svg+xml' });
+                  return await new Promise(r => { const rd = new FileReader(); rd.onload = () => r(rd.result); rd.readAsDataURL(blob); });
+                } finally {
+                  tmpDiv.remove();
+                }
+              };
+
+              // Coupe A : axe long (sommet 0 -> sommet oppose)
+              const idxOppA = Math.floor(coords.length / 2);
+              const dataUrlA = await renderProfile(coords[0], coords[idxOppA], 'Coupe A — Longitudinale');
+              if (dataUrlA) {
+                visuals.sectionA = dataUrlA;
+                console.log('[PDF] Section A SVG : ' + Math.round(dataUrlA.length / 1024) + 'K');
+              } else {
+                console.warn('[PDF] Section A : echec generation');
               }
-            } catch (e) { console.warn('[PDF] Sections terrain:', e.message); }
-          }
+
+              // Coupe B : axe perpendiculaire (sommet 1/4 -> sommet 3/4)
+              const idxStartB = Math.floor(coords.length / 4);
+              const idxEndB   = Math.floor(coords.length * 3 / 4);
+              const dataUrlB = await renderProfile(coords[idxStartB], coords[idxEndB], 'Coupe B — Perpendiculaire');
+              if (dataUrlB) {
+                visuals.sectionB = dataUrlB;
+                console.log('[PDF] Section B SVG : ' + Math.round(dataUrlB.length / 1024) + 'K');
+              } else {
+                console.warn('[PDF] Section B : echec generation');
+              }
+            } else {
+              console.warn('[PDF] Coupes : conditions manquantes (TP=' + !!TP?.render + ' coords=' + (coords?.length ?? 0) + ')');
+            }
+          } catch (e) { console.warn('[PDF] Sections terrain : ' + e.message); }
 
           // ── Terrain 3D (point cloud Three.js depuis LiDAR COPC, fallback SVG) ──
           if (window.LidarService?._lastPoints?.length > 10) {
