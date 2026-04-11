@@ -15,7 +15,14 @@ export class PLUP07Adapter {
 
   async loadRules(url = '../data/plu-rules-reunion.json') {
     try {
-      const resp = await fetch(url);
+      // Resoudre les chemins relatifs contre l'URL du module pour
+      // fonctionner aussi bien en local qu'en sous-dossier (ex: GitHub Pages
+      // /TERLAB/). Sinon `../data/...` est resolu contre document.baseURI
+      // et atterrit hors du repo en prod.
+      const resolved = (typeof url === 'string' && url.startsWith('.'))
+        ? new URL(url, import.meta.url)
+        : url;
+      const resp = await fetch(resolved);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       this._rules = await resp.json();
       this._loaded = true;

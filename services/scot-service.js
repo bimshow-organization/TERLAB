@@ -42,7 +42,9 @@ const SCOTService = {
     if (this._cache.has(interco)) return this._cache.get(interco);
 
     const slug = interco.toLowerCase();
-    const url = `../data/scot-rules-${slug}.json`;
+    // Resoudre contre l'URL du module pour fonctionner en local ET sur GitHub Pages
+    // (sinon `../data/...` est resolu contre document.baseURI = sans le prefixe /TERLAB/)
+    const url = new URL(`../data/scot-rules-${slug}.json`, import.meta.url);
     try {
       const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
       if (!resp.ok) return null;
