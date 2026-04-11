@@ -1603,70 +1603,201 @@ const ExportEngine = {
   },
 
   // ═══════════════════════════════════════════════════════════════
-  //  DXF
+  //  DXF — Parcelle 2D (contour reel + reculs + gabarit P07)
   // ═══════════════════════════════════════════════════════════════
   async generateDXF() {
     const session = window.SessionManager;
     const terrain = session?.getTerrain?.() ?? {};
 
-    const parcelle = session?.getPhase?.(0)?.data ?? {};
-    const p4       = session?.getPhase?.(4)?.data ?? {};
-
     if (!terrain.lat) {
       window.TerlabToast?.show('Completez la Phase 0 avant d\'exporter DXF', 'warning');
       return;
     }
+    if (!window.DXFWorker) {
+      window.TerlabToast?.show('DXFWorker indisponible', 'error');
+      return;
+    }
 
-    this._setProgress(20, 'Generation DXF...');
-
+    this._setProgress(20, 'Generation DXF parcelle...');
     try {
-      const lat = parseFloat(terrain.lat ?? -21.11);
-      const lng = parseFloat(terrain.lng ?? 55.54);
-      const contenance = parseFloat(terrain.contenance_m2 ?? 400);
-      const side = Math.sqrt(contenance).toFixed(2);
-
-      const dxf = [
-        '0', 'SECTION', '2', 'HEADER',
-        '9', '$ACADVER', '1', 'AC1015',
-        '9', '$EXTMIN', '10', '0', '20', '0',
-        '9', '$EXTMAX', '10', side, '20', side,
-        '0', 'ENDSEC',
-        '0', 'SECTION', '2', 'ENTITIES',
-        '0', 'LWPOLYLINE',
-        '8', 'PARCELLE',
-        '90', '4', '70', '1',
-        '10', '0.0',    '20', '0.0',
-        '10', side,     '20', '0.0',
-        '10', side,     '20', side,
-        '10', '0.0',    '20', side,
-        ...(p4.recul_voie_principale_m ? [
-          '0', 'LWPOLYLINE', '8', 'RECUL_VOIE', '90', '2', '70', '0',
-          '10', `${p4.recul_voie_principale_m}`, '20', '0.0',
-          '10', `${parseFloat(side) - p4.recul_voie_principale_m}`, '20', '0.0'
-        ] : []),
-        '0', 'TEXT', '8', 'ANNOTATIONS',
-        '10', `${parseFloat(side)/2}`, '20', '-3',
-        '40', '1.5', '1', `TERLAB - ${terrain.commune ?? ''} - ${terrain.section ?? ''}${terrain.parcelle ?? ''}`,
-        '0', 'TEXT', '8', 'ANNOTATIONS',
-        '10', '0', '20', '-5',
-        '40', '1', '1', `Contenance approx: ${contenance} m2`,
-        '0', 'ENDSEC',
-        '0', 'EOF'
-      ].join('\n');
-
-      const blob = new Blob([dxf], { type: 'application/dxf' });
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement('a');
-      a.href     = url;
-      a.download = `TERLAB_${terrain.commune ?? 'terrain'}_${terrain.section ?? ''}${terrain.parcelle ?? ''}.dxf`;
-      a.click();
-      URL.revokeObjectURL(url);
-
-      session?.saveExport?.('dxf', a.download);
-      window.TerlabToast?.show('DXF exporte', 'success');
-
+      const sessionData = {
+        terrain,
+        phases: {
+          0: session?.getPhase?.(0) ?? null,
+          4: session?.getPhase?.(4) ?? null,
+          7: session?.getPhase?.(7) ?? null,
+        },
+      };
+      const dxf      = window.DXFWorker.generate(sessionData);
+      const filename = window.DXFWorker.download(dxf, terrain, 'parcelle');
+      session?.saveExport?.('dxf', filename);
+      window.TerlabToast?.show('DXF parcelle exporte', 'success');
     } catch (e) {
       window.TerlabToast?.show(`Erreur DXF : ${e.message}`, 'error');
+    }
+    this._hideProgress();
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  //  DXF Site 3D — Terrain DEM IGN + batiments BDTOPO + routes drapees
+  //  Compatible ArchiCAD 18+, AutoCAD, QGIS. Coords locales m, EPSG:2975.
+  // ═══════════════════════════════════════════════════════════════
+  async generateDXFSite(opts = {}) {
+    const session = window.SessionManager;
+    const terrain = session?.getTerrain?.() ?? {};
+
+    if (!terrain.lat) {
+      window.TerlabToast?.show('Completez la Phase 0 avant d\'exporter le site 3D', 'warning');
+      return;
+    }
+    if (!window.SiteCaptureService || !window.DXFWorker) {
+      window.TerlabToast?.show('SiteCaptureService ou DXFWorker indisponible', 'error');
+      return;
+    }
+
+    const {
+      bufferM    = 100,
+      pixelSizeM = 2,
+      withBuildings = true,
+      withRoads     = true,
+      decimate      = false,
+    } = opts;
+
+    this._setProgress(2, 'Capture site 3D...');
+    const ctrl = new AbortController();
+    try {
+      const scene = await window.SiteCaptureService.capture({
+        bufferM, pixelSizeM, withBuildings, withRoads, decimate,
+        signal: ctrl.signal,
+        onProgress: (pct, label) => this._setProgress(Math.min(95, pct), label),
+      });
+
+      this._setProgress(96, 'Generation DXF R2000...');
+      const dxf = window.DXFWorker.generateSite3D(scene, { withBuildings, withRoads });
+
+      this._setProgress(99, 'Telechargement...');
+      const filename = window.DXFWorker.download(dxf, terrain, 'site3d');
+      session?.saveExport?.('dxf_site3d', filename);
+
+      window.TerlabToast?.show(
+        `Site 3D exporte (${scene.terrainMesh.triangles.length} triangles, ${scene.buildings.length} batiments, ${scene.roads.length} routes)`,
+        'success'
+      );
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        window.TerlabToast?.show('Export site 3D annule', 'info');
+      } else {
+        window.TerlabToast?.show(`Erreur site 3D : ${e.message}`, 'error');
+      }
+    }
+    this._hideProgress();
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  //  IFC — Gabarit Phase 7 simple (IFC 2x3 ASCII)
+  // ═══════════════════════════════════════════════════════════════
+  async generateIFC() {
+    const session = window.SessionManager;
+    const terrain = session?.getTerrain?.() ?? {};
+
+    if (!terrain.lat) {
+      window.TerlabToast?.show('Completez la Phase 0 avant d\'exporter IFC', 'warning');
+      return;
+    }
+    if (!window.IFCExporter) {
+      window.TerlabToast?.show('IFCExporter indisponible', 'error');
+      return;
+    }
+
+    this._setProgress(20, 'Generation IFC gabarit...');
+    try {
+      const sessionData = {
+        sessionId: session?._sessionId ?? session?.getField?.('sessionId') ?? 'TERLAB',
+        terrain,
+        phases: {
+          4: session?.getPhase?.(4) ?? null,
+          7: session?.getPhase?.(7) ?? null,
+        },
+      };
+      const result = await window.IFCExporter.exportFromPhase7(sessionData);
+      session?.saveExport?.('ifc', `${terrain.commune ?? 'terrain'}_gabarit.ifc`);
+      window.TerlabToast?.show(
+        result.source === 'bimshow' ? 'IFC exporte via BIMSHOW' : 'IFC gabarit exporte (IFC 2x3 ASCII)',
+        'success'
+      );
+    } catch (e) {
+      window.TerlabToast?.show(`Erreur IFC : ${e.message}`, 'error');
+    }
+    this._hideProgress();
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  //  IFC Site — Gabarit + voisins BDTOPO extrudes + propertyset terrain
+  // ═══════════════════════════════════════════════════════════════
+  async generateIFCSite(opts = {}) {
+    const session = window.SessionManager;
+    const terrain = session?.getTerrain?.() ?? {};
+
+    if (!terrain.lat) {
+      window.TerlabToast?.show('Completez la Phase 0 avant d\'exporter IFC site', 'warning');
+      return;
+    }
+    if (!window.SiteCaptureService || !window.IFCExporter) {
+      window.TerlabToast?.show('SiteCaptureService ou IFCExporter indisponible', 'error');
+      return;
+    }
+
+    const {
+      bufferM    = 100,
+      pixelSizeM = 5,            // Plus grossier pour IFC : on n'exporte pas la TIN
+      withBuildings = true,
+      withRoads     = false,     // Routes en IFC = bruit visuel sans valeur ajoutee
+    } = opts;
+
+    this._setProgress(2, 'Capture site...');
+    const ctrl = new AbortController();
+    try {
+      const scene = await window.SiteCaptureService.capture({
+        bufferM, pixelSizeM, withBuildings, withRoads,
+        signal: ctrl.signal,
+        onProgress: (pct, label) => this._setProgress(Math.min(85, pct), label),
+      });
+
+      this._setProgress(88, 'Generation IFC enrichi...');
+      const p7 = session?.getPhase?.(7)?.data ?? {};
+      const params = {
+        L: parseFloat(p7.gabarit_l_m ?? 10),
+        W: parseFloat(p7.gabarit_w_m ?? 8),
+        H: parseFloat(p7.gabarit_h_m ?? 6),
+        niveaux: parseInt(p7.niveaux ?? 1),
+      };
+      const sessionData = {
+        sessionId: session?._sessionId ?? 'TERLAB',
+        terrain,
+        phases: {
+          4: session?.getPhase?.(4) ?? null,
+          7: session?.getPhase?.(7) ?? null,
+        },
+      };
+
+      const ifc = window.IFCExporter.generateASCIIWithContext(sessionData, params, scene);
+
+      const slug = window.SiteCaptureService.slugify;
+      const filename = `TERLAB_${slug(terrain.commune)}_${slug((terrain.section ?? '') + (terrain.parcelle ?? ''))}_site3d.ifc`;
+      window.IFCExporter.download(ifc, filename);
+      session?.saveExport?.('ifc_site3d', filename);
+
+      this._setProgress(100, 'Termine');
+      window.TerlabToast?.show(
+        `IFC site exporte (${scene.buildings.length} voisins)`,
+        'success'
+      );
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        window.TerlabToast?.show('Export IFC site annule', 'info');
+      } else {
+        window.TerlabToast?.show(`Erreur IFC site : ${e.message}`, 'error');
+      }
     }
     this._hideProgress();
   },

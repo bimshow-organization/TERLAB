@@ -261,6 +261,114 @@ const IFCExporter = {
     URL.revokeObjectURL(url);
   },
 
+  // ── ENRICHISSEMENT CONTEXTE SITE 3D ────────────────────────────
+  // Ajoute au STEP IFC 2x3 :
+  //   - N IfcBuildingElementProxy (voisins extrudes BDTOPO) attaches au site #110
+  //   - 1 IfcPropertySet 'TERLAB_Site_Contexte' sur le site (alt min/max, sources, count)
+  // Note : la TIN du terrain n'est pas serialisee en IFC 2x3 (pas d'IfcTriangulatedFaceSet
+  // disponible avant IFC4). Elle est presente dans le DXF compagnon.
+  generateASCIIWithContext(sessionData, params, scene) {
+    const ifc = this.generateASCII(sessionData, params);
+    if (!scene?.buildings?.length && !scene?.terrainMesh?.vertices?.length) return ifc;
+
+    const sid       = sessionData.sessionId ?? 'TERLAB-SESSION';
+    const shortSid  = sid.replace(/-/g, '').slice(0, 12).toUpperCase();
+    const G         = (n) => `'${shortSid}${String(n).padStart(10, '0')}'`;
+    const escape    = (s) => String(s ?? '').replace(/'/g, '');
+    const m         = scene.metadata ?? {};
+
+    let id = 1000;
+    const out = [];
+    out.push('');
+    out.push('/* ═══ CONTEXTE SITE 3D — TERLAB ═══ */');
+    out.push(`/* Origine UTM40S : E=${scene.origin.E.toFixed(1)} N=${scene.origin.N.toFixed(1)} */`);
+    out.push(`/* Centroide WGS84 : ${scene.lat.toFixed(6)}, ${scene.lng.toFixed(6)} */`);
+    out.push(`/* Buffer ${scene.bufferM} m | DEM ${scene.pixelSizeM} m | TIN complete dans le DXF compagnon */`);
+
+    // Stats altitude depuis le maillage
+    let zMin = Infinity, zMax = -Infinity;
+    const verts = scene.terrainMesh?.vertices ?? [];
+    for (const v of verts) { if (v.z < zMin) zMin = v.z; if (v.z > zMax) zMax = v.z; }
+    if (!isFinite(zMin)) { zMin = 0; zMax = 0; }
+
+    // ── Voisins : IfcBuildingElementProxy par batiment ────────────
+    const proxyIds = [];
+    const buildings = scene.buildings ?? [];
+    for (let b = 0; b < buildings.length; b++) {
+      const bat = buildings[b];
+      // Ring ferme : on retire le dernier point (== premier)
+      const fp = bat.footprint3d ?? [];
+      const pts = fp.length > 1 && fp[0].x === fp[fp.length - 1].x && fp[0].y === fp[fp.length - 1].y
+        ? fp.slice(0, -1) : fp.slice();
+      if (pts.length < 3) continue;
+
+      // IfcCartesianPoint 2D pour chaque sommet du profil
+      const ptIds = [];
+      for (const p of pts) {
+        out.push(`#${id}=IFCCARTESIANPOINT((${p.x.toFixed(3)},${p.y.toFixed(3)}));`);
+        ptIds.push(id++);
+      }
+      // Polyline fermee (premier point repete)
+      const polyRefs = ptIds.map(i => `#${i}`).concat(`#${ptIds[0]}`).join(',');
+      const polyId = id;
+      out.push(`#${id}=IFCPOLYLINE((${polyRefs}));`); id++;
+      const profId = id;
+      out.push(`#${id}=IFCARBITRARYCLOSEDPROFILEDEF(.AREA.,'voisin_${b}',#${polyId});`); id++;
+      // Extrusion verticale (utilise #18 axis et #16 Z direction de generateASCII)
+      const solidId = id;
+      out.push(`#${id}=IFCEXTRUDEDAREASOLID(#${profId},#18,#16,${(bat.height || 6).toFixed(3)});`); id++;
+      const repId = id;
+      out.push(`#${id}=IFCSHAPEREPRESENTATION(#21,'Body','SweptSolid',(#${solidId}));`); id++;
+      const defId = id;
+      out.push(`#${id}=IFCPRODUCTDEFINITIONSHAPE($,$,(#${repId}));`); id++;
+
+      // Placement local : altitude de pose = z moyen du footprint (drape DEM)
+      const zBase = pts.reduce((s, p) => s + p.z, 0) / pts.length;
+      const placePtId = id;
+      out.push(`#${id}=IFCCARTESIANPOINT((0.,0.,${zBase.toFixed(3)}));`); id++;
+      const axisId = id;
+      out.push(`#${id}=IFCAXIS2PLACEMENT3D(#${placePtId},#16,#14);`); id++;
+      const placeId = id;
+      out.push(`#${id}=IFCLOCALPLACEMENT($,#${axisId});`); id++;
+
+      // BuildingElementProxy
+      const proxyId = id;
+      const name = `Voisin_${b + 1}`;
+      const desc = escape(bat.label || bat.usage || 'Batiment voisin');
+      out.push(`#${id}=IFCBUILDINGELEMENTPROXY(${G(proxyId)},#5,'${name}',$,'${desc}',#${placeId},#${defId},$,$);`); id++;
+      proxyIds.push(proxyId);
+    }
+
+    // Rattachement spatial des voisins au site #110
+    if (proxyIds.length) {
+      out.push(`#${id}=IFCRELCONTAINEDINSPATIALSTRUCTURE(${G(id)},#5,'Voisins-Site',$,(${proxyIds.map(i => '#' + i).join(',')}),#110);`); id++;
+    }
+
+    // ── PropertySet contexte sur le site ──────────────────────────
+    const propStart = id;
+    out.push(`#${id}=IFCPROPERTYSINGLEVALUE('Buffer_m',$,IFCREAL(${scene.bufferM}.),$);`); id++;
+    out.push(`#${id}=IFCPROPERTYSINGLEVALUE('Resolution_DEM_m',$,IFCREAL(${scene.pixelSizeM}.),$);`); id++;
+    out.push(`#${id}=IFCPROPERTYSINGLEVALUE('Altitude_min_m',$,IFCREAL(${zMin.toFixed(2)}),$);`); id++;
+    out.push(`#${id}=IFCPROPERTYSINGLEVALUE('Altitude_max_m',$,IFCREAL(${zMax.toFixed(2)}),$);`); id++;
+    out.push(`#${id}=IFCPROPERTYSINGLEVALUE('Voisins_count',$,IFCINTEGER(${proxyIds.length}),$);`); id++;
+    out.push(`#${id}=IFCPROPERTYSINGLEVALUE('Source_DEM',$,IFCLABEL('${escape(m.sources?.dem)}'),$);`); id++;
+    out.push(`#${id}=IFCPROPERTYSINGLEVALUE('Source_Batiments',$,IFCLABEL('${escape(m.sources?.buildings)}'),$);`); id++;
+    out.push(`#${id}=IFCPROPERTYSINGLEVALUE('Source_Routes',$,IFCLABEL('${escape(m.sources?.roads)}'),$);`); id++;
+    out.push(`#${id}=IFCPROPERTYSINGLEVALUE('Centroide_lat',$,IFCREAL(${scene.lat.toFixed(6)}),$);`); id++;
+    out.push(`#${id}=IFCPROPERTYSINGLEVALUE('Centroide_lng',$,IFCREAL(${scene.lng.toFixed(6)}),$);`); id++;
+    const propRefs = [];
+    for (let pid = propStart; pid < id; pid++) propRefs.push('#' + pid);
+    const psetId = id;
+    out.push(`#${id}=IFCPROPERTYSET(${G(psetId)},#5,'TERLAB_Site_Contexte',$,(${propRefs.join(',')}));`); id++;
+    out.push(`#${id}=IFCRELDEFINESBYPROPERTIES(${G(id)},#5,'Site-Contexte-Props',$,(#110),#${psetId});`); id++;
+
+    const block = out.join('\n') + '\n';
+    return ifc.replace(
+      'ENDSEC;\nEND-ISO-10303-21;',
+      block + 'ENDSEC;\nEND-ISO-10303-21;'
+    );
+  },
+
   // ── HELPER : EXPORT COMPLET DEPUIS PHASE 7 ────────────────────
   async exportFromPhase7(sessionData) {
     const p7      = sessionData.phases?.[7]?.data ?? {};

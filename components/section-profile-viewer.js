@@ -234,6 +234,10 @@ const SectionProfileViewer = {
       this._viewers[sectionId] = { zoomLevel: 1, panX: 0 };
     }
     const state = this._viewers[sectionId];
+    // Defensive: si le state a été pré-créé ailleurs (ex: pour stocker `source`
+    // avant render), zoomLevel/panX peuvent être absents → NaN partout dans sx/sy.
+    if (!Number.isFinite(state.zoomLevel)) state.zoomLevel = 1;
+    if (!Number.isFinite(state.panX)) state.panX = 0;
     state.data = profileData;
     state.annotations = annotations || [];
     state.el = el;

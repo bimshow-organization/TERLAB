@@ -220,18 +220,20 @@
         <button class="bim-btn" onclick="window.P07?.exportGLB()">
           📦 Export GLB
         </button>
-        <button class="bim-btn stub-btn" onclick="window.P07?.exportIFC()">
-          🏗 Export IFC <span class="stub-tag">STUB</span>
+        <button class="bim-btn" onclick="window.P07?.exportIFC()">
+          🏛 Export IFC
         </button>
         <button class="bim-btn" onclick="window.P07?.exportDXFGabarit()">
           📐 Export DXF
+        </button>
+        <button class="bim-btn" onclick="window.TerlabExport?.generateDXFSite?.()">
+          🗻 DXF Site 3D
         </button>
         <button class="bim-btn" onclick="window.P07?.exportPlanMassePDF()">
           📄 Plan masse PDF
         </button>
       </div>
     </div>
-    <div class="stub-warning">⚠️ STUB — Export IFC via ifc-worker.js non implémenté. GLB disponible pour BIMSHOW.</div>
     <div class="risk-card" data-level="bigdata" style="margin-top:8px">
       <div class="risk-label">🔒 Métadonnées BIM</div>
       <div class="risk-text">Les fichiers GLB et DXF exportés contiennent des métadonnées (auteur, date, coords GPS). Établir un BIM Execution Plan. Purger avant dépôt de PC.</div>
@@ -1385,7 +1387,7 @@ const P07 = {
   },
 
   exportGLB()  { window.TerlabExport?.generateGLB?.(); },
-  exportIFC()  { window.TerlabToast?.show('Export IFC — STUB. Voir __stubs__/ifc-worker.js', 'warning', 5000); },
+  exportIFC()  { window.TerlabExport?.generateIFC?.(); },
   exportDXFGabarit() { window.TerlabExport?.generateDXF?.(); },
 
   // Plan masse PDF (état des lieux + projet) — moteur SitePlanRenderer

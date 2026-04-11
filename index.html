@@ -471,8 +471,23 @@
         </button>
         <button class="export-btn" data-format="dxf" onclick="TerlabExport.generateDXF()">
           <span class="export-icon">📐</span>
-          <span class="export-label">DXF</span>
-          <span class="export-desc">Parcelle + reculs</span>
+          <span class="export-label">DXF Parcelle</span>
+          <span class="export-desc">Contour + reculs + gabarit P07</span>
+        </button>
+        <button class="export-btn" data-format="dxf-site" onclick="TerlabExport.generateDXFSite()">
+          <span class="export-icon">🗻</span>
+          <span class="export-label">DXF Site 3D</span>
+          <span class="export-desc">Terrain DEM + bâti BDTOPO + voies</span>
+        </button>
+        <button class="export-btn" data-format="ifc" onclick="TerlabExport.generateIFC()">
+          <span class="export-icon">🏛</span>
+          <span class="export-label">IFC Gabarit</span>
+          <span class="export-desc">Phase 7 — IFC 2x3 ASCII</span>
+        </button>
+        <button class="export-btn" data-format="ifc-site" onclick="TerlabExport.generateIFCSite()">
+          <span class="export-icon">🏘</span>
+          <span class="export-label">IFC Site</span>
+          <span class="export-desc">Gabarit + voisins BDTOPO extrudés</span>
         </button>
         <button class="export-btn" data-format="glb" onclick="TerlabExport.generateGLB()">
           <span class="export-icon">🏗</span>
@@ -485,9 +500,9 @@
           <span class="export-desc">Session complète</span>
         </button>
       </div>
-      <div class="stub-warning" id="export-stub-warning">
-        ⚠️ Export IFC (Phase 7) en cours d'implémentation — voir __stubs__/ifc-worker.js
-      </div>
+      <p class="modal-hint" style="font-size:10px;color:var(--text-dim);margin-top:8px">
+        📄 Site 3D : EPSG:2975 UTM40S, origine au centroïde parcelle, mètres locaux. Compatible ArchiCAD 18+.
+      </p>
       <div class="export-progress" id="export-progress" hidden>
         <div class="export-progress-bar" id="export-progress-bar"></div>
         <div class="export-progress-label" id="export-progress-label">Génération…</div>

@@ -1294,17 +1294,17 @@ const P01 = {
       const srcLabel = (s) => s === 'lidar_hd' ? 'LiDAR HD ±0.15m' : s === 'ign_api' ? 'IGN ~2m' : 'DEM ~10m';
 
       if (profileA.data.length) {
-        SectionViewer._viewers.A = SectionViewer._viewers.A || {};
-        SectionViewer._viewers.A.source = profileA.source;
         SectionViewer.render('A', 'section-viewer-A', profileA.data, annoA);
+        SectionViewer._viewers.A.source = profileA.source;
+        SectionViewer._renderSVG('A'); // re-render pour afficher le badge source
         const lenA = Math.round(profileA.data[profileA.data.length - 1]?.distance_m || 0);
         document.getElementById('section-info-A').textContent = `${lenA}m · ${srcLabel(profileA.source)}`;
       }
 
       if (profileB.data.length) {
-        SectionViewer._viewers.B = SectionViewer._viewers.B || {};
-        SectionViewer._viewers.B.source = profileB.source;
         SectionViewer.render('B', 'section-viewer-B', profileB.data, annoB);
+        SectionViewer._viewers.B.source = profileB.source;
+        SectionViewer._renderSVG('B');
         const lenB = Math.round(profileB.data[profileB.data.length - 1]?.distance_m || 0);
         document.getElementById('section-info-B').textContent = `${lenB}m · ${srcLabel(profileB.source)}`;
       }

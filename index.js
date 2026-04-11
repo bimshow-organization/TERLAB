@@ -108,6 +108,11 @@ import BiodiversiteService   from './services/biodiversite-service.js';
 import IsochroneService      from './services/isochrone-service.js';
 import PoiService             from './services/poi-service.js';
 
+// ─── Export Site 3D (DXF/IFC ArchiCAD) ──────────────────────
+import SiteCaptureService    from './services/site-capture-service.js';
+import DXFWorker             from './workers/dxf-worker.js';
+import IFCExporter           from './workers/ifc-worker.js';
+
 // ─── Données globales ────────────────────────────────────────────
 let PHASES_META = null;
 let ACTEURS     = null;
@@ -306,6 +311,11 @@ async function init() {
     window.BiodiversiteService  = BiodiversiteService;
     window.IsochroneService     = IsochroneService;
     window.PoiService           = PoiService;
+
+    // Export Site 3D (DXF + IFC ArchiCAD)
+    window.SiteCaptureService   = SiteCaptureService;
+    window.DXFWorker            = DXFWorker;
+    window.IFCExporter          = IFCExporter;
 
     // Charger sources-providers.json (non-bloquant)
     fetch('data/sources-providers.json')
