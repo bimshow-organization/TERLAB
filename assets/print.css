@@ -1,175 +1,625 @@
 /* ============================================================
-   TERLAB · print.css · MGA Architecture · 2026
-   A4 portrait · systeme typographique tri-niveaux
+   TERLAB · print.css · v2 · Editorial Stripe Press style
+   A4 portrait · MGA Architecture × ENSA La Reunion · 2026
+   ============================================================
+   Design tokens : type scale modulaire 1.30, spacing 4px,
+   3 niveaux de surface, accents brique restraints.
+   Inspire de press.stripe.com (book typography) avec serif
+   Cormorant Garamond + Jost UI + IBM Plex Mono numerique.
    ============================================================ */
 
 :root {
-  --tc:   #C1652B;
-  --tc2:  rgba(193, 101, 43, 0.10);
-  --ink:  #1C1C1A;
-  --ink2: #6A6860;
-  --ink3: #A8A49C;
-  --bg:   #FFFFFF;
-  --bg2:  #F5F3EE;
-  --bg3:  #EDEBE6;
-  --ru:   rgba(28,28,26, 0.10);
-  --ru2:  rgba(28,28,26, 0.20);
-  --fd: 'Cormorant Garamond', Georgia, serif;
-  --fm: 'IBM Plex Mono', monospace;
-  --fu: 'Jost', system-ui, sans-serif;
+  /* --- Couleurs ----------------------------------------------- */
+  --color-bg:         #FFFFFF;                       /* page */
+  --color-surface:    #F9F7F2;                       /* card subtle */
+  --color-surface-2:  #F1EEE6;                       /* alt subtle */
+  --color-surface-3:  #E8E4DA;                       /* divider strong */
+  --color-border:     rgba(28, 26, 22, 0.08);        /* hairline */
+  --color-border-2:   rgba(28, 26, 22, 0.16);        /* visible */
+  --color-text:       #1A1816;                       /* ink */
+  --color-text-2:     #555048;                       /* secondary */
+  --color-text-3:     #8E8A80;                       /* muted */
+  --color-text-4:     #B8B4A8;                       /* placeholder */
+  --color-accent:     #B8541E;                       /* brique TERLAB sature */
+  --color-accent-2:   rgba(184, 84, 30, 0.08);       /* accent bg */
+  --color-accent-3:   rgba(184, 84, 30, 0.04);       /* accent bg subtle */
+  --color-success:    #2E5C2E;
+  --color-warn:       #8B6A20;
+  --color-danger:     #8B2020;
+
+  /* legacy aliases (compat avec planches existantes) */
+  --tc:   var(--color-accent);
+  --tc2:  var(--color-accent-2);
+  --ink:  var(--color-text);
+  --ink2: var(--color-text-2);
+  --ink3: var(--color-text-3);
+  --bg:   var(--color-bg);
+  --bg2:  var(--color-surface);
+  --bg3:  var(--color-surface-2);
+  --ru:   var(--color-border);
+  --ru2:  var(--color-border-2);
+
+  /* --- Typographie -------------------------------------------- */
+  --font-display: 'Cormorant Garamond', 'GT Sectra', Georgia, serif;
+  --font-body:    'Cormorant Garamond', Georgia, serif;
+  --font-ui:      'Jost', 'Inter', system-ui, sans-serif;
+  --font-mono:    'IBM Plex Mono', 'JetBrains Mono', ui-monospace, monospace;
+
+  /* legacy aliases */
+  --fd: var(--font-display);
+  --fu: var(--font-ui);
+  --fm: var(--font-mono);
+
+  /* --- Type scale (1.30 modular) ------------------------------ */
+  --fs-2xs:  6.5px;     /* badges micro */
+  --fs-xs:   7.5px;     /* labels uppercase, captions */
+  --fs-sm:   8.5px;     /* body small */
+  --fs-base: 10px;      /* body */
+  --fs-md:   12px;      /* lead */
+  --fs-lg:   16px;      /* h4 */
+  --fs-xl:   22px;      /* h3 planche */
+  --fs-2xl:  32px;      /* h2 cover */
+  --fs-3xl:  56px;      /* h1 hero */
+  --fs-display: 80px;   /* commune */
+
+  /* --- Spacing (4px scale) ------------------------------------ */
+  --s-0:  2px;
+  --s-1:  4px;
+  --s-2:  8px;
+  --s-3:  12px;
+  --s-4:  16px;
+  --s-5:  24px;
+  --s-6:  32px;
+  --s-7:  48px;
+  --s-8:  64px;
+
+  /* --- Lignes & rayons ---------------------------------------- */
+  --line-tight: 1.15;
+  --line-base:  1.5;
+  --line-body:  1.62;
+  --line-loose: 1.78;
+  --tracking-tight:  -0.015em;
+  --tracking-base:    0em;
+  --tracking-wide:    0.08em;
+  --tracking-wider:   0.14em;
+  --tracking-widest:  0.22em;
+  --radius-xs: 1.5px;
+  --radius-sm: 3px;
+  --radius-md: 6px;
+
+  /* --- Page geometry ------------------------------------------ */
+  --page-margin-x: 20mm;
+  --page-margin-y: 14mm;
 }
 
 /* --- Reset & base ------------------------------------------ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+html, body {
+  font-family: var(--font-body);
+  font-size: var(--fs-base);
+  line-height: var(--line-body);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
 body {
-  background: #D0CCC4;
-  font-family: var(--fu);
+  background: #D8D4CC;
 }
 
 /* --- Page A4 portrait -------------------------------------- */
 .page {
   width: 210mm;
-  height: 297mm;          /* hauteur fixe (et non min-height) pour que flex:1
-                              des enfants se resolve en print mode */
-  background: var(--bg);
+  height: 297mm;
+  background: var(--color-bg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   margin: 0 auto 12mm;
   position: relative;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.06);
 }
 
 @media print {
   body { background: white; margin: 0; }
   .page {
     margin: 0;
-    height: 297mm;        /* re-affirme en print pour Chromium */
+    height: 297mm;
+    box-shadow: none;
     page-break-after: always;
     break-after: page;
     page-break-inside: avoid;
-    break-inside: avoid;  /* empeche le debordement de planche sur 2 pages */
+    break-inside: avoid;
   }
   .page:last-child { page-break-after: avoid; }
   @page { size: A4 portrait; margin: 0; }
 }
 
-/* --- Barre accent ------------------------------------------ */
-.tc-bar { height: 3px; background: var(--tc); flex-shrink: 0; }
-
-/* --- En-tete page ------------------------------------------ */
-.pg-head {
-  padding: 14px 40px 12px;
-  display: flex; align-items: center; gap: 10px;
-  border-bottom: 0.5px solid var(--ru2);
+/* --- Barre accent superieure ------------------------------- */
+.tc-bar {
+  height: 2px;
+  background: var(--color-accent);
   flex-shrink: 0;
 }
-.pg-brand  { font-family: var(--fm); font-size: 9px; letter-spacing: .15em; color: var(--tc); }
-.pg-sep    { color: var(--ru2); }
-.pg-sub    { font-family: var(--fu); font-size: 9px; color: var(--ink2); font-weight: 300; }
-.pg-spacer { flex: 1; height: 0.5px; background: var(--ru2); }
 
-/* --- Couverture -------------------------------------------- */
-.mode-pill {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 3px 9px; border: 0.5px solid var(--tc);
-  font-family: var(--fm); font-size: 7px; letter-spacing: .12em; color: var(--tc);
-  margin-bottom: 18px;
+/* ============================================================
+   ENTETE PAGE (cover) — discret, marque + sous-titre
+   ============================================================ */
+.pg-head {
+  padding: var(--s-4) var(--page-margin-x) var(--s-3);
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  border-bottom: 0.5px solid var(--color-border);
+  flex-shrink: 0;
 }
-.mode-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--tc); }
-.cover-body { flex: 1; padding: 36px 40px 0; }
+.pg-brand {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tracking-widest);
+  color: var(--color-accent);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.pg-sep    { color: var(--color-border-2); font-weight: 200; }
+.pg-sub    {
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  color: var(--color-text-2);
+  font-weight: 300;
+  letter-spacing: var(--tracking-wide);
+}
+.pg-spacer { flex: 1; height: 0.5px; background: var(--color-border); }
+
+/* ============================================================
+   COUVERTURE
+   ============================================================ */
+.mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 4px 11px;
+  border: 0.5px solid var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tracking-widest);
+  color: var(--color-accent);
+  text-transform: uppercase;
+  font-weight: 500;
+  margin-bottom: var(--s-5);
+  border-radius: var(--radius-xs);
+}
+.mode-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+.cover-body {
+  flex: 1;
+  padding: var(--s-7) var(--page-margin-x) 0;
+}
 .commune {
-  font-family: var(--fd); font-size: 72px; font-weight: 600;
-  line-height: .88; letter-spacing: -.02em; color: var(--ink); margin-bottom: 8px;
+  font-family: var(--font-display);
+  font-size: var(--fs-display);
+  font-weight: 600;
+  line-height: 0.86;
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-text);
+  margin-bottom: var(--s-3);
 }
 .parcelle-ref {
-  font-family: var(--fm); font-size: 11px; color: var(--tc); letter-spacing: .1em;
-  margin-bottom: 28px; display: flex; align-items: center; gap: 12px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  color: var(--color-accent);
+  letter-spacing: var(--tracking-wide);
+  margin-bottom: var(--s-6);
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
 }
-.parcelle-ref::after { content: ''; flex: 1; height: 0.5px; background: var(--tc); opacity: .3; }
-.cover-grid { display: grid; grid-template-columns: 1fr 1.45fr; gap: 24px; }
-.dr { display: flex; justify-content: space-between; align-items: baseline; padding: 7px 0; border-bottom: 0.5px solid var(--ru); }
-.dl { font-size: 8px; font-weight: 400; color: var(--ink2); text-transform: uppercase; letter-spacing: .08em; font-family: var(--fu); }
-.dv { font-family: var(--fm); font-size: 10px; color: var(--ink); text-align: right; }
-.dv.acc { color: var(--tc); } .dv.lg { font-size: 13px; } .dv.em { color: var(--ink3); font-style: italic; }
+.parcelle-ref::after {
+  content: '';
+  flex: 1;
+  height: 0.5px;
+  background: var(--color-accent);
+  opacity: 0.32;
+}
+.cover-grid { display: grid; grid-template-columns: 1fr 1.45fr; gap: var(--s-5); }
 
-/* --- En-tete planche --------------------------------------- */
+.dr {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: var(--s-2) 0;
+  border-bottom: 0.5px solid var(--color-border);
+}
+.dl {
+  font-family: var(--font-ui);
+  font-size: var(--fs-2xs);
+  font-weight: 400;
+  color: var(--color-text-3);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+.dv {
+  font-family: var(--font-mono);
+  font-size: var(--fs-base);
+  color: var(--color-text);
+  text-align: right;
+  font-weight: 400;
+}
+.dv.acc { color: var(--color-accent); }
+.dv.lg  { font-size: var(--fs-md); }
+.dv.em  { color: var(--color-text-3); font-style: italic; }
+
+/* ============================================================
+   ENTETE PLANCHE — titre serif + numero discret
+   ============================================================ */
 .ph {
-  padding: 16px 40px 12px;
-  display: flex; align-items: baseline; justify-content: space-between;
-  border-bottom: 0.5px solid var(--ru2); flex-shrink: 0;
+  padding: var(--s-5) var(--page-margin-x) var(--s-3);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 0.5px solid var(--color-border-2);
+  flex-shrink: 0;
 }
-.ph-brand  { font-family: var(--fm); font-size: 7px; color: var(--tc); letter-spacing: .12em; text-transform: uppercase; margin-bottom: 3px; }
-.ph-title  { font-family: var(--fd); font-size: 22px; font-weight: 600; color: var(--ink); }
-.ph-n      { font-family: var(--fm); font-size: 9px; color: var(--ink2); text-align: right; }
-.ph-ref    { font-family: var(--fm); font-size: 7px; color: var(--ink3); text-align: right; margin-top: 2px; }
+.ph-brand {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--color-accent);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  margin-bottom: var(--s-1);
+  font-weight: 500;
+}
+.ph-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  color: var(--color-text);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--line-tight);
+}
+.ph-n {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--color-text-2);
+  text-align: right;
+  font-weight: 400;
+}
+.ph-ref {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--color-text-3);
+  text-align: right;
+  margin-top: var(--s-0);
+  letter-spacing: var(--tracking-wide);
+}
 
-/* --- Corps planche ----------------------------------------- */
-.pb      { flex: 1; padding: 20px 40px; display: grid; gap: 24px; align-content: start; }
-.pb2     { grid-template-columns: 3fr 5fr; }
-.pb3     { grid-template-columns: 1fr 1fr; }
+/* ============================================================
+   CORPS PLANCHE
+   ============================================================ */
+.pb {
+  flex: 1;
+  padding: var(--s-5) var(--page-margin-x);
+  display: grid;
+  gap: var(--s-5);
+  align-content: start;
+}
+.pb2 { grid-template-columns: 3fr 5fr; }
+.pb3 { grid-template-columns: 1fr 1fr 1fr; }
 
-/* --- Sections de donnees ----------------------------------- */
-.sec     { display: flex; flex-direction: column; gap: 8px; }
-.stitle  { font-family: var(--fm); font-size: 10px; text-transform: uppercase; letter-spacing: .14em; color: var(--tc); padding-bottom: 5px; border-bottom: 0.5px solid var(--tc); opacity: .9; }
-.fr      { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 0; border-bottom: 0.5px solid var(--ru); }
-.fl      { font-size: 9px; font-weight: 300; color: var(--ink2); font-family: var(--fu); }
-.fv      { font-family: var(--fm); font-size: 9px; color: var(--ink); text-align: right; }
-.fv.ac  { color: var(--tc); } .fv.wa { color: #8B6A20; } .fv.ok { color: #2E5C2E; } .fv.em { color: var(--ink3); font-style: italic; }
+/* ============================================================
+   SECTIONS DE DONNEES
+   ============================================================ */
+.sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-width: 0;
+}
+.stitle {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-widest);
+  color: var(--color-accent);
+  padding-bottom: var(--s-1);
+  border-bottom: 1px solid var(--color-accent);
+  margin-bottom: var(--s-1);
+  font-weight: 500;
+}
+
+/* Field row (label / value) */
+.fr {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: var(--s-1) 0;
+  border-bottom: 0.5px solid var(--color-border);
+  gap: var(--s-3);
+}
+.fl {
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  font-weight: 300;
+  color: var(--color-text-2);
+  letter-spacing: var(--tracking-wide);
+  flex-shrink: 0;
+}
+.fv {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+  text-align: right;
+  font-weight: 400;
+}
+.fv.ac { color: var(--color-accent); font-weight: 500; }
+.fv.wa { color: var(--color-warn); }
+.fv.ok { color: var(--color-success); }
+.fv.em { color: var(--color-text-3); font-style: italic; }
 .fv.au::after {
-  content: 'AUTO'; font-size: 5.5px; letter-spacing: .07em;
-  color: #fff; background: var(--ink3);
-  padding: 1px 3px; margin-left: 4px; vertical-align: 1px;
+  content: 'AUTO';
+  font-family: var(--font-mono);
+  font-size: 5.5px;
+  letter-spacing: 0.07em;
+  color: var(--color-bg);
+  background: var(--color-text-3);
+  padding: 1px 4px;
+  margin-left: var(--s-1);
+  vertical-align: 1.5px;
+  border-radius: var(--radius-xs);
+  font-weight: 500;
 }
 
-/* --- Boite highlight --------------------------------------- */
-.hbox { background: var(--tc2); border-left: 2px solid var(--tc); padding: 8px 11px; }
-.hbox p { font-size: 9px; color: var(--ink); line-height: 1.65; font-family: var(--fu); font-weight: 300; }
-.hbox strong { font-weight: 400; color: var(--tc); font-family: var(--fm); }
+/* Tag italique sous une row (rapport-phrases) */
+.fr-tag {
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  font-style: italic;
+  color: var(--color-text-2);
+  line-height: var(--line-base);
+  padding: 2px 0 var(--s-1) var(--s-1);
+  margin-top: -2px;
+  border-bottom: 0.5px solid var(--color-border);
+}
 
-/* --- Cartes / placeholders --------------------------------- */
-.map-wrap { position: relative; border: 0.5px solid var(--ru2); overflow: hidden; background: var(--bg2); }
-.map-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.map-lbl { position: absolute; bottom: 6px; left: 7px; font-family: var(--fm); font-size: 6.5px; color: var(--ink2); background: var(--bg); padding: 1px 5px; border: 0.5px solid var(--ru); }
-.map-src { position: absolute; bottom: 6px; right: 7px; font-family: var(--fm); font-size: 6px; color: var(--ink3); }
+/* ============================================================
+   CALLOUTS / HIGHLIGHT BOX
+   ============================================================ */
+.hbox {
+  background: var(--color-accent-3);
+  border-left: 2px solid var(--color-accent);
+  padding: var(--s-2) var(--s-3);
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+}
+.hbox p {
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+  line-height: var(--line-body);
+  font-weight: 400;
+}
+.hbox strong {
+  font-weight: 600;
+  color: var(--color-accent);
+  font-family: var(--font-display);
+}
 
-/* --- Scores de phases -------------------------------------- */
-.sr  { display: flex; align-items: center; gap: 7px; padding: 4px 0; border-bottom: 0.5px solid var(--ru); }
-.sl  { font-size: 8px; color: var(--ink2); flex: 1; font-family: var(--fu); font-weight: 300; }
-.sb  { width: 80px; height: 2px; background: var(--ru2); border-radius: 2px; overflow: hidden; }
-.sf  { height: 100%; border-radius: 2px; background: var(--tc); }
-.sp  { font-family: var(--fm); font-size: 8px; color: var(--ink); width: 24px; text-align: right; }
+/* ============================================================
+   CARTES & IMAGES
+   ============================================================ */
+.map-wrap {
+  position: relative;
+  border: 0.5px solid var(--color-border-2);
+  overflow: hidden;
+  background: var(--color-surface);
+  border-radius: var(--radius-xs);
+}
+.map-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.map-lbl {
+  position: absolute;
+  bottom: var(--s-1);
+  left: var(--s-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--color-text);
+  background: var(--color-bg);
+  padding: 2px 6px;
+  border: 0.5px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  letter-spacing: var(--tracking-wide);
+  font-weight: 500;
+}
+.map-src {
+  position: absolute;
+  top: var(--s-1);
+  right: var(--s-1);
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--color-text-3);
+  background: var(--color-bg);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  opacity: 0.92;
+}
 
-/* --- Synthese items ---------------------------------------- */
-.synth-row { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; border-bottom: 0.5px solid var(--ru); }
-.si { width: 12px; flex-shrink: 0; font-family: var(--fm); font-size: 10px; margin-top: 1px; }
-.si.p { color: #3A6B3A; } .si.m { color: #8B2020; } .si.a { color: var(--tc); }
-.st { font-size: 9px; line-height: 1.55; color: var(--ink); font-family: var(--fu); font-weight: 300; }
+/* ============================================================
+   PROGRESSION DE PHASES
+   ============================================================ */
+.sr {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-1) 0;
+  border-bottom: 0.5px solid var(--color-border);
+}
+.sl {
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  color: var(--color-text-2);
+  flex: 1;
+  font-weight: 300;
+  letter-spacing: var(--tracking-wide);
+}
+.sb {
+  width: 80px;
+  height: 2px;
+  background: var(--color-surface-3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.sf {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--color-accent);
+}
+.sp {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--color-text);
+  width: 24px;
+  text-align: right;
+  font-weight: 500;
+}
 
-/* --- Potentiel cards --------------------------------------- */
-.pcrd { background: var(--bg2); border: 0.5px solid var(--ru2); padding: 9px; display: flex; flex-direction: column; gap: 3px; }
-.pcl  { font-family: var(--fm); font-size: 6.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink3); }
-.pcv  { font-family: var(--fd); font-size: 24px; font-weight: 600; color: var(--ink); line-height: 1; }
-.pcu  { font-family: var(--fm); font-size: 7.5px; color: var(--ink2); }
+/* ============================================================
+   SYNTHESE — items atouts/contraintes/recommandations
+   ============================================================ */
+.synth-row {
+  display: flex;
+  gap: var(--s-2);
+  align-items: flex-start;
+  padding: var(--s-1) 0;
+  border-bottom: 0.5px solid var(--color-border);
+}
+.si {
+  width: 14px;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-base);
+  margin-top: 1px;
+  font-weight: 600;
+  text-align: center;
+}
+.si.p { color: var(--color-success); }
+.si.m { color: var(--color-danger); }
+.si.a { color: var(--color-accent); }
+.st {
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  line-height: var(--line-body);
+  color: var(--color-text);
+  font-weight: 400;
+}
 
-/* --- Pied de planche --------------------------------------- */
+/* ============================================================
+   POTENTIEL CARDS — emprise / SDP / hauteur / contenance
+   ============================================================ */
+.pcrd {
+  background: var(--color-surface);
+  border: 0.5px solid var(--color-border-2);
+  padding: var(--s-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  border-radius: var(--radius-xs);
+}
+.pcl {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-widest);
+  color: var(--color-text-3);
+  font-weight: 500;
+}
+.pcv {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1;
+  letter-spacing: var(--tracking-tight);
+}
+.pcu {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--color-text-2);
+}
+
+.pot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+}
+
+/* ============================================================
+   PIED DE PLANCHE
+   ============================================================ */
 .ph-foot {
-  padding: 10px 40px;
-  border-top: 0.5px solid var(--ru2);
-  display: grid; grid-template-columns: 1fr auto auto auto 1fr;
-  align-items: center; gap: 18px; flex-shrink: 0;
+  padding: var(--s-3) var(--page-margin-x);
+  border-top: 0.5px solid var(--color-border-2);
+  display: grid;
+  grid-template-columns: 1fr auto auto auto 1fr;
+  align-items: center;
+  gap: var(--s-4);
+  flex-shrink: 0;
 }
-.phf-c { font-family: var(--fd); font-size: 11px; font-weight: 600; color: var(--ink); }
-.phf-m { font-family: var(--fm); font-size: 6.5px; color: var(--tc); letter-spacing: .1em; text-transform: uppercase; }
-.phf-e { font-family: var(--fm); font-size: 6.5px; color: var(--ink3); }
-.phf-n { font-family: var(--fm); font-size: 14px; color: var(--ru2); text-align: right; }
+.phf-c {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--color-text);
+  letter-spacing: var(--tracking-tight);
+}
+.phf-m {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--color-accent);
+  letter-spacing: var(--tracking-widest);
+  text-transform: uppercase;
+  font-weight: 500;
+}
+.phf-e {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--color-text-3);
+  letter-spacing: var(--tracking-wide);
+}
+.phf-n {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  color: var(--color-text-3);
+  text-align: right;
+  font-weight: 400;
+  letter-spacing: var(--tracking-tight);
+}
 
-/* --- Pied de couverture ------------------------------------ */
-.pg-foot { padding: 12px 40px; border-top: 0.5px solid var(--ru); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-.pf { font-family: var(--fm); font-size: 7px; color: var(--ink3); letter-spacing: .04em; }
+/* ============================================================
+   PIED DE COUVERTURE
+   ============================================================ */
+.pg-foot {
+  padding: var(--s-3) var(--page-margin-x);
+  border-top: 0.5px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+.pf {
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  color: var(--color-text-3);
+  letter-spacing: var(--tracking-wide);
+}
 
-/* --- Potentiel grid (cover) -------------------------------- */
-.pot-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
-
-/* --- Cover map --------------------------------------------- */
+/* ============================================================
+   COVER MAP
+   ============================================================ */
 .cover-map { width: 100%; height: 180px; }
