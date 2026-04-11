@@ -30,7 +30,8 @@ body {
 /* --- Page A4 portrait -------------------------------------- */
 .page {
   width: 210mm;
-  min-height: 297mm;
+  height: 297mm;          /* hauteur fixe (et non min-height) pour que flex:1
+                              des enfants se resolve en print mode */
   background: var(--bg);
   display: flex;
   flex-direction: column;
@@ -41,7 +42,14 @@ body {
 
 @media print {
   body { background: white; margin: 0; }
-  .page { margin: 0; page-break-after: always; break-after: page; }
+  .page {
+    margin: 0;
+    height: 297mm;        /* re-affirme en print pour Chromium */
+    page-break-after: always;
+    break-after: page;
+    page-break-inside: avoid;
+    break-inside: avoid;  /* empeche le debordement de planche sur 2 pages */
+  }
   .page:last-child { page-break-after: avoid; }
   @page { size: A4 portrait; margin: 0; }
 }
