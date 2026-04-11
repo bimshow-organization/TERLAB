@@ -300,6 +300,21 @@ async function processOneTerrain(browser, runIndex) {
               } catch { /* ok */ }
             }
 
+            // Reverse geocoding adresse (centroïde parcelle) — IGN BAN puis fallback Nominatim
+            let adresse = '';
+            try {
+              const banResp = await fetch(`https://data.geopf.fr/geocodage/reverse?lon=${cLng}&lat=${cLat}&limit=1&index=address`, { signal: AbortSignal.timeout(6000) });
+              const banData = await banResp.json();
+              adresse = banData?.features?.[0]?.properties?.label ?? '';
+            } catch { /* fallback */ }
+            if (!adresse) {
+              try {
+                const nomResp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${cLat}&lon=${cLng}&format=json&zoom=18`, { headers: { 'Accept-Language': 'fr' }, signal: AbortSignal.timeout(5000) });
+                const nomData = await nomResp.json();
+                adresse = nomData?.display_name ?? '';
+              } catch { /* ok */ }
+            }
+
             // Sauvegarder dans SessionManager
             const terrain = {
               commune,
@@ -311,6 +326,7 @@ async function processOneTerrain(browser, runIndex) {
               lng: cLng,
               parcelle_geojson: feature.geometry,
               intercommunalite: INTERCO[insee] ?? '',
+              adresse: adresse || undefined,
               terrain_confirmed: true,
             };
 
@@ -369,7 +385,9 @@ async function processOneTerrain(browser, runIndex) {
         (async () => {
           try {
             const t = window.SessionManager.getTerrain();
-            const pts = await window.LidarService.getPointsForParcel(t.parcelle_geojson, 30);
+            // classes 2 (sol) + 3,4,5 (vegetation) + 6 (batiments/toitures)
+            // pour que le rendu 3D montre relief + arbres + toits
+            const pts = await window.LidarService.getPointsForParcel(t.parcelle_geojson, 30, { classes: '2,3,4,5,6' });
             if (pts?.points?.length) {
               // Sauvegarder les points bruts pour les profils terrain
               window.LidarService._lastPoints = pts.points;
@@ -629,14 +647,17 @@ async function processOneTerrain(browser, runIndex) {
               const best = real.reduce((a, b) => (b.score ?? 0) > (a.score ?? 0) ? b : a, real[0]);
               window._activeProposal = best;
 
+              // Dimensions audit : depuis l'AABB d'ensemble (cohérent pour multi-blocs)
+              const bestBat = best.bat ?? null;
               SM.savePhase(7, {
                 auto_plan_solutions: solutions,
                 active_solution: best,
                 niveaux: best.niveaux,
                 surface_plancher_m2: best.spTot ? Math.round(best.spTot) : null,
-                gabarit_l_m: best.bat?.l ? Math.round(best.bat.l * 10) / 10 : null,
-                gabarit_w_m: best.bat?.w ? Math.round(best.bat.w * 10) / 10 : null,
-                gabarit_h_m: best.bat?.h ? Math.round(best.bat.h * 10) / 10 : null,
+                gabarit_l_m: bestBat?.l ? Math.round(bestBat.l * 10) / 10 : null,
+                gabarit_w_m: bestBat?.w ? Math.round(bestBat.w * 10) / 10 : null,
+                gabarit_h_m: best.hauteur ? Math.round(best.hauteur * 10) / 10 : null,
+                nb_blocs: best.blocs?.length ?? 1,
                 emprise_pct: best.empPct,
                 permeable_pct: best.permPct,
               }, {}, false);
@@ -868,13 +889,37 @@ async function processOneTerrain(browser, runIndex) {
                 try {
                   const BPF = window.BpfBridge;
                   if (BPF?.generate && sessionData._parcelLocal?.length >= 3) {
-                    const buildingPoly = [
-                      { x: proposal.bat.x, y: proposal.bat.y },
-                      { x: proposal.bat.x + proposal.bat.w, y: proposal.bat.y },
-                      { x: proposal.bat.x + proposal.bat.w, y: proposal.bat.y + proposal.bat.l },
-                      { x: proposal.bat.x, y: proposal.bat.y + proposal.bat.l },
-                    ];
-                    const bpfResult = await BPF.generate(sessionData, sessionData._parcelLocal, sessionData._edgeTypes ?? [], buildingPoly);
+                    // BPF v2 : utiliser les blocs réels (polygons tournés / multi)
+                    // Si la proposal n'a pas de blocs[], fallback sur l'AABB legacy
+                    let buildingPoly;
+                    if (proposal.blocs?.length) {
+                      // Pour BPF, on prend l'union AABB (BpfBridge attend un seul polygon)
+                      let xMin = Infinity, yMin = Infinity, xMax = -Infinity, yMax = -Infinity;
+                      for (const b of proposal.blocs) {
+                        for (const p of (b.polygon ?? [])) {
+                          if (p.x < xMin) xMin = p.x;
+                          if (p.x > xMax) xMax = p.x;
+                          if (p.y < yMin) yMin = p.y;
+                          if (p.y > yMax) yMax = p.y;
+                        }
+                      }
+                      buildingPoly = [
+                        { x: xMin, y: yMin }, { x: xMax, y: yMin },
+                        { x: xMax, y: yMax }, { x: xMin, y: yMax },
+                      ];
+                    } else if (proposal.bat) {
+                      buildingPoly = [
+                        { x: proposal.bat.x, y: proposal.bat.y },
+                        { x: proposal.bat.x + proposal.bat.w, y: proposal.bat.y },
+                        { x: proposal.bat.x + proposal.bat.w, y: proposal.bat.y + proposal.bat.l },
+                        { x: proposal.bat.x, y: proposal.bat.y + proposal.bat.l },
+                      ];
+                    } else {
+                      buildingPoly = null;
+                    }
+                    const bpfResult = buildingPoly
+                      ? await BPF.generate(sessionData, sessionData._parcelLocal, sessionData._edgeTypes ?? [], buildingPoly)
+                      : null;
                     if (bpfResult?.plants?.length) {
                       // Injecter les arbres dans le SVG avant </svg>
                       let treeSvg = '';
@@ -937,7 +982,13 @@ async function processOneTerrain(browser, runIndex) {
                 reader.onload = () => r(reader.result);
                 reader.readAsDataURL(blob);
               });
-              console.log('[PDF] Site état des lieux SVG : ' + Math.round(etat.svg.length / 1024) + 'K · 1/' + etat.meta.scale + ' ' + etat.meta.format);
+              // Planche 4 (Plan masse & Conformite) lit visuals.cadastreVector
+              // En mode headless, EsquisseCanvas n'est pas monte donc
+              // _captureCadastreVector renvoie null. On reinjecte le plan
+              // SPR (cadastre WFS + BDTOPO + NGR aux sommets) a la place.
+              if (!visuals.cadastreVector) visuals.cadastreVector = visuals.siteEtatDesLieux;
+              console.log('[PDF] Site état des lieux SVG : ' + Math.round(etat.svg.length / 1024) + 'K · 1/' + etat.meta.scale + ' ' + etat.meta.format
+                + (etat.meta.layers?.length ? ' · couches: ' + etat.meta.layers.join(',') : ''));
             }
             // 2. Plan masse projet (avec bâtiment + reculs + végétation)
             const projet = await SPR.build(sessionFull, {
@@ -1188,15 +1239,15 @@ async function processOneTerrain(browser, runIndex) {
                   const cloud = new THREE.Points(geom, mat);
                   scene.add(cloud);
 
-                  // Caméra axonométrique cadrée — vue plus oblique (~22° élévation)
-                  // pour bien lire le relief tout en gardant la texture lisible
+                  // Caméra axonométrique cadrée — vue en plongée (~38° élévation)
+                  // pour bien lire le relief + toitures + canopée
                   const sphere = geom.boundingSphere;
                   const r = sphere.radius || 30;
                   const aspect = W / H;
                   const cam = new THREE.OrthographicCamera(-r * aspect, r * aspect, r, -r, 0.1, r * 10);
                   cam.position.set(
                     sphere.center.x + r * 1.3,
-                    sphere.center.y + r * 0.6,   // ↓ depuis 0.9 → caméra plus rasante
+                    sphere.center.y + r * 1.4,   // ↑ depuis 0.6 → +20° de plongée (~38°)
                     sphere.center.z + r * 1.3,
                   );
                   cam.lookAt(sphere.center);

@@ -166,6 +166,7 @@
       <div class="det-cell"><span class="det-label">Intercommunalité</span><span class="det-val" id="det-interco" data-session-key="intercommunalite">—</span></div>
       <div class="det-cell"><span class="det-label">Altitude NGR (≈)</span><span class="det-val" id="det-altitude" data-session-key="altitude_ngr">—</span></div>
       <div class="det-cell"><span class="det-label">Coordonnées</span><span class="det-val" id="det-coords">—</span></div>
+      <div class="det-cell" style="grid-column:1 / -1"><span class="det-label">Adresse</span><span class="det-val" id="det-adresse" data-session-key="adresse">—</span></div>
     </div>
   </div>
 
@@ -828,6 +829,12 @@ const P00 = {
     document.getElementById('det-altitude').textContent   = altitude != null ? `${altitude} m NGR (≈)` : '—';
     document.getElementById('det-coords').textContent     = lat && lng ? `${lat.toFixed(5)}, ${lng.toFixed(5)}` : '—';
 
+    // Adresse : afficher tout de suite ce qui est déjà en session (saisie manuelle ou reverse précédent),
+    // sinon "Recherche…" en attendant le reverse-geocode lancé plus bas.
+    const existingAdresse = SessionManager.getTerrain()?.adresse ?? null;
+    const adrEl = document.getElementById('det-adresse');
+    if (adrEl) adrEl.textContent = existingAdresse ?? (lat && lng ? 'Recherche…' : '—');
+
     document.getElementById('result-section').style.display = 'block';
 
     // ─── SAVE EN SESSION (FIX CRITIQUE v2) ─────────────────────
@@ -866,12 +873,45 @@ const P00 = {
     // Lancer l'enrichissement automatique
     this.runEnrichment();
 
+    // Reverse-geocoding (fire-and-forget) — ne bloque pas l'UI, met à jour
+    // session + affichage quand l'adresse arrive. Anti-écrasement si l'étudiant
+    // a déjà saisi une adresse manuellement.
+    if (lat && lng && !existingAdresse) {
+      this._reverseGeocode(lng, lat).then(adresse => {
+        if (!adresse) { if (adrEl) adrEl.textContent = '—'; return; }
+        // Re-vérifier qu'aucune saisie manuelle n'est arrivée entre-temps
+        const cur = SessionManager.getTerrain()?.adresse;
+        if (cur && cur !== 'Recherche…') return;
+        SessionManager.saveTerrain({ adresse });
+        if (adrEl) adrEl.textContent = adresse;
+      }).catch(() => { if (adrEl) adrEl.textContent = '—'; });
+    }
+
     // Mettre à jour le label sur la carte
     const label = document.getElementById('terrain-label');
     const labelText = document.getElementById('terrain-label-text');
     if (label && labelText) {
       labelText.textContent = `${section} ${numero} — ${commune}`;
       label.style.display = 'block';
+    }
+  },
+
+  // ─── Reverse-geocoding IGN BAN → Nominatim fallback ───────────────
+  async _reverseGeocode(lng, lat) {
+    // 1) IGN BAN (sans clé)
+    try {
+      const url = `https://data.geopf.fr/geocodage/reverse?lon=${lng}&lat=${lat}&limit=1&index=address`;
+      const data = await window.resilientJSON(url, { timeoutMs: 6000, retries: 1, fallback: null });
+      const label = data?.features?.[0]?.properties?.label;
+      if (label) return label;
+    } catch { /* fallback */ }
+    // 2) Nominatim OSM
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18`;
+      const data = await fetch(url, { headers:{'Accept-Language':'fr'}, signal: AbortSignal.timeout(5000) }).then(r => r.json()).catch(() => null);
+      return data?.display_name ?? null;
+    } catch {
+      return null;
     }
   },
 
@@ -1240,7 +1280,8 @@ if (terrain?.commune) {
     'det-contenance':  terrain.contenance_m2 ? `${terrain.contenance_m2} m²` : null,
     'det-interco':     terrain.intercommunalite,
     'det-altitude':    terrain.altitude_ngr ? `${terrain.altitude_ngr} m NGR (≈)` : null,
-    'det-coords':      terrain.lat && terrain.lng ? `${parseFloat(terrain.lat).toFixed(5)}, ${parseFloat(terrain.lng).toFixed(5)}` : null
+    'det-coords':      terrain.lat && terrain.lng ? `${parseFloat(terrain.lat).toFixed(5)}, ${parseFloat(terrain.lng).toFixed(5)}` : null,
+    'det-adresse':     terrain.adresse ?? null
   };
   for (const [id, val] of Object.entries(mappings)) {
     if (val) { const el = document.getElementById(id); if (el) el.textContent = val; }

@@ -1,7 +1,10 @@
-// terlab/services/capacity-study-renderer.js · Étude de capacité SVG + coupe + 3D · v1
+// terlab/services/capacity-study-renderer.js · Étude de capacité SVG + coupe + 3D · v2
 // ENSA La Réunion · MGA Architecture 2026
 // Vanilla JS ES2022+, aucune dépendance externe
 // Produit plan masse SVG A3, coupe gabarit, scène Three.js, métriques
+// v2 : multi-blocs + polygones tournés (lit proposal.blocs[] avec fallback legacy)
+
+import FH from './footprint-helpers.js';
 
 const H_NIV = 3.0;
 const EDGE_COLORS = { voie: '#EF4444', lat: '#3B82F6', fond: '#22C55E' };
@@ -25,10 +28,12 @@ const CapacityStudyRenderer = {
   // ═══════════════════════════════════════════════════════════════════════════
 
   renderPlanMasse(session, proposal, prog, existingBldgs, existingMode) {
-    if (!proposal?.bat) return '<svg></svg>';
+    // Lecture unifiée : blocs[] OU bat legacy
+    const r = FH.readProposal(proposal);
+    if (!r.blocs.length || !r.bat) return '<svg></svg>';
 
-    const terrain = session?.terrain ?? {};
-    const bat = proposal.bat;
+    const bat = r.bat;            // AABB de l'union des blocs
+    const blocs = r.blocs;        // tableau de blocs (1+)
     const TA = window.TerrainP07Adapter;
 
     // Récupérer polygone parcelle local
@@ -44,7 +49,10 @@ const CapacityStudyRenderer = {
     // Échelle auto
     const maxDim = Math.max(bb.w, bb.h);
     const scale = maxDim < 40 ? 200 : maxDim < 100 ? 500 : 1000;
-    const margin = maxDim * 0.25;
+    // Marge réduite (10 % au lieu de 25 %) pour maximiser le zoom sur la parcelle.
+    // Le cartouche N+échelle est désormais positionné à l'intérieur du viewBox
+    // (top-right) au lieu de déborder à droite comme dans la v1.
+    const margin = maxDim * 0.10;
 
     // ViewBox en mètres (espace local)
     const vbX = bb.x - margin;
@@ -73,17 +81,9 @@ const CapacityStudyRenderer = {
     }
     const envArea = TA?.polyArea(envPoly) ?? this._area(envPoly);
 
-    // Date formatée
-    const now = new Date();
-    const dateStr = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
-
-    // Commune + ref
-    const commune = terrain.commune ?? 'Commune';
-    const reference = terrain.reference ?? 'Réf.';
-    const zonePlu = terrain.zone_plu ?? p4.zone_plu ?? 'U';
-    const auteur = session?.etudiant?.nom ?? 'Étudiant ENSA';
-
     // ── CONSTRUCTION SVG ──────────────────────────────────────────
+    // (Le cartouche commune/réf/zone/date/auteur a été retiré : ces infos
+    //  figurent déjà en pied de planche TERLAB. On ne garde que N + échelle.)
     let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vbX} ${vbY} ${vbW} ${vbH}"
       width="420mm" height="297mm" style="background:#F7F4EE;font-family:'Inter',sans-serif;color:#18130a">
     <defs>
@@ -98,16 +98,60 @@ const CapacityStudyRenderer = {
       </pattern>
     </defs>`;
 
-    // 1. CARTOUCHE
-    const cartX = bb.x + bb.w + margin * 0.3;
-    const cartY = py(bb.y + bb.h + margin * 0.1);
-    svg += `<g class="cartouche" font-size="1.2">
-      <rect x="${cartX}" y="${cartY}" width="${margin * 1.5}" height="${margin * 1.2}" fill="#fff" stroke="#18130a" stroke-width="0.15" rx="0.3"/>
-      <text x="${cartX + 0.5}" y="${cartY + 2}" font-weight="bold" font-size="1.5" fill="#18130a">${commune}</text>
-      <text x="${cartX + 0.5}" y="${cartY + 4}" fill="#555">${reference} · Zone ${zonePlu}</text>
-      <text x="${cartX + 0.5}" y="${cartY + 6}" fill="#555">${dateStr}</text>
-      <text x="${cartX + 0.5}" y="${cartY + 8}" fill="#555">${auteur}</text>
-      <text x="${cartX + 0.5}" y="${cartY + 10}" fill="#999" font-size="1">Éch. 1:${scale}</text>
+    // 1. CARTOUCHE — Nord + échelle uniquement, top-right interne au viewBox
+    // Les infos commune/réf/zone/date/auteur sont déjà en pied de planche TERLAB,
+    // pas besoin de les dupliquer dans le cartouche du plan masse.
+    const scaleLen = scale === 200 ? 5 : scale === 500 ? 10 : 20;
+    const cartW   = Math.max(11, vbW * 0.22);
+    const cartH   = cartW * 0.38;
+    const cartPad = vbW * 0.012;
+    const cartX   = vbX + vbW - cartW - cartPad;
+    const cartY   = vbY + cartPad;
+    // Compartiment N (gauche, carré) + compartiment échelle (droite)
+    const nBoxW = cartH;                  // carré gauche
+    const sBoxW = cartW - nBoxW;          // reste
+    // Centres des compartiments
+    const nCx = cartX + nBoxW / 2;
+    const nCy = cartY + cartH / 2;
+    const sCx = cartX + nBoxW + sBoxW / 2;
+    // Tailles flèche N
+    const ar  = cartH * 0.32;
+    // Barre d'échelle : longueur = 70 % du compartiment droite
+    const sBarLen = sBoxW * 0.70;
+    const sBarX0  = sCx - sBarLen / 2;
+    const sBarY   = cartY + cartH * 0.62;
+    svg += `<g class="cartouche">
+      <rect x="${cartX}" y="${cartY}" width="${cartW}" height="${cartH}"
+            fill="#FFFEFB" fill-opacity="0.94"
+            stroke="#18130a" stroke-width="0.25" rx="0.4"/>
+      <line x1="${cartX + nBoxW}" y1="${cartY + cartH * 0.15}"
+            x2="${cartX + nBoxW}" y2="${cartY + cartH * 0.85}"
+            stroke="#18130a" stroke-width="0.12" stroke-opacity="0.35"/>
+      <!-- Compartiment Nord -->
+      <g transform="translate(${nCx},${nCy})">
+        <line x1="0" y1="${ar * 0.55}" x2="0" y2="-${ar * 0.85}" stroke="#18130a" stroke-width="0.35"/>
+        <polygon points="0,-${ar} -${ar * 0.30},-${ar * 0.45} ${ar * 0.30},-${ar * 0.45}"
+                 fill="#18130a" stroke="#18130a" stroke-width="0.1" stroke-linejoin="round"/>
+        <text x="0" y="${ar * 0.92}" text-anchor="middle"
+              font-family="Inter,sans-serif" font-size="${cartH * 0.22}" font-weight="700" fill="#18130a">N</text>
+      </g>
+      <!-- Compartiment échelle -->
+      <g class="scale-cart">
+        <line x1="${sBarX0}" y1="${sBarY}" x2="${sBarX0 + sBarLen}" y2="${sBarY}"
+              stroke="#18130a" stroke-width="0.30"/>
+        <line x1="${sBarX0}" y1="${sBarY - 0.5}" x2="${sBarX0}" y2="${sBarY + 0.5}"
+              stroke="#18130a" stroke-width="0.25"/>
+        <line x1="${sBarX0 + sBarLen / 2}" y1="${sBarY - 0.35}" x2="${sBarX0 + sBarLen / 2}" y2="${sBarY + 0.35}"
+              stroke="#18130a" stroke-width="0.20"/>
+        <line x1="${sBarX0 + sBarLen}" y1="${sBarY - 0.5}" x2="${sBarX0 + sBarLen}" y2="${sBarY + 0.5}"
+              stroke="#18130a" stroke-width="0.25"/>
+        <text x="${sBarX0}"               y="${sBarY - 0.8}" text-anchor="middle"
+              font-family="IBM Plex Mono,monospace" font-size="${cartH * 0.18}" fill="#18130a">0</text>
+        <text x="${sBarX0 + sBarLen}"     y="${sBarY - 0.8}" text-anchor="middle"
+              font-family="IBM Plex Mono,monospace" font-size="${cartH * 0.18}" fill="#18130a">${scaleLen} m</text>
+        <text x="${sCx}" y="${cartY + cartH * 0.30}" text-anchor="middle"
+              font-family="IBM Plex Mono,monospace" font-size="${cartH * 0.20}" font-weight="600" fill="#C1652B">1 / ${scale}</text>
+      </g>
     </g>`;
 
     // 2. TERRAIN — Grille + polygone parcelle
@@ -163,48 +207,63 @@ const CapacityStudyRenderer = {
       }
     }
 
-    // 6. BÂTIMENT PROPOSÉ
+    // 6. BÂTIMENT(S) PROPOSÉ(S) — un polygone par bloc
     const nv = proposal.niveaux ?? 2;
     const he = nv * H_NIV;
     const nLgts = proposal.nLgts ?? 0;
     const nvLabel = nv <= 1 ? 'RdC' : `R+${nv - 1}`;
+    const batColor = proposal.color ?? '#3B82F6';
 
-    svg += `<rect x="${px(bat.x)}" y="${py(bat.y + bat.l)}" width="${bat.w}" height="${bat.l}" fill="${proposal.color ?? '#3B82F6'}" fill-opacity="0.25" stroke="${proposal.color ?? '#3B82F6'}" stroke-width="0.3"/>`;
+    blocs.forEach((bloc, bi) => {
+      const polyPts = (bloc.polygon ?? []).map(p => `${px(p.x)},${py(p.y)}`).join(' ');
+      if (!polyPts) return;
+      svg += `<polygon points="${polyPts}" fill="${batColor}" fill-opacity="0.25" stroke="${batColor}" stroke-width="0.3"/>`;
 
-    // Varangue nord (1.5m)
-    svg += `<rect x="${px(bat.x)}" y="${py(bat.y + bat.l + 1.5)}" width="${bat.w}" height="1.5" fill="#D4A574" fill-opacity="0.35" stroke="#D4A574" stroke-width="0.15"/>`;
+      // Label par bloc
+      const cw = FH.centroidWeighted(bloc.polygon);
+      const blocLabel = blocs.length > 1
+        ? `B${bi + 1} · ${Math.round(bloc.areaM2 ?? FH.area(bloc.polygon))}m²`
+        : `${nLgts} lgts / ${nvLabel} / hé ${he}m`;
+      svg += `<text x="${px(cw.x)}" y="${py(cw.y)}" text-anchor="middle" dominant-baseline="central" font-size="1.2" fill="#18130a" font-weight="bold">${blocLabel}</text>`;
+    });
 
-    // Label centré bâtiment
-    svg += `<text x="${px(bat.x + bat.w / 2)}" y="${py(bat.y + bat.l / 2)}" text-anchor="middle" dominant-baseline="central" font-size="1.2" fill="#18130a" font-weight="bold">${nLgts} lgts / ${nvLabel} / hé ${he}m</text>`;
+    // Label global pour multi-blocs
+    if (blocs.length > 1) {
+      const allCw = FH.centroidWeighted(blocs.flatMap(b => b.polygon ?? []));
+      svg += `<text x="${px(allCw.x)}" y="${py(bat.y + bat.l + 2.5)}" text-anchor="middle" font-size="1.1" fill="#18130a">${nLgts} lgts / ${nvLabel} / hé ${he}m · ${blocs.length} blocs</text>`;
+    }
 
-    // Cotations largeur + profondeur
+    // Cotations AABB d'ensemble (largeur + profondeur)
     svg += `<text x="${px(bat.x + bat.w / 2)}" y="${py(bat.y) + 1.5}" text-anchor="middle" font-size="0.9" fill="#555">↔ ${bat.w.toFixed(1)}m</text>`;
     svg += `<text x="${px(bat.x + bat.w) + 1}" y="${py(bat.y + bat.l / 2)}" font-size="0.9" fill="#555" transform="rotate(-90,${px(bat.x + bat.w) + 1},${py(bat.y + bat.l / 2)})">↕ ${bat.l.toFixed(1)}m</text>`;
 
-    // 9. ANNOTATIONS — Flèche nord + échelle
-    const northX = bb.x + bb.w + margin * 0.5;
-    const northY = py(bb.y + bb.h + margin * 0.5);
-    svg += `<g class="north-arrow" transform="translate(${northX},${northY + margin * 1.5})">
-      <line x1="0" y1="3" x2="0" y2="-3" stroke="#18130a" stroke-width="0.2" marker-end="url(#arrowN)"/>
-      <text x="0" y="-4" text-anchor="middle" font-size="1.2" font-weight="bold" fill="#18130a">N</text>
-    </g>`;
-
-    // Barre d'échelle
-    const scaleBar = scale === 200 ? 5 : scale === 500 ? 10 : 20;
-    svg += `<g class="scale-bar" transform="translate(${vbX + 2},${vbY + vbH - 2})">
-      <line x1="0" y1="0" x2="${scaleBar}" y2="0" stroke="#18130a" stroke-width="0.2"/>
-      <line x1="0" y1="-0.5" x2="0" y2="0.5" stroke="#18130a" stroke-width="0.15"/>
-      <line x1="${scaleBar}" y1="-0.5" x2="${scaleBar}" y2="0.5" stroke="#18130a" stroke-width="0.15"/>
-      <text x="${scaleBar / 2}" y="1.5" text-anchor="middle" font-size="0.8" fill="#18130a">${scaleBar}m</text>
-    </g>`;
-
-    // 10. LÉGENDE
-    svg += `<g class="legend" transform="translate(${vbX + 2},${vbY + vbH - 6})" font-size="0.8" fill="#18130a">
-      <rect x="0" y="0" width="12" height="4" fill="#fff" fill-opacity="0.8" stroke="#ccc" stroke-width="0.1" rx="0.2"/>
-      <line x1="0.5" y1="0.8" x2="2" y2="0.8" stroke="${EDGE_COLORS.voie}" stroke-width="0.4"/><text x="2.5" y="1">Voie</text>
-      <line x1="0.5" y1="1.8" x2="2" y2="1.8" stroke="${EDGE_COLORS.lat}" stroke-width="0.4"/><text x="2.5" y="2">Latéral</text>
-      <line x1="0.5" y1="2.8" x2="2" y2="2.8" stroke="${EDGE_COLORS.fond}" stroke-width="0.4"/><text x="2.5" y="3">Fond</text>
-      <line x1="6" y1="0.8" x2="8" y2="0.8" stroke="#22C55E" stroke-width="0.3" stroke-dasharray="0.5,0.3"/><text x="8.5" y="1">Enveloppe</text>
+    // 9. LÉGENDE — bottom-left interne au viewBox (le N + échelle sont dans le cartouche top-right)
+    const legW = Math.max(14, vbW * 0.28);
+    const legH = legW * 0.30;
+    const legX = vbX + cartPad;
+    const legY = vbY + vbH - legH - cartPad;
+    const legFs = legH * 0.18;
+    const colW  = legW / 4;
+    svg += `<g class="legend">
+      <rect x="${legX}" y="${legY}" width="${legW}" height="${legH}"
+            fill="#FFFEFB" fill-opacity="0.94"
+            stroke="#18130a" stroke-width="0.25" rx="0.4"/>
+      ${[
+        { lbl: 'Voie',      col: EDGE_COLORS.voie, dash: false },
+        { lbl: 'Latéral',   col: EDGE_COLORS.lat,  dash: false },
+        { lbl: 'Fond',      col: EDGE_COLORS.fond, dash: false },
+        { lbl: 'Enveloppe', col: '#22C55E',        dash: true  },
+      ].map((it, i) => {
+        const cx0 = legX + i * colW + colW * 0.10;
+        const cx1 = legX + i * colW + colW * 0.42;
+        const cy  = legY + legH * 0.55;
+        return `
+        <line x1="${cx0}" y1="${cy}" x2="${cx1}" y2="${cy}"
+              stroke="${it.col}" stroke-width="0.6" stroke-linecap="round"
+              ${it.dash ? 'stroke-dasharray="0.7,0.4"' : ''}/>
+        <text x="${cx1 + colW * 0.05}" y="${cy + legFs * 0.35}"
+              font-family="Inter,sans-serif" font-size="${legFs}" fill="#18130a">${it.lbl}</text>`;
+      }).join('')}
     </g>`;
 
     svg += '</svg>';
@@ -216,9 +275,27 @@ const CapacityStudyRenderer = {
   // ═══════════════════════════════════════════════════════════════════════════
 
   renderCoupeGabarit(session, proposal, prog) {
-    if (!proposal?.bat) return '<svg></svg>';
+    const r = FH.readProposal(proposal);
+    if (!r.blocs.length) return '<svg></svg>';
 
-    const bat = proposal.bat;
+    // Pour la coupe, on prend le bloc le plus profond (max longueur)
+    // et on utilise sa vraie profondeur (le long de son axe local).
+    let coupeBloc = r.blocs[0];
+    let coupeProf = coupeBloc.l ?? 0;
+    for (const b of r.blocs) {
+      const lens = FH.edgeLengths(b.polygon ?? []);
+      if (!lens.length) continue;
+      // Profondeur = plus petite dimension entre les arêtes paires/impaires (rect rotated)
+      // Pour un rectangle, edges 0,2 sont parallèles et edges 1,3 aussi → on prend min de l'une des paires
+      const dProf = lens.length >= 2 ? Math.min(lens[0], lens[1]) : 0;
+      if (dProf > coupeProf) { coupeProf = dProf; coupeBloc = b; }
+    }
+    // Profondeur N-S effective : utiliser la dimension réelle du bloc
+    const lensCoupe = FH.edgeLengths(coupeBloc.polygon ?? []);
+    const profEff = lensCoupe.length >= 2 ? Math.min(lensCoupe[0], lensCoupe[1]) : (coupeBloc.l ?? r.bat.l);
+    const widthEff = lensCoupe.length >= 2 ? Math.max(lensCoupe[0], lensCoupe[1]) : (coupeBloc.w ?? r.bat.w);
+    // bat compat pour le reste de la fonction
+    const bat = { x: 0, y: 0, w: widthEff, l: profEff };
     const nv = proposal.niveaux ?? 2;
     const he = nv * H_NIV;
 
@@ -360,15 +437,19 @@ const CapacityStudyRenderer = {
   // ═══════════════════════════════════════════════════════════════════════════
 
   renderMetricsTable(proposal, session) {
-    if (!proposal?.bat) return '<p>Aucune solution sélectionnée.</p>';
+    const r = FH.readProposal(proposal);
+    if (!r.blocs.length || !r.bat) return '<p>Aucune solution sélectionnée.</p>';
 
-    const bat = proposal.bat;
+    const bat = r.bat;
+    const blocs = r.blocs;
     const nv = proposal.niveaux ?? 2;
     const he = nv * H_NIV;
     const nLgts = proposal.nLgts ?? 0;
     const empPct = proposal.empPct ?? 0;
     const permPct = proposal.permPct ?? 0;
     const sp = proposal.spTot ?? 0;
+    // Surface emprise réelle (somme des aires des blocs après clip)
+    const empriseTot = proposal.surface ?? FH.totalArea(blocs);
 
     const p4 = session?.phases?.[4]?.data ?? {};
     const heMax = parseFloat(p4.hauteur_max_m ?? 9);
@@ -388,14 +469,28 @@ const CapacityStudyRenderer = {
     <thead><tr style="border-bottom:1px solid #ccc"><th>Indicateur</th><th>Projet</th><th>Règle</th><th></th></tr></thead>
     <tbody>`;
 
-    html += row('Emprise bâtiment', `${(bat.w * bat.l).toFixed(0)} m²`, '', true);
+    html += row('Emprise bâtiment', `${empriseTot.toFixed(0)} m²`, '', true);
+    if (blocs.length > 1) {
+      html += row('Nombre de blocs', `${blocs.length}`, '', true);
+    }
     html += row('Emprise sol', `${empPct.toFixed(1)}%`, `≤ ${emprMaxNorm.toFixed(0)}%`, empPct <= emprMaxNorm);
     html += row('Hauteur égout', `${he.toFixed(1)} m`, `≤ ${heMax} m`, he <= heMax);
     html += row('Niveaux', nv <= 1 ? 'RdC' : `R+${nv - 1}`, `≤ ${Math.floor(heMax / H_NIV)} niv.`, nv <= Math.floor(heMax / H_NIV));
     html += row('Surface plancher', `${sp.toFixed(0)} m²`, '', true);
     html += row('Logements', `${nLgts}`, '', true);
     html += row('Perméabilité', `${permPct.toFixed(1)}%`, '≥ 25%', permPct >= 25);
-    html += row('Largeur RTAA', `${bat.w.toFixed(1)} m`, '≤ 12 m', bat.w <= 12);
+    // Largeur RTAA = plus petite dimension du bloc le plus large
+    let maxBlocWidth = 0;
+    for (const b of blocs) {
+      const lens = FH.edgeLengths(b.polygon ?? []);
+      if (lens.length >= 2) {
+        const w = Math.min(lens[0], lens[1]);
+        if (w > maxBlocWidth) maxBlocWidth = w;
+      }
+    }
+    if (maxBlocWidth > 0) {
+      html += row('Largeur RTAA', `${maxBlocWidth.toFixed(1)} m`, '≤ 12 m', maxBlocWidth <= 12);
+    }
 
     if (pprn) {
       const pprnColor = pprn === 'rouge' ? '#EF4444' : pprn === 'orange' ? '#F97316' : '#22C55E';

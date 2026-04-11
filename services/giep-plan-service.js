@@ -6,6 +6,7 @@
 
 import SlopesService from './slopes-service.js';
 import GIEPCalculator from './giep-calculator-service.js';
+import FH from './footprint-helpers.js';
 
 // ── CONSTANTES OUVRAGES GIEP ────────────────────────────────────────────────
 const OUVRAGE_STYLES = {
@@ -34,10 +35,14 @@ const GIEPPlanService = {
    * @returns {string} SVG string
    */
   generatePlan(session, proposal, giepResult) {
-    if (!proposal?.bat || !giepResult) return '';
+    if (!proposal || !giepResult) return '';
+    // Lecture unifiée v2/legacy : on récupère l'AABB d'ensemble + les blocs réels
+    const r = FH.readProposal(proposal);
+    if (!r.blocs.length || !r.bat) return '';
 
     const terrain = session?.terrain ?? {};
-    const bat = proposal.bat;
+    const bat = r.bat;        // AABB pour le placement des accessoires (axis-aligned)
+    const blocsList = r.blocs; // polygones réels pour le tracé du bâtiment
     const ouvrages = giepResult.ouvrages ?? [];
     const pente_pct = parseFloat(terrain.pente_moy_pct ?? 0);
     const exposition = terrain.exposition ?? terrain.orientation ?? 'S';
@@ -65,9 +70,12 @@ const GIEPPlanService = {
     const py = y => -(y);
 
     // ── SVG START ────────────────────────────────────────────────
+    // ClipPath parcelle pour confiner courbes de niveau et flow lines
+    const parcelPts = poly.map(([x, y]) => `${px(x)},${py(y)}`).join(' ');
     let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vbX} ${vbY} ${vbW} ${vbH}"
       width="100%" style="background:#F7F4EE;font-family:'Inter',sans-serif;color:#18130a">
     <defs>
+      <clipPath id="gp-parcel-clip"><polygon points="${parcelPts}"/></clipPath>
       <marker id="gp-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
         <polygon points="0 0,8 3,0 6" fill="${DESCENTE_COLOR}"/>
       </marker>
@@ -77,32 +85,40 @@ const GIEPPlanService = {
     </defs>`;
 
     // 1. FOND — parcelle
-    const parcelPts = poly.map(([x, y]) => `${px(x)},${py(y)}`).join(' ');
     svg += `<polygon points="${parcelPts}" fill="#E8F5E9" fill-opacity="0.5" stroke="#18130a" stroke-width="0.3"/>`;
 
-    // 2. FLOW LINES (chemins d'eau sous tout)
+    // 2a. COURBES DE NIVEAU (depuis ContourCache si disponible) — sous tout le reste
+    svg += this._renderContours(session, px, py, bb);
+
+    // 2b. FLOW LINES (chemins d'eau, sens descendant)
     svg += this._renderFlowLines(poly, px, py, pente_pct, exposition);
 
-    // 3. BÂTIMENT
-    svg += `<rect x="${px(bat.x)}" y="${py(bat.y + bat.l)}" width="${bat.w}" height="${bat.l}"
-      fill="#B0BEC5" fill-opacity="0.6" stroke="#455A64" stroke-width="0.25"/>`;
-    const batArea = (bat.w * bat.l).toFixed(0);
-    svg += `<text x="${px(bat.x + bat.w / 2)}" y="${py(bat.y + bat.l / 2)}" text-anchor="middle"
-      font-size="1.2" fill="#18130a" font-weight="bold">${batArea} m²</text>`;
-    svg += `<text x="${px(bat.x + bat.w / 2)}" y="${py(bat.y + bat.l / 2) + 1.5}" text-anchor="middle"
-      font-size="0.8" fill="#555">+0.30m/TN min</text>`;
+    // 3. BÂTIMENT(S) — un polygone par bloc (multi-blocs supportés)
+    blocsList.forEach((bloc, bi) => {
+      const polyB = bloc.polygon ?? [];
+      if (polyB.length < 3) return;
+      const ptsStr = polyB.map(p => `${px(p.x)},${py(p.y)}`).join(' ');
+      svg += `<polygon points="${ptsStr}" fill="#B0BEC5" fill-opacity="0.6" stroke="#455A64" stroke-width="0.25"/>`;
+      const cw = FH.centroidWeighted(polyB);
+      const blocArea = Math.round(bloc.areaM2 ?? FH.area(polyB));
+      const blocLbl = blocsList.length > 1 ? `B${bi + 1} · ${blocArea} m²` : `${blocArea} m²`;
+      svg += `<text x="${px(cw.x)}" y="${py(cw.y)}" text-anchor="middle"
+        font-size="1.2" fill="#18130a" font-weight="bold">${blocLbl}</text>`;
+      svg += `<text x="${px(cw.x)}" y="${py(cw.y) + 1.5}" text-anchor="middle"
+        font-size="0.8" fill="#555">+0.30m/TN min</text>`;
+    });
 
     // 4. DESCENTES DE TOITURE (flèches rouges sur chaque face du bâtiment)
-    svg += this._renderDescentesToiture(bat, px, py);
+    svg += this._renderDescentesToiture(blocsList, px, py);
 
     // 5. OUVRAGES EP — placement automatique
-    svg += this._placeOuvrages(ouvrages, bat, poly, bb, px, py, pente_pct, exposition);
+    svg += this._placeOuvrages(ouvrages, blocsList, bat, poly, bb, px, py, pente_pct, exposition);
 
     // 6. PENTE GÉNÉRALE (grande flèche + label)
     svg += this._renderPenteLabel(bb, poly, px, py, pente_pct, exposition, cat);
 
-    // 7. BORDURES (tirets autour voirie)
-    svg += this._renderBordures(bat, poly, bb, px, py);
+    // 7. BORDURES (tirets autour des bâtiments réels, pas du bbox)
+    svg += this._renderBordures(blocsList, px, py);
 
     // 8. SURFACE PARCELLE
     const pcx = poly.reduce((s, p) => s + p[0], 0) / poly.length;
@@ -130,40 +146,93 @@ const GIEPPlanService = {
     return svg;
   },
 
-  // ── DESCENTES DE TOITURE ──────────────────────────────────────────────────
-  _renderDescentesToiture(bat, px, py) {
-    let s = '';
-    const arrowLen = Math.min(bat.w, bat.l) * 0.15;
-    // 4 coins + milieux des faces
-    const points = [
-      // Face nord (haut)
-      { x: bat.x + bat.w * 0.25, y: bat.y + bat.l, dx: 0, dy: 1 },
-      { x: bat.x + bat.w * 0.75, y: bat.y + bat.l, dx: 0, dy: 1 },
-      // Face sud (bas)
-      { x: bat.x + bat.w * 0.25, y: bat.y, dx: 0, dy: -1 },
-      { x: bat.x + bat.w * 0.75, y: bat.y, dx: 0, dy: -1 },
-      // Face est
-      { x: bat.x + bat.w, y: bat.y + bat.l * 0.5, dx: 1, dy: 0 },
-      // Face ouest
-      { x: bat.x, y: bat.y + bat.l * 0.5, dx: -1, dy: 0 },
-    ];
+  // ── HELPERS GÉOMÉTRIE POLYGONE ────────────────────────────────────────────
+  // Offset extérieur d'un polygone par bissectrice locale, en mètres.
+  // Convention CW/CCW gérée via signedArea.
+  _offsetPolyOutward(poly, d) {
+    const n = poly.length;
+    if (n < 3) return poly.slice();
+    let sa = 0;
+    for (let i = 0; i < n; i++) {
+      const a = poly[i], b = poly[(i + 1) % n];
+      sa += a.x * b.y - b.x * a.y;
+    }
+    const cw = sa > 0 ? 1 : -1;
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const prev = poly[(i - 1 + n) % n], curr = poly[i], next = poly[(i + 1) % n];
+      const dx1 = curr.x - prev.x, dy1 = curr.y - prev.y;
+      const len1 = Math.hypot(dx1, dy1);
+      const dx2 = next.x - curr.x, dy2 = next.y - curr.y;
+      const len2 = Math.hypot(dx2, dy2);
+      if (len1 < 1e-6 || len2 < 1e-6) { out.push({ x: curr.x, y: curr.y }); continue; }
+      // Normales sortantes (signe inversé par rapport à inset)
+      const nx1 = cw * (dy1 / len1),  ny1 = cw * (-dx1 / len1);
+      const nx2 = cw * (dy2 / len2),  ny2 = cw * (-dx2 / len2);
+      let bx = nx1 + nx2, by = ny1 + ny2;
+      const blen = Math.hypot(bx, by);
+      if (blen < 1e-6) { out.push({ x: curr.x + nx1 * d, y: curr.y + ny1 * d }); continue; }
+      bx /= blen; by /= blen;
+      const cosHalf = bx * nx1 + by * ny1;
+      const factor = cosHalf > 0.1 ? d / cosHalf : d;
+      out.push({ x: curr.x + bx * factor, y: curr.y + by * factor });
+    }
+    return out;
+  },
 
-    for (const p of points) {
-      const x1 = px(p.x), y1 = py(p.y);
-      const x2 = px(p.x + p.dx * arrowLen);
-      const y2 = py(p.y + p.dy * arrowLen);
-      s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"
-        stroke="${DESCENTE_COLOR}" stroke-width="0.35" marker-end="url(#gp-arrow)"/>`;
+  // Renvoie pour chaque arête {midpoint, normale sortante unitaire, longueur}.
+  _edgeMidsAndNormals(poly) {
+    const n = poly.length;
+    let sa = 0;
+    for (let i = 0; i < n; i++) {
+      const a = poly[i], b = poly[(i + 1) % n];
+      sa += a.x * b.y - b.x * a.y;
+    }
+    const cw = sa > 0 ? 1 : -1;
+    const res = [];
+    for (let i = 0; i < n; i++) {
+      const a = poly[i], b = poly[(i + 1) % n];
+      const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+      if (len < 1e-6) continue;
+      // Normale sortante = rotation -90° (cw=1) de la tangente
+      const nx = cw * (dy / len), ny = cw * (-dx / len);
+      res.push({ mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, nx, ny, len });
+    }
+    return res;
+  },
+
+  // ── DESCENTES DE TOITURE ──────────────────────────────────────────────────
+  // Pour chaque bloc, place une descente sur chaque face longue (>2m) au milieu.
+  _renderDescentesToiture(blocsList, px, py) {
+    let s = '';
+    for (const bloc of blocsList) {
+      const polyB = bloc.polygon ?? [];
+      if (polyB.length < 3) continue;
+      const edges = this._edgeMidsAndNormals(polyB);
+      if (!edges.length) continue;
+      const maxLen = Math.max(...edges.map(e => e.len));
+      const arrowLen = maxLen * 0.18;
+      for (const e of edges) {
+        if (e.len < 2) continue;
+        const x1 = px(e.mx), y1 = py(e.my);
+        const x2 = px(e.mx + e.nx * arrowLen);
+        const y2 = py(e.my + e.ny * arrowLen);
+        s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"
+          stroke="${DESCENTE_COLOR}" stroke-width="0.35" marker-end="url(#gp-arrow)"/>`;
+      }
     }
     return s;
   },
 
   // ── PLACEMENT OUVRAGES ────────────────────────────────────────────────────
-  _placeOuvrages(ouvrages, bat, poly, bb, px, py, pente_pct, exposition) {
+  _placeOuvrages(ouvrages, blocsList, bat, poly, bb, px, py, pente_pct, exposition) {
     let s = '';
     const angle = { N: 270, NE: 315, E: 0, SE: 45, S: 90, SO: 135, O: 180, NO: 225 }[exposition] ?? 90;
     const rad = (angle * Math.PI) / 180;
     const downX = Math.cos(rad), downY = Math.sin(rad);
+    // Polygone parcelle au format {x,y} pour pointInPoly clamp
+    const parcelXY = poly.map(p => ({ x: p[0], y: p[1] }));
+    const inParcel = (x, y) => FH.pointInPoly(x, y, parcelXY);
 
     for (const o of ouvrages) {
       const style = OUVRAGE_STYLES[o.type];
@@ -185,27 +254,38 @@ const GIEPPlanService = {
         }
 
       } else if (o.type === 'jardin_pluie') {
-        // Jardins : distribués autour du bâtiment dans l'espace libre
-        const positions = [
+        // Jardins : distribués dans l'espace libre, clampés dans la parcelle réelle.
+        const candidates = [
           [bat.x - 3, bat.y + bat.l * 0.3],
           [bat.x + bat.w + 3, bat.y + bat.l * 0.7],
           [bat.x + bat.w * 0.5, bat.y + bat.l + 3],
+          [bat.x + bat.w * 0.5, bat.y - 3],
+          [bat.x - 3, bat.y + bat.l + 2],
+          [bat.x + bat.w + 3, bat.y - 2],
         ];
-        for (const [jx, jy] of positions) {
-          if (jx < bb.x0 || jx > bb.x1 || jy < bb.y0 || jy > bb.y1) continue;
+        for (const [jx, jy] of candidates) {
+          if (!inParcel(jx, jy)) continue;
+          // Skip si dans un bloc bâtiment
+          let inBloc = false;
+          for (const b of blocsList) {
+            const polyB = (b.polygon ?? []).map(p => ({ x: p.x ?? p[0], y: p.y ?? p[1] }));
+            if (polyB.length >= 3 && FH.pointInPoly(jx, jy, polyB)) { inBloc = true; break; }
+          }
+          if (inBloc) continue;
           s += `<circle cx="${px(jx)}" cy="${py(jy)}" r="1.2" fill="${EV_CREUX_COLOR}" opacity="0.4" stroke="${EV_CREUX_COLOR}" stroke-width="0.15"/>`;
         }
 
       } else if (o.type === 'fosse_infiltration') {
-        // Fosses : au pied des descentes EP (coins du bâtiment)
-        const corners = [
-          [bat.x - 0.8, bat.y - 0.8],
-          [bat.x + bat.w + 0.8, bat.y - 0.8],
-          [bat.x - 0.8, bat.y + bat.l + 0.8],
-          [bat.x + bat.w + 0.8, bat.y + bat.l + 0.8],
-        ];
-        for (const [fx, fy] of corners) {
-          s += `<circle cx="${px(fx)}" cy="${py(fy)}" r="0.6" fill="${style.color}" opacity="0.5" stroke="${style.color}" stroke-width="0.15"/>`;
+        // Fosses : au pied des descentes EP, sur les sommets réels de chaque bloc
+        // (offset 0.8m vers l'extérieur le long de la bissectrice).
+        for (const bloc of blocsList) {
+          const polyB = (bloc.polygon ?? []).map(p => ({ x: p.x ?? p[0], y: p.y ?? p[1] }));
+          if (polyB.length < 3) continue;
+          const corners = this._offsetPolyOutward(polyB, 0.8);
+          for (const c of corners) {
+            if (!inParcel(c.x, c.y)) continue;
+            s += `<circle cx="${px(c.x)}" cy="${py(c.y)}" r="0.6" fill="${style.color}" opacity="0.5" stroke="${style.color}" stroke-width="0.15"/>`;
+          }
         }
 
       } else if (o.type === 'revetement_drainant') {
@@ -234,22 +314,38 @@ const GIEPPlanService = {
         s += `<text x="${px(basX)}" y="${py(basY) + 0.4}" text-anchor="middle" font-size="0.7" fill="${style.color}" font-weight="bold">\u{1F4A7}</text>`;
 
       } else if (o.type === 'toiture_vegetalisee') {
-        // Overlay vert sur le bâtiment
-        s += `<rect x="${px(bat.x + 0.5)}" y="${py(bat.y + bat.l - 0.5)}" width="${bat.w - 1}" height="${bat.l - 1}"
-          fill="${style.color}" fill-opacity="0.12" stroke="${style.color}" stroke-width="0.15" stroke-dasharray="0.5,0.3" rx="0.3"/>`;
+        // Overlay vert sur chaque bloc bâtiment (inset 0.5m pour les acrotères),
+        // suit la géométrie réelle du polygone, jamais l'AABB englobant.
+        for (const bloc of blocsList) {
+          const polyB = (bloc.polygon ?? []).map(p => ({ x: p.x ?? p[0], y: p.y ?? p[1] }));
+          if (polyB.length < 3) continue;
+          const inner = this._offsetPolyOutward(polyB, -0.5);
+          if (inner.length < 3) continue;
+          const ptsStr = inner.map(p => `${px(p.x)},${py(p.y)}`).join(' ');
+          s += `<polygon points="${ptsStr}" fill="${style.color}" fill-opacity="0.12"
+            stroke="${style.color}" stroke-width="0.15" stroke-dasharray="0.5,0.3"/>`;
+        }
       }
     }
 
-    // Jardins privés (cercles verts pâles dans l'espace libre)
+    // Jardins privés (cercles verts pâles dans l'espace libre, clampés dans la parcelle réelle)
     const jardinsPositions = [
       [bb.x0 + bb.w * 0.15, bb.y0 + bb.h * 0.2],
       [bb.x0 + bb.w * 0.85, bb.y0 + bb.h * 0.8],
       [bb.x0 + bb.w * 0.15, bb.y0 + bb.h * 0.7],
       [bb.x0 + bb.w * 0.8, bb.y0 + bb.h * 0.25],
+      [bb.x0 + bb.w * 0.5, bb.y0 + bb.h * 0.15],
+      [bb.x0 + bb.w * 0.5, bb.y0 + bb.h * 0.85],
     ];
     for (const [jx, jy] of jardinsPositions) {
-      // Vérifier pas dans le bâtiment
-      if (jx > bat.x - 1 && jx < bat.x + bat.w + 1 && jy > bat.y - 1 && jy < bat.y + bat.l + 1) continue;
+      if (!inParcel(jx, jy)) continue;
+      // Vérifier pas dans un bloc bâtiment réel
+      let inBloc = false;
+      for (const b of blocsList) {
+        const polyB = (b.polygon ?? []).map(p => ({ x: p.x ?? p[0], y: p.y ?? p[1] }));
+        if (polyB.length >= 3 && FH.pointInPoly(jx, jy, polyB)) { inBloc = true; break; }
+      }
+      if (inBloc) continue;
       s += `<circle cx="${px(jx)}" cy="${py(jy)}" r="1" fill="${JARDINS_PRIVES_COLOR}" opacity="0.35" stroke="${JARDINS_PRIVES_COLOR}" stroke-width="0.1"/>`;
     }
 
@@ -288,6 +384,124 @@ const GIEPPlanService = {
       </text>`;
   },
 
+  // ── COURBES DE NIVEAU + INDICATEURS PENTE ────────────────────────────────
+  // Lit le cache global ContourCache (alimenté par plan-masse-canvas ou prefetch).
+  // Projette WGS84 → local GIEP (centroid arithmétique cohérent avec esquisse-canvas).
+  // Rend :
+  //   - courbes mineures (fines, claires)
+  //   - courbes majeures (épaisses, foncées) avec étiquette altitude
+  //   - tickmarks perpendiculaires sur les majeures, sens descendant (bas-pente)
+  _renderContours(session, px, py, bb) {
+    if (typeof window === 'undefined' || !window.ContourCache) return '';
+    const parcelGeo = window.ContourCache.parcelGeoFromTerrain(session?.terrain);
+    if (!parcelGeo) return '';
+    const cache = window.ContourCache.getCached(parcelGeo);
+    if (!cache?.lines?.length) return '';
+
+    // Centroid GIEP = moyenne arithmétique de la parcelle (cohérent esquisse-canvas)
+    let clng = 0, clat = 0;
+    for (const [lng, lat] of parcelGeo) { clng += lng; clat += lat; }
+    clng /= parcelGeo.length; clat /= parcelGeo.length;
+    const linesLocal = cache.lines.map(l => ({
+      level: l.level,
+      pts: window.ContourCache.geoToLocal(l.coords, clng, clat),
+    }));
+
+    const interval = cache.interval ?? 1;
+    const majorEvery = interval * 5;
+    const isMajor = lvl => Math.abs(lvl % majorEvery) < 0.01;
+
+    // Index des majeures par altitude pour déterminer le sens "aval"
+    // (le tick perpendiculaire pointe vers la courbe d'altitude inférieure).
+    const majorByLevel = new Map();
+    for (const l of linesLocal) {
+      if (!isMajor(l.level)) continue;
+      if (!majorByLevel.has(l.level)) majorByLevel.set(l.level, []);
+      majorByLevel.get(l.level).push(l);
+    }
+    const sortedMajLvls = [...majorByLevel.keys()].sort((a, b) => a - b);
+    const lowerLevelOf = lvl => {
+      const idx = sortedMajLvls.indexOf(lvl);
+      return idx > 0 ? sortedMajLvls[idx - 1] : null;
+    };
+
+    let s = `<g clip-path="url(#gp-parcel-clip)" pointer-events="none">`;
+
+    // Tracé courbes
+    for (const l of linesLocal) {
+      if (l.pts.length < 2) continue;
+      const major = isMajor(l.level);
+      const d = 'M' + l.pts.map(p => `${px(p.x).toFixed(2)},${py(p.y).toFixed(2)}`).join(' L');
+      s += `<path d="${d}" fill="none" stroke="${major ? '#8a6e3e' : '#c4b396'}"
+        stroke-width="${major ? 0.3 : 0.18}" opacity="${major ? 0.78 : 0.5}"
+        stroke-linecap="round" stroke-linejoin="round"/>`;
+    }
+
+    // Étiquettes altitude — sur les 4 plus longues courbes majeures
+    let labeled = 0;
+    const majorSorted = linesLocal
+      .filter(l => isMajor(l.level) && l.pts.length >= 4)
+      .sort((a, b) => b.pts.length - a.pts.length);
+    for (const l of majorSorted) {
+      if (labeled >= 4) break;
+      const mid = l.pts[Math.floor(l.pts.length / 2)];
+      s += `<text x="${px(mid.x + 0.4).toFixed(2)}" y="${py(mid.y - 0.4).toFixed(2)}"
+        font-size="0.85" font-weight="700" fill="#6a5430">${Math.round(l.level)} m</text>`;
+      labeled++;
+    }
+
+    // Ticks perpendiculaires de pente, sens descendant
+    // Tous les ~6m le long de chaque courbe majeure (1 tick par 6m)
+    for (const l of linesLocal) {
+      if (!isMajor(l.level) || l.pts.length < 3) continue;
+      const lower = lowerLevelOf(l.level);
+      const lowerLines = lower != null ? majorByLevel.get(lower) ?? [] : [];
+      // Cumul des longueurs pour échantillonner régulièrement
+      let cumul = 0;
+      let nextSample = 6;
+      for (let i = 1; i < l.pts.length; i++) {
+        const a = l.pts[i - 1], b = l.pts[i];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const seg = Math.hypot(dx, dy);
+        cumul += seg;
+        if (cumul < nextSample || seg < 0.1) continue;
+        const t = (nextSample - (cumul - seg)) / seg;
+        const mx = a.x + dx * t, my = a.y + dy * t;
+        // Normale unitaire (2 candidats)
+        const nx1 = -dy / seg, ny1 = dx / seg;
+        const nx2 = dy / seg, ny2 = -dx / seg;
+        // Choix du sens descendant : prendre la normale qui pointe vers la courbe
+        // d'altitude inférieure la plus proche. Si pas de courbe inf, fallback : on
+        // garde nx1/ny1 (orientation arbitraire mais cohérente).
+        let nx = nx1, ny = ny1;
+        if (lowerLines.length) {
+          const probeDist = 1.0;
+          const p1 = { x: mx + nx1 * probeDist, y: my + ny1 * probeDist };
+          const p2 = { x: mx + nx2 * probeDist, y: my + ny2 * probeDist };
+          let d1 = Infinity, d2 = Infinity;
+          for (const ll of lowerLines) {
+            for (const pp of ll.pts) {
+              const dd1 = Math.hypot(pp.x - p1.x, pp.y - p1.y);
+              const dd2 = Math.hypot(pp.x - p2.x, pp.y - p2.y);
+              if (dd1 < d1) d1 = dd1;
+              if (dd2 < d2) d2 = dd2;
+            }
+          }
+          if (d2 < d1) { nx = nx2; ny = ny2; }
+        }
+        const tickLen = 0.6;
+        const tx2 = mx + nx * tickLen, ty2 = my + ny * tickLen;
+        s += `<line x1="${px(mx).toFixed(2)}" y1="${py(my).toFixed(2)}"
+          x2="${px(tx2).toFixed(2)}" y2="${py(ty2).toFixed(2)}"
+          stroke="#8a6e3e" stroke-width="0.18" opacity="0.7"/>`;
+        nextSample += 6;
+      }
+    }
+
+    s += '</g>';
+    return s;
+  },
+
   // ── FLOW LINES ────────────────────────────────────────────────────────────
   _renderFlowLines(poly, px, py, pente_pct, exposition) {
     if (pente_pct < 0.3) return '';
@@ -304,17 +518,18 @@ const GIEPPlanService = {
   },
 
   // ── BORDURES ──────────────────────────────────────────────────────────────
-  _renderBordures(bat, poly, bb, px, py) {
-    // Bordures arasées le long du bâtiment (tirets)
-    const margin = 1.5;
-    const pts = [
-      [bat.x - margin, bat.y - margin],
-      [bat.x + bat.w + margin, bat.y - margin],
-      [bat.x + bat.w + margin, bat.y + bat.l + margin],
-      [bat.x - margin, bat.y + bat.l + margin],
-    ];
-    const path = pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${px(x)},${py(y)}`).join(' ') + 'Z';
-    return `<path d="${path}" fill="none" stroke="${BORDURE_COLOR}" stroke-width="0.15" stroke-dasharray="0.6,0.4" opacity="0.5"/>`;
+  // Bordures arasées : trace un offset polygone autour de chaque bloc (tirets).
+  _renderBordures(blocsList, px, py) {
+    const offset = 1.5;
+    let s = '';
+    for (const bloc of blocsList) {
+      const polyB = bloc.polygon ?? [];
+      if (polyB.length < 3) continue;
+      const offsetPoly = this._offsetPolyOutward(polyB, offset);
+      const path = offsetPoly.map((p, i) => `${i === 0 ? 'M' : 'L'}${px(p.x)},${py(p.y)}`).join(' ') + 'Z';
+      s += `<path d="${path}" fill="none" stroke="${BORDURE_COLOR}" stroke-width="0.15" stroke-dasharray="0.6,0.4" opacity="0.5"/>`;
+    }
+    return s;
   },
 
   // ── LÉGENDE ───────────────────────────────────────────────────────────────

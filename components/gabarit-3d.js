@@ -445,18 +445,41 @@ export class GabaritThree {
       this._existingGroup = null;
     }
 
-    // Récupérer la footprint : polygon préféré, fallback AABB
-    let footprint = proposal?.polygon;
-    if (!footprint || footprint.length < 3) {
-      const bat = proposal?.bat;
-      if (!bat) return;
-      footprint = [
-        { x: bat.x,         y: bat.y         },
-        { x: bat.x + bat.w, y: bat.y         },
-        { x: bat.x + bat.w, y: bat.y + bat.l },
-        { x: bat.x,         y: bat.y + bat.l },
-      ];
+    // ── Récupérer la liste des blocs (footprints) ─────────────────
+    // v2 : proposal.blocs[] = liste de bâtiments tournés / multi-blocs
+    // v1 : proposal.polygon (single) ou proposal.bat (AABB)
+    let blocsList = proposal?.blocs;
+    if (!blocsList?.length) {
+      // Fallback legacy : reconstruire 1 bloc depuis polygon ou bat
+      let footprint = proposal?.polygon;
+      if (!footprint || footprint.length < 3) {
+        const bat = proposal?.bat;
+        if (!bat) return;
+        footprint = [
+          { x: bat.x,         y: bat.y         },
+          { x: bat.x + bat.w, y: bat.y         },
+          { x: bat.x + bat.w, y: bat.y + bat.l },
+          { x: bat.x,         y: bat.y + bat.l },
+        ];
+      }
+      blocsList = [{ polygon: footprint, niveaux: proposal?.niveaux ?? 2 }];
     }
+    // Footprint global pour les terrassements (union AABB)
+    const footprint = (() => {
+      let xMin = Infinity, yMin = Infinity, xMax = -Infinity, yMax = -Infinity;
+      for (const b of blocsList) {
+        for (const p of (b.polygon ?? [])) {
+          if (p.x < xMin) xMin = p.x;
+          if (p.x > xMax) xMax = p.x;
+          if (p.y < yMin) yMin = p.y;
+          if (p.y > yMax) yMax = p.y;
+        }
+      }
+      return [
+        { x: xMin, y: yMin }, { x: xMax, y: yMin },
+        { x: xMax, y: yMax }, { x: xMin, y: yMax },
+      ];
+    })();
 
     const nv = proposal?.niveaux ?? 2;
     const he = proposal?.hauteur ?? nv * 3;
@@ -547,50 +570,62 @@ export class GabaritThree {
       this.groups.parcels.add(mesh);
     }
 
-    // ── Bâtiment proposé : extrudé depuis polygon, posé sur plateforme
+    // ── Bâtiment(s) proposé(s) : extrusion par bloc ──────────────
+    // Chaque bloc peut avoir sa propre hauteur (mais pour TERLAB v2 tous les blocs
+    // d'une même proposal partagent niveaux/hauteur).
     const Y_base = H_platform_local + 0.25; // sur la dalle
-    const batShape = new THREE.Shape();
-    batShape.moveTo(footprint[0].x, footprint[0].y);
-    for (let i = 1; i < footprint.length; i++) {
-      batShape.lineTo(footprint[i].x, footprint[i].y);
-    }
-    batShape.closePath();
-    const batGeom = new THREE.ExtrudeGeometry(batShape, { depth: he, bevelEnabled: false });
-    batGeom.rotateX(-Math.PI / 2);
-    batGeom.scale(1, 1, -1);
     const batMat = new THREE.MeshPhongMaterial({
       color: new THREE.Color(color),
       transparent: true, opacity: 0.85,
     });
-    const batMesh = new THREE.Mesh(batGeom, batMat);
-    batMesh.position.y = Y_base;
-    batMesh.castShadow = true;
-    batMesh.receiveShadow = true;
-    batMesh.name = 'building-extruded';
-    this.groups.solution.add(batMesh);
-
-    // Wireframe edges du bâtiment
-    const edges = new THREE.EdgesGeometry(batGeom);
-    const wire = new THREE.LineSegments(
-      edges,
-      new THREE.LineBasicMaterial({ color: new THREE.Color(color), opacity: 0.7, transparent: true }),
-    );
-    wire.position.y = Y_base;
-    this.groups.solution.add(wire);
-
-    // Lignes de plancher
     const linesMat = new THREE.LineBasicMaterial({ color: 0x666666, opacity: 0.6, transparent: true });
-    for (let i = 1; i < nv; i++) {
-      const y = Y_base + i * 3;
-      const floorShape = batShape.clone();
-      const floorGeom = new THREE.ShapeGeometry(floorShape);
-      floorGeom.rotateX(-Math.PI / 2);
-      floorGeom.scale(1, 1, -1);
-      const floorEdges = new THREE.EdgesGeometry(floorGeom);
-      const floorLine = new THREE.LineSegments(floorEdges, linesMat);
-      floorLine.position.y = y;
-      this.groups.solution.add(floorLine);
-    }
+    const wireMat = new THREE.LineBasicMaterial({
+      color: new THREE.Color(color), opacity: 0.7, transparent: true,
+    });
+
+    blocsList.forEach((bloc, bi) => {
+      const polyB = bloc.polygon ?? [];
+      if (polyB.length < 3) return;
+      const blocNv = bloc.niveaux ?? nv;
+      const blocHe = bloc.hauteur ?? blocNv * 3;
+
+      const batShape = new THREE.Shape();
+      batShape.moveTo(polyB[0].x, polyB[0].y);
+      for (let i = 1; i < polyB.length; i++) {
+        batShape.lineTo(polyB[i].x, polyB[i].y);
+      }
+      batShape.closePath();
+
+      const batGeom = new THREE.ExtrudeGeometry(batShape, { depth: blocHe, bevelEnabled: false });
+      batGeom.rotateX(-Math.PI / 2);
+      batGeom.scale(1, 1, -1);
+
+      const batMesh = new THREE.Mesh(batGeom, batMat);
+      batMesh.position.y = Y_base;
+      batMesh.castShadow = true;
+      batMesh.receiveShadow = true;
+      batMesh.name = `building-extruded-${bi}`;
+      this.groups.solution.add(batMesh);
+
+      // Wireframe
+      const edges = new THREE.EdgesGeometry(batGeom);
+      const wire = new THREE.LineSegments(edges, wireMat);
+      wire.position.y = Y_base;
+      this.groups.solution.add(wire);
+
+      // Lignes de plancher
+      for (let i = 1; i < blocNv; i++) {
+        const y = Y_base + i * 3;
+        const floorShape = batShape.clone();
+        const floorGeom = new THREE.ShapeGeometry(floorShape);
+        floorGeom.rotateX(-Math.PI / 2);
+        floorGeom.scale(1, 1, -1);
+        const floorEdges = new THREE.EdgesGeometry(floorGeom);
+        const floorLine = new THREE.LineSegments(floorEdges, linesMat);
+        floorLine.position.y = y;
+        this.groups.solution.add(floorLine);
+      }
+    });
 
     // ── Bâtiments existants (posés sur leur sol naturel) ──────────
     this._existingGroup = new THREE.Group();

@@ -190,6 +190,21 @@ const ExportEngine = {
         if (!proceed) { this._hideProgress(); return; }
       }
 
+      // ── Prefetch courbes de niveau (mutualisé via ContourCache) ──
+      // Charge les contours BIL une seule fois pour qu'ils soient disponibles
+      // dans les planches GIEP / topo / plan masse en mode sync.
+      if (window.ContourCache) {
+        const parcelGeo = window.ContourCache.parcelGeoFromTerrain(terrain);
+        if (parcelGeo) {
+          this._setProgress(32, 'Chargement courbes de niveau...');
+          try {
+            await window.ContourCache.loadOrGet(parcelGeo, { pixelSizeM: 1.0, maxDim: 220 });
+          } catch (e) {
+            console.warn('[ExportEngine] prefetch contours failed:', e?.message ?? e);
+          }
+        }
+      }
+
       // ── Rendu HTML des planches ──
       this._setProgress(35, 'Rendu des planches...');
       const allMaps = { ...mapCaptures, ...this._visuals };
@@ -292,9 +307,14 @@ const ExportEngine = {
         <div class="parcelle-ref">${ref ? commune : ''}</div>
       </div>
 
-      <div class="pb" style="display:flex;flex-direction:column;gap:6px;padding:0 18px">
-        <div style="display:flex;gap:10px">
-          <div class="sec" style="flex:1;min-width:0">
+      <div class="pb" style="display:flex;flex-direction:column;gap:10px;padding:0 40px">
+        <div style="display:flex;gap:8px">
+          <div style="flex:1;min-width:0">${mapImg(maps, 'cover_situation', 130, 'Ile · 1:500 000', 'Mapbox', svgSituation())}</div>
+          <div style="flex:1;min-width:0">${mapImg(maps, 'p01_situation_marked', 130, 'Commune · 1:25 000', 'Mapbox Satellite')}</div>
+          <div style="flex:1;min-width:0">${mapImg(maps, 'p01_situation', 130, 'Quartier · 1:5 000', 'Mapbox Satellite')}</div>
+        </div>
+        <div style="display:flex;gap:14px">
+          <div class="sec" style="flex:0.78;min-width:0">
             ${sec('IDENTIFICATION')}
             ${row('Commune', terrain.commune)}
             ${row('Code INSEE', terrain.code_insee)}
@@ -307,17 +327,10 @@ const ExportEngine = {
             ${row('Pente moy.', terrain.pente_moy_pct != null ? `${terrain.pente_moy_pct} %` : null)}
             ${row('Adresse', terrain.adresse)}
             ${row('Coordonnees', terrain.lat && terrain.lng ? `${Number(terrain.lat).toFixed(4)}, ${Number(terrain.lng).toFixed(4)}` : null)}
-            ${row('Date', date)}
-            ${row('Reference', uuid)}
           </div>
-          <div style="flex:1;min-width:0">
-            ${mapImg(maps, 'p01_cadastre', 320, 'Parcelle · Cadastre', 'IGN · Mapbox Satellite')}
+          <div style="flex:1.22;min-width:0">
+            ${mapImg(maps, 'p01_cadastre', 360, 'Parcelle · Cadastre', 'IGN · Mapbox Satellite')}
           </div>
-        </div>
-        <div style="display:flex;gap:6px">
-          ${mapImg(maps, 'cover_situation', 165, 'Ile · 1:500 000', 'Mapbox', svgSituation())}
-          ${mapImg(maps, 'p01_situation_marked', 165, 'Commune · 1:25 000', 'Mapbox Satellite')}
-          ${mapImg(maps, 'p01_situation', 165, 'Quartier · 1:5 000', 'Mapbox Satellite')}
         </div>
       </div>
       <div class="pg-foot">
@@ -533,7 +546,7 @@ const ExportEngine = {
     // Récupérer toutes les variantes (auto_plan_solutions sauvé en phase 7)
     const p7data = session?.getPhase?.(7)?.data ?? {};
     const allSolutions = (p7data.auto_plan_solutions ?? [])
-      .filter(s => s.family !== 'X0' && s.bat) // exclure non-constructibles
+      .filter(s => s.family !== 'X0' && (s.bat || s.blocs?.length)) // exclure non-constructibles
       // Tri stable A1→C2 (familles ordonnées par densité décroissante)
       .sort((a, b) => (a.family ?? 'Z').localeCompare(b.family ?? 'Z'));
 
@@ -593,22 +606,22 @@ const ExportEngine = {
           ${mRow('Amenites', metrics.amenites?.join(', '))}
         </div>
         ${paretoTable}
-        <div style="display:flex;gap:6px;flex:1">
+        <div style="display:flex;flex-direction:column;gap:6px;flex:1;min-height:0">
           ${planMasseImg ? `
-          <div class="map-wrap" style="flex:3;min-width:0">
+          <div class="map-wrap" style="flex:1.55;width:100%;min-height:0">
             <img src="${planMasseImg}" alt="Plan masse" style="object-fit:contain">
             <span class="map-lbl">Plan masse · variante ${activeFamily ?? '?'}</span>
             <span class="map-src">TERLAB · Auto-plan</span>
           </div>` : `
-          <div class="map-wrap" style="flex:3;min-width:0">
+          <div class="map-wrap" style="flex:1.55;width:100%;min-height:0">
             ${svgPlaceholder('Plan masse')}
             <span class="map-lbl">Plan masse</span>
           </div>`}
           ${this._visuals?.cadastreVector ? `
-          <div class="map-wrap" style="flex:2;min-width:0">
+          <div class="map-wrap" style="flex:1;width:100%;min-height:0">
             <img src="${this._visuals.cadastreVector}" alt="Plan cadastral" style="object-fit:contain">
-            <span class="map-lbl">Plan cadastral</span>
-            <span class="map-src">IGN · Cadastre vecteur WFS</span>
+            <span class="map-lbl">Plan cadastral · contexte IGN</span>
+            <span class="map-src">IGN · Cadastre WFS + BDTOPO</span>
           </div>` : ''}
         </div>
       </div>
@@ -634,7 +647,7 @@ const ExportEngine = {
 
     // Proposal depuis le visuals ou la session
     const proposal = this._visuals?.activeProposal ?? window._activeProposal ?? null;
-    if (!proposal?.bat) return ''; // pas d'étude de capacité
+    if (!proposal || (!proposal.bat && !proposal.blocs?.length)) return ''; // pas d'étude de capacité
 
     // Générer le plan GIEP SVG
     const giepSVG = GIEPPlanService.generatePlan(session, proposal, giepResult);

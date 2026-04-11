@@ -103,7 +103,7 @@ body {
 
 /* --- Sections de donnees ----------------------------------- */
 .sec     { display: flex; flex-direction: column; gap: 8px; }
-.stitle  { font-family: var(--fm); font-size: 7px; text-transform: uppercase; letter-spacing: .12em; color: var(--tc); padding-bottom: 4px; border-bottom: 0.5px solid var(--tc); opacity: .85; }
+.stitle  { font-family: var(--fm); font-size: 10px; text-transform: uppercase; letter-spacing: .14em; color: var(--tc); padding-bottom: 5px; border-bottom: 0.5px solid var(--tc); opacity: .9; }
 .fr      { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 0; border-bottom: 0.5px solid var(--ru); }
 .fl      { font-size: 9px; font-weight: 300; color: var(--ink2); font-family: var(--fu); }
 .fv      { font-family: var(--fm); font-size: 9px; color: var(--ink); text-align: right; }

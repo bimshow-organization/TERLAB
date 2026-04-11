@@ -137,14 +137,29 @@ const GIEPCalculator = {
     return { V_in, V_out, V_net, A_inf, A_dispo: A_EV, deficit };
   },
 
-  // ── Score GIEP (0–100) ────────────────────────────────────────────
+  // ── Score GIEP (peut être négatif si Q_final > Q_init = aggravation) ─
+  // Plafonné à 100 mais PAS planché à 0 : un score < 0 signifie que le projet
+  // aggrave le ruissellement par rapport à l'état naturel (terrain végétalisé
+  // imperméabilisé). Le label "Aggravation" est appliqué dans computeFromSession.
   computeScoreGIEP(debitInitial, debitFinal) {
     if (!debitInitial || debitInitial <= 0) return 0;
     return Math.min(100, Math.round((1 - debitFinal / debitInitial) * 100));
   },
 
+  // ── Label + couleur depuis le score (gère le cas négatif) ─────────
+  _labelFromScore(score) {
+    if (score < 0)        return { label: 'Aggravation', color: 'var(--danger)' };
+    if (score >= 70)      return { label: 'Excellent',   color: 'var(--success)' };
+    if (score >= 50)      return { label: 'Bon',         color: 'var(--accent)' };
+    if (score >= 30)      return { label: 'Moyen',       color: 'var(--warning)' };
+    return                       { label: 'Insuffisant', color: 'var(--danger)' };
+  },
+
   // ── Calcul complet depuis la session TERLAB ───────────────────────
-  computeFromSession(sessionData) {
+  // opts (optionnel, pour simulation) :
+  //   - mesuresOverride : string[]  → remplace p8.giep_mesures (ex. best-case)
+  //   - pctBatiOverride : number    → remplace l'emprise dérivée du gabarit P7
+  computeFromSession(sessionData, opts = {}) {
     const terrain = sessionData?.terrain ?? {};
     const p7 = sessionData?.phases?.[7]?.data ?? {};
     const p8 = sessionData?.phases?.[8]?.data ?? {};
@@ -165,10 +180,11 @@ const GIEPCalculator = {
       pctCanne: 10, pctAride: 0, pctConstructions: 40
     };
 
-    // Surfaces projet depuis Phase 7 + Phase 8
+    // Surfaces projet depuis Phase 7 + Phase 8 (ou overrides de simulation)
     const surfaceProjet = parseFloat(p7.gabarit_l_m ?? 10) * parseFloat(p7.gabarit_w_m ?? 8);
-    const pctBati = surface > 0 ? (surfaceProjet / surface) * 100 : 40;
-    const giepMesures = p8.giep_mesures ?? [];
+    const pctBatiBase = surface > 0 ? (surfaceProjet / surface) * 100 : 40;
+    const pctBati = opts.pctBatiOverride != null ? opts.pctBatiOverride : pctBatiBase;
+    const giepMesures = opts.mesuresOverride ?? p8.giep_mesures ?? [];
 
     const surfacesFinales = {
       pctToitureVersant:     Math.max(0, pctBati - (giepMesures.includes('toiture_verte') ? 15 : 0)),
@@ -193,6 +209,8 @@ const GIEPCalculator = {
       surfacesFinales.pctEspacesVerts
     );
 
+    const lbl = this._labelFromScore(score);
+
     return {
       zone,
       zone_nom: ZONES_CLIMATIQUES[zone]?.nom ?? zone,
@@ -208,11 +226,123 @@ const GIEPCalculator = {
       debitFinal: debitFinal.toFixed(1),
       reduction_pct: debitInit > 0 ? Math.round((1 - debitFinal / debitInit) * 100) : 0,
       score,
-      scoreLabel: score >= 70 ? 'Excellent' : score >= 50 ? 'Bon' : score >= 30 ? 'Moyen' : 'Insuffisant',
-      scoreColor: score >= 70 ? 'var(--success)' : score >= 50 ? 'var(--accent)' : score >= 30 ? 'var(--warning)' : 'var(--danger)',
+      scoreLabel: lbl.label,
+      scoreColor: lbl.color,
+      pctBati:     +pctBati.toFixed(1),
+      pctBatiBase: +pctBatiBase.toFixed(1),
+      mesuresActives: [...giepMesures],
       infiltration,
       ouvrages: this._recommandOuvrages(debitInit - debitFinal, surface, giepMesures),
       source_note: 'Méthode rationnelle · Kirpich/Caquot/Sogreah · Intensités DEAL Réunion 2012',
+    };
+  },
+
+  // ── Score potentiel : toutes les mesures GIEP activées ────────────
+  // Utilisé par le widget pour montrer "où tu pourrais aller sans rien changer
+  // au gabarit". Note : seules toiture_verte et pave_drainant influencent
+  // actuellement le coefficient final (noue/citerne sont des "ouvrages
+  // recommandés" calculés en aval, sans entrée dans surfacesFinales).
+  computeBestCaseFromSession(sessionData) {
+    return this.computeFromSession(sessionData, {
+      mesuresOverride: ['toiture_verte', 'pave_drainant', 'noue_infiltration', 'citerne_ep'],
+    });
+  },
+
+  // ── Optimiseur greedy : mesures + emprise pour atteindre une cible ─
+  // Stratégie pédagogique TERLAB :
+  //   1. Si déjà au-dessus → rien à faire
+  //   2. Sinon, activer toutes les mesures GIEP et re-tester
+  //   3. Sinon, réduire progressivement l'emprise (pas de 1%) jusqu'à 5% mini
+  //   4. Si cible inatteignable et target > 30 → fallback à 30 ("Moyen")
+  //   5. Sinon retourner reached:false avec message explicatif
+  // Cible par défaut = 50 ("Bon") : ambition GIEP réelle qui force l'arbitrage
+  // densité ↔ hydrologie. Inatteignable sur terrain naturel sans réduire
+  // l'emprise — c'est précisément le débat que le studio veut provoquer.
+  suggestImprovements(sessionData, targetScore = 50) {
+    const current = this.computeFromSession(sessionData);
+    if (!current) return null;
+
+    const ALL_MESURES_UTILES = ['toiture_verte', 'pave_drainant'];
+    const mesuresActuelles = sessionData?.phases?.[8]?.data?.giep_mesures ?? [];
+    const mesuresManquantes = ALL_MESURES_UTILES.filter(m => !mesuresActuelles.includes(m));
+    const surface = parseFloat(sessionData?.terrain?.contenance_m2 ?? 0);
+
+    // Étape 1 : déjà au-dessus de la cible
+    if (current.score >= targetScore) {
+      return {
+        reached: true,
+        alreadyOk: true,
+        targetScore,
+        current,
+        mesuresAAjouter: [],
+      };
+    }
+
+    // Étape 2 : essayer avec toutes les mesures sans toucher à l'emprise
+    const withMesures = this.computeFromSession(sessionData, {
+      mesuresOverride: ALL_MESURES_UTILES,
+    });
+    if (withMesures.score >= targetScore) {
+      return {
+        reached: true,
+        alreadyOk: false,
+        targetScore,
+        scoreProjet: withMesures.score,
+        scoreLabel: withMesures.scoreLabel,
+        scoreColor: withMesures.scoreColor,
+        mesuresAAjouter: mesuresManquantes,
+        empriseActuelle_pct: current.pctBati,
+        empriseCible_pct:    current.pctBati,
+        empriseActuelle_m2:  Math.round(surface * current.pctBati / 100),
+        empriseCible_m2:     Math.round(surface * current.pctBati / 100),
+        reductionEmprise_m2: 0,
+        current,
+        simulated: withMesures,
+      };
+    }
+
+    // Étape 3 : mesures + réduction d'emprise (pas 1%, plancher 5%)
+    let bestB = null;
+    let bestSim = null;
+    for (let b = Math.floor(current.pctBati); b >= 5; b -= 1) {
+      const sim = this.computeFromSession(sessionData, {
+        mesuresOverride: ALL_MESURES_UTILES,
+        pctBatiOverride: b,
+      });
+      if (sim.score >= targetScore) { bestB = b; bestSim = sim; break; }
+    }
+    if (bestB !== null) {
+      return {
+        reached: true,
+        alreadyOk: false,
+        targetScore,
+        scoreProjet: bestSim.score,
+        scoreLabel: bestSim.scoreLabel,
+        scoreColor: bestSim.scoreColor,
+        mesuresAAjouter: mesuresManquantes,
+        empriseActuelle_pct: +current.pctBati.toFixed(1),
+        empriseCible_pct:    +bestB.toFixed(1),
+        empriseActuelle_m2:  Math.round(surface * current.pctBati / 100),
+        empriseCible_m2:     Math.round(surface * bestB / 100),
+        reductionEmprise_m2: Math.round(surface * (current.pctBati - bestB) / 100),
+        current,
+        simulated: bestSim,
+      };
+    }
+
+    // Étape 4 : fallback à 30 si on visait plus haut
+    if (targetScore > 30) {
+      const fallback = this.suggestImprovements(sessionData, 30);
+      if (fallback?.reached) return { ...fallback, fallbackFrom: targetScore };
+    }
+
+    // Étape 5 : insolvable
+    return {
+      reached: false,
+      targetScore,
+      current,
+      mesuresAAjouter: mesuresManquantes,
+      message: `Cible ${targetScore}/100 inatteignable, même toutes mesures activées et emprise réduite à 5%. Le terrain naturel infiltre déjà mieux que tout projet bâti envisageable ici.`,
     };
   },
 

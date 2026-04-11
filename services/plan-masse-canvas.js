@@ -283,31 +283,24 @@ const PlanMasseCanvas = {
     }));
   },
 
-  // ── BIL : courbes de niveau (une seule fois) ───────────────────────
+  // ── BIL : courbes de niveau (une seule fois, mutualisé via ContourCache) ──
   async _loadContoursOnce() {
-    if (this._contourData || !window.ContourService || !window.BILTerrain) return;
+    if (this._contourData) return;
     if (!this._terrain?.parcelGeo?.length) return;
     const pg = this._terrain.parcelGeo;
-    let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
-    for (const [lng, lat] of pg) {
-      if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
-      if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
-    }
-    const lat0 = (minLat + maxLat) / 2;
-    const padM = 8;
-    const dLat = padM / 111320;
-    const dLng = padM / (111320 * Math.cos(lat0 * Math.PI / 180));
     try {
-      const data = await window.ContourService.fromBIL(
-        { west: minLng - dLng, east: maxLng + dLng, south: minLat - dLat, north: maxLat + dLat },
-        { pixelSizeM: 1.0, maxDim: 220 }
-      );
-      // Convertir chaque polyline WGS → local mètres (cohérent avec _terrain.poly)
-      data.linesLocal = data.lines.map(l => ({
+      const data = window.ContourCache
+        ? await window.ContourCache.loadOrGet(pg, { pixelSizeM: 1.0, maxDim: 220, padM: 8 })
+        : null;
+      if (!data) { this._contourData = null; return; }
+      // Convertir chaque polyline WGS → local mètres (cohérent avec _terrain.poly).
+      // L'origine locale du PMC peut différer de celle de l'esquisse — on reprojette
+      // donc systématiquement avec _geoToLocal du PMC.
+      const linesLocal = data.lines.map(l => ({
         level: l.level,
         pts: this._geoToLocal(l.coords).map(p => [p.x, p.y]),
       }));
-      this._contourData = data;
+      this._contourData = { ...data, linesLocal };
     } catch (e) {
       console.warn('[PMC] contours BIL failed:', e.message);
       this._contourData = null;

@@ -168,7 +168,10 @@ const LidarService = {
 
   // ── Analyse terrain (pente, exposition, altitudes) depuis points sol ──
   analyzeTerrain(points, parcelleGeojson) {
-    const groundPts = this._filterPointsInPolygon(points, parcelleGeojson);
+    // Si la classification est presente (p[6]), on restreint a la classe 2 (sol)
+    // pour que pente/altitudes ne soient pas faussees par toitures et vegetation.
+    const inPoly = this._filterPointsInPolygon(points, parcelleGeojson);
+    const groundPts = inPoly.filter(p => p.length < 7 || p[6] === 2);
     if (groundPts.length < 3) {
       return { error: 'Pas assez de points sol dans la parcelle', count: groundPts.length };
     }

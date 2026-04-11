@@ -38,6 +38,21 @@ const OUVRAGE_COLORS = {
   toiture_vegetalisee:  '#16a34a',
 };
 
+// Libellés des mesures GIEP utilisés par l'optimiseur
+const MESURE_LABELS = {
+  toiture_verte:     'Toiture végétale',
+  pave_drainant:     'Pavé drainant',
+  noue_infiltration: "Noue d'infiltration",
+  citerne_ep:        'Citerne EP',
+};
+
+const MESURE_ICONS = {
+  toiture_verte:     '\u{1F33F}',
+  pave_drainant:     '\u2B1B',
+  noue_infiltration: '\u301C',
+  citerne_ep:        '\u{1F3FA}',
+};
+
 const GIEPScore = {
 
   // ── Bloc CBS — Coefficient de Biotope par Surface ─────────────────
@@ -100,6 +115,68 @@ const GIEPScore = {
       </div>`;
   },
 
+  // ── Bloc "score potentiel" + "suggestion auto" ────────────────────
+  // Affiché uniquement quand le score actuel est sous le seuil "Bon" (50/100).
+  // Le potentiel = score si toutes les mesures GIEP utiles étaient cochées,
+  //                sans toucher à l'emprise. Donne immédiatement à l'étudiant
+  //                l'écart "où je suis vs où je peux aller sans bouger le gabarit".
+  // La suggestion = sortie du greedy optimiseur (cible 50).
+  buildOptimisationBlock(sessionData, current) {
+    if (!current || current.score >= 50) return '';
+
+    const best = GIEPCalculator.computeBestCaseFromSession(sessionData);
+    const sugg = GIEPCalculator.suggestImprovements(sessionData, 50);
+    if (!best || !sugg) return '';
+
+    const arrow = best.score > current.score ? '\u2197' : '\u2192';
+    const gain = best.score - current.score;
+    const potentielHTML = `
+      <div class="gsw-row" style="margin-top:4px">
+        <span>Score actuel ${arrow} potentiel <span style="color:var(--muted);font-size:9px">(toutes mesures activées)</span></span>
+        <strong>
+          <span style="color:${current.scoreColor}">${current.score}</span>
+          <span style="color:var(--muted);margin:0 4px">${arrow}</span>
+          <span style="color:${best.scoreColor}">${best.score}</span>
+          <span style="color:var(--muted);font-size:9px;margin-left:4px">(+${gain})</span>
+        </strong>
+      </div>`;
+
+    // Suggestion auto
+    let suggBodyHTML;
+    if (!sugg.reached) {
+      suggBodyHTML = `<div style="font-size:10px;color:var(--danger);margin-top:4px">${sugg.message}</div>`;
+    } else {
+      const fb = sugg.fallbackFrom
+        ? `<div style="font-size:9px;color:var(--muted);margin-bottom:3px">Cible 50 inatteignable, repli sur cible ${sugg.targetScore} ("Moyen")</div>`
+        : '';
+      const mesuresHTML = sugg.mesuresAAjouter.length
+        ? `<div style="font-size:10px;margin-top:3px">
+            Mesures à activer :
+            ${sugg.mesuresAAjouter.map(m => `<span style="display:inline-block;background:rgba(34,197,94,.15);color:#16a34a;padding:1px 6px;border-radius:3px;margin:1px 2px;font-size:9px">${MESURE_ICONS[m] ?? ''} ${MESURE_LABELS[m] ?? m}</span>`).join('')}
+          </div>`
+        : `<div style="font-size:10px;color:var(--muted);margin-top:3px">Toutes les mesures GIEP sont déjà activées.</div>`;
+      const empriseHTML = sugg.reductionEmprise_m2 > 0
+        ? `<div style="font-size:10px;margin-top:3px;color:var(--warning)">
+            Réduire l'emprise au sol : <strong>${sugg.empriseActuelle_m2} m² (${sugg.empriseActuelle_pct}%) → ${sugg.empriseCible_m2} m² (${sugg.empriseCible_pct}%)</strong>
+            <span style="color:var(--muted);font-size:9px">— soit −${sugg.reductionEmprise_m2} m² (densifier en R+1)</span>
+          </div>`
+        : '';
+      const projHTML = `
+        <div class="gsw-row" style="margin-top:4px">
+          <span>Score projeté</span>
+          <strong style="color:${sugg.scoreColor}">${sugg.scoreProjet} <span style="font-size:9px;color:var(--muted)">(${sugg.scoreLabel})</span></strong>
+        </div>`;
+      suggBodyHTML = fb + mesuresHTML + empriseHTML + projHTML;
+    }
+
+    return `
+      <div class="gsw-reco" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+        <div class="gsw-reco-title">\u{1F4A1} Optimisation auto (cible : Bon ≥ 50/100)</div>
+        ${potentielHTML}
+        ${suggBodyHTML}
+      </div>`;
+  },
+
   // ── Calcul et rendu HTML du widget ────────────────────────────────
   buildWidget(sessionData) {
     const s = GIEPCalculator.computeFromSession(sessionData);
@@ -130,12 +207,22 @@ const GIEPScore = {
           </div>`).join('')}
       </div>` : '';
 
+    // Affichage spécial pour score négatif : "−56 (aggravation)" sans /100
+    // (afficher /100 sur un score négatif crée plus de confusion qu'autre chose)
+    const isAggravation = s.score < 0;
+    const scoreDisplayHTML = isAggravation
+      ? `<div class="gsw-score" style="color:${s.scoreColor};font-size:28px;font-family:var(--font-serif)" title="Le projet aggrave le ruissellement par rapport à l'état naturel">${s.score} <small style="font-size:11px">(aggravation)</small></div>`
+      : `<div class="gsw-score" style="color:${s.scoreColor};font-size:28px;font-family:var(--font-serif)">${s.score}<small>/100</small></div>`;
+    const labelHTML = isAggravation
+      ? '' // libellé déjà inclus dans le score "(aggravation)"
+      : `<div class="gsw-label" style="color:${s.scoreColor}">${s.scoreLabel}</div>`;
+
     return `
       <div class="giep-score-widget" role="region" aria-label="Score GIEP">
         <div class="gsw-header">
           <div class="gsw-title">Score GIEP — Gestion Eaux Pluviales</div>
-          <div class="gsw-score" style="color:${s.scoreColor};font-size:28px;font-family:var(--font-serif)">${s.score}<small>/100</small></div>
-          <div class="gsw-label" style="color:${s.scoreColor}">${s.scoreLabel}</div>
+          ${scoreDisplayHTML}
+          ${labelHTML}
         </div>
         <div class="gsw-grid">
           <div class="gsw-row"><span>Zone climatique</span><strong>${s.zone_nom}</strong></div>
@@ -150,6 +237,7 @@ const GIEPScore = {
           ${infiltHTML}
         </div>
         ${ouvragesHTML}
+        ${this.buildOptimisationBlock(sessionData, s)}
         ${this.buildCBSBlock(sessionData)}
         <div class="gsw-note">${s.source_note}</div>
         <a href="https://www.reunion.developpement-durable.gouv.fr" target="_blank"

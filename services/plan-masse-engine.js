@@ -1,11 +1,15 @@
 // terlab/services/plan-masse-engine.js
-// PlanMasseEngine — Moteur de calcul plan masse v5
+// PlanMasseEngine — Moteur de calcul plan masse v5.1
 // Calculs purs (zéro DOM) : métriques, conformité 7 points, capacité, subdivision, parking
 // Porté depuis terlab-plan-editor-v5.html
+// v5.1 : compat multi-blocs — les fonctions clampBat/batInEnv/getBlocRects/getParkRect
+//        acceptent désormais soit un AABB legacy (édition live), soit lisent
+//        proposal.blocs[] via state.proposal pour les bâtiments tournés.
 // ENSA La Réunion · MGA Architecture
 
 import { getZoneRTAA } from './reunion-constants.js';
 import TopoCaseService from './topo-case-service.js';
+import FH              from './footprint-helpers.js';
 
 // ── CONSTANTES ───────────────────────────────────────────────────────────────
 const SNAP_M   = 0.5;
@@ -113,17 +117,25 @@ const PlanMasseEngine = {
   },
 
   // ── METRIQUES PRINCIPALES ──────────────────────────────────
-  // state = { bat, prog, parkSide, terrain, scenario }
+  // state = { bat, prog, parkSide, terrain, scenario, proposal? }
+  // Si state.proposal.blocs[] existe, on l'utilise pour calculer la vraie emprise
+  // (sommée sur les polygones tournés). Sinon on tombe sur bat.w * bat.l (legacy).
   metrics(state) {
-    const { bat, prog, parkSide, terrain, scenario } = state;
+    const { bat, prog, parkSide, terrain, scenario, proposal } = state;
     const plu = terrain.plu;
     const sc = scenario ?? { eff: 0.82, aide: 0.60, nv: 3, color: '#2563EB' };
     const env = this.computeEnv(terrain);
     const nvEffMax = this.nvMaxPLU(plu);
     const nvEff = Math.min(prog.nvMax ?? 2, nvEffMax);
 
-    // Emprise + SP
-    const emprise = bat.w * bat.l;
+    // Emprise réelle : depuis blocs[] si dispo, sinon AABB legacy
+    const blocs = proposal?.blocs;
+    let emprise;
+    if (blocs?.length) {
+      emprise = FH.totalArea(blocs);
+    } else {
+      emprise = bat.w * bat.l;
+    }
     const empPct = terrain.area > 0 ? emprise / terrain.area * 100 : 0;
     let spBase = emprise;
     if (prog.parkMode === 'rdc') spBase *= 0.75;
@@ -163,8 +175,13 @@ const PlanMasseEngine = {
 
     // Multi-bâtiment
     const gapMin = Math.max(plu.interBatMin ?? 4, nvEff * H_NIV / 2);
-    const nbBlocs = (prog.type === 'collectif' && (prog.maxUnits ?? 0) > 0 && nbLgts > prog.maxUnits)
-      ? Math.ceil(nbLgts / Math.max(1, prog.maxUnits)) : 1;
+    let nbBlocs;
+    if (blocs?.length) {
+      nbBlocs = blocs.length;
+    } else {
+      nbBlocs = (prog.type === 'collectif' && (prog.maxUnits ?? 0) > 0 && nbLgts > prog.maxUnits)
+        ? Math.ceil(nbLgts / Math.max(1, prog.maxUnits)) : 1;
+    }
 
     // ── 7 CHECKS CONFORMITE ──────────────────────────────────
     const checks = [
@@ -260,7 +277,16 @@ const PlanMasseEngine = {
   },
 
   // ── SUBDIVISION MULTI-BATIMENT ─────────────────────────────
-  getBlocRects(bat, metrics) {
+  // 3ème argument optionnel : proposal — si présent et qu'il a déjà des blocs[],
+  // on retourne directement les AABB des blocs réels (rotation préservée via polygon).
+  getBlocRects(bat, metrics, proposal) {
+    // Si la proposal a déjà des blocs (auto-plan v2) → retourner leurs AABB
+    if (proposal?.blocs?.length) {
+      return proposal.blocs.map(b => {
+        const ab = FH.aabb(b.polygon ?? []);
+        return { x: ab.x, y: ab.y, w: ab.w, l: ab.l, polygon: b.polygon, theta: b.theta };
+      });
+    }
     const nb = metrics.nbBlocs;
     if (nb <= 1) return [bat];
     const gap = metrics.gapMin;

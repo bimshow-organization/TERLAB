@@ -193,9 +193,9 @@ const MapViewer = {
     if (!m || m.getSource('parcelle-selected')) return;
 
     m.addSource('parcelle-selected', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    m.addLayer({ id: 'parcelle-fill', type: 'fill', source: 'parcelle-selected', paint: { 'fill-color': '#E8811A', 'fill-opacity': 0.18 } });
+    m.addLayer({ id: 'parcelle-fill', type: 'fill', source: 'parcelle-selected', paint: { 'fill-color': '#C1652B', 'fill-opacity': 0.18 } });
     m.addLayer({ id: 'parcelle-casing', type: 'line', source: 'parcelle-selected', paint: { 'line-color': '#000000', 'line-width': 5, 'line-opacity': 0.5 } });
-    m.addLayer({ id: 'parcelle-outline', type: 'line', source: 'parcelle-selected', paint: { 'line-color': '#E8811A', 'line-width': 3 } });
+    m.addLayer({ id: 'parcelle-outline', type: 'line', source: 'parcelle-selected', paint: { 'line-color': '#C1652B', 'line-width': 3 } });
 
     // Restaurer la géométrie depuis la session
     const terrain = window.SessionManager?.getTerrain?.() ?? {};
@@ -611,8 +611,8 @@ const MapViewer = {
 
     // Couche parcelle + reculs depuis session
     m.addSource('parcelle-p4', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-    m.addLayer({ id: 'parcelle-p4-fill', type: 'fill', source: 'parcelle-p4', paint: { 'fill-color': '#E8811A', 'fill-opacity': 0.1 } });
-    m.addLayer({ id: 'parcelle-p4-line', type: 'line', source: 'parcelle-p4', paint: { 'line-color': '#E8811A', 'line-width': 2 } });
+    m.addLayer({ id: 'parcelle-p4-fill', type: 'fill', source: 'parcelle-p4', paint: { 'fill-color': '#C1652B', 'fill-opacity': 0.1 } });
+    m.addLayer({ id: 'parcelle-p4-line', type: 'line', source: 'parcelle-p4', paint: { 'line-color': '#C1652B', 'line-width': 2 } });
 
     m.addSource('reculs-p4', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     m.addLayer({ id: 'reculs-p4-fill', type: 'fill', source: 'reculs-p4', paint: { 'fill-color': '#a78bfa', 'fill-opacity': 0.15 } });
@@ -1260,13 +1260,13 @@ const MapViewer = {
         id: 'parcelle-fill',
         type: 'fill',
         source: srcId,
-        paint: { 'fill-color': '#E8811A', 'fill-opacity': 0.08 }
+        paint: { 'fill-color': '#C1652B', 'fill-opacity': 0.08 }
       });
       this._map.addLayer({
         id: 'parcelle-outline',
         type: 'line',
         source: srcId,
-        paint: { 'line-color': '#E8811A', 'line-width': 2.5, 'line-opacity': 0.85 }
+        paint: { 'line-color': '#C1652B', 'line-width': 2.5, 'line-opacity': 0.85 }
       });
     }
   },

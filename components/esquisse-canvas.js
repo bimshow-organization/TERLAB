@@ -1462,6 +1462,33 @@ const EsquisseCanvas = {
     return Math.abs(this._signedArea(pts));
   },
 
+  // Centroïde géométrique pondéré (centre de masse) en repère local mètres
+  // Utilisé pour positionner les labels sur les blocs tournés ou les unions multi-blocs.
+  _localCentroidWeighted(pts) {
+    if (!pts || pts.length < 3) {
+      if (!pts?.length) return { x: 0, y: 0 };
+      const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+      const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+      return { x: cx, y: cy };
+    }
+    let a = 0, cx = 0, cy = 0;
+    const n = pts.length;
+    for (let i = 0; i < n; i++) {
+      const p1 = pts[i], p2 = pts[(i + 1) % n];
+      const cross = p1.x * p2.y - p2.x * p1.y;
+      a += cross;
+      cx += (p1.x + p2.x) * cross;
+      cy += (p1.y + p2.y) * cross;
+    }
+    a *= 0.5;
+    if (Math.abs(a) < 1e-10) {
+      const fx = pts.reduce((s, p) => s + p.x, 0) / n;
+      const fy = pts.reduce((s, p) => s + p.y, 0) / n;
+      return { x: fx, y: fy };
+    }
+    return { x: cx / (6 * a), y: cy / (6 * a) };
+  },
+
   // CW dans espace local (Y inverse SVG) = sens geometrique correct pour l'offset interieur
   _ensureCW(pts) {
     return this._signedArea(pts) > 0 ? pts : [...pts].reverse();
@@ -1661,7 +1688,11 @@ const EsquisseCanvas = {
 
     // ── Initialiser AABB depuis la proposition si pas encore fait ──
     if (!this._buildingAABB) {
-      if (prop.bat) {
+      if (prop.blocs?.length) {
+        // Modèle v2 : AABB = union des polygones des blocs
+        const bb = this._aabbOfBlocs(prop.blocs);
+        this._buildingAABB = { x: bb.x, y: bb.y, w: bb.w, l: bb.l };
+      } else if (prop.bat) {
         // Préférer le bat calculé par AutoPlanEngine (déjà clampé profMax/rtaaW)
         this._buildingAABB = { ...prop.bat };
       } else if (prop.polygon?.length >= 3) {
@@ -1692,7 +1723,16 @@ const EsquisseCanvas = {
     if (this._editMode === 'aabb' && bat) {
       // ══ MODE AABB — Rectangle + 8 handles (style v5) ══════════
 
-      // Projeter les 4 coins du rectangle
+      // Détection multi-blocs / rotation : si la proposal a déjà des blocs[],
+      // on dessine les vrais polygones (tournés / multiples) au lieu d'un rect
+      // axis-aligned. Les 8 handles AABB sont désactivés en multi-bloc / rotation.
+      const blocsList = prop.blocs ?? null;
+      const isMulti = (blocsList?.length ?? 0) > 1;
+      const hasRotation = blocsList?.length === 1
+        && Math.abs(blocsList[0].theta ?? 0) > 1e-3;
+      const handlesEnabled = !isMulti && !hasRotation;
+
+      // Projeter les 4 coins de l'AABB d'ensemble
       const corners = [
         { x: bat.x, y: bat.y },
         { x: bat.x + bat.w, y: bat.y },
@@ -1708,77 +1748,129 @@ const EsquisseCanvas = {
       const sw = Math.max(...svgCorners.map(c => c.x)) - sx;
       const sh = Math.max(...svgCorners.map(c => c.y)) - sy;
 
-      // Ombre
-      this._el('rect', {
-        x: sx + 3, y: sy + 3, width: sw, height: sh, rx: 2,
-        fill: `rgba(0,0,0,0.08)`, stroke: 'none', 'pointer-events': 'none',
-      }, null, g);
-
-      // Corps du bâtiment (draggable)
-      this._el('rect', {
-        x: sx, y: sy, width: sw, height: sh, rx: 2,
-        fill: `rgba(${this._hexRgb(batCol)},0.22)`,
-        stroke: batCol, 'stroke-width': 2.5,
-        cursor: 'move', 'data-type': 'building-body', 'data-proposal': idx,
-      }, 'bat-body', g);
-
-      // Bande façade voie (1.5m)
-      const bandH = this._mToPx(1.5);
-      if (bandH > 2) {
+      if (blocsList?.length) {
+        // ── Rendu polygonal des blocs réels (tournés possibles) ──
+        // Ombre douce (un cadre AABB léger en arrière-plan)
         this._el('rect', {
-          x: sx, y: sy + sh - bandH, width: sw, height: bandH, rx: 0,
-          fill: 'rgba(245,222,179,0.5)', stroke: batCol, 'stroke-width': 1,
-          'stroke-dasharray': '5,3', 'pointer-events': 'none',
+          x: sx + 3, y: sy + 3, width: sw, height: sh, rx: 2,
+          fill: `rgba(0,0,0,0.05)`, stroke: 'none', 'pointer-events': 'none',
+        }, null, g);
+
+        blocsList.forEach((bloc, bi) => {
+          const polyLocal = bloc.polygon ?? [];
+          if (polyLocal.length < 3) return;
+          const svgPts = this._map
+            ? this._projectAll(this._localToGeo(polyLocal))
+            : polyLocal.map(c => this._localToSvgPt(c));
+
+          // Corps du bloc (draggable global du bâtiment)
+          this._el('polygon', {
+            points: this._polyPoints(svgPts),
+            fill: `rgba(${this._hexRgb(batCol)},0.22)`,
+            stroke: batCol, 'stroke-width': 2.5,
+            'stroke-linejoin': 'round',
+            cursor: 'move',
+            'data-type': 'building-body', 'data-proposal': idx, 'data-bloc': bi,
+          }, bi === 0 ? 'bat-body' : null, g);
+        });
+
+        // Label central (depuis centroïde du bâtiment global)
+        const cwAll = this._localCentroidWeighted(blocsList.flatMap(b => b.polygon ?? []));
+        const cwSvg = this._map
+          ? this._project(this._localToGeo([cwAll])[0])
+          : this._localToSvgPt(cwAll);
+        const nvEff = m?.nvEff ?? 1;
+        const nvLbl = ['', 'R+0', 'R+1', 'R+2', 'R+3', 'R+4'][nvEff] ?? `R+${nvEff - 1}`;
+        const mainLbl = this._prog.type === 'maison' ? 'Maison' : `${m?.nbLgts ?? '?'} lgts`;
+        this._label(cwSvg.x, cwSvg.y - 10, mainLbl, { size: 13, color: batCol, bold: true }, null, g);
+        const dimLbl = isMulti ? `${blocsList.length} blocs` : `${bat.w.toFixed(1)}×${bat.l.toFixed(1)}m`;
+        this._label(cwSvg.x, cwSvg.y + 5, dimLbl, { size: 9, color: batCol }, null, g);
+        this._label(cwSvg.x, cwSvg.y + 18, `${nvLbl} — h≤${(nvEff * 3).toFixed(0)}m`, { size: 8, color: batCol }, null, g);
+      } else {
+        // ── Rendu legacy : rect axis-aligned (édition manuelle) ──
+        // Ombre
+        this._el('rect', {
+          x: sx + 3, y: sy + 3, width: sw, height: sh, rx: 2,
+          fill: `rgba(0,0,0,0.08)`, stroke: 'none', 'pointer-events': 'none',
+        }, null, g);
+
+        // Corps du bâtiment (draggable)
+        this._el('rect', {
+          x: sx, y: sy, width: sw, height: sh, rx: 2,
+          fill: `rgba(${this._hexRgb(batCol)},0.22)`,
+          stroke: batCol, 'stroke-width': 2.5,
+          cursor: 'move', 'data-type': 'building-body', 'data-proposal': idx,
+        }, 'bat-body', g);
+
+        // Bande façade voie (1.5m)
+        const bandH = this._mToPx(1.5);
+        if (bandH > 2) {
+          this._el('rect', {
+            x: sx, y: sy + sh - bandH, width: sw, height: bandH, rx: 0,
+            fill: 'rgba(245,222,179,0.5)', stroke: batCol, 'stroke-width': 1,
+            'stroke-dasharray': '5,3', 'pointer-events': 'none',
+          }, null, g);
+        }
+
+        // Labels centraux
+        const cx = sx + sw / 2, cy = sy + sh / 2;
+        const nvEff = m?.nvEff ?? 1;
+        const nvLbl = ['', 'R+0', 'R+1', 'R+2', 'R+3', 'R+4'][nvEff] ?? `R+${nvEff - 1}`;
+        const mainLbl = this._prog.type === 'maison' ? 'Maison' : `${m?.nbLgts ?? '?'} lgts`;
+        this._label(cx, cy - 10, mainLbl, { size: 13, color: batCol, bold: true }, null, g);
+        this._label(cx, cy + 5, `${bat.w.toFixed(1)}×${bat.l.toFixed(1)}m`, { size: 9, color: batCol }, null, g);
+        this._label(cx, cy + 18, `${nvLbl} — h≤${(nvEff * 3).toFixed(0)}m`, { size: 8, color: batCol }, null, g);
+      }
+
+      // ── 8 HANDLES (uniquement si pas de rotation et un seul bloc) ──
+      if (handlesEnabled) {
+        const handles = [
+          ['sw', sx,        sy + sh,    'sw-resize', 'c'],
+          ['s',  sx + sw/2, sy + sh,    's-resize',  'd'],
+          ['se', sx + sw,   sy + sh,    'se-resize', 'c'],
+          ['e',  sx + sw,   sy + sh/2,  'e-resize',  'd'],
+          ['ne', sx + sw,   sy,         'ne-resize', 'c'],
+          ['n',  sx + sw/2, sy,         'n-resize',  'd'],
+          ['nw', sx,        sy,         'nw-resize', 'c'],
+          ['w',  sx,        sy + sh/2,  'w-resize',  'd'],
+        ];
+        for (const [hid, hx, hy, cursor, shape] of handles) {
+          if (shape === 'c') {
+            this._el('circle', {
+              cx: hx, cy: hy, r: 5.5,
+              fill: '#fff', stroke: batCol, 'stroke-width': 2,
+              cursor, class: 'edit-handle', 'data-handle': hid, 'data-proposal': idx,
+            }, null, g);
+          } else {
+            // Losange (carré tourné 45°)
+            this._el('rect', {
+              x: hx - 4.5, y: hy - 4.5, width: 9, height: 9,
+              fill: '#fff', stroke: batCol, 'stroke-width': 1.5,
+              cursor, class: 'edit-handle', 'data-handle': hid, 'data-proposal': idx,
+              transform: `rotate(45,${hx},${hy})`,
+            }, null, g);
+          }
+        }
+      } else {
+        // Indicateur "édition libre désactivée" — frame en pointillés
+        this._el('rect', {
+          x: sx, y: sy, width: sw, height: sh,
+          fill: 'none', stroke: batCol, 'stroke-width': 1,
+          'stroke-dasharray': '4,3', opacity: 0.4,
+          'pointer-events': 'none',
         }, null, g);
       }
 
-      // Labels centraux
-      const cx = sx + sw / 2, cy = sy + sh / 2;
-      const nvEff = m?.nvEff ?? 1;
-      const nvLbl = ['', 'R+0', 'R+1', 'R+2', 'R+3', 'R+4'][nvEff] ?? `R+${nvEff - 1}`;
-      const mainLbl = this._prog.type === 'maison' ? 'Maison' : `${m?.nbLgts ?? '?'} lgts`;
-      this._label(cx, cy - 10, mainLbl, { size: 13, color: batCol, bold: true }, null, g);
-      this._label(cx, cy + 5, `${bat.w.toFixed(1)}×${bat.l.toFixed(1)}m`, { size: 9, color: batCol }, null, g);
-      this._label(cx, cy + 18, `${nvLbl} — h≤${(nvEff * 3).toFixed(0)}m`, { size: 8, color: batCol }, null, g);
-
-      // ── 8 HANDLES ──────────────────────────────────────────────
-      const handles = [
-        ['sw', sx,        sy + sh,    'sw-resize', 'c'],
-        ['s',  sx + sw/2, sy + sh,    's-resize',  'd'],
-        ['se', sx + sw,   sy + sh,    'se-resize', 'c'],
-        ['e',  sx + sw,   sy + sh/2,  'e-resize',  'd'],
-        ['ne', sx + sw,   sy,         'ne-resize', 'c'],
-        ['n',  sx + sw/2, sy,         'n-resize',  'd'],
-        ['nw', sx,        sy,         'nw-resize', 'c'],
-        ['w',  sx,        sy + sh/2,  'w-resize',  'd'],
-      ];
-      for (const [hid, hx, hy, cursor, shape] of handles) {
-        if (shape === 'c') {
-          this._el('circle', {
-            cx: hx, cy: hy, r: 5.5,
-            fill: '#fff', stroke: batCol, 'stroke-width': 2,
-            cursor, class: 'edit-handle', 'data-handle': hid, 'data-proposal': idx,
-          }, null, g);
-        } else {
-          // Losange (carré tourné 45°)
-          this._el('rect', {
-            x: hx - 4.5, y: hy - 4.5, width: 9, height: 9,
-            fill: '#fff', stroke: batCol, 'stroke-width': 1.5,
-            cursor, class: 'edit-handle', 'data-handle': hid, 'data-proposal': idx,
-            transform: `rotate(45,${hx},${hy})`,
-          }, null, g);
-        }
-      }
-
-      // Cotations
+      // Cotations (basées sur l'AABB d'ensemble)
       this._drawDimLinesV5(bat, g);
 
-      // Multi-bâtiment (subdivision blocs)
-      if (m?.nbBlocs > 1) {
+      // Multi-bâtiment : si la proposal n'a PAS encore de blocs[] mais que les
+      // métriques détectent nbBlocs > 1, on rend la subdivision legacy (split AABB).
+      if (!blocsList?.length && m?.nbBlocs > 1) {
         this._renderBlocs(bat, m, batCol, g);
       }
 
-      // Parking
+      // Parking (utilise toujours l'AABB d'ensemble — placement axis-aligned)
       this._renderParking(bat, m, batCol, g);
 
     } else {
@@ -2625,12 +2717,14 @@ const EsquisseCanvas = {
       this._engineTerrain = engine.terrainFromSession(session);
     }
     const scenario = this._getScenario();
+    const activeProposal = this._proposals?.[this._selected] ?? null;
     const state = {
       bat: this._buildingAABB,
       prog: this._prog,
       parkSide: this._parkSide,
       terrain: this._engineTerrain,
       scenario,
+      proposal: activeProposal, // pour que metrics() lise les blocs[] réels
     };
     this._engineMetrics = engine.metrics(state);
 
@@ -2648,11 +2742,35 @@ const EsquisseCanvas = {
     return { eff: 0.82, aide: 0.60, nv: 3, color: '#2563EB' };
   },
 
-  // Synchroniser le polygone proposition depuis l'AABB (pour compat avec l'ancien système)
+  // Synchroniser le polygone proposition depuis l'AABB
+  // Cas 1 : proposal n'a pas de blocs[] → rebuild rect 4-corners (legacy)
+  // Cas 2 : proposal a des blocs[] → translate les polygones par le delta AABB
+  // Cas 3 : proposal a des blocs[] et l'AABB a changé de taille → on prévient
+  //         le resize et on garde uniquement la translation (les bâtiments tournés
+  //         ne sont pas redimensionnables via les handles AABB)
   _syncPolygonFromAABB(prop) {
     const b = this._buildingAABB;
     if (!b || !prop) return;
-    // Recréer un polygone rectangle
+
+    if (prop.blocs?.length) {
+      // Translate tous les blocs depuis l'ancienne AABB vers la nouvelle
+      const oldBb = this._aabbOfBlocs(prop.blocs);
+      const dx = b.x - oldBb.x;
+      const dy = b.y - oldBb.y;
+      if (Math.abs(dx) > 1e-6 || Math.abs(dy) > 1e-6) {
+        for (const bloc of prop.blocs) {
+          bloc.polygon = (bloc.polygon ?? []).map(p => ({ x: p.x + dx, y: p.y + dy }));
+        }
+      }
+      // Polygon legacy (premier bloc)
+      prop.polygon = prop.blocs[0]?.polygon ?? null;
+      prop.polygonGeo = prop.polygon ? this._localToGeo(prop.polygon) : null;
+      // Surface = somme des aires (n'a pas changé par translation)
+      prop.surface = prop.blocs.reduce((s, bl) => s + this._polygonAreaLocal(bl.polygon ?? []), 0);
+      return;
+    }
+
+    // Legacy : recréer un polygone rectangle 4-corners depuis AABB
     prop.polygon = [
       { x: b.x, y: b.y },
       { x: b.x + b.w, y: b.y },
@@ -2661,40 +2779,63 @@ const EsquisseCanvas = {
     ];
     prop.polygonGeo = this._localToGeo(prop.polygon);
     prop.surface = b.w * b.l;
-    // Invalidate engine terrain cache (position changed)
-    // Les métriques seront recalculées au prochain _renderProposal
+  },
+
+  // AABB de l'union des polygones de blocs (en repère local)
+  _aabbOfBlocs(blocs) {
+    if (!blocs?.length) return { x: 0, y: 0, w: 0, l: 0 };
+    let xMin = Infinity, yMin = Infinity, xMax = -Infinity, yMax = -Infinity;
+    for (const b of blocs) {
+      for (const p of (b.polygon ?? [])) {
+        if (p.x < xMin) xMin = p.x;
+        if (p.x > xMax) xMax = p.x;
+        if (p.y < yMin) yMin = p.y;
+        if (p.y > yMax) yMax = p.y;
+      }
+    }
+    return { x: xMin, y: yMin, w: xMax - xMin, l: yMax - yMin };
   },
 
   // ── Multi-bâtiment : subdiviser en blocs ────────────────────
   _renderBlocs(bat, m, batCol, g) {
     const engine = window.PlanMasseEngine;
     if (!engine) return;
-    const blocs = engine.getBlocRects(bat, m);
+    const prop = this._proposals?.[this._selected];
+    const blocs = engine.getBlocRects(bat, m, prop);
     if (blocs.length <= 1) return;
 
     // Dessiner chaque bloc séparément (par-dessus le rectangle principal)
     blocs.forEach((bl, bi) => {
-      const corners = [
+      // Si le bloc a un polygon (auto-plan v2), on dessine le polygon réel ;
+      // sinon on construit un rect AABB depuis x/y/w/l (subdivision legacy).
+      const useRealPolygon = bl.polygon?.length >= 3;
+      const corners = useRealPolygon ? bl.polygon : [
         { x: bl.x, y: bl.y }, { x: bl.x + bl.w, y: bl.y },
         { x: bl.x + bl.w, y: bl.y + bl.l }, { x: bl.x, y: bl.y + bl.l },
       ];
       const svgC = this._map
         ? this._projectAll(this._localToGeo(corners))
         : corners.map(c => this._localToSvgPt(c));
+
+      // Rectangle/polygon bloc
+      this._el('polygon', {
+        points: this._polyPoints(svgC),
+        fill: `rgba(${this._hexRgb(batCol)},0.15)`,
+        stroke: batCol, 'stroke-width': 1.5, 'stroke-dasharray': '6,3',
+        'stroke-linejoin': 'round',
+        'pointer-events': 'none',
+      }, null, g);
+      // Label bloc — depuis le centroïde du polygon
+      const cw = this._localCentroidWeighted(corners);
+      const cwSvg = this._map
+        ? this._project(this._localToGeo([cw])[0])
+        : this._localToSvgPt(cw);
+      this._label(cwSvg.x, cwSvg.y + 3, `B${bi + 1}`, { size: 10, color: batCol, bold: true }, null, g);
+      // Pour le calcul de gap (legacy), on garde sx/sy/sw/sh basé sur l'AABB du polygon
       const sx = Math.min(...svgC.map(c => c.x));
       const sy = Math.min(...svgC.map(c => c.y));
       const sw = Math.max(...svgC.map(c => c.x)) - sx;
       const sh = Math.max(...svgC.map(c => c.y)) - sy;
-
-      // Rectangle bloc
-      this._el('rect', {
-        x: sx, y: sy, width: sw, height: sh, rx: 1,
-        fill: `rgba(${this._hexRgb(batCol)},0.15)`,
-        stroke: batCol, 'stroke-width': 1.5, 'stroke-dasharray': '6,3',
-        'pointer-events': 'none',
-      }, null, g);
-      // Label bloc
-      this._label(sx + sw / 2, sy + sh / 2 + 3, `B${bi + 1}`, { size: 10, color: batCol, bold: true }, null, g);
 
       // Gap inter-blocs
       if (bi < blocs.length - 1) {

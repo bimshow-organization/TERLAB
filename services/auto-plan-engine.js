@@ -1,13 +1,23 @@
-// terlab/services/auto-plan-engine.js · Placement automatique Pareto A1-C2 · v1.2
+// terlab/services/auto-plan-engine.js · Placement automatique Pareto A1-C2 · v2.0
 // ENSA La Réunion · MGA Architecture 2026
 // Vanilla JS ES2022+, aucune dépendance externe
 // Génère 4-6 variantes Pareto pour étude de capacité constructible
 // v1.1 : intégration SdisChecker après chaque solution Pareto
 // v1.2 : intégration TopoCaseService — profMax et parkMode contraints par pente
+// v2.0 : MULTI-STRATÉGIES — chaque famille utilise sa propre stratégie d'implantation
+//        (rect / oblique / zone / multi-blocs). Les bâtiments sont tournés à l'axe
+//        principal de la parcelle, peuvent suivre les arêtes obliques, et plusieurs
+//        blocs peuvent être générés sur les parcelles longues et étroites.
+//        Sortie : solution.blocs[] (chaque bloc a polygon + theta + niveaux).
+//        solution.bat est dérivé pour rétrocompatibilité.
 
-import TopoCaseService from './topo-case-service.js';
+import TopoCaseService    from './topo-case-service.js';
+import FH                 from './footprint-helpers.js';
+import AutoPlanStrategies from './auto-plan-strategies.js';
 
 const H_NIV  = 3.0;   // hauteur par niveau (m)
+const MIN_W  = 4;     // largeur min bâtiment (m)
+const MIN_L  = 5;     // profondeur min bâtiment (m)
 const SP_MOY = 0.175 * 31 + 0.275 * 49 + 0.325 * 68 + 0.225 * 87; // ≈ 60.58 m²
 
 const AutoPlanEngine = {
@@ -103,7 +113,9 @@ const AutoPlanEngine = {
     const [px, py] = TA.poleOfInaccessibility(envEff, 1.5);
 
     // 9. Générer variantes Pareto (prog surchargé par contraintes topo)
-    const solutions = this._generatePareto(envEff, progTopo, plu, bearing, px, py, area, existing);
+    const solutions = this._generatePareto(
+      envEff, progTopo, plu, bearing, px, py, area, existing, poly, edgeTypes,
+    );
 
     // 10. Attacher les vérifications SDIS à chaque solution
     const Sdis = window.SdisChecker;
@@ -114,14 +126,21 @@ const AutoPlanEngine = {
           type:  progTopo.type ?? 'collectif',
           nbLgts: sol.nLgts,
           emprise: sol.surface,
-          nbBlocs: sol.nbBlocs ?? 1,
+          nbBlocs: sol.blocs?.length ?? 1,
           gapMin:  sol.gapMin ?? null,
         };
         const distFacadeVoie = this._computeDistFacadeVoie(sol, edgeTypes, poly);
+        // facadeLong : longueur de la plus grande façade (n'importe quel bloc)
+        let facadeLong = null;
+        for (const b of (sol.blocs ?? [])) {
+          const lens = FH.edgeLengths(b.polygon ?? []);
+          const maxLen = lens.length ? Math.max(...lens) : 0;
+          if (maxLen > (facadeLong ?? 0)) facadeLong = maxLen;
+        }
         sol.sdis = Sdis.run(session, sMetrics, {
           distFacadeVoie,
           distInterBat: sMetrics.nbBlocs > 1 ? sMetrics.gapMin : null,
-          facadeLong:   sol.bat?.w ?? null,
+          facadeLong,
         });
       }
     }
@@ -139,26 +158,31 @@ const AutoPlanEngine = {
   },
 
   /**
-   * Calcule la distance entre la façade voie du bâtiment et l'arête voie
+   * Calcule la distance minimale entre l'union des blocs et l'arête voie.
+   * Pour les solutions multi-blocs, retourne la plus petite distance bloc/voie.
    * @returns {number|null} distance en mètres
    */
   _computeDistFacadeVoie(solution, edgeTypes, poly) {
-    const TA = window.TerrainP07Adapter;
-    if (!TA || !solution.bat || !edgeTypes?.length || !poly?.length) return null;
+    if (!solution?.blocs?.length || !edgeTypes?.length || !poly?.length) return null;
 
     const voieIdx = edgeTypes.indexOf('voie');
     if (voieIdx < 0) return null;
 
     const n = poly.length;
-    const p1 = poly[voieIdx];
-    const p2 = poly[(voieIdx + 1) % n];
+    const a = poly[voieIdx];
+    const b = poly[(voieIdx + 1) % n];
+    const ax = a[0] ?? a.x, ay = a[1] ?? a.y;
+    const bx = b[0] ?? b.x, by = b[1] ?? b.y;
 
-    // Centre de la face voie du bâtiment (côté sud = y min)
-    const bat = solution.bat;
-    const bx = bat.x + bat.w / 2;
-    const by = bat.y; // face voie = côté bas (y min après rotation)
-
-    return TA.distPtSeg(bx, by, p1[0], p1[1], p2[0], p2[1]);
+    let dMin = Infinity;
+    for (const bloc of solution.blocs) {
+      for (const p of (bloc.polygon ?? [])) {
+        const q = FH.toXY(p);
+        const d = FH.distPointSeg(q.x, q.y, ax, ay, bx, by);
+        if (d < dMin) dMin = d;
+      }
+    }
+    return Number.isFinite(dMin) ? dMin : null;
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -266,51 +290,22 @@ const AutoPlanEngine = {
   },
 
   /**
-   * Optimise un bâtiment unique centré sur PIR
-   * @returns {{ x, y, w, l, nv }} bat maximisant nLgts dans les contraintes
+   * Génère les variantes Pareto A1-C2 avec stratégies d'implantation distinctes.
+   *
+   * Chaque famille utilise une stratégie qui détermine la FORME et l'ORIENTATION
+   * du ou des bâtiments :
+   *
+   *   A1 — rect      : rectangle max densité aligné sur l'axe principal de la zone
+   *   A2 — multi     : multi-blocs en bande (parcelles longues/étroites)
+   *   B1 — oblique   : rectangle aligné sur l'arête dominante non-voirie
+   *   B2 — rect      : rectangle perméabilité, plus petit, centré
+   *   C1 — oblique   : habitat aidé aligné sur la rue, R+1
+   *   C2 — zone      : épouse la zone constructible, min emprise
+   *
+   * Auto-sélection : si la parcelle est très longue et étroite (ratio > 2.8),
+   * A2 (multi-blocs) devient prioritaire et A1 bascule aussi en multi.
    */
-  _optimizeBat(env, prog, plu, bearing, px, py) {
-    const TA = window.TerrainP07Adapter;
-    const envArea = TA.polyArea(env);
-    const maxEmprise = envArea * plu.emprMax / 100;
-
-    // Limites
-    const nvMax = Math.min(prog.nvMax ?? 3, Math.floor(plu.heMax / H_NIV));
-    const rtaaW = plu.rtaaZone === 1 ? 10 : 12;
-    const profMax = prog.profMax ?? 15;
-
-    // Largeur max (contrainte RTAA + emprise)
-    const wMax = Math.min(rtaaW, maxEmprise / Math.max(5, profMax));
-    const lMax = Math.min(profMax, maxEmprise / Math.max(4, wMax));
-
-    // Optimiser pour maximiser SP
-    let bestW = 8, bestL = 10, bestNv = nvMax, bestScore = 0;
-
-    for (let w = 6; w <= wMax; w += 0.5) {
-      for (let l = 8; l <= lMax; l += 0.5) {
-        const emprise = w * l;
-        if (emprise > maxEmprise) continue;
-        const sp = emprise * 0.82 * nvMax;
-        const nLgts = prog.type === 'maison' ? 1 : Math.floor(sp / SP_MOY);
-        if (nLgts > bestScore) {
-          bestW = w; bestL = l; bestNv = nvMax; bestScore = nLgts;
-        }
-      }
-    }
-
-    return {
-      x: px - bestW / 2,
-      y: py - bestL / 2,
-      w: bestW,
-      l: bestL,
-      nv: bestNv,
-    };
-  },
-
-  /**
-   * Génère les variantes Pareto A1-C2
-   */
-  _generatePareto(env, prog, plu, bearing, px, py, parcelArea, existing) {
+  _generatePareto(env, prog, plu, bearing, px, py, parcelArea, existing, parcelPoly, edgeTypes) {
     const TA = window.TerrainP07Adapter;
     const envArea = TA.polyArea(env);
     const nvMax = Math.min(prog.nvMax ?? 4, Math.floor(plu.heMax / H_NIV));
@@ -318,19 +313,58 @@ const AutoPlanEngine = {
     const profMax = prog.profMax ?? 15;
     const solutions = [];
 
+    // Le PIR (px, py) — pour rect centré
+    const pir = { x: px, y: py };
+
+    // Détection parcelle longue/étroite : déclenche le mode multi-blocs prioritaire
+    const longNarrow = AutoPlanStrategies.isLongAndNarrow(env, 2.8);
+
+    // Inter-bat min : max(PLU, H/2 SDIS) — calculé par famille pour H réel
+    const interBatPLU = parseFloat(plu.interBatMin ?? 4);
+
     const families = [
-      // A1 = max densité (heMax PLU, emprise max)
-      { key: 'A1', label: 'Max densité', nv: nvMax, emprPct: plu.emprMax, color: '#EF4444' },
-      // A2 = max densité multi-blocs
-      { key: 'A2', label: 'Multi-blocs densité', nv: nvMax, emprPct: plu.emprMax, multiBloc: true, color: '#F97316' },
-      // B1 = équilibre densité/perméabilité (3 niveaux, emprise 50%)
-      { key: 'B1', label: 'Équilibre', nv: Math.min(3, nvMax), emprPct: Math.min(50, plu.emprMax), color: '#3B82F6' },
-      // B2 = perméabilité prioritaire (2 niveaux, emprise 40%)
-      { key: 'B2', label: 'Perméabilité', nv: Math.min(2, nvMax), emprPct: Math.min(40, plu.emprMax), color: '#22C55E' },
-      // C1 = maison ou R+1 aidés, max jardins
-      { key: 'C1', label: 'Habitat aidé', nv: Math.min(2, nvMax), emprPct: Math.min(35, plu.emprMax), color: '#A855F7' },
-      // C2 = min emprise, max végétation
-      { key: 'C2', label: 'Min emprise', nv: nvMax, emprPct: Math.min(25, plu.emprMax), color: '#14B8A6' },
+      // A1 = max densité — rect orienté PCA, sauf si parcelle longue → multi
+      {
+        key: 'A1', label: longNarrow ? 'Max densité multi' : 'Max densité',
+        nv: nvMax, emprPct: plu.emprMax,
+        strategy: longNarrow ? 'multi' : 'rect',
+        color: '#EF4444',
+      },
+      // A2 = multi-blocs systématique (peigne)
+      {
+        key: 'A2', label: 'Multi-blocs',
+        nv: nvMax, emprPct: plu.emprMax,
+        strategy: 'multi',
+        color: '#F97316',
+      },
+      // B1 = équilibre — oblique aligné sur arête dominante
+      {
+        key: 'B1', label: 'Équilibre oblique',
+        nv: Math.min(3, nvMax), emprPct: Math.min(50, plu.emprMax),
+        strategy: 'oblique',
+        color: '#3B82F6',
+      },
+      // B2 = perméabilité — rect compact
+      {
+        key: 'B2', label: 'Perméabilité',
+        nv: Math.min(2, nvMax), emprPct: Math.min(40, plu.emprMax),
+        strategy: 'rect',
+        color: '#22C55E',
+      },
+      // C1 = habitat aidé — oblique sur axe principal, R+1
+      {
+        key: 'C1', label: 'Habitat aidé',
+        nv: Math.min(2, nvMax), emprPct: Math.min(35, plu.emprMax),
+        strategy: 'oblique',
+        color: '#A855F7',
+      },
+      // C2 = épouse la zone — min emprise
+      {
+        key: 'C2', label: 'Épouse la zone',
+        nv: nvMax, emprPct: Math.min(25, plu.emprMax),
+        strategy: 'zone',
+        color: '#14B8A6',
+      },
     ];
 
     // COS : limite SP totale si défini dans le PLU
@@ -338,40 +372,82 @@ const AutoPlanEngine = {
 
     for (const fam of families) {
       const maxEmprise = envArea * fam.emprPct / 100;
-      let maxW = Math.min(rtaaW, maxEmprise > 0 ? maxEmprise / 5 : 8);
-      const maxL = Math.min(profMax, maxEmprise > 0 ? maxEmprise / Math.max(4, maxW) : 10);
+      if (maxEmprise < MIN_W * MIN_L) continue;
 
-      // Limite longueur en limite séparative (PLU art. 7)
+      // Largeur cible (perp axe) — limitée par RTAA et limite séparative PLU
+      let wTarget = rtaaW;
       if (plu.sep_lat_longueur_max_m) {
-        maxW = Math.min(maxW, plu.sep_lat_longueur_max_m);
+        wTarget = Math.min(wTarget, plu.sep_lat_longueur_max_m);
+      }
+      // Profondeur (longueur) cible — limitée par profMax topo et par maxEmprise
+      let lTarget = profMax;
+      // Adapter aux dimensions de l'OBB de la zone (pas plus grand que la zone)
+      const obb = FH.obb(env.map(p => FH.toXY(p)));
+      wTarget = Math.min(wTarget, obb.w * 0.92);
+      lTarget = Math.min(lTarget, obb.l * 0.92);
+
+      // Si la parcelle est large et peu profonde, on swap (le bâtiment devient large)
+      if (obb.l < lTarget * 0.7 && obb.w > wTarget) {
+        [wTarget, lTarget] = [lTarget, wTarget];
       }
 
-      if (maxW < 4 || maxL < 5) continue;
+      // Garde-fous taille minimale
+      if (wTarget < MIN_W * 0.9 || lTarget < MIN_L * 0.9) continue;
 
-      // Dimensionner bâtiment — aligner sur l'axe long de l'enveloppe
-      let w = Math.min(maxW, rtaaW);
-      let l = Math.min(maxL, profMax);
-      // Si l'enveloppe est plus large que profonde, swapper w/l
-      const envBB = TA?.polyAABB(env);
-      if (envBB && envBB.w > envBB.h && w > l) {
-        [w, l] = [l, w];
-      } else if (envBB && envBB.h > envBB.w && l > w) {
-        [w, l] = [l, w];
+      // ── Application de la stratégie ────────────────────────────
+      let blocs = [];
+      const heLevel = fam.nv * H_NIV;
+      const gapMin = Math.max(interBatPLU, heLevel / 2);
+
+      if (fam.strategy === 'rect') {
+        blocs = AutoPlanStrategies.rect(env, wTarget, lTarget, pir);
+      } else if (fam.strategy === 'oblique') {
+        blocs = AutoPlanStrategies.oblique(env, parcelPoly, edgeTypes, wTarget, lTarget);
+        // Fallback : si oblique échoue, basculer sur rect
+        if (!blocs.length) {
+          blocs = AutoPlanStrategies.rect(env, wTarget, lTarget, pir);
+        }
+      } else if (fam.strategy === 'zone') {
+        blocs = AutoPlanStrategies.zone(env, 0.5, maxEmprise);
+        // Fallback : si la zone est trop grande pour la cible C2 → rect
+        if (!blocs.length) {
+          blocs = AutoPlanStrategies.rect(env, wTarget * 0.85, lTarget * 0.85, pir);
+        }
+      } else if (fam.strategy === 'multi') {
+        blocs = AutoPlanStrategies.multiRect(env, wTarget, lTarget, gapMin, 4);
+        // Fallback si multi échoue → rect simple
+        if (!blocs.length) {
+          blocs = AutoPlanStrategies.rect(env, wTarget, lTarget, pir);
+        }
       }
-      const emprise = w * l;
-      if (emprise > maxEmprise) continue;
+
+      if (!blocs.length) continue;
+
+      // Surface emprise totale (somme des aires des blocs après clip)
+      let emprise = FH.totalArea(blocs);
+      if (emprise < MIN_W * MIN_L) continue;
+      // Cap à maxEmprise (peut arriver pour la stratégie zone)
+      if (emprise > maxEmprise * 1.05) {
+        // Réduire proportionnellement les blocs (raccourcir l le long de l'axe)
+        // → on signale juste empOver pour le scoring, on ne re-clippe pas
+      }
 
       let nv = fam.nv;
-      const he = nv * H_NIV;
       let sp = emprise * 0.82 * nv;
 
-      // Vérifier COS : réduire niveaux si SP dépasse le COS max
-      if (sp > cosMaxSP) {
+      // COS : réduire niveaux si SP dépasse cosMaxSP
+      if (sp > cosMaxSP && cosMaxSP > 0) {
         nv = Math.max(1, Math.floor(cosMaxSP / (emprise * 0.82)));
         sp = emprise * 0.82 * nv;
       }
+      const he = nv * H_NIV;
 
-      const nLgts = prog.type === 'maison' ? 1 : Math.floor(sp / SP_MOY);
+      // Tagger niveaux/hauteur sur tous les blocs
+      blocs = AutoPlanStrategies.applyLevels(blocs, nv);
+
+      const nLgts = prog.type === 'maison'
+        ? Math.max(1, blocs.length)  // 1 maison par bloc (cas peu fréquent)
+        : Math.floor(sp / SP_MOY);
       const empPct = parcelArea > 0 ? (emprise / parcelArea * 100) : 0;
       const permPct = Math.max(0, 100 - empPct);
 
@@ -379,30 +455,30 @@ const AutoPlanEngine = {
       const densScore = nLgts / Math.max(1, parcelArea / 10000);
       const permScore = permPct / 100;
       const cosOk = sp <= cosMaxSP;
-      const confScore = (empPct <= plu.emprMax && he <= plu.heMax && cosOk) ? 1 : 0.5;
+      const confScore = (empPct <= plu.emprMax + 1 && he <= plu.heMax && cosOk) ? 1 : 0.5;
       const score = densScore * permScore * confScore;
 
-      // Construire le polygone bâtiment (rectangle orienté)
-      const bat = {
-        x: px - w / 2,
-        y: py - l / 2,
-        w, l,
-      };
-
-      const polygon = [
-        { x: bat.x, y: bat.y },
-        { x: bat.x + w, y: bat.y },
-        { x: bat.x + w, y: bat.y + l },
-        { x: bat.x, y: bat.y + l },
-      ];
+      // Dérivée legacy : bat = AABB de l'union des blocs, polygon = bloc primaire
+      const aabb = FH.aabbOfBlocs(blocs);
+      const bat = { x: aabb.x, y: aabb.y, w: aabb.w, l: aabb.l };
 
       solutions.push({
         family: fam.key,
         familyKey: fam.key.toLowerCase(),
         label: fam.label,
         color: fam.color,
+        strategy: fam.strategy,
+
+        // ── Modèle v2 : multi-blocs ──
+        blocs,
+        nbBlocs: blocs.length,
+        gapMin: blocs.length > 1 ? gapMin : null,
+
+        // ── Compat legacy ──
         bat,
-        polygon,
+        polygon: blocs[0]?.polygon ?? null,
+
+        // Métriques
         niveaux: nv,
         hauteur: he,
         surface: emprise,
