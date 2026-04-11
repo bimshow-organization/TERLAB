@@ -418,25 +418,170 @@
       }
     },
     "Uv": {
-      "label": "Zone verte urbaine",
+      "label": "Zone verte d'espaces de loisirs",
       "type": "U",
-      "sous_type": "espace_vert",
+      "sous_type": "espace_vert_loisirs",
+      "caractere": "Espaces verts urbains à préserver et valoriser pour la qualité de vie : promenade, belvédère, parc urbain, aires de loisirs, terrains de sports. Vocation à accueillir équipements et services accompagnant ces usages, agriculture urbaine, agriculture expérimentale.",
+      "sous_secteurs": ["Uva", "Uvac", "Uvl"],
       "reculs": {
         "voie_principale_m": 4,
-        "sep_lat_m": null
+        "voie_note": "Recul 4m min par rapport à l'alignement (Article Uv.6)",
+        "sep_lat_m": 4,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_note": "Sur une ou plusieurs limites OU recul 4m min (Article Uv.7)"
       },
       "hauteurs": {
-        "Uv_h_max_m": 4,
-        "Uv2_h_max_m": 10,
-        "Uv3_h_max_m": 10
+        "h_max_m": null,
+        "note": "Variable selon sous-secteur — voir Uva (4m), Uvac (10m), Uvl (10m)"
       },
       "emprise": {
         "emprise_sol_max_pct": null,
-        "note": "Non explicitement réglementée"
+        "note": "Non réglementée (Article Uv.9). Si unité foncière sur plusieurs zones, calcul au prorata de chaque zone."
+      },
+      "plantations": {
+        "arbres_par_100m2_non_bati": 1,
+        "note": "1 arbre / 100 m² terrain non bâti. Essences locales/endémiques recommandées. Plantations existantes maintenues ou remplacées équivalent.",
+        "permeabilite_recommandee": true
       },
       "_meta": {
-        "confidence": 0.8,
-        "ambiguites": []
+        "confidence": 1.0,
+        "ambiguites": [],
+        "source_articles": "Articles Uv.1 à Uv.13 — Règlement Saint-Denis modification simplifiée n°8 (février 2024)"
+      }
+    },
+    "Uva": {
+      "label": "Zone verte urbaine — coulée verte Chaudron à Moufia",
+      "type": "U",
+      "sous_type": "espace_vert_loisirs",
+      "parent_zone": "Uv",
+      "caractere": "Coulée verte s'étendant du Chaudron à Moufia — Bois de Nèfles, la Jamaïque, le Parc Urbain, Champ Fleuri, la Providence et le stade de la Redoute.",
+      "occupations_admises": [
+        "Équipements ou services directement liés aux loisirs ou aux sports",
+        "Équipements de proximité d'intérêt collectif",
+        "Constructions/installations relevant de l'agriculture urbaine",
+        "Constructions techniques liées à l'eau, l'assainissement, la sécurité",
+        "Commerces ou artisanat (≤ 50 m² de surface plancher)",
+        "Réhabilitation/rénovation services publics ou intérêts collectifs",
+        "Serres pour activité de production alimentaire"
+      ],
+      "logement_residentiel": false,
+      "logement_note": "Le logement ordinaire n'est pas une occupation admise — zone très contrainte, vocation loisirs/agriculture urbaine.",
+      "reculs": {
+        "voie_principale_m": 4,
+        "voie_note": "Recul 4m min par rapport à l'alignement (Article Uv.6)",
+        "sep_lat_m": 4,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_note": "Sur limites OU recul 4m min (Article Uv.7)"
+      },
+      "hauteurs": {
+        "h_max_m": 4,
+        "note": "Hauteur maximale 4m (Article Uv.10 — secteur Uva)"
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "note": "Non réglementée (Article Uv.9)"
+      },
+      "plantations": {
+        "arbres_par_100m2_non_bati": 1,
+        "note": "1 arbre / 100 m² terrain non bâti, essences locales recommandées (Article Uv.13)"
+      },
+      "commerce_max_sp_m2": 50,
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": [],
+        "source_articles": "Articles Uv.1 à Uv.13 — secteur Uva — Règlement Saint-Denis modification simplifiée n°8 (février 2024)"
+      }
+    },
+    "Uvac": {
+      "label": "Zone verte urbaine — coulée verte secteur Moufia",
+      "type": "U",
+      "sous_type": "espace_vert_loisirs",
+      "parent_zone": "Uv",
+      "caractere": "Coulée verte sur le secteur du Moufia.",
+      "occupations_admises": [
+        "Équipements ou services directement liés aux loisirs ou aux sports",
+        "Équipements de proximité d'intérêt collectif",
+        "Constructions techniques liées à l'eau, l'assainissement, la sécurité",
+        "Constructions/installations relevant de l'agriculture urbaine",
+        "Commerces et stockage (≤ 100 m² SP par 100 m² de terrain)",
+        "ICPE déclaration/enregistrement nécessaires aux occupations autorisées",
+        "Réhabilitation services publics ou intérêts collectifs",
+        "Serres pour activité de production alimentaire"
+      ],
+      "logement_residentiel": false,
+      "logement_note": "Logement ordinaire non admis — vocation équipements/services loisirs.",
+      "reculs": {
+        "voie_principale_m": 4,
+        "voie_note": "Recul 4m min par rapport à l'alignement (Article Uv.6)",
+        "sep_lat_m": 4,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_note": "Sur limites OU recul 4m min (Article Uv.7)",
+        "entre_batiments_meme_parcelle_m": 4,
+        "entre_batiments_formule": "L ≥ (H+h)/2 avec L ≥ 4m min",
+        "entre_batiments_note": "Article Uv.8 — H = hauteur façade la plus haute, h = façade la plus basse, hors toitures/saillies"
+      },
+      "hauteurs": {
+        "h_max_m": 10,
+        "note": "Hauteur maximale 10m (Article Uv.10 — secteur Uvac)"
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "note": "Non réglementée (Article Uv.9)"
+      },
+      "plantations": {
+        "arbres_par_100m2_non_bati": 1,
+        "note": "1 arbre / 100 m² terrain non bâti (Article Uv.13)"
+      },
+      "commerce_max_sp_m2_par_100m2_terrain": 100,
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": [],
+        "source_articles": "Articles Uv.1 à Uv.13 — secteur Uvac — Règlement Saint-Denis modification simplifiée n°8 (février 2024)"
+      }
+    },
+    "Uvl": {
+      "label": "Zone verte urbaine — espace de loisirs littoral",
+      "type": "U",
+      "sous_type": "espace_vert_loisirs_littoral",
+      "parent_zone": "Uv",
+      "caractere": "Espace de loisirs littoral de la ravine du Chaudron à la rivière Saint-Denis. Bande littorale destinée à la valorisation des espaces boisés, parcs, jardins publics, plages.",
+      "occupations_admises": [
+        "Équipements d'intérêt collectif (compatibles avec milieu environnant)",
+        "Constructions/installations relevant de l'agriculture urbaine",
+        "Commerces, services, structures artisanales liées à l'accueil du public",
+        "Équipements touristiques justifiés par localisation à proximité de la mer (sous réserve d'organiser/préserver l'accès et la libre circulation le long du rivage)",
+        "Affouillements/exhaussements liés aux constructions autorisées",
+        "ICPE nécessaires aux constructions autorisées",
+        "Aires de stationnement ouvertes au public",
+        "Serres pour activité de production alimentaire"
+      ],
+      "logement_residentiel": false,
+      "logement_note": "Logement ordinaire non admis — vocation tourisme/loisirs littoraux.",
+      "littoral": true,
+      "littoral_note": "Préservation accès et libre circulation le long du rivage obligatoire pour tout équipement touristique.",
+      "reculs": {
+        "voie_principale_m": 4,
+        "voie_note": "Recul 4m min par rapport à l'alignement (Article Uv.6)",
+        "sep_lat_m": 4,
+        "sep_lat_limite_autorisee": true,
+        "sep_lat_note": "Sur limites OU recul 4m min (Article Uv.7)"
+      },
+      "hauteurs": {
+        "h_max_m": 10,
+        "note": "Hauteur maximale 10m (Article Uv.10 — secteur Uvl)"
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "note": "Non réglementée (Article Uv.9)"
+      },
+      "plantations": {
+        "arbres_par_100m2_non_bati": 1,
+        "note": "1 arbre / 100 m² terrain non bâti, essences locales recommandées (Article Uv.13)"
+      },
+      "_meta": {
+        "confidence": 1.0,
+        "ambiguites": [],
+        "source_articles": "Articles Uv.1 à Uv.13 — secteur Uvl — Règlement Saint-Denis modification simplifiée n°8 (février 2024)"
       }
     },
     "Uma": {
