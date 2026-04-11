@@ -219,6 +219,10 @@ const LidarService = {
   },
 
   // ── Profil altimétrique HD depuis les points LiDAR ────────────────
+  // Strategie : on essaie d'abord avec les seuls points sol (classe 2),
+  // ce qui donne le meilleur profil topo. Si trop peu de points sol
+  // (terrain tres vegetalise / urbain dense), on retombe sur le minimum
+  // d'altitude par bin, qui approche le sol meme avec vegetation.
   getProfileFromPoints(points, startLngLat, endLngLat, corridorWidth = 5) {
     const dx = (endLngLat[0] - startLngLat[0]) * LIDAR_CFG.M_PER_DEG_LNG;
     const dy = (endLngLat[1] - startLngLat[1]) * LIDAR_CFG.M_PER_DEG_LAT;
@@ -227,9 +231,10 @@ const LidarService = {
 
     const ux = dx / totalDist, uy = dy / totalDist;
 
-    const projected = [];
+    // Pass 1 : ne garder que les points sol (classe 2)
+    const projGround = [];
+    const projAll = [];
     for (const p of points) {
-      if (p.length >= 7 && p[6] !== 2) continue;
       const px = (p[0] - startLngLat[0]) * LIDAR_CFG.M_PER_DEG_LNG;
       const py = (p[1] - startLngLat[1]) * LIDAR_CFG.M_PER_DEG_LAT;
 
@@ -239,9 +244,14 @@ const LidarService = {
       const alongDist = ux * px + uy * py;
       if (alongDist < -1 || alongDist > totalDist + 1) continue;
 
-      projected.push({ distance_m: alongDist, altitude_m: p[2] });
+      const sample = { distance_m: alongDist, altitude_m: p[2] };
+      projAll.push(sample);
+      if (p.length >= 7 && p[6] === 2) projGround.push(sample);
     }
 
+    // Choisit la meilleure source : sol si au moins 8 points, sinon tous
+    const useGround = projGround.length >= 8;
+    const projected = useGround ? projGround : projAll;
     if (projected.length === 0) return [];
     projected.sort((a, b) => a.distance_m - b.distance_m);
 
@@ -250,10 +260,14 @@ const LidarService = {
     for (let d = 0; d <= totalDist; d += step) {
       const nearby = projected.filter(p => Math.abs(p.distance_m - d) <= step / 2);
       if (nearby.length === 0) continue;
-      const avgAlt = nearby.reduce((s, p) => s + p.altitude_m, 0) / nearby.length;
+      // Si fallback "tous points", prendre le min d'altitude (approche sol).
+      // Sinon (sol pur), moyenne pour lisser le bruit.
+      const alt = useGround
+        ? nearby.reduce((s, p) => s + p.altitude_m, 0) / nearby.length
+        : Math.min(...nearby.map(p => p.altitude_m));
       profile.push({
         distance_m: Math.round(d),
-        altitude_m: Math.round(avgAlt * 100) / 100,
+        altitude_m: Math.round(alt * 100) / 100,
       });
     }
 

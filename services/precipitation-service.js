@@ -109,11 +109,10 @@ const PrecipitationService = {
     parts.push(`<text x="${W/2}" y="14" text-anchor="middle" font-size="10" font-weight="700" fill="#1C1C1A">${title}</text>`);
     parts.push(`<text x="${W - margin.right}" y="14" text-anchor="end" font-size="7" fill="#A8A49C">${data.source} · ${data.period}</text>`);
 
-    // Bande saison cyclonique (nov-avr = mois 0-3 + 10-11)
-    // On dessine en deux rectangles : nov-déc à droite, jan-avr à gauche
-    parts.push(`<rect x="${margin.left}" y="${margin.top}" width="${slotW * 4}" height="${cH}" fill="#C1652B" fill-opacity="0.05"/>`);
-    parts.push(`<rect x="${margin.left + slotW * 10}" y="${margin.top}" width="${slotW * 2}" height="${cH}" fill="#C1652B" fill-opacity="0.05"/>`);
-    parts.push(`<text x="${margin.left + slotW * 2}" y="${margin.top + 9}" text-anchor="middle" font-size="7" fill="#C1652B" font-weight="600">SAISON CYCLONIQUE</text>`);
+    // Bande saison cyclonique (nov-avr = mois 0-3 + 10-11) — fond bleu pluie
+    parts.push(`<rect x="${margin.left}" y="${margin.top}" width="${slotW * 4}" height="${cH}" fill="#1E40AF" fill-opacity="0.07"/>`);
+    parts.push(`<rect x="${margin.left + slotW * 10}" y="${margin.top}" width="${slotW * 2}" height="${cH}" fill="#1E40AF" fill-opacity="0.07"/>`);
+    parts.push(`<text x="${margin.left + slotW * 2}" y="${margin.top + 9}" text-anchor="middle" font-size="7" fill="#1E40AF" font-weight="600">SAISON CYCLONIQUE</text>`);
 
     // Axe Y : grille + ticks
     const ySteps = 4;
@@ -126,14 +125,18 @@ const PrecipitationService = {
     parts.push(`<text x="12" y="${margin.top + cH/2}" text-anchor="middle" font-size="8" fill="#6A6860" transform="rotate(-90,12,${margin.top + cH/2})">mm / mois</text>`);
 
     // Barres + labels
+    // Saison cyclonique nov-avr (i = 0..3, 10..11) → palette bleue pluie
+    // Saison seche mai-oct (i = 4..9) → palette brique TERLAB
     for (let i = 0; i < 12; i++) {
       const v = data.monthly[i] ?? 0;
       const x = margin.left + i * slotW + gap;
       const h = (v / niceMax) * cH;
       const y = margin.top + cH - h;
-      // Intensité teinte brique selon ratio au max
       const t = niceMax > 0 ? v / niceMax : 0;
-      const fill = t > 0.66 ? '#C1652B' : t > 0.33 ? '#D88550' : '#E8B49B';
+      const isCyclonique = i <= 3 || i >= 10;
+      const fill = isCyclonique
+        ? (t > 0.66 ? '#1E40AF' : t > 0.33 ? '#3B82F6' : '#93C5FD')
+        : (t > 0.66 ? '#C1652B' : t > 0.33 ? '#D88550' : '#E8B49B');
       parts.push(`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(0, h).toFixed(1)}" fill="${fill}" stroke="#1C1C1A" stroke-width="0.3"/>`);
       if (h > 16) {
         parts.push(`<text x="${(x + barW/2).toFixed(1)}" y="${(y - 2).toFixed(1)}" text-anchor="middle" font-size="6.5" fill="#1C1C1A">${v}</text>`);

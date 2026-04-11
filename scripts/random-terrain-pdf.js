@@ -850,8 +850,42 @@ async function processOneTerrain(browser, runIndex) {
                     map.jumpTo({ center: coords, zoom: 12, pitch: 0, bearing: 0 });
                     await new Promise(r => { map.once('idle', r); setTimeout(r, 5000); });
                     mapCaptures.p03_ppr_context = map.getCanvas().toDataURL('image/jpeg', 0.92);
+
+                    // Retirer la couche PPR avant d'ajouter la geologie BRGM
+                    if (map.getLayer('ppr-layer')) map.removeLayer('ppr-layer');
+                    if (map.getSource('ppr-peigeo')) map.removeSource('ppr-peigeo');
+
+                    // ── Couche geologie BRGM WMS ──
+                    if (!map.getSource('brgm-geol')) {
+                      map.addSource('brgm-geol', {
+                        type: 'raster',
+                        tiles: [
+                          'https://geoservices.brgm.fr/geologie?'
+                          + 'SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap'
+                          + '&LAYERS=GEOL_REU_50K&STYLES='
+                          + '&FORMAT=image/png&TRANSPARENT=TRUE'
+                          + '&SRS=EPSG:3857&WIDTH=256&HEIGHT=256&BBOX={bbox-epsg-3857}'
+                        ],
+                        tileSize: 256,
+                      });
+                      map.addLayer({
+                        id: 'brgm-geol-layer',
+                        type: 'raster',
+                        source: 'brgm-geol',
+                        paint: { 'raster-opacity': 0.65 },
+                      });
+                    }
+                    // Geologie vue centree (zoom 14)
+                    map.jumpTo({ center: coords, zoom: 14, pitch: 0, bearing: 0 });
+                    await new Promise(r => { map.once('idle', r); setTimeout(r, 7000); });
+                    mapCaptures.p02_geologie = map.getCanvas().toDataURL('image/jpeg', 0.92);
+                    console.log('[PDF] Capture geologie BRGM : ' + Math.round(mapCaptures.p02_geologie.length / 1024) + 'K');
+
+                    // Cleanup
+                    if (map.getLayer('brgm-geol-layer')) map.removeLayer('brgm-geol-layer');
+                    if (map.getSource('brgm-geol')) map.removeSource('brgm-geol');
                   }
-                } catch (e) { console.warn('[PDF] PPR capture:', e.message); }
+                } catch (e) { console.warn('[PDF] PPR/Geol capture:', e.message); }
 
                 const capKeys = Object.keys(mapCaptures).filter(k => mapCaptures[k]);
                 console.log(`[PDF] MapCapture : ${capKeys.length} vues — ${capKeys.join(', ')}`);
@@ -1278,30 +1312,30 @@ async function processOneTerrain(browser, runIndex) {
                     console.log('[PDF] Terrain 3D vue oblique LiDAR : ' + Math.round(snap.length / 1024) + 'K (' + n + ' pts, dz=' + Math.round(dz) + 'm' + orthoTag + ')');
                   }
 
-                  // ── VUE 2 — Vue zénithale (top-down ~90° élévation) ──
-                  // Permet de lire les empreintes bâti + alignements voirie
-                  // sans la parallaxe de la vue oblique. Repère N en haut.
-                  // Cadrage plus serré (×0.85) car la projection plate est moins
-                  // diluée par la perspective verticale.
-                  const aspectTop = W / H;
-                  const rTop = r * 0.85;
-                  cam.left   = -rTop * aspectTop;
-                  cam.right  =  rTop * aspectTop;
-                  cam.top    =  rTop;
-                  cam.bottom = -rTop;
-                  cam.up.set(0, 0, -1); // -Z local = Nord → vers le haut de l'image
+                  // ── VUE 2 — Vue oblique 60° depuis l'OPPOSE de la vue 1 ──
+                  // Vue 1 = position (+1.3r, +1.4r, +1.3r), elevation ~38°
+                  // Vue 2 = direction OPPOSEE (-1.3r, ?, -1.3r), elevation ~60°
+                  // sin(60°) ≈ 0.866 → composante Y ≈ 0.866 * sqrt(2 * 1.3²) ≈ 1.59
+                  // Cadrage plus serre (×0.95) pour mieux lire les details bati.
+                  const aspectOblique2 = W / H;
+                  const rOblique2 = r * 0.95;
+                  cam.left   = -rOblique2 * aspectOblique2;
+                  cam.right  =  rOblique2 * aspectOblique2;
+                  cam.top    =  rOblique2;
+                  cam.bottom = -rOblique2;
+                  cam.up.set(0, 1, 0); // Y up classique pour vue oblique
                   cam.position.set(
-                    sphere.center.x,
-                    sphere.center.y + r * 6,   // bien au-dessus
-                    sphere.center.z,
+                    sphere.center.x - r * 1.0,
+                    sphere.center.y + r * 1.95,  // 60° d'elevation
+                    sphere.center.z - r * 1.0,
                   );
                   cam.lookAt(sphere.center);
                   cam.updateProjectionMatrix();
                   renderer.render(scene, cam);
-                  const snapTop = canvas.toDataURL('image/jpeg', 0.88);
-                  if (snapTop.length > 500) {
-                    visuals.terrain3dTop = snapTop;
-                    console.log('[PDF] Terrain 3D vue zénithale LiDAR : ' + Math.round(snapTop.length / 1024) + 'K');
+                  const snapOblique2 = canvas.toDataURL('image/jpeg', 0.88);
+                  if (snapOblique2.length > 500) {
+                    visuals.terrain3dTop = snapOblique2; // garde la cle pour compat
+                    console.log('[PDF] Terrain 3D vue oblique 60° opposee LiDAR : ' + Math.round(snapOblique2.length / 1024) + 'K');
                   }
 
                   renderer.dispose();

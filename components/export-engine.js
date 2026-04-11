@@ -486,6 +486,12 @@ const ExportEngine = {
           ${geoLabel ? `<div class="hbox"><p>Type : <strong>${geoLabel}</strong>${geoIsAuto ? ' <span class="fv au"></span>' : ''}</p></div>${tag(phGeoType)}` : ''}
           ${rowTag('Remblai', { non: 'Non', possible: 'Possible', oui: 'Oui' }[terrain.remblai], phRemblai)}
           ${rowTag('Geotechnique', { non: 'Non requise', g1: 'G1 requise', recommande: 'Recommandee' }[terrain.geotech], phGeotech)}
+          ${maps?.p02_geologie ? `
+          <div class="map-wrap" style="height:135px;margin-top:4px">
+            <img src="${maps.p02_geologie}" alt="Carte geologie BRGM">
+            <span class="map-lbl">Geologie · BRGM 1:50 000</span>
+            <span class="map-src">geoservices.brgm.fr WMS</span>
+          </div>` : ''}
 
           ${sectionAImg}
           ${sectionBImg}
@@ -827,8 +833,8 @@ const ExportEngine = {
           </div>` : ''}
           ${this._visuals?.terrain3dTop ? `
           <div class="map-wrap" style="height:130px;margin-top:4px">
-            <img src="${this._visuals.terrain3dTop}" alt="LiDAR vue zenithale" style="object-fit:contain">
-            <span class="map-lbl">LiDAR · vue zenithale (N ↑)</span>
+            <img src="${this._visuals.terrain3dTop}" alt="LiDAR vue oblique 60° opposee" style="object-fit:contain">
+            <span class="map-lbl">LiDAR · vue oblique 60° opposee</span>
             <span class="map-src">IGN HD · Three.js</span>
           </div>` : ''}
         </div>

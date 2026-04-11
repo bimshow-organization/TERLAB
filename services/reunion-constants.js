@@ -260,15 +260,38 @@ export function rgbToHsv(r, g, b) {
 export function classifyPixelReunion(r, g, b) {
   const { h, s, v } = rgbToHsv(r, g, b);
 
-  if (s < 0.06 && v > 0.25 && v < 0.95)               return null;                // Labels/texte
-  if (h >= 180 && h <= 250 && s > 0.25)                return null;                // Eau (mer/lagon)
-  if (s < 0.18 && v > 0.55)                            return 'pctConstructions';  // Béton/tôle
-  if (r > 180 && g > 160 && b > 150)                   return 'pctConstructions';  // Béton clair
-  if (h >= 75 && h <= 140 && s > 0.45 && v > 0.55)     return 'pctCanne';          // Canne verte
-  if (h >= 70 && h <= 160 && s > 0.35 && v < 0.38)     return 'pctTresBoise';      // Forêt dense
-  if (h >= 70 && h <= 160 && s > 0.25)                 return 'pctBoise';          // Végétation
-  if (h >= 20 && h <= 65  && s > 0.25 && v > 0.45)     return 'pctSavane';         // Savane
-  const estBrun = (h >= 10 && h <= 40 && s < 0.35 && v > 0.55);
-  if (estBrun || (r > 160 && g > 130 && b < 120))      return 'pctAride';          // Sol nu
-  return 'pctSavane'; // Fourre-tout végétation claire
+  // 0. Labels / texte gris neutre
+  if (s < 0.06 && v > 0.25 && v < 0.95)               return null;
+  // 1. Eau (mer/lagon)
+  if (h >= 180 && h <= 250 && s > 0.25)                return null;
+
+  // 2. Bati — toitures detectees AVANT vegetation pour ne pas perdre les
+  // toitures rouges/orange dans la categorie aride.
+  // 2a. Toit rouge tuile / orange (h ~0-20 ou 340-360, sature, valeur moy)
+  if (((h <= 20) || (h >= 340)) && s > 0.45 && v > 0.35 && v < 0.85)
+    return 'pctConstructions';
+  // 2b. Toit gris ardoise / tole sombre (faible saturation, valeur moy-basse)
+  if (s < 0.15 && v >= 0.25 && v <= 0.55)              return 'pctConstructions';
+  // 2c. Beton clair / tole blanche
+  if (s < 0.18 && v > 0.65)                            return 'pctConstructions';
+  if (r > 200 && g > 195 && b > 190)                   return 'pctConstructions';
+
+  // 3. Vegetation — detecter avant savane/aride pour preserver arbres isoles
+  // 3a. Foret dense : vert sombre (ombre canopee)
+  if (h >= 60 && h <= 170 && s > 0.25 && v < 0.42)     return 'pctTresBoise';
+  // 3b. Canne a sucre : vert vif sature (monoculture)
+  if (h >= 75 && h <= 140 && s > 0.50 && v > 0.55)     return 'pctCanne';
+  // 3c. Vegetation secondaire / arbres isoles
+  if (h >= 60 && h <= 170 && s > 0.20)                 return 'pctBoise';
+
+  // 4. Savane / herbacees seches — jaune-vert clair, range plus serre qu'avant
+  if (h >= 30 && h <= 58 && s > 0.25 && v > 0.45)      return 'pctSavane';
+
+  // 5. Sol nu / aride — brun ocre clair, basalte expose
+  const estBrun = (h >= 10 && h <= 35 && s >= 0.18 && s < 0.45 && v > 0.45);
+  if (estBrun || (r > 165 && g > 130 && g < 175 && b < 130)) return 'pctAride';
+
+  // 6. Fourre-tout : null au lieu de savane pour eviter la sur-classification
+  // (les pixels non classifies seront comptes comme "non determine" et exclus)
+  return null;
 }
