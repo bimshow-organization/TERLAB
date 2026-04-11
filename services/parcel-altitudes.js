@@ -12,9 +12,13 @@ const ParcelAltitudes = {
   // Sommets de la parcelle + milieux des arêtes longues (selon longEdgeM).
   // parcelGeo : [[lng,lat], ...]   (sans point de fermeture)
   // Retourne  : [{ kind:'corner'|'mid', coord:[lng,lat], edge:i }]
+  // Cap dur : maxPoints (defaut 12) — sur les parcelles cadastre densifiees
+  // (bords courbes), on peut avoir 70+ vertices ; on echantillonne alors
+  // un sous-ensemble bien reparti le long du perimetre.
   selectKeyPoints(parcelGeo, opts = {}) {
     if (!parcelGeo || parcelGeo.length < 3) return [];
     const longEdgeM = opts.longEdgeM ?? 30;
+    const maxPoints = opts.maxPoints ?? 12;
     const out = [];
     const n = parcelGeo.length;
     const lat0 = parcelGeo[0][1];
@@ -41,7 +45,18 @@ const ParcelAltitudes = {
         }
       }
     }
-    return out;
+    if (out.length <= maxPoints) return out;
+
+    // Decimation par stride sur l'ordre de perimetre. La sequence `out`
+    // suit deja l'ordre du polygone (corner i, puis ses mids, puis corner i+1).
+    // Stride = total/max → pioche maxPoints indices repartis uniformement.
+    const step = out.length / maxPoints;
+    const decimated = [];
+    for (let k = 0; k < maxPoints; k++) {
+      const idx = Math.floor(k * step);
+      decimated.push(out[idx]);
+    }
+    return decimated;
   },
 
   // ── Échantillonne en une seule requête BIL ─────────────────────────
