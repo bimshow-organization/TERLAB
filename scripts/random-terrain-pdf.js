@@ -65,10 +65,11 @@ fs.mkdirSync(OUT_DIR, { recursive: true });
 function startServer() {
   return new Promise((resolve, reject) => {
     const root = path.resolve(__dirname, '..');
-    // Note : on passe le port en simple `-l <PORT>` (les versions recentes
-    // de `serve` ne respectent plus le format tcp://localhost:PORT et
-    // basculent sur un port aleatoire si elles le voient).
-    const srv = spawn('npx', ['serve', root, '-l', String(PORT), '-s', '--no-clipboard'], {
+    // On demande le port `PORT` mais on ne s'y fie pas : serve 14.2.6
+    // peut basculer silencieusement sur un port aleatoire si celui demande
+    // est occupe (leftover d'un run precedent). On parse la sortie pour
+    // detecter le port reel sur lequel il bind, et on met a jour PORT.
+    const srv = spawn('npx', ['serve', root, '-l', `tcp://localhost:${PORT}`, '-s', '--no-clipboard'], {
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: true,
       cwd: root,
@@ -76,10 +77,32 @@ function startServer() {
 
     srv.on('error', reject);
 
-    // Capturer la sortie de serve uniquement pour la joindre au message d'erreur en cas d'echec
+    // Capturer la sortie de serve : (1) pour le message d'erreur en cas
+    // d'echec, (2) pour detecter le port reel via "Accepting connections at"
     let serveOut = '';
-    srv.stdout?.on('data', (chunk) => { serveOut += chunk.toString(); });
-    srv.stderr?.on('data', (chunk) => { serveOut += chunk.toString(); });
+    let detectedPort = null;
+    const onChunk = (chunk) => {
+      const txt = chunk.toString();
+      serveOut += txt;
+      if (!detectedPort) {
+        const m = txt.match(/http:\/\/localhost:(\d+)/i);
+        if (m) {
+          const p = parseInt(m[1], 10);
+          if (p && p !== PORT) {
+            log(`  ⚠ serve a bind sur :${p} au lieu de :${PORT} (port occupe ?) — on bascule`);
+            // ATTENTION : PORT est const dans la closure du parent ; on
+            // ne peut pas le reassigner. On expose le port reel via une
+            // global pour que processOneTerrain l'utilise.
+            global.__servePort = p;
+            detectedPort = p;
+          } else if (p) {
+            detectedPort = p;
+          }
+        }
+      }
+    };
+    srv.stdout?.on('data', onChunk);
+    srv.stderr?.on('data', onChunk);
 
     // Attendre que le port soit reellement accessible via HTTP
     const http = require('http');
@@ -89,10 +112,11 @@ function startServer() {
         reject(new Error(`Serveur non pret apres 60s. Sortie serve:\n${tail}`));
         return;
       }
-      const req = http.get(`http://localhost:${PORT}/`, (res) => {
+      const targetPort = detectedPort ?? PORT;
+      const req = http.get(`http://localhost:${targetPort}/`, (res) => {
         res.resume();
         if (res.statusCode >= 200 && res.statusCode < 400) {
-          log(`Serveur local pret sur :${PORT}`);
+          log(`Serveur local pret sur :${targetPort}`);
           resolve(srv);
         } else {
           setTimeout(() => checkReady(retries + 1), 500);
@@ -177,7 +201,9 @@ async function processOneTerrain(browser, runIndex) {
     log('1. Chargement TERLAB…');
     // ?demo évite la redirection vers accueil.html quand pas de session existante
     // serve redirige /index.html → / en 301, donc on utilise le chemin direct
-    await page.goto(`http://localhost:${PORT}/?demo#phase/0`, {
+    // Utilise le port detecte par startServer (peut differer de PORT si serve a bascule)
+    const livePort = global.__servePort ?? PORT;
+    await page.goto(`http://localhost:${livePort}/?demo#phase/0`, {
       waitUntil: 'networkidle0',
       timeout: T.APP_INIT,
     });
@@ -1618,7 +1644,7 @@ async function processOneTerrain(browser, runIndex) {
   <link href="https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@6/400.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/@fontsource/jost@5/300.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/@fontsource/jost@5/400.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="http://localhost:${PORT}/assets/print.css">
+  <link rel="stylesheet" href="http://localhost:${global.__servePort ?? PORT}/assets/print.css">
 </head>
 <body><div id="terlab-print-root"></div></body>
 </html>`;
