@@ -65,7 +65,10 @@ fs.mkdirSync(OUT_DIR, { recursive: true });
 function startServer() {
   return new Promise((resolve, reject) => {
     const root = path.resolve(__dirname, '..');
-    const srv = spawn('npx', ['serve', root, '-l', `tcp://localhost:${PORT}`, '-s', '--no-clipboard'], {
+    // Note : on passe le port en simple `-l <PORT>` (les versions recentes
+    // de `serve` ne respectent plus le format tcp://localhost:PORT et
+    // basculent sur un port aleatoire si elles le voient).
+    const srv = spawn('npx', ['serve', root, '-l', String(PORT), '-s', '--no-clipboard'], {
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: true,
       cwd: root,
