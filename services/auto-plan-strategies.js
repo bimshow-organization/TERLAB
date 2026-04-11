@@ -242,6 +242,66 @@ const AutoPlanStrategies = {
     return blocs;
   },
 
+  // ── Stratégie 5 : Isohypses (alignement ⊥ à la pente) ───────────
+  // Aligne le rectangle perpendiculairement à l'axe de la pente (parallèle
+  // aux courbes de niveau) puis le tronque pour respecter profMax topo.
+  // Convient aux pentes ≥ 5% — cf. TopoCaseService.profMax.
+  //
+  // env         : enveloppe constructible
+  // wTarget     : largeur le long des courbes (m)
+  // lTarget     : profondeur perpendiculaire aux courbes (m, ≤ profMax)
+  // pir         : pôle d'inaccessibilité {x,y}
+  // azimut_deg  : direction de la pente (0=N, sens horaire compass)
+  // profMax     : profondeur maximum imposée par TopoCaseService (m)
+  // opts        : { ySouth: true si l'espace est SVG Y-down }
+  isohypses(env, wTarget, lTarget, pir, azimut_deg, profMax, opts = {}) {
+    if (!env || env.length < 3) return [];
+    if (!Number.isFinite(azimut_deg)) return [];
+    const envXY = env.map(p => FH.toXY(p));
+
+    // Theta math (rad) : perpendiculaire à la pente = parallèle aux courbes.
+    // azimut_deg est compass (0=N, sens horaire), donc l'axe pente en math
+    // (atan2 standard, 0=+X, sens trigo) est θ_pente = π/2 − az_rad.
+    // Le bâtiment est aligné perpendiculairement → on tourne de +π/2 :
+    //   θ_bat_rad = (π/2 − az_rad) + π/2 = π − az_rad
+    // On veut une rotation en degrés (math) pour FH.rectCentered :
+    const azRad = azimut_deg * Math.PI / 180;
+    const thetaRad = Math.PI - azRad;
+    const thetaDeg = thetaRad * 180 / Math.PI;
+
+    // Profondeur effective : min(lTarget, profMax)
+    const lEff = Math.min(lTarget, profMax);
+    if (lEff < MIN_L) return [];
+
+    const cx = pir?.x ?? FH.centroidWeighted(envXY).x;
+    const cy = pir?.y ?? FH.centroidWeighted(envXY).y;
+
+    let raw = FH.rectCentered(cx, cy, wTarget, lEff, thetaDeg);
+    // Clamp le long de l'axe pente (filet de sécurité — lEff respecte déjà profMax,
+    // mais après le clip ça peut déborder côté aval)
+    raw = FH.clampRectProfMaxAlongAzimut(raw, azimut_deg, profMax, opts);
+    let clipped = FH.clipPolygon(raw, envXY);
+
+    // Réduction adaptative si le clip détruit le rect
+    let scale = 1.0;
+    while ((clipped.length < 3 || FH.area(clipped) < MIN_W * MIN_L) && scale > 0.4) {
+      scale *= 0.85;
+      let r = FH.rectCentered(cx, cy, wTarget * scale, lEff * scale, thetaDeg);
+      r = FH.clampRectProfMaxAlongAzimut(r, azimut_deg, profMax, opts);
+      clipped = FH.clipPolygon(r, envXY);
+    }
+    if (clipped.length < 3) return [];
+
+    return [{
+      polygon: clipped,
+      theta: thetaDeg,
+      w: wTarget * scale,
+      l: lEff * scale,
+      strategy: 'isohypses',
+      areaM2: FH.area(clipped),
+    }];
+  },
+
   // ── Tagger niveaux + hauteur sur une liste de blocs ──────────────
   applyLevels(blocs, niveaux, hNiv = H_NIV) {
     return blocs.map(b => ({

@@ -51,9 +51,12 @@ import ViewDetector      from './services/view-detector.js';
 import BpfGardenAdvisor  from './services/bpf-garden-advisor.js';
 import ContourService         from './services/contour-service.js';
 import ContourCache           from './services/contour-cache.js';
+import PrecipitationService   from './services/precipitation-service.js';
+import SCOTService            from './services/scot-service.js';
 import ParcelAltitudes        from './services/parcel-altitudes.js';
 import BpfBridge              from './services/bpf-bridge.js';
 import FootprintHelpers       from './services/footprint-helpers.js';
+import GeoUtils               from './services/geo-utils.js';
 import AutoPlanStrategies     from './services/auto-plan-strategies.js';
 import AutoPlanEngine         from './services/auto-plan-engine.js';
 import ExistingBuildings      from './services/existing-buildings.js';
@@ -102,6 +105,8 @@ import BdTopoService         from './services/bdtopo-service.js';
 import EdfService            from './services/edf-service.js';
 import GpuService            from './services/gpu-service.js';
 import BiodiversiteService   from './services/biodiversite-service.js';
+import IsochroneService      from './services/isochrone-service.js';
+import PoiService             from './services/poi-service.js';
 
 // ─── Données globales ────────────────────────────────────────────
 let PHASES_META = null;
@@ -248,8 +253,11 @@ async function init() {
     window.ContourService         = ContourService;
     window.ContourCache           = ContourCache;
     window.ParcelAltitudes        = ParcelAltitudes;
+    window.PrecipitationService   = PrecipitationService;
+    window.SCOTService            = SCOTService;
     window.BpfBridge              = BpfBridge;
     window.FootprintHelpers       = FootprintHelpers;
+    window.GeoUtils               = GeoUtils;
     window.AutoPlanStrategies     = AutoPlanStrategies;
     window.AutoPlanEngine         = AutoPlanEngine;
     window.ExistingBuildings      = ExistingBuildings;
@@ -296,6 +304,8 @@ async function init() {
     window.EdfService           = EdfService;
     window.GpuService           = GpuService;
     window.BiodiversiteService  = BiodiversiteService;
+    window.IsochroneService     = IsochroneService;
+    window.PoiService           = PoiService;
 
     // Charger sources-providers.json (non-bloquant)
     fetch('data/sources-providers.json')

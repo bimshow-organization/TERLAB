@@ -445,6 +445,50 @@ const FootprintHelpers = {
     const bat = aabb ? { x: aabb.x, y: aabb.y, w: aabb.w, l: aabb.l } : null;
     return { blocs, primaryPolygon, primaryBloc, aabb, bat };
   },
+
+  /**
+   * Tronque le côté aval d'un rectangle (ou polygone) pour respecter une
+   * profondeur maximum mesurée selon l'azimut de la pente. Utilisé par la
+   * stratégie Isohypses : la profondeur du bâtiment perpendiculaire aux
+   * courbes de niveau est plafonnée par TopoCaseService.profMax.
+   *
+   * Le clamp est appliqué dans le repère local mètres. azimut_deg est la
+   * direction de la pente (0=Nord, 90=Est, sens horaire compass), et le
+   * "côté aval" est le côté le plus avancé dans cette direction.
+   *
+   * Cas X-est, Y-nord (espace TerrainP07Adapter local) :
+   *   downX = sin(az), downY = cos(az)  ← pas de signe inversé
+   * Cas X-est, Y-sud (espace SVG) :
+   *   downX = sin(az), downY = -cos(az) ← inverser le signe Y
+   * Le helper retourne par défaut le repère local mètres (Y-nord).
+   *
+   * @param {Array<{x,y}>} rect    polygone à tronquer (≥ 3 sommets)
+   * @param {number} azimut_deg    direction aval en degrés compass
+   * @param {number} profMax_m     profondeur maximum (m, le long de l'axe pente)
+   * @param {Object} [opts]        { ySouth: true → repère SVG Y-down }
+   * @returns {Array<{x,y}>}
+   */
+  clampRectProfMaxAlongAzimut(rect, azimut_deg, profMax_m, opts = {}) {
+    if (!rect || rect.length < 3) return rect;
+    if (!Number.isFinite(profMax_m) || profMax_m <= 0) return rect;
+    const az = azimut_deg * Math.PI / 180;
+    const ySign = opts.ySouth ? -1 : 1;
+    const downX = Math.sin(az);
+    const downY = Math.cos(az) * ySign;
+    const projs = rect.map(p => p.x * downX + p.y * downY);
+    const pMin = Math.min(...projs), pMax = Math.max(...projs);
+    const totalDepth = pMax - pMin;
+    if (totalDepth <= profMax_m + 1e-6) return rect;
+    const targetMax = pMin + profMax_m;
+    return rect.map((p, i) => {
+      if (projs[i] > targetMax) {
+        // Reculer ce sommet vers l'amont, le long de la direction pente
+        const delta = targetMax - projs[i]; // négatif
+        return { x: p.x + delta * downX, y: p.y + delta * downY };
+      }
+      return { x: p.x, y: p.y };
+    });
+  },
 };
 
 export default FootprintHelpers;

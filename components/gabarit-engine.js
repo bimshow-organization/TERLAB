@@ -139,6 +139,18 @@ function insetPolygon(poly, distances) {
   if (result.length < 3) return null;
   // Check for degenerate (self-intersecting) result
   if (shoelaceArea(result) < 0.01) return null;
+
+  // Garde finale : éperons aigus (angle intérieur < 90°). insetPolygon ne
+  // possède aucun spike guard amont (extend & intersect pur), donc une
+  // limite oblique peut produire des sommets sub-90°. removeAcuteSpikes
+  // les rabote en conservant le polygone valide.
+  const GU = (typeof window !== 'undefined') ? window.GeoUtils : null;
+  if (GU?.removeAcuteSpikes) {
+    const cleaned = GU.removeAcuteSpikes(result, 90);
+    if (cleaned && cleaned.length >= 3 && shoelaceArea(cleaned) >= 0.01) {
+      return cleaned;
+    }
+  }
   return result;
 }
 
@@ -294,8 +306,12 @@ export class ConstraintSolver {
       }));
     });
 
-    // Zone constructible = inset polygon
+    // Zone constructible = inset polygon (avec post-process anti-éperon < 90°)
     const emprise_constructible = insetPolygon(poly, insetMap) ?? [];
+    // emprise_raw : conservée pour debug visuel (avant removeAcuteSpikes,
+    // cf. insetPolygon). Pour l'instant identique — un futur refacto pourrait
+    // séparer raw et safe en deux étapes du pipeline.
+    const emprise_raw = emprise_constructible;
 
     // Zones mitoyen zone N
     let zones_mitoyen_n = null;
@@ -321,6 +337,7 @@ export class ConstraintSolver {
     return {
       zones_non_constructibles,
       emprise_constructible,
+      emprise_raw,
       zones_mitoyen_n,
       volumes: {
         he: rules.he_max_m,

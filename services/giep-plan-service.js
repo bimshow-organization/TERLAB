@@ -135,11 +135,15 @@ const GIEPPlanService = {
     svg += this._renderNorthArrow(bb, margin, px, py);
     svg += this._renderScaleBar(bb, margin, maxDim, vbX, vbY, vbH);
 
-    // 10. LÉGENDE (en haut de la colonne droite)
-    const legendInfo = this._renderLegend(ouvrages, bb, margin, py);
+    // 10. BADGE PENTE & EXPOSITION (en haut de la colonne droite)
+    const slopesBadge = this._renderSlopesBadge(bb, margin, py, cat, pente_pct, exposition);
+    svg += slopesBadge.svg;
+
+    // 11. LÉGENDE (sous le badge pentes)
+    const legendInfo = this._renderLegend(ouvrages, bb, margin, py, slopesBadge.bottomY + 1.5);
     svg += legendInfo.svg;
 
-    // 11. PRINCIPES GIEP (sous la légende, jamais empilés dessus)
+    // 12. PRINCIPES GIEP (sous la légende, jamais empilés dessus)
     svg += this._renderPrincipes(bb, margin, py, pente_pct, giepResult, terrain, legendInfo.bottomY + 2);
 
     svg += '</svg>';
@@ -532,12 +536,56 @@ const GIEPPlanService = {
     return s;
   },
 
+  // ── BADGE PENTE & EXPOSITION ─────────────────────────────────────────────
+  // Mise en valeur de la classification SlopesService : pastille catégorie +
+  // valeur + exposition + recommandations RTAA / GIEP.
+  _renderSlopesBadge(bb, margin, py, cat, pente_pct, exposition) {
+    const lx = bb.x1 + margin * 0.4;
+    const ly = py(bb.y1) + 1.6;
+    const w  = margin * 1.2;
+
+    // Compass mini : 4 demis-cardinaux + repère exposition
+    const compassR = 1.2;
+    const compassCx = lx + w - compassR - 0.4;
+    const compassCy = ly + compassR + 0.4;
+    const expoAngles = { N: -90, NE: -45, E: 0, SE: 45, S: 90, SO: 135, O: 180, NO: 225 };
+    const expoDeg = expoAngles[exposition] ?? 90;
+    const expoRad = expoDeg * Math.PI / 180;
+    const arrowEx = compassCx + Math.cos(expoRad) * compassR * 0.85;
+    const arrowEy = compassCy + Math.sin(expoRad) * compassR * 0.85;
+
+    let s = '<g class="slopes-badge">';
+    // Cadre
+    s += `<rect x="${lx - 0.3}" y="${ly - 0.4}" width="${w}" height="6.4"
+      fill="#FFFEFB" fill-opacity="0.95" stroke="${cat.hex}" stroke-width="0.18" rx="0.3"/>`;
+    // Titre
+    s += `<text x="${lx}" y="${ly + 1.0}" font-size="0.85" font-weight="700"
+      fill="${cat.hex}" letter-spacing="0.05">PENTE &amp; EXPOSITION</text>`;
+    // Pastille couleur + valeur pente
+    s += `<circle cx="${lx + 0.5}" cy="${ly + 2.4}" r="0.5" fill="${cat.hex}"/>`;
+    s += `<text x="${lx + 1.4}" y="${ly + 2.65}" font-size="1.05" font-weight="700" fill="#18130a">${pente_pct.toFixed(1)} %</text>`;
+    // Catégorie label
+    s += `<text x="${lx}" y="${ly + 3.7}" font-size="0.72" fill="#18130a">${cat.label}</text>`;
+    // RTAA + GIEP recommandations
+    s += `<text x="${lx}" y="${ly + 4.7}" font-size="0.62" fill="#6a6860" font-style="italic">RTAA · ${cat.rtaa}</text>`;
+    s += `<text x="${lx}" y="${ly + 5.5}" font-size="0.62" fill="#6a6860" font-style="italic">GIEP · ${cat.giep}</text>`;
+    // Boussole (compass) avec flèche exposition
+    s += `<circle cx="${compassCx}" cy="${compassCy}" r="${compassR}" fill="none" stroke="#18130a" stroke-width="0.10"/>`;
+    s += `<text x="${compassCx}" y="${compassCy - compassR - 0.25}" text-anchor="middle" font-size="0.55" font-weight="700" fill="#18130a">N</text>`;
+    s += `<line x1="${compassCx}" y1="${compassCy}" x2="${arrowEx}" y2="${arrowEy}" stroke="${cat.hex}" stroke-width="0.22" stroke-linecap="round"/>`;
+    s += `<circle cx="${arrowEx}" cy="${arrowEy}" r="0.18" fill="${cat.hex}"/>`;
+    s += `<text x="${compassCx}" y="${compassCy + compassR + 0.7}" text-anchor="middle" font-size="0.65" font-weight="600" fill="${cat.hex}">${exposition}</text>`;
+    s += '</g>';
+
+    return { svg: s, bottomY: ly + 6.4 };
+  },
+
   // ── LÉGENDE ───────────────────────────────────────────────────────────────
   // Renvoie { svg, bottomY } pour que _renderPrincipes puisse s'empiler dessous
   // sans collision (les deux partagent la colonne droite à bb.x1 + margin*0.4).
-  _renderLegend(ouvrages, bb, margin, py) {
+  _renderLegend(ouvrages, bb, margin, py, startY = null) {
     const lx = bb.x1 + margin * 0.4;
-    const ly = py(bb.y1) + 2;
+    const ly = startY != null ? startY : py(bb.y1) + 2;
     const lineH = 2.2;
     const usedTypes = new Set(ouvrages.map(o => o.type));
     // Toujours afficher les types de base

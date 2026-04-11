@@ -38,6 +38,23 @@ const SessionManager = {
   },
 
   // ── DONNÉES PAR DÉFAUT ────────────────────────────────────────
+  //
+  // Schéma session (champs documentés mais non initialisés — saisis par les phases) :
+  //
+  //   terrain.azimut_pente_deg : number  — direction aval de la pente (compass,
+  //     0=N, 90=E, sens horaire). Lu par TopoCaseService.getProgConstraints
+  //     puis par AutoPlanStrategies.isohypses pour aligner le bâtiment ⊥ aux
+  //     courbes de niveau. Renseigné en phase 1 (Topographie) à côté de
+  //     terrain.pente_moy_pct. Si absent, la stratégie Isohypses est désactivée.
+  //
+  //   phases.7.data.mitoyen_g : boolean  — règle binaire latérale gauche
+  //   phases.7.data.mitoyen_d : boolean  — règle binaire latérale droite
+  //     Indépendants : G mitoyen + D recul standard est valide. Lus par
+  //     EnvelopeGenerator (PLU.mitoyen_g/d), AutoPlanEngine (mitOpts pour
+  //     TerrainP07Adapter.adaptiveInset) et expandFaceMitoyenne (snap flush
+  //     sur limite séparative oblique). L'ancien flag combiné mitoyen_lateral
+  //     reste lu pour compat ; il active les deux côtés simultanément.
+  //
   _defaultData() {
     return {
       schemaVersion: SCHEMA_VERSION,

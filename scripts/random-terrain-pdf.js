@@ -73,14 +73,23 @@ function startServer() {
 
     srv.on('error', reject);
 
-    // Attendre que le port soit réellement accessible via HTTP
+    // Capturer la sortie de serve uniquement pour la joindre au message d'erreur en cas d'echec
+    let serveOut = '';
+    srv.stdout?.on('data', (chunk) => { serveOut += chunk.toString(); });
+    srv.stderr?.on('data', (chunk) => { serveOut += chunk.toString(); });
+
+    // Attendre que le port soit reellement accessible via HTTP
     const http = require('http');
     const checkReady = (retries = 0) => {
-      if (retries > 120) { reject(new Error('Serveur non prêt après 60s')); return; }
+      if (retries > 120) {
+        const tail = serveOut.slice(-800) || '(aucune sortie de serve)';
+        reject(new Error(`Serveur non pret apres 60s. Sortie serve:\n${tail}`));
+        return;
+      }
       const req = http.get(`http://localhost:${PORT}/`, (res) => {
         res.resume();
         if (res.statusCode >= 200 && res.statusCode < 400) {
-          log(`Serveur local prêt sur :${PORT}`);
+          log(`Serveur local pret sur :${PORT}`);
           resolve(srv);
         } else {
           setTimeout(() => checkReady(retries + 1), 500);
@@ -1028,6 +1037,9 @@ async function processOneTerrain(browser, runIndex) {
           }
 
           // Profils terrain depuis LiDAR (si points disponibles)
+          // Bug fixé : LidarService.getProfileFromPoints() renvoie {distance_m, altitude_m}
+          // mais TerrainProfile.render() lit {distance, altitude} → remap obligatoire,
+          // sinon SVG produit avec NaN partout (invisible).
           if (window.LidarService?._lastPoints || terrain.parcelle_geojson) {
             try {
               const TP = window.TerrainProfile;
@@ -1036,37 +1048,41 @@ async function processOneTerrain(browser, runIndex) {
                 const geojson = terrain.parcelle_geojson;
                 const coords = geojson?.coordinates?.[0] ?? geojson?.coordinates?.[0]?.[0];
                 if (coords?.length >= 2) {
-                  // Coupe A : longitudinale (premier→dernier point du polygone)
-                  const profileA = LS.getProfileFromPoints(LS._lastPoints, coords[0], coords[Math.floor(coords.length / 2)]);
-                  if (profileA?.length > 2) {
+                  // Helper : profil LiDAR → SVG dataURL via TerrainProfile.render
+                  const renderProfile = async (start, end, title) => {
+                    const profile = LS.getProfileFromPoints(LS._lastPoints, start, end, 8);
+                    if (!profile?.length || profile.length < 3) return null;
+                    // Remap distance_m/altitude_m → distance/altitude
+                    const data = profile.map(p => ({ distance: p.distance_m, altitude: p.altitude_m }));
                     const tmpDiv = document.createElement('div');
                     tmpDiv.style.cssText = 'position:absolute;left:-9999px;width:700px;height:220px';
                     document.body.appendChild(tmpDiv);
-                    const svgA = TP.render(profileA, tmpDiv, { width: 700, height: 220, label: 'Coupe A — Longitudinale' });
-                    if (svgA) {
-                      const str = TP.toSVGString?.(svgA) ?? new XMLSerializer().serializeToString(svgA);
+                    try {
+                      const svg = TP.render(data, tmpDiv, { width: 700, height: 220, title });
+                      if (!svg) return null;
+                      const str = TP.toSVGString?.(svg) ?? new XMLSerializer().serializeToString(svg);
                       const blob = new Blob([str], { type: 'image/svg+xml' });
-                      visuals.sectionA = await new Promise(r => { const rd = new FileReader(); rd.onload = () => r(rd.result); rd.readAsDataURL(blob); });
-                      console.log('[PDF] Section A SVG : ' + Math.round(str.length / 1024) + 'K');
+                      return await new Promise(r => { const rd = new FileReader(); rd.onload = () => r(rd.result); rd.readAsDataURL(blob); });
+                    } finally {
+                      tmpDiv.remove();
                     }
-                    tmpDiv.remove();
+                  };
+
+                  // Coupe A : axe long (sommet 0 → sommet opposé)
+                  const idxOppA = Math.floor(coords.length / 2);
+                  const dataUrlA = await renderProfile(coords[0], coords[idxOppA], 'Coupe A — Longitudinale');
+                  if (dataUrlA) {
+                    visuals.sectionA = dataUrlA;
+                    console.log('[PDF] Section A SVG : ' + Math.round(dataUrlA.length / 1024) + 'K');
                   }
 
-                  // Coupe B : perpendiculaire
-                  const mid = Math.floor(coords.length / 4);
-                  const profileB = LS.getProfileFromPoints(LS._lastPoints, coords[mid], coords[mid + Math.floor(coords.length / 2)]);
-                  if (profileB?.length > 2) {
-                    const tmpDiv2 = document.createElement('div');
-                    tmpDiv2.style.cssText = 'position:absolute;left:-9999px;width:700px;height:220px';
-                    document.body.appendChild(tmpDiv2);
-                    const svgB = TP.render(profileB, tmpDiv2, { width: 700, height: 220, label: 'Coupe B — Perpendiculaire' });
-                    if (svgB) {
-                      const str = TP.toSVGString?.(svgB) ?? new XMLSerializer().serializeToString(svgB);
-                      const blob = new Blob([str], { type: 'image/svg+xml' });
-                      visuals.sectionB = await new Promise(r => { const rd = new FileReader(); rd.onload = () => r(rd.result); rd.readAsDataURL(blob); });
-                      console.log('[PDF] Section B SVG : ' + Math.round(str.length / 1024) + 'K');
-                    }
-                    tmpDiv2.remove();
+                  // Coupe B : axe perpendiculaire (sommet 1/4 → sommet 3/4)
+                  const idxStartB = Math.floor(coords.length / 4);
+                  const idxEndB   = Math.floor(coords.length * 3 / 4);
+                  const dataUrlB = await renderProfile(coords[idxStartB], coords[idxEndB], 'Coupe B — Perpendiculaire');
+                  if (dataUrlB) {
+                    visuals.sectionB = dataUrlB;
+                    console.log('[PDF] Section B SVG : ' + Math.round(dataUrlB.length / 1024) + 'K');
                   }
                 }
               }
@@ -1259,8 +1275,35 @@ async function processOneTerrain(browser, runIndex) {
                     visuals.terrain3d = snap;
                     terrain3dOk = true;
                     const orthoTag = ortho ? `, ortho ${orthoSampled}/${n}` : ', colormap altitude';
-                    console.log('[PDF] Terrain 3D point cloud LiDAR : ' + Math.round(snap.length / 1024) + 'K (' + n + ' pts, dz=' + Math.round(dz) + 'm' + orthoTag + ')');
+                    console.log('[PDF] Terrain 3D vue oblique LiDAR : ' + Math.round(snap.length / 1024) + 'K (' + n + ' pts, dz=' + Math.round(dz) + 'm' + orthoTag + ')');
                   }
+
+                  // ── VUE 2 — Vue zénithale (top-down ~90° élévation) ──
+                  // Permet de lire les empreintes bâti + alignements voirie
+                  // sans la parallaxe de la vue oblique. Repère N en haut.
+                  // Cadrage plus serré (×0.85) car la projection plate est moins
+                  // diluée par la perspective verticale.
+                  const aspectTop = W / H;
+                  const rTop = r * 0.85;
+                  cam.left   = -rTop * aspectTop;
+                  cam.right  =  rTop * aspectTop;
+                  cam.top    =  rTop;
+                  cam.bottom = -rTop;
+                  cam.up.set(0, 0, -1); // -Z local = Nord → vers le haut de l'image
+                  cam.position.set(
+                    sphere.center.x,
+                    sphere.center.y + r * 6,   // bien au-dessus
+                    sphere.center.z,
+                  );
+                  cam.lookAt(sphere.center);
+                  cam.updateProjectionMatrix();
+                  renderer.render(scene, cam);
+                  const snapTop = canvas.toDataURL('image/jpeg', 0.88);
+                  if (snapTop.length > 500) {
+                    visuals.terrain3dTop = snapTop;
+                    console.log('[PDF] Terrain 3D vue zénithale LiDAR : ' + Math.round(snapTop.length / 1024) + 'K');
+                  }
+
                   renderer.dispose();
                   geom.dispose();
                   mat.dispose();

@@ -33,9 +33,11 @@ const AutoPlanEngine = {
     const TA = window.TerrainP07Adapter;
     if (!TA) { console.warn('[AutoPlan] TerrainP07Adapter non disponible'); return []; }
 
-    // 0. Contraintes topographiques
+    // 0. Contraintes topographiques (incluant azimut pente pour Isohypses)
     const topoConstraints = TopoCaseService.getProgConstraints(
-      session?.terrain?.pente_moy_pct, prog
+      session?.terrain?.pente_moy_pct,
+      prog,
+      session?.terrain?.azimut_pente_deg,
     );
     const progTopo = {
       ...prog,
@@ -88,13 +90,18 @@ const AutoPlanEngine = {
       plu.emprMax = Math.min(plu.emprMax, 20);
     }
 
-    // 5. Inset adaptatif
+    // 5. Inset adaptatif (avec règle binaire mitoyen G/D)
     const reculsTyped = {
       voie: plu.recul_voie,
       lat:  plu.recul_lat,
       fond: plu.recul_fond,
     };
-    const insetResult = TA.adaptiveInset(poly, reculsTyped, edgeTypes);
+    const p7 = session?.phases?.[7]?.data ?? {};
+    const mitOpts = {
+      mitoyen_g: !!(p7.mitoyen_g || p7.mitoyen_lateral || p7.implantation_limite_sep === true),
+      mitoyen_d: !!(p7.mitoyen_d || p7.mitoyen_lateral || p7.implantation_limite_sep === true),
+    };
+    const insetResult = TA.adaptiveInset(poly, reculsTyped, edgeTypes, mitOpts);
     if (insetResult.collapsed) {
       console.warn('[AutoPlan] Enveloppe effondrée même après adaptation');
       return [];
@@ -322,6 +329,13 @@ const AutoPlanEngine = {
     // Inter-bat min : max(PLU, H/2 SDIS) — calculé par famille pour H réel
     const interBatPLU = parseFloat(plu.interBatMin ?? 4);
 
+    // Détection pente exploitable pour Isohypses : pente moyenne ≥ 5%
+    // ET azimut_pente_deg renseigné dans la session.
+    const azimutPente = prog._topoConstraints?.azimut_deg;
+    const tcSlope = prog._topoConstraints?.topoCase;
+    const slopeId = tcSlope?.id ?? 'flat';
+    const useIsohypses = Number.isFinite(azimutPente) && slopeId !== 'flat';
+
     const families = [
       // A1 = max densité — rect orienté PCA, sauf si parcelle longue → multi
       {
@@ -366,6 +380,17 @@ const AutoPlanEngine = {
         color: '#14B8A6',
       },
     ];
+
+    // D1 = Isohypses — bâtiment ⊥ à la pente, profMax topo respecté.
+    // Ajouté seulement si la pente est meaningful (≥5%) ET l'azimut connu.
+    if (useIsohypses) {
+      families.push({
+        key: 'D1', label: `Isohypses (${tcSlope.label})`,
+        nv: Math.min(2, nvMax), emprPct: Math.min(35, plu.emprMax),
+        strategy: 'isohypses',
+        color: '#0EA5E9',
+      });
+    }
 
     // COS : limite SP totale si défini dans le PLU
     const cosMaxSP = (plu.cos && parcelArea > 0) ? plu.cos * parcelArea : Infinity;
@@ -416,6 +441,16 @@ const AutoPlanEngine = {
       } else if (fam.strategy === 'multi') {
         blocs = AutoPlanStrategies.multiRect(env, wTarget, lTarget, gapMin, 4);
         // Fallback si multi échoue → rect simple
+        if (!blocs.length) {
+          blocs = AutoPlanStrategies.rect(env, wTarget, lTarget, pir);
+        }
+      } else if (fam.strategy === 'isohypses') {
+        // Bâtiment ⊥ à la pente — profMax topo strict.
+        // L'espace local TerrainP07Adapter est X-est, Y-nord (ySouth=false par défaut).
+        blocs = AutoPlanStrategies.isohypses(
+          env, wTarget, lTarget, pir, azimutPente, prog.profMax,
+        );
+        // Fallback : si isohypses échoue (ex. zone trop fine), basculer sur rect
         if (!blocs.length) {
           blocs = AutoPlanStrategies.rect(env, wTarget, lTarget, pir);
         }

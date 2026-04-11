@@ -91,6 +91,20 @@
     </div>
   </div>
 
+  <!-- Section Accessibilité 1/4 heure — ville du 1/4 h (Moreno) -->
+  <div class="form-section anim-slide-up" id="p05-iso-section">
+    <div class="fs-head">
+      🏙️ Accessibilité — Ville du 1/4 heure
+      <span id="p05-iso-badge" style="display:none;font-size:8px;background:var(--success2);color:var(--success);padding:2px 6px;border-radius:3px;margin-left:6px;font-family:var(--font-mono)">AUTO</span>
+    </div>
+    <div id="p05-iso-loader" style="padding:8px 10px;font-size:11px;color:var(--muted);font-style:italic">Calcul des isochrones IGN…</div>
+    <div id="p05-iso-result" style="display:none;padding:4px 10px 8px"></div>
+    <div style="display:flex;gap:6px;padding:0 10px 10px">
+      <button class="source-btn" onclick="P05.toggleIsochroneLayer('pedestrian')" id="p05-iso-btn-walk" style="flex:1;padding:5px 8px">🚶 Afficher pied</button>
+      <button class="source-btn" onclick="P05.toggleIsochroneLayer('car')" id="p05-iso-btn-car" style="flex:1;padding:5px 8px">🚗 Afficher voiture</button>
+    </div>
+  </div>
+
   <div class="form-section anim-slide-up">
     <div class="fs-head">Accès & nuisances</div>
     <div class="field-row">
@@ -151,8 +165,9 @@
     <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Réseau assainissement identifié</span></div>
     <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Accès SDIS + hydrant vérifiés</span></div>
     <div class="check-item" role="checkbox" aria-checked="false" tabindex="0" id="p05-check-rb"><div class="check-box"></div><span>Facteur Rb calculé sur au moins une rue du voisinage</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0" id="p05-check-iso"><div class="check-box"></div><span>Accessibilité 1/4 heure analysée (Moreno)</span></div>
     <div class="val-progress"><div class="val-bar"></div></div>
-    <div class="val-footer"><span>Phase indicative</span><span class="val-pct">0/4</span></div>
+    <div class="val-footer"><span>Phase indicative</span><span class="val-pct">0/5</span></div>
     <button class="next-btn">Phase 6 — Biodiversité →</button>
   </div>
 </div>
@@ -358,6 +373,38 @@ const P05 = {
     if (B3D?._inited) B3D.exportGLB();
   },
 
+  // ─── Isochrones 1/4 heure ───────────────────────────────────
+  _isoData: null,           // { pedestrian, car, poiPed, poiCar, scorePed, scoreCar }
+  _isoVisible: { pedestrian: false, car: false },
+
+  toggleIsochroneLayer(profile) {
+    const map = window.TerlabMap?.getMap?.();
+    if (!map || !this._isoData) return;
+    const feature = this._isoData[profile];
+    if (!feature) { window.TerlabToast?.show(`Isochrone ${profile} indisponible`, 'warning'); return; }
+
+    const srcId   = `iso-${profile}`;
+    const fillId  = `iso-${profile}-fill`;
+    const lineId  = `iso-${profile}-line`;
+    const btnId   = `p05-iso-btn-${profile === 'pedestrian' ? 'walk' : 'car'}`;
+    const btn     = document.getElementById(btnId);
+
+    if (this._isoVisible[profile]) {
+      if (map.getLayer(fillId)) map.removeLayer(fillId);
+      if (map.getLayer(lineId)) map.removeLayer(lineId);
+      if (map.getSource(srcId)) map.removeSource(srcId);
+      this._isoVisible[profile] = false;
+      if (btn) btn.style.background = 'none';
+    } else {
+      if (!map.getSource(srcId)) map.addSource(srcId, { type: 'geojson', data: feature });
+      const color = profile === 'pedestrian' ? '#3b82f6' : '#f59e0b';
+      map.addLayer({ id: fillId, type: 'fill', source: srcId, paint: { 'fill-color': color, 'fill-opacity': 0.18 } });
+      map.addLayer({ id: lineId, type: 'line', source: srcId, paint: { 'line-color': color, 'line-width': 2 } });
+      this._isoVisible[profile] = true;
+      if (btn) btn.style.background = 'rgba(154,120,32,.18)';
+    }
+  },
+
   _colorMode: 'type',
   setColorMode(mode) {
     this._colorMode = mode;
@@ -435,6 +482,95 @@ if (window.AtlasModal) AtlasModal.injectPreview('atlas-preview-urbain', 'composi
   } catch (e) {
     console.warn('[P05] ICPE auto-fetch failed:', e.message);
   }
+
+  // ─── Isochrones 1/4 heure (IGN) + POI Moreno (Overpass) ───
+  (async () => {
+    const Iso = window.IsochroneService;
+    const Poi = window.PoiService;
+    const loader = document.getElementById('p05-iso-loader');
+    const result = document.getElementById('p05-iso-result');
+    const badge  = document.getElementById('p05-iso-badge');
+    if (!Iso || !Poi) { if (loader) loader.textContent = 'Services isochrone non chargés'; return; }
+
+    try {
+      // 1. Isochrones pied + voiture (15 min = 900 s)
+      const { pedestrian, car } = await Iso.fetchBoth(lat, lon, 900);
+      if (!pedestrian && !car) throw new Error('aucune isochrone IGN');
+
+      // 2. POI Overpass dans la bbox englobante (voiture contient pied)
+      const refFeature = car ?? pedestrian;
+      const bigBbox = Poi.bboxOfFeature(refFeature);
+      const allPois = bigBbox ? await Poi.fetchInBbox(bigBbox) : [];
+
+      // 3. Filtre point-in-polygon par profil
+      const poiPed = pedestrian ? Poi.filterInPolygon(allPois, pedestrian) : [];
+      const poiCar = car        ? Poi.filterInPolygon(allPois, car)        : [];
+
+      // 4. Score Moreno (5 fonctions)
+      const scorePed = Poi.scoreMoreno(poiPed);
+      const scoreCar = Poi.scoreMoreno(poiCar);
+
+      // 5. Stockage pour les boutons toggle
+      P05._isoData = { pedestrian, car, poiPed, poiCar, scorePed, scoreCar };
+
+      // 6. Render tableau
+      const cats = Object.entries(Poi.CATEGORIES);
+      const rowFor = (k, label, icon) => {
+        const cP = scorePed.counts[k], cC = scoreCar.counts[k];
+        return `<tr>
+          <td style="padding:3px 6px">${icon} ${label}</td>
+          <td style="padding:3px 6px;text-align:center;color:${cP>0?'var(--success)':'var(--muted)'}">${cP}</td>
+          <td style="padding:3px 6px;text-align:center;color:${cC>0?'var(--success)':'var(--muted)'}">${cC}</td>
+        </tr>`;
+      };
+      const areaPed = Iso.areaKm2(pedestrian);
+      const areaCar = Iso.areaKm2(car);
+      result.innerHTML = `
+        <table style="width:100%;font-size:11px;border-collapse:collapse">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border)">
+              <th style="padding:3px 6px;text-align:left;font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint)">Fonction Moreno</th>
+              <th style="padding:3px 6px;text-align:center;font-family:var(--font-mono);font-size:9px;color:var(--faint)">🚶 15 min</th>
+              <th style="padding:3px 6px;text-align:center;font-family:var(--font-mono);font-size:9px;color:var(--faint)">🚗 15 min</th>
+            </tr>
+          </thead>
+          <tbody>${cats.map(([k,c]) => rowFor(k, c.label, c.icon)).join('')}</tbody>
+          <tfoot>
+            <tr style="border-top:1px solid var(--border);font-weight:bold">
+              <td style="padding:5px 6px">Score 1/4 h</td>
+              <td style="padding:5px 6px;text-align:center;color:var(--accent)">${scorePed.score}/5</td>
+              <td style="padding:5px 6px;text-align:center;color:var(--accent)">${scoreCar.score}/5</td>
+            </tr>
+          </tfoot>
+        </table>
+        <div style="margin-top:6px;font-size:9.5px;color:var(--muted);font-style:italic;line-height:1.5">
+          Aire pied : ${areaPed?.toFixed(2) ?? '?'} km² · Aire voiture : ${areaCar?.toFixed(2) ?? '?'} km²<br/>
+          Isochrones IGN BD TOPO Valhalla · POI OpenStreetMap · piéton ${Iso.WALK_KMH} km/h (relief Réunion)
+        </div>
+      `;
+      result.style.display = 'block';
+      if (badge)  badge.style.display  = 'inline';
+      if (loader) loader.style.display = 'none';
+
+      SessionManager.savePhase(5, {
+        ville_15min: {
+          score_pied:    scorePed.score,
+          score_voiture: scoreCar.score,
+          counts_pied:    scorePed.counts,
+          counts_voiture: scoreCar.counts,
+          aire_pied_km2:    areaPed,
+          aire_voiture_km2: areaCar
+        }
+      });
+
+      // Validation auto
+      const chk = document.getElementById('p05-check-iso');
+      if (chk) { chk.setAttribute('aria-checked','true'); chk.classList.add('checked'); }
+    } catch (e) {
+      console.warn('[P05] Isochrone 1/4h failed:', e.message);
+      if (loader) loader.textContent = 'Calcul indisponible — service IGN/Overpass injoignable';
+    }
+  })();
 
   // BASIAS — sites et sols pollués
   try {

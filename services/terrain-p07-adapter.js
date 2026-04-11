@@ -292,16 +292,30 @@ const TerrainP07Adapter = {
    * @param {Array} poly          — [[x,y]...] CCW local mètres
    * @param {Object} reculsTyped  — { voie, lat, fond, mitoyen: [] }
    * @param {string[]} edgeTypes  — types par arête
+   * @param {Object} [mitOpts]    — { mitoyen_g, mitoyen_d } règle binaire par côté
    * @returns {{ env, ratio, collapsed, warnings, reculsEffectifs }}
    */
-  adaptiveInset(poly, reculsTyped, edgeTypes) {
+  adaptiveInset(poly, reculsTyped, edgeTypes, mitOpts = {}) {
     const n = poly.length;
+    const { mitoyen_g = false, mitoyen_d = false } = mitOpts;
+    // Si mitoyen_g XOR mitoyen_d, on précalcule le côté G/D de chaque arête
+    // latérale par projection sur la tangente de la voie principale.
+    const splitMit = !!mitoyen_g !== !!mitoyen_d;
+    const lateralSides = splitMit ? this._classifyLateralSidesArr(poly, edgeTypes) : null;
 
     // Construire tableau reculs par arête
-    const buildReculs = (factor = 1) => edgeTypes.map(type => {
+    const buildReculs = (factor = 1) => edgeTypes.map((type, i) => {
       if (type === 'voie')    return (reculsTyped.voie ?? 3) * factor;
       if (type === 'fond')    return (reculsTyped.fond ?? 3) * factor;
       if (type === 'mitoyen') return 0;
+      // 'lat' / 'lateral' : règle binaire par côté
+      if (lateralSides) {
+        const side = lateralSides[i];
+        if (side === 'g' && mitoyen_g) return 0;
+        if (side === 'd' && mitoyen_d) return 0;
+      } else if (mitoyen_g && mitoyen_d) {
+        return 0; // les deux mitoyens → toutes latérales à 0
+      }
       return (reculsTyped.lat ?? 1.5) * factor;
     });
 
@@ -557,6 +571,53 @@ const TerrainP07Adapter = {
       if (i === fondIdx) return 'fond';
       return 'lat';
     });
+  },
+
+  /**
+   * Classifie chaque arête latérale en 'g'/'d' (gauche/droite) en projetant
+   * son midpoint sur la tangente de l'arête voie. Format array [[x,y]].
+   * @param {Array} poly          — [[x,y]...] local mètres
+   * @param {string[]} edgeTypes  — types par arête
+   * @returns {(string|null)[]}   — 'g' | 'd' | null par arête
+   */
+  _classifyLateralSidesArr(poly, edgeTypes) {
+    const n = poly.length;
+    const out = new Array(n).fill(null);
+    const voieIdx = edgeTypes.indexOf('voie');
+    if (voieIdx < 0) {
+      // Fallback : signe X relatif au centroïde
+      const cx = poly.reduce((s, p) => s + p[0], 0) / n;
+      for (let i = 0; i < n; i++) {
+        const t = edgeTypes[i];
+        if (t !== 'lateral' && t !== 'lat') continue;
+        const j = (i + 1) % n;
+        const mx = (poly[i][0] + poly[j][0]) / 2;
+        out[i] = mx < cx ? 'g' : 'd';
+      }
+      return out;
+    }
+    const vj = (voieIdx + 1) % n;
+    const vdx = poly[vj][0] - poly[voieIdx][0];
+    const vdy = poly[vj][1] - poly[voieIdx][1];
+    const vlen = Math.hypot(vdx, vdy);
+    if (vlen < 0.01) return out;
+    const tx = vdx / vlen, ty = vdy / vlen;
+    const vmx = (poly[voieIdx][0] + poly[vj][0]) / 2;
+    const vmy = (poly[voieIdx][1] + poly[vj][1]) / 2;
+    // En espace local CCW (Y-up), signedArea > 0 = CCW. Le sens "gauche"
+    // dépend de l'orientation : on s'aligne sur le sens inverse en CW.
+    const sa = this._signedArea(poly);
+    const flip = sa < 0 ? 1 : -1;
+    for (let i = 0; i < n; i++) {
+      const t = edgeTypes[i];
+      if (t !== 'lateral' && t !== 'lat') continue;
+      const j = (i + 1) % n;
+      const mx = (poly[i][0] + poly[j][0]) / 2;
+      const my = (poly[i][1] + poly[j][1]) / 2;
+      const proj = ((mx - vmx) * tx + (my - vmy) * ty) * flip;
+      out[i] = proj < 0 ? 'g' : 'd';
+    }
+    return out;
   },
 
   // ═══════════════════════════════════════════════════════════════════════════

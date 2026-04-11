@@ -286,6 +286,110 @@ const ContourService = {
     }
     return group;
   },
+
+  // ── Render SVG topo standalone (pour PDF) ─────────────────────────
+  // Produit un SVG indépendant : parcelle + courbes de niveau colorisées
+  // par altitude (gradient vert→brun) + étiquettes sur courbes majeures.
+  // Params :
+  //   - contourData : sortie de fromBIL() ou ContourCache.loadOrGet()
+  //   - parcelGeo : Array<[lng,lat]> ring extérieur parcelle (sans fermeture)
+  //   - opts : { width, height, title }
+  renderTopoSVG(contourData, parcelGeo, opts = {}) {
+    if (!contourData?.lines?.length || !parcelGeo?.length) return '';
+    const W = opts.width  ?? 600;
+    const H = opts.height ?? 400;
+    const margin = 24;
+
+    // Centroïde + projection locale (mètres, Y inversé pour SVG)
+    let clng = 0, clat = 0;
+    for (const [lng, lat] of parcelGeo) { clng += lng; clat += lat; }
+    clng /= parcelGeo.length; clat /= parcelGeo.length;
+    const LNG = 111320 * Math.cos(clat * Math.PI / 180);
+    const LAT = 111320;
+    const toLocal = ([lng, lat]) => [(lng - clng) * LNG, -(lat - clat) * LAT];
+
+    // BBox locale combinée (parcelle + courbes)
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    const parcelLocal = parcelGeo.map(toLocal);
+    for (const [x, y] of parcelLocal) {
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+    }
+    // Élargir avec un peu des courbes voisines
+    for (const line of contourData.lines) {
+      for (const c of line.coords) {
+        const [x, y] = toLocal(c);
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+      }
+    }
+    const dx = maxX - minX, dy = maxY - minY;
+    const scale = Math.min((W - margin * 2) / dx, (H - margin * 2) / dy);
+    const offX = (W - dx * scale) / 2 - minX * scale;
+    const offY = (H - dy * scale) / 2 - minY * scale;
+    const sx = x => x * scale + offX;
+    const sy = y => y * scale + offY;
+
+    // Palette altitude : vert (bas) → brun (haut)
+    const { minAlt, maxAlt, interval } = contourData;
+    const range = maxAlt - minAlt || 1;
+    const altColor = (level) => {
+      const t = Math.max(0, Math.min(1, (level - minAlt) / range));
+      // vert sombre → brun
+      const r = Math.round(0x4a + t * (0xa8 - 0x4a));
+      const g = Math.round(0x6e + t * (0x6e - 0x6e));
+      const b = Math.round(0x3e + t * (0x3e - 0x3e));
+      return `rgb(${r},${g + Math.round((1 - t) * 60)},${b - Math.round(t * 20)})`;
+    };
+
+    const parts = [];
+    parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" font-family="IBM Plex Mono,monospace">`);
+    parts.push(`<rect width="${W}" height="${H}" fill="#fcf9f3"/>`);
+
+    // Titre
+    const title = opts.title ?? `Topographie · courbes ${interval} m IGN BIL`;
+    parts.push(`<text x="${W/2}" y="14" text-anchor="middle" font-size="10" font-weight="700" fill="#1C1C1A">${title}</text>`);
+    parts.push(`<text x="${W - 6}" y="14" text-anchor="end" font-size="7" fill="#A8A49C">${Math.round(minAlt)}–${Math.round(maxAlt)} m NGR · Δ${Math.round(maxAlt - minAlt)} m</text>`);
+
+    // Courbes de niveau (ordre : bas → haut pour stacker)
+    const sorted = [...contourData.lines].sort((a, b) => a.level - b.level);
+    for (const line of sorted) {
+      const isMajor = (Math.round(line.level) % (interval * 5)) === 0;
+      const pts = line.coords.map(c => {
+        const [x, y] = toLocal(c);
+        return `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`;
+      }).join(' ');
+      const col = altColor(line.level);
+      parts.push(`<polyline points="${pts}" fill="none" stroke="${col}" stroke-width="${isMajor ? 1.0 : 0.45}" stroke-opacity="${isMajor ? 0.85 : 0.55}" stroke-linejoin="round"/>`);
+      // Label sur courbes majeures (au milieu de la polyline)
+      if (isMajor && line.coords.length > 4) {
+        const midIdx = Math.floor(line.coords.length / 2);
+        const [mx, my] = toLocal(line.coords[midIdx]);
+        const lx = sx(mx), ly = sy(my);
+        parts.push(`<rect x="${(lx - 8).toFixed(1)}" y="${(ly - 5).toFixed(1)}" width="16" height="8" fill="#fcf9f3" fill-opacity="0.85" rx="1"/>`);
+        parts.push(`<text x="${lx.toFixed(1)}" y="${(ly + 1.5).toFixed(1)}" text-anchor="middle" font-size="6" fill="${col}" font-weight="600">${Math.round(line.level)}</text>`);
+      }
+    }
+
+    // Parcelle en surbrillance
+    const pPts = parcelLocal.map(([x, y]) => `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join(' ');
+    parts.push(`<polygon points="${pPts}" fill="#C1652B" fill-opacity="0.10" stroke="#C1652B" stroke-width="1.5" stroke-linejoin="round"/>`);
+
+    // Légende couleurs altitude (gradient bar)
+    const lbW = 80, lbH = 6;
+    const lbX = margin, lbY = H - 16;
+    for (let i = 0; i < 10; i++) {
+      const t = i / 10;
+      const lvl = minAlt + t * range;
+      parts.push(`<rect x="${lbX + i * lbW / 10}" y="${lbY}" width="${lbW / 10}" height="${lbH}" fill="${altColor(lvl)}"/>`);
+    }
+    parts.push(`<rect x="${lbX}" y="${lbY}" width="${lbW}" height="${lbH}" fill="none" stroke="#1C1C1A" stroke-width="0.4"/>`);
+    parts.push(`<text x="${lbX}" y="${lbY - 2}" font-size="6" fill="#6A6860">${Math.round(minAlt)}m</text>`);
+    parts.push(`<text x="${lbX + lbW}" y="${lbY - 2}" text-anchor="end" font-size="6" fill="#6A6860">${Math.round(maxAlt)}m</text>`);
+
+    parts.push('</svg>');
+    return parts.join('');
+  },
 };
 
 export default ContourService;

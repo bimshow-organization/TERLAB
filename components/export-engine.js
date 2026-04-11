@@ -9,7 +9,7 @@ import GIEPPlanService from '../services/giep-plan-service.js';
 import GIEPCalculator from '../services/giep-calculator-service.js';
 import DiagRenderer from './diag-renderer.js';
 import { buildCoupeSVGDocument } from '../utils/coupe-renderer.js';
-import { loadPhrases, pickShort, buildPluContext } from '../services/rapport-phrases-engine.js';
+import { loadPhrases, pickShort, buildPluContext, buildFullContext } from '../services/rapport-phrases-engine.js';
 
 // ── HELPERS ────────────────────────────────────────────────────────────────
 const val  = (v, fallback = 'a renseigner') => (v != null && v !== '' && v !== '—') ? String(v) : fallback;
@@ -356,12 +356,12 @@ const ExportEngine = {
     const geoLabel = geoTypes[terrain.geologie_type] ?? terrain.geologie_type ?? null;
     const geoIsAuto = this._autoFields?.has('geologie_type');
 
-    // Coupes A/B
+    // Coupes A/B — profils altimétriques LiDAR
     const sectionAImg = this._visuals?.sectionA
-      ? `<div class="map-wrap" style="height:90px"><img src="${this._visuals.sectionA}" alt="Coupe A longitudinale"><span class="map-lbl">Coupe A — Longitudinale</span></div>`
+      ? `<div class="map-wrap" style="height:110px"><img src="${this._visuals.sectionA}" alt="Coupe A longitudinale" style="object-fit:contain"><span class="map-lbl">Coupe A — Longitudinale (LiDAR)</span></div>`
       : '';
     const sectionBImg = this._visuals?.sectionB
-      ? `<div class="map-wrap" style="height:90px"><img src="${this._visuals.sectionB}" alt="Coupe B perpendiculaire"><span class="map-lbl">Coupe B — Perpendiculaire</span></div>`
+      ? `<div class="map-wrap" style="height:110px;margin-top:4px"><img src="${this._visuals.sectionB}" alt="Coupe B perpendiculaire" style="object-fit:contain"><span class="map-lbl">Coupe B — Perpendiculaire (LiDAR)</span></div>`
       : '';
 
     // PPR
@@ -406,6 +406,28 @@ const ExportEngine = {
     const helioImg = this._visuals?.heliodone ?? null;
     const windImg  = this._visuals?.windRose  ?? null;
     const windMeta = this._visuals?.windMeta  ?? {};
+    const rainfallMeta = this._visuals?.rainfallMeta ?? {};
+
+    // ── Contexte complet pour toutes les sections phrase ──
+    const fullCtx = buildFullContext(terrain, { 3: p3, 4: p4 }, { windMeta, rainfallMeta });
+
+    // Topographie
+    const phPente   = pickShort(phrasesDict, 'topographie', 'pente',     fullCtx);
+    const phAlt     = pickShort(phrasesDict, 'topographie', 'altitude',  fullCtx);
+    const phOrient  = pickShort(phrasesDict, 'topographie', 'orientation', fullCtx);
+    // Geologie
+    const phGeoType = pickShort(phrasesDict, 'geologie', 'type',         fullCtx);
+    const phRemblai = pickShort(phrasesDict, 'geologie', 'remblai',      fullCtx);
+    const phGeotech = pickShort(phrasesDict, 'geologie', 'geotechnique', fullCtx);
+    // Risques extra
+    const phPprn    = pickShort(phrasesDict, 'risques', 'pprn',          fullCtx);
+    const phCoteRef = pickShort(phrasesDict, 'risques_extra', 'cote_ref',  fullCtx);
+    const phRtaaVent= pickShort(phrasesDict, 'risques_extra', 'rtaa_vent', fullCtx);
+    const phHydrant = pickShort(phrasesDict, 'risques_extra', 'hydrant',   fullCtx);
+    // Bioclim extra
+    const phVentDir = pickShort(phrasesDict, 'bioclimatique_extra', 'vent_dominant', fullCtx);
+    const phVentVit = pickShort(phrasesDict, 'bioclimatique_extra', 'vent_vitesse',  fullCtx);
+    const phPluvio  = pickShort(phrasesDict, 'bioclimatique_extra', 'pluviometrie',  fullCtx);
 
     // Flèche vent dominant pour overlay sur la carte PPRN
     // Convention météo : "vent du E" = vent VENANT de l'Est → flèche pointant vers l'Ouest
@@ -454,25 +476,33 @@ const ExportEngine = {
       <div class="pb pb3">
         <div class="sec">
           ${sec('TOPOGRAPHIE')}
-          ${row('Orientation', terrain.orientation ?? terrain.orientation_terrain)}
+          ${rowTag('Orientation', terrain.orientation ?? terrain.orientation_terrain, phOrient)}
           ${row('Alt. min/max', terrain.alt_min_dem != null && terrain.alt_max_dem != null ? `${terrain.alt_min_dem} — ${terrain.alt_max_dem} m NGR` : null)}
-          ${row('Pente moy.', terrain.pente_moy_pct != null ? `${terrain.pente_moy_pct} %` : null)}
+          ${tag(phAlt)}
+          ${rowTag('Pente moy.', terrain.pente_moy_pct != null ? `${terrain.pente_moy_pct} %` : null, phPente)}
           ${row('Zone pluvio.', terrain.zone_pluviometrique ?? terrain.zone_pluvio)}
 
           ${sec('GEOLOGIE')}
-          ${geoLabel ? `<div class="hbox"><p>Type : <strong>${geoLabel}</strong>${geoIsAuto ? ' <span class="fv au"></span>' : ''}</p></div>` : ''}
-          ${row('Remblai', { non: 'Non', possible: 'Possible', oui: 'Oui' }[terrain.remblai])}
-          ${row('Geotechnique', { non: 'Non requise', g1: 'G1 requise', recommande: 'Recommandee' }[terrain.geotech])}
+          ${geoLabel ? `<div class="hbox"><p>Type : <strong>${geoLabel}</strong>${geoIsAuto ? ' <span class="fv au"></span>' : ''}</p></div>${tag(phGeoType)}` : ''}
+          ${rowTag('Remblai', { non: 'Non', possible: 'Possible', oui: 'Oui' }[terrain.remblai], phRemblai)}
+          ${rowTag('Geotechnique', { non: 'Non requise', g1: 'G1 requise', recommande: 'Recommandee' }[terrain.geotech], phGeotech)}
 
           ${sectionAImg}
           ${sectionBImg}
+
+          ${this._visuals?.contoursMap ? `
+          <div class="map-wrap" style="height:160px;margin-top:4px;background:#fcf9f3">
+            <img src="${this._visuals.contoursMap}" alt="Courbes de niveau" style="object-fit:contain">
+            <span class="map-lbl">Topographie · ${this._visuals.contoursMeta?.interval ?? '?'}m · ${this._visuals.contoursMeta?.minAlt ?? '?'}–${this._visuals.contoursMeta?.maxAlt ?? '?'}m NGR</span>
+            <span class="map-src">IGN BIL HD</span>
+          </div>` : ''}
         </div>
         <div class="sec">
           ${sec('RISQUES — PPRN')}
-          ${zone ? `<div class="hbox"><p>Zone <strong style="color:${zoneColor[zone] ?? '#C1652B'}">${zone}</strong> — ${zoneDesc[zone] ?? ''}</p></div>` : pprnHorsZoneMsg}
-          ${row('Cote ref. NGR', p3.cote_reference_ngr != null ? `${p3.cote_reference_ngr} m NGR` : null)}
-          ${row('Zone vent RTAA', p3.zone_rtaa_vent)}
-          ${row('Hydrant < 150 m', { oui: 'Oui', non: 'Non', verif: 'A verifier' }[p3.hydrant_present])}
+          ${zone ? `<div class="hbox"><p>Zone <strong style="color:${zoneColor[zone] ?? '#C1652B'}">${zone}</strong> — ${zoneDesc[zone] ?? ''}</p></div>${tag(phPprn)}` : pprnHorsZoneMsg}
+          ${rowTag('Cote ref. NGR', p3.cote_reference_ngr != null ? `${p3.cote_reference_ngr} m NGR` : null, phCoteRef)}
+          ${rowTag('Zone vent RTAA', p3.zone_rtaa_vent, phRtaaVent)}
+          ${rowTag('Hydrant < 150 m', { oui: 'Oui', non: 'Non', verif: 'A verifier' }[p3.hydrant_present], phHydrant)}
 
           ${pprSnap ? `
           <div class="map-wrap" style="height:140px">
@@ -501,6 +531,8 @@ const ExportEngine = {
             <img src="${reculsSnap}" alt="Schema reculs">
             <span class="map-lbl">Schema des reculs</span>
           </div>` : ''}
+
+          ${this._renderScotPanel(this._visuals?.scotData)}
         </div>
         <div class="sec">
           ${sec('BIOCLIMATIQUE')}
@@ -518,10 +550,18 @@ const ExportEngine = {
               <span class="map-src">${windMeta.source ?? '—'}</span>
             </div>` : ''}
           </div>
-          ${row('Dir. dominante', windMeta.dominantDir)}
-          ${row('Vitesse moy.', windMeta.meanSpeed != null ? `${windMeta.meanSpeed} m/s` : null)}
+          ${rowTag('Dir. dominante', windMeta.dominantDir, phVentDir)}
+          ${rowTag('Vitesse moy.', windMeta.meanSpeed != null ? `${windMeta.meanSpeed} m/s` : null, phVentVit)}
           ${row('Période', windMeta.period)}
+          ${tag(phPluvio)}
           ` : `<div class="hbox" style="background:#F5F0E8;padding:4px 8px;font-size:7.5pt"><p style="margin:0">Diagrammes bioclimatiques non disponibles (latitude/longitude manquantes)</p></div>`}
+
+          ${this._visuals?.rainfallChart ? `
+          <div class="map-wrap" style="height:140px;margin-top:6px;background:#fcf9f3">
+            <img src="${this._visuals.rainfallChart}" alt="Pluviométrie mensuelle" style="object-fit:contain">
+            <span class="map-lbl">Pluviométrie · ${this._visuals.rainfallMeta?.annual ?? '?'} mm/an</span>
+            <span class="map-src">${this._visuals.rainfallMeta?.source ?? 'ERA5'}</span>
+          </div>` : ''}
         </div>
       </div>
       ${plancheFoot(terrain.commune, ref, 2, tp)}
@@ -532,7 +572,7 @@ const ExportEngine = {
   //  PLANCHE 4 — Plan masse & Conformite (mode projet)
   // ═══════════════════════════════════════════════════════════════
 
-  _renderPlanche4(session, terrain, _maps, ref, tp) {
+  _renderPlanche4(_session, terrain, _maps, ref, tp) {
     const proposal = this._visuals?.activeProposal ?? window._activeProposal ?? null;
     const planMasseImg = this._visuals?.planMasse ?? null;
 
@@ -542,54 +582,20 @@ const ExportEngine = {
     // Métriques en bande horizontale compacte
     const mRow = (l, v) => v != null && v !== '' ? `<span class="phf-e" style="margin-right:12px"><strong>${l}</strong> ${v}</span>` : '';
 
-    // ── Tableau Pareto : 6 variantes A1→C2 ──────────────────────────
-    // Récupérer toutes les variantes (auto_plan_solutions sauvé en phase 7)
-    const p7data = session?.getPhase?.(7)?.data ?? {};
-    const allSolutions = (p7data.auto_plan_solutions ?? [])
-      .filter(s => s.family !== 'X0' && (s.bat || s.blocs?.length)) // exclure non-constructibles
-      // Tri stable A1→C2 (familles ordonnées par densité décroissante)
-      .sort((a, b) => (a.family ?? 'Z').localeCompare(b.family ?? 'Z'));
-
+    // Variante active (utilisée comme label sur l'image plan masse)
+    // Tableau Pareto retiré temporairement de la planche 4 — réintégration à venir.
     const activeFamily = proposal?.family ?? null;
 
-    const paretoTable = allSolutions.length >= 2 ? `
-      <div style="display:flex;flex-direction:column;font-size:6.5pt;line-height:1.35;border:0.5px solid #d8d3c4;border-radius:1.5px;overflow:hidden">
-        <div style="display:grid;grid-template-columns:14px 38px 1fr 22px 32px 26px 28px 28px 26px;gap:0;background:#ede8d8;font-weight:bold;padding:1.5px 3px;border-bottom:0.5px solid #d8d3c4">
-          <span></span>
-          <span>Var.</span>
-          <span>Strategie</span>
-          <span style="text-align:right">Niv.</span>
-          <span style="text-align:right">SDP</span>
-          <span style="text-align:right">Lgts</span>
-          <span style="text-align:right">CES</span>
-          <span style="text-align:right">Perm.</span>
-          <span style="text-align:right">Score</span>
-        </div>
-        ${allSolutions.map(s => {
-          const isActive = s.family === activeFamily;
-          const bgColor = isActive ? 'background:#fef3c7;' : '';
-          const star = isActive ? '★' : '';
-          const empPct = s.empPct != null ? Math.round(s.empPct) : '—';
-          const permPct = s.permPct != null ? Math.round(s.permPct) : '—';
-          const sp = s.spTot != null ? Math.round(s.spTot) : '—';
-          const sc = s.score != null ? s.score.toFixed(2) : '—';
-          const dot = s.color ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${s.color};vertical-align:middle"></span>` : '';
-          return `<div style="display:grid;grid-template-columns:14px 38px 1fr 22px 32px 26px 28px 28px 26px;gap:0;padding:1.5px 3px;${bgColor}border-bottom:0.3px solid #ece7d6">
-            <span style="text-align:center;color:#c1652b;font-weight:bold">${star}</span>
-            <span style="font-weight:bold">${dot} ${s.family ?? '?'}</span>
-            <span style="color:#6a6860">${s.label ?? '?'}</span>
-            <span style="text-align:right">R+${(s.niveaux ?? 1) - 1}</span>
-            <span style="text-align:right">${sp} m²</span>
-            <span style="text-align:right">${s.nLgts ?? '—'}</span>
-            <span style="text-align:right">${empPct}%</span>
-            <span style="text-align:right">${permPct}%</span>
-            <span style="text-align:right;font-weight:bold">${sc}</span>
-          </div>`;
-        }).join('')}
-        <div style="font-size:5.5pt;color:#8a8773;padding:1.5px 4px;background:#faf7ec;font-style:italic">
-          Score Pareto = densite x permeabilite x conformite (PLU + RTAA + COS)
-        </div>
-      </div>` : '';
+    // ── Phrases contextuelles plan masse ──
+    const phrasesDict = this._phrasesDict ?? {};
+    const fullCtx = buildFullContext(terrain, {}, { proposal });
+    const phCes        = pickShort(phrasesDict, 'plan_masse', 'ces',        fullCtx);
+    const phPermeable  = pickShort(phrasesDict, 'plan_masse', 'permeable',  fullCtx);
+    const phVegetation = pickShort(phrasesDict, 'plan_masse', 'vegetation', fullCtx);
+    const narrPM = [phCes, phPermeable, phVegetation].filter(Boolean).join(' ');
+    const narrPMHtml = narrPM
+      ? `<div class="hbox" style="background:#fcf9f3;padding:5px 9px;font-size:7pt;line-height:1.45;border-left:2px solid #C1652B;font-style:italic;color:#6a6860"><p style="margin:0">${narrPM}</p></div>`
+      : '';
 
     return `<div class="page">
       ${plancheHead('Plan masse & Conformite', 3, tp, ref)}
@@ -605,24 +611,24 @@ const ExportEngine = {
           ${mRow('Veg.', metrics.vegetation_m2 ? `${metrics.vegetation_m2} m2` : null)}
           ${mRow('Amenites', metrics.amenites?.join(', '))}
         </div>
-        ${paretoTable}
+        ${narrPMHtml}
         <div style="display:flex;flex-direction:column;gap:6px;flex:1;min-height:0">
-          ${planMasseImg ? `
-          <div class="map-wrap" style="flex:1.55;width:100%;min-height:0">
-            <img src="${planMasseImg}" alt="Plan masse" style="object-fit:contain">
-            <span class="map-lbl">Plan masse · variante ${activeFamily ?? '?'}</span>
-            <span class="map-src">TERLAB · Auto-plan</span>
-          </div>` : `
-          <div class="map-wrap" style="flex:1.55;width:100%;min-height:0">
-            ${svgPlaceholder('Plan masse')}
-            <span class="map-lbl">Plan masse</span>
-          </div>`}
           ${this._visuals?.cadastreVector ? `
           <div class="map-wrap" style="flex:1;width:100%;min-height:0">
             <img src="${this._visuals.cadastreVector}" alt="Plan cadastral" style="object-fit:contain">
             <span class="map-lbl">Plan cadastral · contexte IGN</span>
             <span class="map-src">IGN · Cadastre WFS + BDTOPO</span>
           </div>` : ''}
+          ${planMasseImg ? `
+          <div class="map-wrap" style="flex:1;width:100%;min-height:0">
+            <img src="${planMasseImg}" alt="Plan masse" style="object-fit:contain">
+            <span class="map-lbl">Plan masse · variante ${activeFamily ?? '?'}</span>
+            <span class="map-src">TERLAB · Auto-plan</span>
+          </div>` : `
+          <div class="map-wrap" style="flex:1;width:100%;min-height:0">
+            ${svgPlaceholder('Plan masse')}
+            <span class="map-lbl">Plan masse</span>
+          </div>`}
         </div>
       </div>
       ${plancheFoot(terrain.commune, ref, 3, tp)}
@@ -746,30 +752,65 @@ const ExportEngine = {
         ${giep.reduction_pct ? ` · -${giep.reduction_pct}%` : ''}</p></div>`;
     }
 
+    // ── Phrases contextuelles planche 5_6 ──
+    const phrasesDict = this._phrasesDict ?? {};
+    const proposal = this._visuals?.activeProposal ?? window._activeProposal ?? null;
+    const fullCtx = buildFullContext(
+      terrain,
+      { 3: this._getPhaseData(session, 3), 4: this._getPhaseData(session, 4), 6: p6, 7: p7, 8: p8 },
+      { proposal, giepResult: giep, windMeta: this._visuals?.windMeta ?? {}, rainfallMeta: this._visuals?.rainfallMeta ?? {} }
+    );
+    // Reseaux
+    const phIcpe        = pickShort(phrasesDict, 'reseaux', 'icpe',          fullCtx);
+    const phParc        = pickShort(phrasesDict, 'reseaux', 'parc_national', fullCtx);
+    const phEau         = pickShort(phrasesDict, 'reseaux', 'eau_potable',   fullCtx);
+    const phAssain      = pickShort(phrasesDict, 'reseaux', 'assainissement',fullCtx);
+    const phElec        = pickShort(phrasesDict, 'reseaux', 'electricite',   fullCtx);
+    const phFibre       = pickShort(phrasesDict, 'reseaux', 'fibre',         fullCtx);
+    // Esquisse
+    const phSdp         = pickShort(phrasesDict, 'esquisse', 'surface_plancher', fullCtx);
+    const phNiveaux     = pickShort(phrasesDict, 'esquisse', 'niveaux',          fullCtx);
+    const phGabarit     = pickShort(phrasesDict, 'esquisse', 'gabarit',          fullCtx);
+    // Chantier
+    const phSaison      = pickShort(phrasesDict, 'chantier', 'saison',       fullCtx);
+    const phGestionEau  = pickShort(phrasesDict, 'chantier', 'gestion_eaux', fullCtx);
+    // GIEP (cable ici car GIEP score affiche dans planche 5_6)
+    const phGiepScore   = pickShort(phrasesDict, 'giep', 'score',        fullCtx);
+    const phGiepReduc   = pickShort(phrasesDict, 'giep', 'reduction',    fullCtx);
+    // SDIS synthese
+    const phSdisSynth   = pickShort(phrasesDict, 'sdis', 'synthese',     fullCtx);
+
     return `<div class="page">
       ${plancheHead('Voisinage & Esquisse', num, tp, ref)}
       <div class="pb pb3">
         <div class="sec">
           ${sec('VOISINAGE & RESEAUX')}
-          ${row('ICPE < 500 m', { non: 'Non', oui: 'Oui', verif: 'A verifier' }[terrain.icpe])}
-          ${row('Parc National', parcLabels[p6.parc_situation] ?? p6.parc_situation)}
-          ${row('Eau potable', reseauLabels[terrain.eau_potable] ?? terrain.eau_potable)}
-          ${row('Assainissement', reseauLabels[terrain.assainissement] ?? terrain.assainissement)}
-          ${row('Electricite', reseauLabels[terrain.electricite] ?? terrain.electricite)}
-          ${row('Fibre', reseauLabels[terrain.fibre] ?? terrain.fibre)}
+          ${rowTag('ICPE < 500 m', { non: 'Non', oui: 'Oui', verif: 'A verifier' }[terrain.icpe], phIcpe)}
+          ${rowTag('Parc National', parcLabels[p6.parc_situation] ?? p6.parc_situation, phParc)}
+          ${rowTag('Eau potable', reseauLabels[terrain.eau_potable] ?? terrain.eau_potable, phEau)}
+          ${rowTag('Assainissement', reseauLabels[terrain.assainissement] ?? terrain.assainissement, phAssain)}
+          ${rowTag('Electricite', reseauLabels[terrain.electricite] ?? terrain.electricite, phElec)}
+          ${rowTag('Fibre', reseauLabels[terrain.fibre] ?? terrain.fibre, phFibre)}
 
           ${snapBati ? `
           <div class="map-wrap" style="height:130px">
             <img src="${snapBati}" alt="Batiments voisins">
             <span class="map-lbl">Batiments voisins 3D</span>
           </div>` : mapImg(_maps, 'p05_context3d', 130, 'Contexte 3D', 'Mapbox')}
+
+          ${this._visuals?.obiaChart ? `
+          <div class="map-wrap" style="height:135px;margin-top:4px;background:#fcf9f3">
+            <img src="${this._visuals.obiaChart}" alt="OBIA couverture du sol" style="object-fit:contain">
+            <span class="map-lbl">Couverture sol · ${this._visuals.obiaMeta?.top ?? 'OBIA'}</span>
+            <span class="map-src">Mapbox sat. · OBIA HSV</span>
+          </div>` : ''}
         </div>
         <div class="sec">
           ${sec('ESQUISSE DU PROJET')}
-          ${row('Surface plancher', p7.surface_plancher_m2 ? `${p7.surface_plancher_m2} m2` : null)}
-          ${row('Niveaux', p7.niveaux)}
-          ${row('Gabarit L x l x h', (p7.gabarit_l_m && p7.gabarit_w_m && p7.gabarit_h_m) ?
-            `${p7.gabarit_l_m} x ${p7.gabarit_w_m} x ${p7.gabarit_h_m} m` : null)}
+          ${rowTag('Surface plancher', p7.surface_plancher_m2 ? `${p7.surface_plancher_m2} m2` : null, phSdp)}
+          ${rowTag('Niveaux', p7.niveaux, phNiveaux)}
+          ${rowTag('Gabarit L x l x h', (p7.gabarit_l_m && p7.gabarit_w_m && p7.gabarit_h_m) ?
+            `${p7.gabarit_l_m} x ${p7.gabarit_w_m} x ${p7.gabarit_h_m} m` : null, phGabarit)}
           ${preEsquisseHtml}
 
           ${coupeGabarit ? `
@@ -779,19 +820,29 @@ const ExportEngine = {
           </div>` : ''}
 
           ${snapshot3d ? `
-          <div class="map-wrap" style="height:200px">
-            <img src="${snapshot3d}" alt="Modele 3D" style="object-fit:contain">
-            <span class="map-lbl">Terrain 3D · LiDAR</span>
+          <div class="map-wrap" style="height:130px">
+            <img src="${snapshot3d}" alt="LiDAR vue oblique" style="object-fit:contain">
+            <span class="map-lbl">LiDAR · vue oblique 38°</span>
+            <span class="map-src">IGN HD · Three.js</span>
+          </div>` : ''}
+          ${this._visuals?.terrain3dTop ? `
+          <div class="map-wrap" style="height:130px;margin-top:4px">
+            <img src="${this._visuals.terrain3dTop}" alt="LiDAR vue zenithale" style="object-fit:contain">
+            <span class="map-lbl">LiDAR · vue zenithale (N ↑)</span>
+            <span class="map-src">IGN HD · Three.js</span>
           </div>` : ''}
         </div>
         <div class="sec">
           ${sec('CHANTIER & SDIS')}
-          ${row('Demarrage', { hors_cyclone: 'Hors cyclone', cyclone: 'Saison cyclonique' }[p8.saison_demarrage])}
-          ${row('Gestion eaux', { bassin: 'Bassin', cunettes: 'Cunettes', a_definir: 'A definir' }[p8.gestion_eaux_chantier])}
+          ${rowTag('Demarrage', { hors_cyclone: 'Hors cyclone', cyclone: 'Saison cyclonique' }[p8.saison_demarrage], phSaison)}
+          ${rowTag('Gestion eaux', { bassin: 'Bassin', cunettes: 'Cunettes', a_definir: 'A definir' }[p8.gestion_eaux_chantier], phGestionEau)}
           ${giepHtml || row('GIEP', null)}
+          ${tag(phGiepScore)}
+          ${tag(phGiepReduc)}
 
           ${sec('SDIS 974')}
           ${this._renderSdisChecklist(p8)}
+          ${tag(phSdisSynth)}
         </div>
       </div>
       ${plancheFoot(terrain.commune, ref, num, tp)}
@@ -810,6 +861,56 @@ const ExportEngine = {
       const cls = { ok: 'p', warn: 'a', err: 'm' }[state] ?? '';
       return `<div class="synth-row"><span class="si ${cls}">${icon}</span><span class="st">${label}</span></div>`;
     }).join('');
+  },
+
+  // Panneau SCoT compact — affiché sous PLU & RECULS en planche 2_3
+  // Source : SCOTService.analyze() depuis data/scot-rules-{interco}.json (DOO)
+  _renderScotPanel(scot) {
+    if (!scot) return '';
+    if (scot.status !== 'ok') {
+      return `<div class="hbox" style="background:#F5F0E8;padding:4px 8px;font-size:7pt;margin-top:4px">
+        <p style="margin:0"><strong>SCoT</strong> · ${val(scot.message ?? scot.status)}</p>
+      </div>`;
+    }
+    const r = scot.rang;
+    const d = scot.densite;
+    const cap = scot.capacite;
+    const log = scot.logement;
+    const env = scot.environnement_resume ?? {};
+    // Densité : la valeur peut être un nombre OU un objet {min, max}
+    const formatDens = (v) => {
+      if (v == null) return null;
+      if (typeof v === 'object') return `${v.min}–${v.max}`;
+      return String(v);
+    };
+    const densMinStr = formatDens(d?.densite_min_lgts_ha);
+    const densMaxStr = formatDens(d?.densite_max_lgts_ha);
+    const densLabel = densMinStr
+      ? `${densMinStr}${densMaxStr ? '–' + densMaxStr : ' min'} lgts/ha`
+      : '—';
+    // Bande ravine : objet {min, max}
+    const bandeStr = env.bande_ravine_m
+      ? (typeof env.bande_ravine_m === 'object'
+          ? `${env.bande_ravine_m.min}–${env.bande_ravine_m.max} m enherbée`
+          : `${env.bande_ravine_m} m enherbée`)
+      : null;
+    return `
+      ${sec(`SCOT · ${scot.interco}`)}
+      <div class="hbox" style="background:#F5F0E8;padding:5px 8px;font-size:7pt;line-height:1.4">
+        <p style="margin:0"><strong>${scot.scot_nom}</strong>${scot.approbation ? ` · approuvé ${scot.approbation}` : ''}</p>
+        ${r ? `<p style="margin:2px 0 0">Armature urbaine · <strong>rang ${r.rang_num}</strong> — ${r.label}${r.place_urbaine ? ` (${r.place_urbaine})` : ''}</p>` : ''}
+      </div>
+      ${row('Densité min DOO', densLabel)}
+      ${cap ? row('Capacité indicative', `${cap.logements_min_scot ?? '?'} lgts min${cap.logements_max_scot ? ` / ${cap.logements_max_scot} max` : ''}`) : ''}
+      ${log?.pct_aides != null ? row('Logements aidés', `${log.pct_aides}% prod.`) : ''}
+      ${d?.zatt_500m ? row('ZATT 500 m', d.zatt_500m.rang_1_2_densite_min ? `≥ ${d.zatt_500m.rang_1_2_densite_min} lgts/ha si rang 1-2` : 'Oui') : ''}
+      ${bandeStr ? row('Bande ravine', bandeStr) : ''}
+      ${env.assainissement ? row('Assainissement', env.assainissement) : ''}
+      ${log?.orientations_resume?.length ? `
+      <div class="hbox" style="background:#fcf9f3;padding:4px 7px;font-size:6.6pt;line-height:1.4;margin-top:3px;border-left:2px solid #C1652B">
+        ${log.orientations_resume.slice(0, 3).map(o => `<p style="margin:1px 0;font-style:italic;color:#6a6860">· ${o}</p>`).join('')}
+      </div>` : ''}
+    `;
   },
 
   // ═══════════════════════════════════════════════════════════════
@@ -1144,6 +1245,104 @@ const ExportEngine = {
       };
       console.log('[PDF] Bioclim : héliodone φ=' + r.lat.toFixed(2) + '° + rose ' + (r.windData?.dominantDir ?? '?') + ' (' + (r.windData?.source ?? '?') + ')');
     } catch (e) { console.warn('[PDF] Bioclim capture error:', e); }
+
+    // ── Pluviométrie mensuelle (Open-Meteo ERA5, 5 dernières années) ─────────
+    try {
+      const PS = window.PrecipitationService;
+      const t  = window.SessionManager?.getTerrain?.() ?? {};
+      const lat = parseFloat(t.lat), lng = parseFloat(t.lng);
+      if (PS && lat && lng) {
+        const rain = await PS.fetchMonthly(lat, lng, 5);
+        const svgStr = PS.renderBarChart(rain, { width: 600, height: 220 });
+        const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+        v.rainfallChart = await new Promise(r => { const rd = new FileReader(); rd.onload = () => r(rd.result); rd.readAsDataURL(blob); });
+        v.rainfallMeta = { annual: rain.annual, period: rain.period, source: rain.source };
+        console.log('[PDF] Pluviométrie : ' + rain.annual + ' mm/an (' + rain.period + ')');
+      }
+    } catch (e) { console.warn('[PDF] Pluviométrie capture error:', e.message); }
+
+    // ── Topographie courbes de niveau IGN BIL (1 m) ──────────────────────────
+    try {
+      const CC = window.ContourCache;
+      const CS = window.ContourService;
+      const tt = window.SessionManager?.getTerrain?.() ?? {};
+      const parcelGeo = CC?.parcelGeoFromTerrain?.(tt);
+      if (CC && CS && parcelGeo?.length >= 3) {
+        // loadOrGet déclenche fromBIL si pas déjà cache (P01 / GIEP / SitePlan ont pu le faire)
+        const data = await CC.loadOrGet(parcelGeo, { pixelSizeM: 1.0, maxDim: 220, padM: 12 });
+        if (data?.lines?.length) {
+          const svgStr = CS.renderTopoSVG(data, parcelGeo, { width: 600, height: 380 });
+          const blob = new Blob([svgStr], { type: 'image/svg+xml' });
+          v.contoursMap = await new Promise(r => { const rd = new FileReader(); rd.onload = () => r(rd.result); rd.readAsDataURL(blob); });
+          v.contoursMeta = { interval: data.interval, minAlt: Math.round(data.minAlt), maxAlt: Math.round(data.maxAlt), nLines: data.lines.length };
+          console.log('[PDF] Courbes niveau BIL : ' + data.lines.length + ' lignes, ' + data.interval + 'm interval, ' + Math.round(data.minAlt) + '-' + Math.round(data.maxAlt) + 'm NGR');
+        }
+      }
+    } catch (e) { console.warn('[PDF] Contours BIL capture error:', e.message); }
+
+    // ── SCoT analyse (intercommunalité, rang armature, densité, environnement) ──
+    try {
+      const SC = window.SCOTService;
+      const ts = window.SessionManager?.getTerrain?.() ?? {};
+      if (SC && ts.code_insee && ts.commune) {
+        const surface = parseFloat(ts.contenance_m2) || null;
+        const scot = await SC.analyze({
+          insee: ts.code_insee,
+          commune: ts.commune,
+          quartier: ts.lieu_dit ?? ts.quartier ?? null,
+          surface_m2: surface,
+        });
+        if (scot && scot.status === 'ok') {
+          v.scotData = scot;
+          console.log('[PDF] SCoT : ' + scot.interco + ' rang ' + (scot.rang?.rang_num ?? '?') + ' (' + (scot.rang?.label ?? '?') + ')');
+        } else if (scot?.status) {
+          v.scotData = scot;
+          console.log('[PDF] SCoT : ' + scot.status + (scot.message ? ' — ' + scot.message : ''));
+        }
+      }
+    } catch (e) { console.warn('[PDF] SCoT capture error:', e.message); }
+
+    // ── Analyse OBIA satellite (couverture sol depuis Mapbox) ───────────────
+    try {
+      const OBIA = window.OBIAService;
+      const ttO  = window.SessionManager?.getTerrain?.() ?? {};
+      const mapO = window.MapViewer?.getMap?.() ?? window.TerlabMap?._map;
+      const geoO = ttO.parcelle_geojson;
+      if (OBIA && mapO && geoO) {
+        const result = await OBIA.analyzeParcel(mapO, geoO);
+        if (result?.surfaces) {
+          // Rendu SVG : 6 barres horizontales triées par % décroissant
+          const W = 600, H = 220;
+          const margin = { top: 28, right: 14, bottom: 14, left: 130 };
+          const cW = W - margin.left - margin.right;
+          const cH = H - margin.top - margin.bottom;
+          const rows = Object.entries(OBIA.LABELS)
+            .map(([k, lbl]) => ({ key: k, lbl, pct: result.surfaces[k] ?? 0 }))
+            .filter(r => r.pct > 0)
+            .sort((a, b) => b.pct - a.pct);
+          const rowH = cH / Math.max(rows.length, 1);
+          const parts = [];
+          parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" font-family="IBM Plex Mono,monospace">`);
+          parts.push(`<rect width="${W}" height="${H}" fill="#fcf9f3"/>`);
+          parts.push(`<text x="${W/2}" y="14" text-anchor="middle" font-size="10" font-weight="700" fill="#1C1C1A">Couverture du sol · OBIA satellite</text>`);
+          parts.push(`<text x="${W - 6}" y="14" text-anchor="end" font-size="7" fill="#A8A49C">${result.pixelCount.toLocaleString('fr-FR')} pixels · ±15%</text>`);
+          rows.forEach((r, i) => {
+            const y = margin.top + i * rowH;
+            const barW = (r.pct / 100) * cW;
+            const rgb = (OBIA.CLASS_COLORS[r.key] ?? [150,150,150]).slice(0, 3).join(',');
+            parts.push(`<text x="${margin.left - 6}" y="${y + rowH * 0.65}" text-anchor="end" font-size="8" fill="#1C1C1A">${r.lbl}</text>`);
+            parts.push(`<rect x="${margin.left}" y="${y + rowH * 0.25}" width="${cW}" height="${rowH * 0.5}" fill="#EDEBE6"/>`);
+            parts.push(`<rect x="${margin.left}" y="${y + rowH * 0.25}" width="${barW.toFixed(1)}" height="${rowH * 0.5}" fill="rgb(${rgb})" fill-opacity="0.85"/>`);
+            parts.push(`<text x="${margin.left + barW + 4}" y="${y + rowH * 0.65}" font-size="8" fill="#1C1C1A" font-weight="600">${r.pct}%</text>`);
+          });
+          parts.push('</svg>');
+          const blob = new Blob([parts.join('')], { type: 'image/svg+xml' });
+          v.obiaChart = await new Promise(r => { const rd = new FileReader(); rd.onload = () => r(rd.result); rd.readAsDataURL(blob); });
+          v.obiaMeta = { confidence: result.confidence, pixelCount: result.pixelCount, top: rows[0]?.lbl };
+          console.log('[PDF] OBIA : ' + result.pixelCount + ' pixels, top=' + rows[0]?.lbl + ' (' + rows[0]?.pct + '%)');
+        }
+      }
+    } catch (e) { console.warn('[PDF] OBIA capture error:', e.message); }
 
     // Active proposal (mode projet)
     v.activeProposal = window._activeProposal ?? null;

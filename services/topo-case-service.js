@@ -98,8 +98,13 @@ export default {
   /**
    * Retourne les contraintes de programme dérivées du cas topo.
    * Ces valeurs peuvent surcharger les valeurs par défaut du _prog de EsquisseCanvas.
+   *
+   * @param {number} pente_moy_pct
+   * @param {Object} progBase
+   * @param {number} [azimut_pente_deg]  Direction de la pente (compass, 0=N) —
+   *                                     exposé tel quel pour la stratégie Isohypses.
    */
-  getProgConstraints(pente_moy_pct, progBase = {}) {
+  getProgConstraints(pente_moy_pct, progBase = {}, azimut_pente_deg = null) {
     const tc = this.getCase(pente_moy_pct);
     return {
       profMax:          Math.min(progBase.profMax ?? 15, tc.profMax),
@@ -110,6 +115,9 @@ export default {
       bureauStructure:  tc.bureauStructure,
       pompesRelev:      tc.pompesRelev,
       topoCase:         tc,
+      azimut_deg:       Number.isFinite(parseFloat(azimut_pente_deg))
+                         ? parseFloat(azimut_pente_deg)
+                         : null,
     };
   },
 

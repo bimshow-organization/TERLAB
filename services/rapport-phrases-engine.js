@@ -150,4 +150,95 @@ export function buildPluContext(terrain = {}, p4 = {}) {
   };
 }
 
-export default { loadPhrases, pickShort, pickAll, buildPluContext, derivePluType };
+/**
+ * Construit un contexte complet couvrant toutes les sections du JSON :
+ * geologie, risques_extra, reseaux, esquisse, plan_masse, giep, chantier,
+ * sdis, bioclimatique_extra, en plus des champs de buildPluContext.
+ *
+ * @param {object} terrain    - terrain enrichi (session.getTerrain ou enrichResult.terrain)
+ * @param {object} phases     - { 3: p3data, 4: p4data, 5: p5data, 6: p6data, 7: p7data, 8: p8data }
+ * @param {object} extras     - { proposal, giepResult, windMeta, rainfallMeta }
+ */
+export function buildFullContext(terrain = {}, phases = {}, extras = {}) {
+  const p3 = phases[3] ?? {};
+  const p4 = phases[4] ?? {};
+  const p6 = phases[6] ?? {};
+  const p7 = phases[7] ?? {};
+  const p8 = phases[8] ?? {};
+  const proposal = extras.proposal ?? {};
+  const giepResult = extras.giepResult ?? null;
+  const windMeta = extras.windMeta ?? {};
+  const rainfallMeta = extras.rainfallMeta ?? {};
+
+  // Base PLU + identification
+  const pluCtx = buildPluContext(terrain, p4);
+
+  // Bati / metrics depuis proposal (auto-plan)
+  const bat = proposal.bat ?? {};
+  const metrics = proposal.metrics ?? {};
+
+  // SDIS — etats par critere
+  const sdisStates = p8.acces_pompiers_states ?? {};
+  const sdisVals = Object.values(sdisStates);
+  const sdis_all_ok = sdisVals.length > 0 && sdisVals.every(v => v === 'ok');
+  const sdis_warn = sdisVals.some(v => v === 'warn');
+  const sdis_err  = sdisVals.some(v => v === 'err');
+
+  return {
+    ...pluCtx,
+    // Identification
+    section: terrain.section ?? null,
+    parcelle: terrain.parcelle ?? null,
+    adresse: terrain.adresse ?? null,
+    // Topographie
+    exposition: terrain.exposition ?? terrain.orientation_terrain ?? terrain.orientation ?? null,
+    has_ravine: terrain.distance_ravine_m != null && Number(terrain.distance_ravine_m) < 200,
+    nom_ravine: terrain.nom_ravine ?? 'ravine voisine',
+    // Geologie
+    geologie_type: terrain.geologie_type ?? null,
+    remblai: terrain.remblai ?? null,
+    geotech: terrain.geotech ?? null,
+    // Risques
+    zone_pprn: p3.zone_pprn ?? terrain.zone_pprn ?? null,
+    cote_reference_ngr: p3.cote_reference_ngr ?? null,
+    zone_rtaa_vent: p3.zone_rtaa_vent ?? null,
+    hydrant_present: p3.hydrant_present ?? null,
+    // Reseaux
+    eau_potable: terrain.eau_potable ?? null,
+    assainissement: terrain.assainissement ?? null,
+    electricite: terrain.electricite ?? null,
+    fibre: terrain.fibre ?? null,
+    icpe: terrain.icpe ?? null,
+    parc_situation: p6.parc_situation ?? null,
+    // Esquisse
+    surface_plancher_m2: p7.surface_plancher_m2 ?? null,
+    niveaux: p7.niveaux ?? bat.niveaux ?? null,
+    gabarit_l_m: p7.gabarit_l_m ?? bat.l ?? null,
+    gabarit_w_m: p7.gabarit_w_m ?? bat.w ?? null,
+    gabarit_h_m: p7.gabarit_h_m ?? bat.h ?? null,
+    // Plan masse
+    ces_pct: metrics.ces_pct ?? null,
+    permeable_pct: metrics.permeable_pct ?? null,
+    arbres_count: metrics.arbres_count ?? null,
+    // GIEP
+    giep_score: giepResult?.score ?? null,
+    giep_reduction_pct: giepResult?.reduction_pct ?? null,
+    giep_deficit: giepResult?.infiltration?.deficit ?? null,
+    // Chantier
+    saison_demarrage: p8.saison_demarrage ?? null,
+    gestion_eaux_chantier: p8.gestion_eaux_chantier ?? null,
+    // SDIS
+    sdis_all_ok,
+    sdis_warn,
+    sdis_err,
+    sdis_largeur: sdisStates.largeur ?? null,
+    sdis_hydrant: sdisStates.hydrant ?? null,
+    sdis_portance: sdisStates.portance ?? null,
+    // Bioclim
+    dir_dominante: windMeta.dominantDir?.[0] ?? null, // E/O/N/S (premiere lettre)
+    mean_speed: windMeta.meanSpeed ?? null,
+    annual_mm: rainfallMeta.annual ?? null,
+  };
+}
+
+export default { loadPhrases, pickShort, pickAll, buildPluContext, buildFullContext, derivePluType };

@@ -99,69 +99,70 @@ const CapacityStudyRenderer = {
     </defs>`;
 
     // 1. CARTOUCHE — Nord + échelle uniquement, top-right interne au viewBox
-    // Les infos commune/réf/zone/date/auteur sont déjà en pied de planche TERLAB,
-    // pas besoin de les dupliquer dans le cartouche du plan masse.
+    // Les infos commune/réf/zone/date/auteur sont déjà en pied de planche TERLAB.
+    // ⚠️  L'unité utilisateur SVG = mètre, mais le SVG est figé à 420×297 mm.
+    //    Donc 1 unité ≈ 9–11 mm physiques (pas 2 mm comme à l'échelle 1:500).
+    //    Toutes les épaisseurs / tailles ci-dessous sont calibrées en consequence
+    //    (×0.3-0.4 par rapport à des valeurs "naturelles" en mm).
     const scaleLen = scale === 200 ? 5 : scale === 500 ? 10 : 20;
-    const cartW   = Math.max(11, vbW * 0.22);
-    const cartH   = cartW * 0.38;
-    const cartPad = vbW * 0.012;
+    const cartW   = Math.max(8, vbW * 0.18);
+    const cartH   = cartW * 0.32;
+    const cartPad = vbW * 0.010;
     const cartX   = vbX + vbW - cartW - cartPad;
     const cartY   = vbY + cartPad;
     // Compartiment N (gauche, carré) + compartiment échelle (droite)
     const nBoxW = cartH;                  // carré gauche
     const sBoxW = cartW - nBoxW;          // reste
-    // Centres des compartiments
     const nCx = cartX + nBoxW / 2;
-    const nCy = cartY + cartH / 2;
+    const nCy = cartY + cartH * 0.55;
     const sCx = cartX + nBoxW + sBoxW / 2;
-    // Tailles flèche N
-    const ar  = cartH * 0.32;
-    // Barre d'échelle : longueur = 70 % du compartiment droite
-    const sBarLen = sBoxW * 0.70;
+    const ar  = cartH * 0.28;
+    const sBarLen = sBoxW * 0.68;
     const sBarX0  = sCx - sBarLen / 2;
-    const sBarY   = cartY + cartH * 0.62;
+    const sBarY   = cartY + cartH * 0.66;
+    const tickH   = cartH * 0.10;
     svg += `<g class="cartouche">
       <rect x="${cartX}" y="${cartY}" width="${cartW}" height="${cartH}"
             fill="#FFFEFB" fill-opacity="0.94"
-            stroke="#18130a" stroke-width="0.25" rx="0.4"/>
-      <line x1="${cartX + nBoxW}" y1="${cartY + cartH * 0.15}"
-            x2="${cartX + nBoxW}" y2="${cartY + cartH * 0.85}"
-            stroke="#18130a" stroke-width="0.12" stroke-opacity="0.35"/>
+            stroke="#18130a" stroke-width="0.06" rx="0.25"/>
+      <line x1="${cartX + nBoxW}" y1="${cartY + cartH * 0.18}"
+            x2="${cartX + nBoxW}" y2="${cartY + cartH * 0.82}"
+            stroke="#18130a" stroke-width="0.04" stroke-opacity="0.35"/>
       <!-- Compartiment Nord -->
       <g transform="translate(${nCx},${nCy})">
-        <line x1="0" y1="${ar * 0.55}" x2="0" y2="-${ar * 0.85}" stroke="#18130a" stroke-width="0.35"/>
-        <polygon points="0,-${ar} -${ar * 0.30},-${ar * 0.45} ${ar * 0.30},-${ar * 0.45}"
-                 fill="#18130a" stroke="#18130a" stroke-width="0.1" stroke-linejoin="round"/>
-        <text x="0" y="${ar * 0.92}" text-anchor="middle"
-              font-family="Inter,sans-serif" font-size="${cartH * 0.22}" font-weight="700" fill="#18130a">N</text>
+        <line x1="0" y1="${ar * 0.60}" x2="0" y2="-${ar * 0.40}"
+              stroke="#18130a" stroke-width="0.10"/>
+        <polygon points="0,-${ar} -${ar * 0.32},-${ar * 0.32} ${ar * 0.32},-${ar * 0.32}"
+                 fill="#18130a" stroke="none"/>
+        <text x="0" y="${ar * 1.10}" text-anchor="middle"
+              font-family="Inter,sans-serif" font-size="${cartH * 0.20}" font-weight="700" fill="#18130a">N</text>
       </g>
       <!-- Compartiment échelle -->
       <g class="scale-cart">
         <line x1="${sBarX0}" y1="${sBarY}" x2="${sBarX0 + sBarLen}" y2="${sBarY}"
-              stroke="#18130a" stroke-width="0.30"/>
-        <line x1="${sBarX0}" y1="${sBarY - 0.5}" x2="${sBarX0}" y2="${sBarY + 0.5}"
-              stroke="#18130a" stroke-width="0.25"/>
-        <line x1="${sBarX0 + sBarLen / 2}" y1="${sBarY - 0.35}" x2="${sBarX0 + sBarLen / 2}" y2="${sBarY + 0.35}"
-              stroke="#18130a" stroke-width="0.20"/>
-        <line x1="${sBarX0 + sBarLen}" y1="${sBarY - 0.5}" x2="${sBarX0 + sBarLen}" y2="${sBarY + 0.5}"
-              stroke="#18130a" stroke-width="0.25"/>
-        <text x="${sBarX0}"               y="${sBarY - 0.8}" text-anchor="middle"
-              font-family="IBM Plex Mono,monospace" font-size="${cartH * 0.18}" fill="#18130a">0</text>
-        <text x="${sBarX0 + sBarLen}"     y="${sBarY - 0.8}" text-anchor="middle"
-              font-family="IBM Plex Mono,monospace" font-size="${cartH * 0.18}" fill="#18130a">${scaleLen} m</text>
-        <text x="${sCx}" y="${cartY + cartH * 0.30}" text-anchor="middle"
-              font-family="IBM Plex Mono,monospace" font-size="${cartH * 0.20}" font-weight="600" fill="#C1652B">1 / ${scale}</text>
+              stroke="#18130a" stroke-width="0.10"/>
+        <line x1="${sBarX0}" y1="${sBarY - tickH}" x2="${sBarX0}" y2="${sBarY + tickH}"
+              stroke="#18130a" stroke-width="0.08"/>
+        <line x1="${sBarX0 + sBarLen / 2}" y1="${sBarY - tickH * 0.7}" x2="${sBarX0 + sBarLen / 2}" y2="${sBarY + tickH * 0.7}"
+              stroke="#18130a" stroke-width="0.06"/>
+        <line x1="${sBarX0 + sBarLen}" y1="${sBarY - tickH}" x2="${sBarX0 + sBarLen}" y2="${sBarY + tickH}"
+              stroke="#18130a" stroke-width="0.08"/>
+        <text x="${sBarX0}"           y="${sBarY - tickH - 0.04}" text-anchor="middle"
+              font-family="IBM Plex Mono,monospace" font-size="${cartH * 0.14}" fill="#18130a">0</text>
+        <text x="${sBarX0 + sBarLen}" y="${sBarY - tickH - 0.04}" text-anchor="middle"
+              font-family="IBM Plex Mono,monospace" font-size="${cartH * 0.14}" fill="#18130a">${scaleLen}m</text>
+        <text x="${sCx}" y="${cartY + cartH * 0.33}" text-anchor="middle"
+              font-family="IBM Plex Mono,monospace" font-size="${cartH * 0.16}" font-weight="600" fill="#C1652B">1 / ${scale}</text>
       </g>
     </g>`;
 
     // 2. TERRAIN — Grille + polygone parcelle
     const parcelPts = poly.map(([x, y]) => `${px(x)},${py(y)}`).join(' ');
     svg += `<rect x="${vbX}" y="${vbY}" width="${vbW}" height="${vbH}" fill="url(#grid-5m)"/>`;
-    svg += `<polygon points="${parcelPts}" fill="#F5F0E0" fill-opacity="0.5" stroke="#18130a" stroke-width="0.3"/>`;
+    svg += `<polygon points="${parcelPts}" fill="#F5F0E0" fill-opacity="0.5" stroke="#18130a" stroke-width="0.10"/>`;
     // Surface parcelle label
     const parcelCx = poly.reduce((s, p) => s + p[0], 0) / poly.length;
-    const parcelCyVal = poly.reduce((s, p) => s + p[1], 0) / poly.length;
-    svg += `<text x="${px(parcelCx)}" y="${py(bb.y - 1.5)}" text-anchor="middle" font-size="1.3" fill="#18130a">${Math.round(parcelArea)} m²</text>`;
+    svg += `<text x="${px(parcelCx)}" y="${py(bb.y - 1.5)}" text-anchor="middle" font-size="0.85" fill="#18130a" font-weight="600">${Math.round(parcelArea)} m²</text>`;
 
     // 3. LIMITES PLU — arêtes colorées + zones de recul
     for (let i = 0; i < poly.length; i++) {
@@ -171,25 +172,25 @@ const CapacityStudyRenderer = {
       const recul = reculs[type] ?? 0;
       const label = EDGE_LABELS[type] ?? type;
 
-      // Arête colorée
-      svg += `<line x1="${px(x1)}" y1="${py(y1)}" x2="${px(x2)}" y2="${py(y2)}" stroke="${color}" stroke-width="0.6" stroke-linecap="round"/>`;
+      // Arête colorée — épaisseur 0.20 (~2 mm physiques) au lieu de 0.6 (~6 mm)
+      svg += `<line x1="${px(x1)}" y1="${py(y1)}" x2="${px(x2)}" y2="${py(y2)}" stroke="${color}" stroke-width="0.20" stroke-linecap="round"/>`;
 
       // Label sur l'arête
       const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
       if (recul > 0) {
-        svg += `<text x="${px(mx)}" y="${py(my) - 0.8}" text-anchor="middle" font-size="0.9" fill="${color}" font-weight="bold">${label} ${recul}m</text>`;
+        svg += `<text x="${px(mx)}" y="${py(my) - 0.5}" text-anchor="middle" font-size="0.55" fill="${color}" font-weight="bold">${label} ${recul}m</text>`;
       }
     }
 
     // 4. ENVELOPPE
     if (envPoly.length >= 3) {
       const envPts = envPoly.map(([x, y]) => `${px(x)},${py(y)}`).join(' ');
-      svg += `<polygon points="${envPts}" fill="#22C55E" fill-opacity="0.06" stroke="#22C55E" stroke-width="0.2" stroke-dasharray="0.8,0.4"/>`;
+      svg += `<polygon points="${envPts}" fill="#22C55E" fill-opacity="0.06" stroke="#22C55E" stroke-width="0.08" stroke-dasharray="0.40,0.20"/>`;
       const envCx = envPoly.reduce((s, p) => s + p[0], 0) / envPoly.length;
       const envCy = envPoly.reduce((s, p) => s + p[1], 0) / envPoly.length;
       const emprMax = parseFloat(p4.ces_max ?? 60);
       const emprMaxNorm = emprMax > 1 ? emprMax : emprMax * 100;
-      svg += `<text x="${px(envCx)}" y="${py(envCy) + 1}" text-anchor="middle" font-size="0.9" fill="#22C55E">Env. ${Math.round(envArea)}m² · max ${emprMaxNorm.toFixed(0)}% = ${Math.round(envArea * emprMaxNorm / 100)}m²</text>`;
+      svg += `<text x="${px(envCx)}" y="${py(envCy) + 0.6}" text-anchor="middle" font-size="0.55" fill="#22C55E">Env. ${Math.round(envArea)}m² · max ${emprMaxNorm.toFixed(0)}% = ${Math.round(envArea * emprMaxNorm / 100)}m²</text>`;
     }
 
     // 5. BÂTIMENTS EXISTANTS
@@ -200,10 +201,10 @@ const CapacityStudyRenderer = {
         const fill = existingMode === 'demolition' ? 'url(#hatch-demo)' : 'rgba(148,163,184,.6)';
         const stroke = existingMode === 'demolition' ? '#EF4444' : '#94A3B8';
         const label = existingMode === 'demolition' ? `à démolir ${fp.area.toFixed(0)}m²` : `existant ${fp.area.toFixed(0)}m²`;
-        svg += `<polygon points="${fpPts}" fill="${fill}" stroke="${stroke}" stroke-width="0.2"/>`;
+        svg += `<polygon points="${fpPts}" fill="${fill}" stroke="${stroke}" stroke-width="0.08"/>`;
         const fpCx = fp.poly.reduce((s, p) => s + p[0], 0) / fp.poly.length;
         const fpCy = fp.poly.reduce((s, p) => s + p[1], 0) / fp.poly.length;
-        svg += `<text x="${px(fpCx)}" y="${py(fpCy)}" text-anchor="middle" font-size="0.8" fill="${stroke}" font-weight="bold">${label}</text>`;
+        svg += `<text x="${px(fpCx)}" y="${py(fpCy)}" text-anchor="middle" font-size="0.50" fill="${stroke}" font-weight="bold">${label}</text>`;
       }
     }
 
@@ -217,51 +218,51 @@ const CapacityStudyRenderer = {
     blocs.forEach((bloc, bi) => {
       const polyPts = (bloc.polygon ?? []).map(p => `${px(p.x)},${py(p.y)}`).join(' ');
       if (!polyPts) return;
-      svg += `<polygon points="${polyPts}" fill="${batColor}" fill-opacity="0.25" stroke="${batColor}" stroke-width="0.3"/>`;
+      svg += `<polygon points="${polyPts}" fill="${batColor}" fill-opacity="0.25" stroke="${batColor}" stroke-width="0.10"/>`;
 
       // Label par bloc
       const cw = FH.centroidWeighted(bloc.polygon);
       const blocLabel = blocs.length > 1
         ? `B${bi + 1} · ${Math.round(bloc.areaM2 ?? FH.area(bloc.polygon))}m²`
         : `${nLgts} lgts / ${nvLabel} / hé ${he}m`;
-      svg += `<text x="${px(cw.x)}" y="${py(cw.y)}" text-anchor="middle" dominant-baseline="central" font-size="1.2" fill="#18130a" font-weight="bold">${blocLabel}</text>`;
+      svg += `<text x="${px(cw.x)}" y="${py(cw.y)}" text-anchor="middle" dominant-baseline="central" font-size="0.75" fill="#18130a" font-weight="bold">${blocLabel}</text>`;
     });
 
     // Label global pour multi-blocs
     if (blocs.length > 1) {
       const allCw = FH.centroidWeighted(blocs.flatMap(b => b.polygon ?? []));
-      svg += `<text x="${px(allCw.x)}" y="${py(bat.y + bat.l + 2.5)}" text-anchor="middle" font-size="1.1" fill="#18130a">${nLgts} lgts / ${nvLabel} / hé ${he}m · ${blocs.length} blocs</text>`;
+      svg += `<text x="${px(allCw.x)}" y="${py(bat.y + bat.l + 1.5)}" text-anchor="middle" font-size="0.70" fill="#18130a">${nLgts} lgts / ${nvLabel} / hé ${he}m · ${blocs.length} blocs</text>`;
     }
 
     // Cotations AABB d'ensemble (largeur + profondeur)
-    svg += `<text x="${px(bat.x + bat.w / 2)}" y="${py(bat.y) + 1.5}" text-anchor="middle" font-size="0.9" fill="#555">↔ ${bat.w.toFixed(1)}m</text>`;
-    svg += `<text x="${px(bat.x + bat.w) + 1}" y="${py(bat.y + bat.l / 2)}" font-size="0.9" fill="#555" transform="rotate(-90,${px(bat.x + bat.w) + 1},${py(bat.y + bat.l / 2)})">↕ ${bat.l.toFixed(1)}m</text>`;
+    svg += `<text x="${px(bat.x + bat.w / 2)}" y="${py(bat.y) + 0.9}" text-anchor="middle" font-size="0.55" fill="#555">↔ ${bat.w.toFixed(1)}m</text>`;
+    svg += `<text x="${px(bat.x + bat.w) + 0.6}" y="${py(bat.y + bat.l / 2)}" font-size="0.55" fill="#555" transform="rotate(-90,${px(bat.x + bat.w) + 0.6},${py(bat.y + bat.l / 2)})">↕ ${bat.l.toFixed(1)}m</text>`;
 
     // 9. LÉGENDE — bottom-left interne au viewBox (le N + échelle sont dans le cartouche top-right)
-    const legW = Math.max(14, vbW * 0.28);
-    const legH = legW * 0.30;
+    const legW = Math.max(10, vbW * 0.22);
+    const legH = legW * 0.20;
     const legX = vbX + cartPad;
     const legY = vbY + vbH - legH - cartPad;
-    const legFs = legH * 0.18;
+    const legFs = legH * 0.32;
     const colW  = legW / 4;
     svg += `<g class="legend">
       <rect x="${legX}" y="${legY}" width="${legW}" height="${legH}"
             fill="#FFFEFB" fill-opacity="0.94"
-            stroke="#18130a" stroke-width="0.25" rx="0.4"/>
+            stroke="#18130a" stroke-width="0.06" rx="0.25"/>
       ${[
         { lbl: 'Voie',      col: EDGE_COLORS.voie, dash: false },
         { lbl: 'Latéral',   col: EDGE_COLORS.lat,  dash: false },
         { lbl: 'Fond',      col: EDGE_COLORS.fond, dash: false },
         { lbl: 'Enveloppe', col: '#22C55E',        dash: true  },
       ].map((it, i) => {
-        const cx0 = legX + i * colW + colW * 0.10;
-        const cx1 = legX + i * colW + colW * 0.42;
+        const cx0 = legX + i * colW + colW * 0.08;
+        const cx1 = legX + i * colW + colW * 0.32;
         const cy  = legY + legH * 0.55;
         return `
         <line x1="${cx0}" y1="${cy}" x2="${cx1}" y2="${cy}"
-              stroke="${it.col}" stroke-width="0.6" stroke-linecap="round"
-              ${it.dash ? 'stroke-dasharray="0.7,0.4"' : ''}/>
-        <text x="${cx1 + colW * 0.05}" y="${cy + legFs * 0.35}"
+              stroke="${it.col}" stroke-width="0.18" stroke-linecap="round"
+              ${it.dash ? 'stroke-dasharray="0.30,0.18"' : ''}/>
+        <text x="${cx1 + colW * 0.04}" y="${cy + legFs * 0.35}"
               font-family="Inter,sans-serif" font-size="${legFs}" fill="#18130a">${it.lbl}</text>`;
       }).join('')}
     </g>`;

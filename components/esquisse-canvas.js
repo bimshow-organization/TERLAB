@@ -1559,6 +1559,17 @@ const EsquisseCanvas = {
     }
 
     if (result.length < 3 || this._polygonAreaLocal(result) < 1) return [];
+
+    // Garde finale : éperons aigus (angle intérieur < 90°). Complémentaire au
+    // spike guard ci-dessus (qui catche les divergences de droites parallèles).
+    // Catche les sommets convexes valides mais trop pointus (R/sin(θ/2) avec θ<90°).
+    const GU = (typeof window !== 'undefined') ? window.GeoUtils : null;
+    if (GU?.removeAcuteSpikes) {
+      const cleaned = GU.removeAcuteSpikes(result, 90);
+      if (cleaned && cleaned.length >= 3 && this._polygonAreaLocal(cleaned) >= 1) {
+        return cleaned;
+      }
+    }
     return result;
   },
 

@@ -41,9 +41,13 @@ const EnvelopeGenerator = {
     // Règle BINAIRE latérale : 0 si mitoyen, sinon Lmin (jamais valeur intermédiaire)
     // Lmin = recul réglementaire PLU avec plancher 3m (minimum standard La Réunion).
     // Mitoyenneté détectée via flags p7 (mitoyen_g/d/lateral) ou alignement voie PLU.
+    // mitoyen_g / mitoyen_d sont indépendants : G mitoyen + D recul standard est valide.
     const p7data    = session?.phases?.[7]?.data ?? {};
-    const isMitoyen = !!(p7data.mitoyen_lateral || p7data.mitoyen_g || p7data.mitoyen_d
+    const mitG      = !!(p7data.mitoyen_g || p7data.mitoyen_lateral
                        || p7data.implantation_limite_sep === true);
+    const mitD      = !!(p7data.mitoyen_d || p7data.mitoyen_lateral
+                       || p7data.implantation_limite_sep === true);
+    const isMitoyen = mitG || mitD;
     // Plancher dur à 3m — un slider PLU <3 est IGNORÉ (binarité stricte).
     // 3m = minimum réglementaire La Réunion pour limite séparative non mitoyenne.
     const LmRaw     = parseFloat(p4.recul_limite_sep_m ?? p4.recul_lat_m ?? realPlu.recul_lat ?? 3);
@@ -56,6 +60,8 @@ const EnvelopeGenerator = {
       recul_fond:    parseFloat(p4.recul_fond_m  ?? 3)                       || 3,
       recul_lat:     reculLat,            // BINAIRE : 0 (mitoyen) OU Lmin
       lat_mitoyen:   isMitoyen,           // pour _ruleOblique et debug
+      mitoyen_g:     mitG,                // règle binaire côté gauche
+      mitoyen_d:     mitD,                // règle binaire côté droit
       lat_lmin:      Lmin,                // mémorisé pour validation
       h_egout:       hEgout,
       h_faitage:     hFaitage,
@@ -179,10 +185,40 @@ const EnvelopeGenerator = {
     // 1. Clip contre la zone constructible (reculs respectés)
     // 2. Clip contre la parcelle brute (double sécurité)
     // 3. Rejet en dessous de 12 m² (forme non viable)
+    // 4. Si mitoyen_g/d actif → expandFaceMitoyenne pour snap flush sur la
+    //    limite séparative oblique, puis re-clip + removeAcuteSpikes.
     const SURFACE_MIN_M2 = 12;
+    const GU = (typeof window !== 'undefined') ? window.GeoUtils : null;
+    const splitMit = !!PLU.mitoyen_g !== !!PLU.mitoyen_d;
+    let edgeReculsForMit = null;
+    let edgeTypesForMit = null;
+    if (splitMit && GU?.expandFaceMitoyenne) {
+      const sides = this._classifyLateralSides(parcel, edges);
+      edgeTypesForMit = edges;
+      edgeReculsForMit = edges.map((t, i) => {
+        if (t === 'voie') return PLU.recul_voie;
+        if (t === 'fond') return PLU.recul_fond;
+        const side = sides[i];
+        if (side === 'g' && PLU.mitoyen_g) return 0;
+        if (side === 'd' && PLU.mitoyen_d) return 0;
+        return PLU.lat_lmin ?? PLU.recul_lat;
+      });
+    }
     for (const prop of proposals) {
       prop.polygon = this._clipSH(prop.polygon, zone);
       prop.polygon = this._clipSH(prop.polygon, parcel);
+      // Snap flush sur la limite mitoyenne (si activé)
+      if (splitMit && edgeReculsForMit && prop.polygon.length >= 3) {
+        prop.polygon = GU.expandFaceMitoyenne(
+          prop.polygon, parcel, edgeReculsForMit, edgeTypesForMit
+        );
+        // Re-clip après expansion (le polygone étendu déborde de zone+parcel)
+        prop.polygon = this._clipSH(prop.polygon, zone);
+        prop.polygon = this._clipSH(prop.polygon, parcel);
+        if (GU.removeAcuteSpikes && prop.polygon.length >= 3) {
+          prop.polygon = GU.removeAcuteSpikes(prop.polygon, 90);
+        }
+      }
       prop.surface = this._area(prop.polygon);
       if (prop.surface < SURFACE_MIN_M2) {
         prop.polygon = [];
@@ -610,15 +646,78 @@ const EnvelopeGenerator = {
   },
 
   // ── SETBACK ────────────────────────────────────────────────────
+  // Si mitoyen_g XOR mitoyen_d, on construit un tableau de reculs par arête
+  // (recul=0 du côté mitoyen, Lmin de l'autre). Sinon on passe le map simple
+  // qui sera traduit en interne par _offsetPolygon.
   _setback(parcelLocal, edgeTypes, plu) {
+    const splitMit = !!plu.mitoyen_g !== !!plu.mitoyen_d;
+    if (splitMit) {
+      const sides = this._classifyLateralSides(parcelLocal, edgeTypes);
+      const reculsArr = edgeTypes.map((t, i) => {
+        if (t === 'voie') return plu.recul_voie;
+        if (t === 'fond') return plu.recul_fond;
+        // lateral : règle binaire par côté
+        const side = sides[i];
+        if (side === 'g' && plu.mitoyen_g) return 0;
+        if (side === 'd' && plu.mitoyen_d) return 0;
+        return plu.lat_lmin ?? plu.recul_lat;
+      });
+      return this._offsetPolygon(parcelLocal, edgeTypes, reculsArr);
+    }
     const reculs = { voie: plu.recul_voie, fond: plu.recul_fond, lateral: plu.recul_lat };
     return this._offsetPolygon(parcelLocal, edgeTypes, reculs);
   },
 
+  // Classifie chaque arête latérale en 'g' (gauche) ou 'd' (droite) en
+  // projetant son midpoint sur la tangente de l'arête voie principale.
+  // Retourne un tableau de la même longueur que parcelLocal — null pour
+  // les arêtes non latérales.
+  _classifyLateralSides(parcelLocal, edgeTypes) {
+    const n = parcelLocal.length;
+    const out = new Array(n).fill(null);
+    const voieIdx = edgeTypes.indexOf('voie');
+    if (voieIdx < 0) {
+      // Pas de voie connue → fallback : signe X relatif au centroïde
+      const cx = parcelLocal.reduce((s, p) => s + p.x, 0) / n;
+      for (let i = 0; i < n; i++) {
+        if (edgeTypes[i] !== 'lateral' && edgeTypes[i] !== 'lat') continue;
+        const j = (i + 1) % n;
+        const mx = (parcelLocal[i].x + parcelLocal[j].x) / 2;
+        out[i] = mx < cx ? 'g' : 'd';
+      }
+      return out;
+    }
+    const vj = (voieIdx + 1) % n;
+    const vdx = parcelLocal[vj].x - parcelLocal[voieIdx].x;
+    const vdy = parcelLocal[vj].y - parcelLocal[voieIdx].y;
+    const vlen = Math.hypot(vdx, vdy);
+    if (vlen < 0.01) return out;
+    // Tangente unitaire de la voie (orientée parcelLocal[voieIdx]→[vj])
+    const tx = vdx / vlen, ty = vdy / vlen;
+    const vmx = (parcelLocal[voieIdx].x + parcelLocal[vj].x) / 2;
+    const vmy = (parcelLocal[voieIdx].y + parcelLocal[vj].y) / 2;
+    // Sens du polygone (en espace SVG Y-down : signedArea>0 = CW visuel)
+    const sa = this._signedAreaSH(parcelLocal);
+    // En CW visuel, "gauche" du sens de marche voie = projection négative
+    const flip = sa > 0 ? 1 : -1;
+    for (let i = 0; i < n; i++) {
+      if (edgeTypes[i] !== 'lateral' && edgeTypes[i] !== 'lat') continue;
+      const j = (i + 1) % n;
+      const mx = (parcelLocal[i].x + parcelLocal[j].x) / 2;
+      const my = (parcelLocal[i].y + parcelLocal[j].y) / 2;
+      const proj = ((mx - vmx) * tx + (my - vmy) * ty) * flip;
+      out[i] = proj < 0 ? 'g' : 'd';
+    }
+    return out;
+  },
+
   // Offset polygon autonome (corrige : CW en espace Y-inverse, normales interieures)
+  // reculs : soit { voie, fond, lateral } (map par type), soit [r0..rn-1] (array
+  // par arête, longueur === pts.length). Le mode array permet le mitoyen G/D.
   _offsetPolygon(pts, edgeTypes, reculs) {
     const n = pts.length;
     if (n < 3) return [];
+    const isArr = Array.isArray(reculs);
 
     const signedArea = (p) => {
       let a = 0;
@@ -633,6 +732,7 @@ const EnvelopeGenerator = {
     const sa = signedArea(pts);
     const cw = sa > 0 ? pts : [...pts].reverse();
     const et = sa > 0 ? edgeTypes : [...edgeTypes].reverse();
+    const ra = isArr ? (sa > 0 ? reculs : [...reculs].reverse()) : null;
 
     // Bbox parcelle pour clamp des sommets aberrants (angles aigus)
     const bx = this._bbox(cw);
@@ -656,7 +756,9 @@ const EnvelopeGenerator = {
       const nx  = -dy / len;
       const ny  =  dx / len;
       const type = et[i] ?? 'lateral';
-      const r    = type === 'voie' ? reculs.voie : type === 'fond' ? reculs.fond : reculs.lateral;
+      const r    = isArr
+        ? (ra[i] ?? 0)
+        : (type === 'voie' ? reculs.voie : type === 'fond' ? reculs.fond : reculs.lateral);
       offsetEdges.push({
         p1: { x: cw[i].x + nx * r, y: cw[i].y + ny * r },
         p2: { x: cw[j].x + nx * r, y: cw[j].y + ny * r },
@@ -676,7 +778,19 @@ const EnvelopeGenerator = {
       }
     }
     const area = Math.abs(signedArea(result));
-    return (result.length >= 3 && area >= 1) ? result : [];
+    if (result.length < 3 || area < 1) return [];
+
+    // Garde finale : éperons aigus (angle intérieur < 90°). Complémentaire au
+    // clamp box ci-dessus (qui borne les sommets aberrants distants). Ici on
+    // catche les sommets convexes valides mais sub-90° (limites obliques).
+    const GU = (typeof window !== 'undefined') ? window.GeoUtils : null;
+    if (GU?.removeAcuteSpikes) {
+      const cleaned = GU.removeAcuteSpikes(result, 90);
+      if (cleaned && cleaned.length >= 3 && Math.abs(signedArea(cleaned)) >= 1) {
+        return cleaned;
+      }
+    }
+    return result;
   },
 
   // Fallback: convertir GeoJSON parcelle en local (si pas fourni par EsquisseCanvas)

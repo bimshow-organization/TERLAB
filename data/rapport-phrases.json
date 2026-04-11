@@ -223,5 +223,188 @@
       { "cond": { "surface_m2_gte": 10000 }, "text": "Une opération de cette envergure ({surface_ha} ha) peut être avantageusement phasée en 2 à 3 tranches. Le phasage permet de lisser l'investissement et d'adapter la programmation à l'évolution du marché." },
       { "cond": { "surface_m2_lt": 5000 }, "text": "La taille modeste de l'opération permet une réalisation en une seule tranche, simplifiant la conduite de projet et réduisant les délais." }
     ]
+  },
+
+  "geologie": {
+    "type": [
+      { "cond": { "geologie_type": "basalte_recent" }, "short": "Basalte recent — substratum dur, fondations superficielles possibles.", "text": "Le substratum est constitue de basalte recent, materiau dur et stable. Les fondations superficielles sont generalement envisageables apres etude G2. Les terrassements peuvent necessiter du minage si la couverture meuble est faible." },
+      { "cond": { "geologie_type": "basalte_ancien" }, "short": "Basalte ancien — alteration superficielle a verifier en G2.", "text": "Le substratum basaltique ancien est plus altere en surface. La portance est generalement bonne mais l'epaisseur de la couche alteree doit etre relevee par sondages. Une etude G2 est imperative pour caler le mode de fondation." },
+      { "cond": { "geologie_type": "pahoehoe" }, "short": "Coulee pahoehoe — surface dure mais cavites possibles en sous-sol.", "text": "Le terrain repose sur une coulee pahoehoe (lave cordee). La surface est generalement dure, mais des tunnels de lave et cavites peuvent exister en profondeur. Des sondages destructifs sont indispensables pour ecarter le risque de vide." },
+      { "cond": { "geologie_type": "aa_scories" }, "short": "Scories aa — heterogenes, tassements differentiels possibles.", "text": "Le terrain est forme de scories aa, materiau heterogene a forte porosite. La portance peut etre tres variable d'un point a l'autre. Une etude G2 detaillee est necessaire pour anticiper les tassements differentiels et dimensionner les fondations." },
+      { "cond": { "geologie_type": "alluvions" }, "short": "Alluvions — sols compressibles, fondations profondes probables.", "text": "Le terrain repose sur des alluvions, generalement compressibles et saturees en eau. Le risque de tassement et de liquefaction sismique doit etre evalue. Des fondations profondes (pieux, micropieux) seront probablement necessaires pour les batiments lourds." },
+      { "cond": { "geologie_type": "remblai" }, "short": "Remblai — purge ou fondations profondes obligatoires.", "text": "La presence de remblais constitue une contrainte majeure. La purge totale ou des fondations traversant le remblai jusqu'au substratum sont generalement obligatoires. L'origine, la composition et l'age du remblai doivent etre etablis par sondages." },
+      { "cond": { "geologie_type": "indetermine" }, "short": "Geologie indeterminee — sondages prealables indispensables.", "text": "La nature geologique du terrain n'est pas etablie a partir des cartes BRGM. Des sondages prealables (pelle mecanique ou tariere) sont indispensables avant tout engagement de conception, en particulier pour caler le mode de fondation." },
+      { "cond": { "missing": "geologie_type" }, "short": "Type geologique non renseigne — consulter la carte BRGM 1/50 000." }
+    ],
+    "remblai": [
+      { "cond": { "remblai": "non" }, "short": "Pas de remblai identifie — terrain naturel apparent." },
+      { "cond": { "remblai": "possible" }, "short": "Remblai possible — verifier par sondages avant fondations.", "text": "Des indices laissent suspecter la presence de remblais (modele de terrain modifie, photos aeriennes anciennes). Avant tout engagement de conception, des sondages doivent confirmer ou ecarter cette hypothese, qui conditionne directement le mode de fondation." },
+      { "cond": { "remblai": "oui" }, "short": "Remblai avere — purge ou fondations profondes obligatoires.", "text": "La presence de remblais est averee. Les fondations devront soit purger integralement le remblai, soit le traverser jusqu'au substratum. Cette contrainte impacte directement le cout et le planning de l'operation." }
+    ],
+    "geotechnique": [
+      { "cond": { "geotech": "non" }, "short": "Etude geotechnique non requise pour ce contexte." },
+      { "cond": { "geotech": "g1" }, "short": "Etude G1 requise — investigation prealable du sol.", "text": "Une etude geotechnique G1 est requise. Cette mission preliminaire d'investigation des sols permet d'identifier les principales contraintes geotechniques avant la conception. Elle ne dispense pas d'une G2 ulterieure pour le dimensionnement des ouvrages." },
+      { "cond": { "geotech": "recommande" }, "short": "G2 recommandee — dimensionnement precis des fondations.", "text": "Une etude geotechnique G2 est fortement recommandee. Cette mission de conception permet de definir les principes de fondation, les terrassements et les mesures de protection contre les eaux. Elle est indispensable pour un projet sur sol sensible ou en pente." }
+    ]
+  },
+
+  "risques_extra": {
+    "cote_ref": [
+      { "cond": { "missing": "cote_reference_ngr" }, "short": "Cote de reference non determinee — verifier au reglement PPR." },
+      { "cond": { "cote_reference_ngr_gt": 0 }, "short": "Plancher bas a caler au-dessus de {cote_reference_ngr} m NGR.", "text": "Le reglement PPR impose une cote de plancher bas superieure a {cote_reference_ngr} m NGR pour les constructions neuves. Cette contrainte conditionne directement les altitudes de seuil et peut imposer un rehaussement du terrain ou la creation d'un vide sanitaire." }
+    ],
+    "rtaa_vent": [
+      { "cond": { "zone_rtaa_vent": "1" }, "short": "Zone vent RTAA 1 — exigences standards.", "text": "Le terrain est en zone vent RTAA 1, exigences standards. Les constructions devront neanmoins integrer la resistance aux rafales cycloniques (Eurocode 1 zone 4). Toitures et menuiseries sont les points les plus exposes." },
+      { "cond": { "zone_rtaa_vent": "2" }, "short": "Zone vent RTAA 2 — exigences renforcees.", "text": "Le terrain est en zone vent RTAA 2, exigences renforcees. Les charges climatiques majorees imposent un renforcement des structures et des fixations de toiture. Les menuiseries doivent etre certifiees AEV correspondant." },
+      { "cond": { "zone_rtaa_vent": "3" }, "short": "Zone vent RTAA 3 — exigences maximales.", "text": "Le terrain est en zone vent RTAA 3, contrainte cyclonique maximale. Tous les elements de l'enveloppe (toiture, menuiseries, fixations, garde-corps) doivent repondre aux exigences les plus elevees. Le surcout structurel n'est pas negligeable." },
+      { "cond": { "missing": "zone_rtaa_vent" }, "short": "Zone vent RTAA non renseignee — verifier au reglement RTAA DOM 974." }
+    ],
+    "hydrant": [
+      { "cond": { "hydrant_present": "oui" }, "short": "Hydrant a moins de 150 m — defense incendie assuree." },
+      { "cond": { "hydrant_present": "non" }, "short": "Pas d'hydrant a moins de 150 m — surpresseur a prevoir.", "text": "Aucun hydrant n'est present a moins de 150 m du terrain. La defense incendie devra etre assuree par la creation d'un reseau dedie avec hydrant et eventuellement un surpresseur. Cette contrainte represente un cout d'infrastructure significatif et conditionne le permis d'amenager." },
+      { "cond": { "hydrant_present": "verif" }, "short": "Presence d'hydrant a verifier aupres du SDIS 974." }
+    ]
+  },
+
+  "reseaux": {
+    "eau_potable": [
+      { "cond": { "eau_potable": "reseau_public" }, "short": "Eau potable — reseau public disponible.", "text": "Le terrain est desservi par un reseau public d'eau potable. Le raccordement au reseau existant est a confirmer aupres du gestionnaire (Creole, Runeo selon la commune). Le diametre et la pression doivent etre verifies pour la defense incendie." },
+      { "cond": { "eau_potable": "captage_prive" }, "short": "Captage prive — autorisation et controle sanitaire requis.", "text": "L'alimentation en eau repose sur un captage prive. Une autorisation prefectorale et un controle sanitaire annuel par l'ARS sont obligatoires. Le rendement et la qualite doivent etre verifies avant tout projet, et une solution de secours peut etre necessaire." },
+      { "cond": { "eau_potable": "inconnu" }, "short": "Source d'eau a determiner — consulter le gestionnaire local.", "text": "Le mode d'alimentation en eau potable n'a pas ete identifie. Cette information conditionne la faisabilite du projet et doit etre obtenue rapidement aupres du gestionnaire (Creole, Runeo) et de la mairie." }
+    ],
+    "assainissement": [
+      { "cond": { "assainissement": "collectif" }, "short": "Assainissement collectif — raccordement reseau public.", "text": "Le terrain est desservi par un reseau collectif d'assainissement. Le raccordement gravitaire ou par poste de relevage doit etre etudie selon la topographie. Une convention de rejet est etablie avec le gestionnaire." },
+      { "cond": { "assainissement": "ANC" }, "short": "Assainissement non collectif — etude de filiere obligatoire.", "text": "L'absence de reseau collectif impose un assainissement non collectif (ANC). Une etude de filiere est obligatoire pour dimensionner le dispositif (fosse, epandage, filtre a sable, micro-station). La validation par le SPANC est preliminaire au depot de permis." },
+      { "cond": { "assainissement": "extension" }, "short": "Extension de reseau necessaire — convention avec gestionnaire.", "text": "Un raccordement au reseau collectif necessite une extension. Une convention avec le gestionnaire et une participation financiere a l'extension sont a prevoir. Les delais de realisation peuvent impacter le planning de l'operation." }
+    ],
+    "electricite": [
+      { "cond": { "electricite": "disponible" }, "short": "Reseau electrique disponible — raccordement standard.", "text": "Le reseau electrique est disponible en limite de propriete. Le raccordement basse tension ou la creation d'un poste de transformation HTA seront definis selon la puissance du projet apres etude EDF/SEI." },
+      { "cond": { "electricite": "extension" }, "short": "Extension de reseau a realiser — etude EDF prealable.", "text": "Une extension du reseau electrique est necessaire. Une etude prealable EDF/SEI determinera le mode de raccordement et les couts. Pour les programmes denses, l'implantation de postes de transformation sur la parcelle est generalement requise." },
+      { "cond": { "electricite": "inconnu" }, "short": "Disponibilite reseau a verifier aupres d'EDF SEI." }
+    ],
+    "fibre": [
+      { "cond": { "fibre": "oui" }, "short": "Fibre optique disponible — raccordement haut debit possible." },
+      { "cond": { "fibre": "adsl" }, "short": "ADSL uniquement — debit limite, fibre a moyen terme.", "text": "Seule l'ADSL est actuellement disponible. La fibre optique peut etre prevue par l'operateur a moyen terme. Pour un programme neuf, le pre-cablage en fibre optique des logements est obligatoire (RT 2012)." },
+      { "cond": { "fibre": "zone_blanche" }, "short": "Zone blanche numerique — solutions satellitaires a envisager.", "text": "Le terrain est en zone blanche pour le tres haut debit. Les solutions satellitaires ou 4G/5G peuvent compenser l'absence de raccordement filaire. Le pre-cablage en fibre est neanmoins obligatoire en attente du raccordement reseau." }
+    ],
+    "icpe": [
+      { "cond": { "icpe": "non" }, "short": "Pas d'ICPE a moins de 500 m — pas de servitude." },
+      { "cond": { "icpe": "oui" }, "short": "ICPE a moins de 500 m — verifier les servitudes d'eloignement.", "text": "Une installation classee pour la protection de l'environnement (ICPE) est presente a moins de 500 m. Les servitudes d'eloignement pour les constructions a usage d'habitation ou recevant du public doivent etre verifiees aupres de la DEAL et au reglement PLU." },
+      { "cond": { "icpe": "verif" }, "short": "Presence d'ICPE a verifier sur le portail Georisques." }
+    ],
+    "parc_national": [
+      { "cond": { "parc_situation": "hors_parc" }, "short": "Hors Parc National — pas de servitude paysagere specifique." },
+      { "cond": { "parc_situation": "adhesion_500m" }, "short": "Zone d'adhesion a moins de 500 m — vigilance paysagere.", "text": "La proximite immediate (< 500 m) du Parc National impose une vigilance paysagere et ecologique. Les materiaux, volumetries et eclairages doivent tenir compte du contexte et preserver les continuites ecologiques de la trame verte et bleue." },
+      { "cond": { "parc_situation": "adhesion" }, "short": "Zone d'adhesion du Parc National — charte paysagere applicable.", "text": "Le terrain est en zone d'adhesion du Parc National de La Reunion. La charte du Parc s'applique : contraintes sur les volumetries, materiaux, palette colorimetrique, eclairage. Un avis du Parc est generalement requis avant le depot de permis." },
+      { "cond": { "parc_situation": "coeur" }, "short": "Coeur de Parc — constructibilite tres restreinte.", "text": "Le terrain est situe en coeur de Parc National. La constructibilite y est tres restreinte et soumise a autorisation specifique du conseil d'administration du Parc. Seuls certains amenagements lies a la decouverte du site sont generalement envisageables." }
+    ]
+  },
+
+  "esquisse": {
+    "surface_plancher": [
+      { "cond": { "surface_plancher_m2_lt": 150 }, "short": "Programme modeste — habitat individuel ou tres petit collectif." },
+      { "cond": { "surface_plancher_m2_gte": 150, "surface_plancher_m2_lt": 1000 }, "short": "Programme intermediaire — petit collectif ou groupe d'individuels.", "text": "La surface de plancher de {surface_plancher_m2} m2 correspond a un programme intermediaire (petit collectif ou groupe d'individuels). L'optimisation de la SDP par rapport aux contraintes PLU sera determinante pour l'equilibre de l'operation." },
+      { "cond": { "surface_plancher_m2_gte": 1000, "surface_plancher_m2_lt": 1800 }, "short": "Programme intermediaire — quotas LLS/LLTS non encore declenches." },
+      { "cond": { "surface_plancher_m2_gte": 1800 }, "short": "Programme depassant 1800 m2 SDP — quotas logements aides applicables.", "text": "Au-dela de 1800 m2 de SDP, les quotas reglementaires de logements aides s'appliquent (typiquement 30% en LLTS/LLS/PLS). Cette contrainte structure la programmation et impacte directement le bilan financier de l'operation." }
+    ],
+    "niveaux": [
+      { "cond": { "niveaux_lte": 2 }, "short": "Gabarit bas (R+1 max) — habitat individuel ou tres petit collectif." },
+      { "cond": { "niveaux": 3 }, "short": "R+2 — typologie collective intermediaire compatible PLU local." },
+      { "cond": { "niveaux_gte": 4 }, "short": "R+3 ou plus — collectif dense, verifier hauteur PLU.", "text": "Avec {niveaux} niveaux, le projet se classe en collectif dense. La conformite avec la hauteur maximale du PLU doit etre verifiee, en tenant compte des deblais et remblais sur terrain en pente. Une etude G2 et un calcul structurel parasismique seront imperatifs." }
+    ],
+    "gabarit": [
+      { "cond": { "gabarit_l_m_gt": 20 }, "short": "Batiment long — fragmentation visuelle a etudier.", "text": "Avec une longueur de {gabarit_l_m} m, le batiment depasse les references locales d'habitat traditionnel. Une fragmentation des facades par decrochements, retraits ou variations de couleur permettra d'attenuer l'impact visuel et de mieux s'integrer dans le contexte." }
+    ],
+    "donnee_manquante": [
+      { "cond": { "missing": "surface_plancher_m2" }, "short": "SDP non renseignee — completer phase 7 esquisse." },
+      { "cond": { "missing": "gabarit_l_m" }, "short": "Gabarit non defini — completer phase 7 esquisse." }
+    ]
+  },
+
+  "plan_masse": {
+    "ces": [
+      { "cond": { "ces_pct_lte": 25 }, "short": "CES tres faible — emprise sous-utilisee, marge d'optimisation.", "text": "Le coefficient d'emprise au sol est faible ({ces_pct}%). L'emprise reglementaire n'est pas totalement utilisee, ce qui laisse une marge d'optimisation. Un travail sur la compacite ou l'ajout de batiments secondaires peut ameliorer le bilan." },
+      { "cond": { "ces_pct_gt": 25, "ces_pct_lte": 45 }, "short": "CES modere — equilibre bati/espaces libres correct.", "text": "Le CES de {ces_pct}% traduit un equilibre raisonnable entre emprise batie et espaces libres. La densite reste compatible avec une bonne qualite paysagere et le respect des contraintes de pleine terre." },
+      { "cond": { "ces_pct_gt": 45 }, "short": "CES eleve — verifier compatibilite avec pleine terre PLU.", "text": "Le CES de {ces_pct}% est eleve. La compatibilite avec les exigences de surface permeable et de pleine terre du PLU doit etre verifiee precisement. Une telle densite peut imposer des solutions de toitures vegetalisees ou de pleine terre integree au rez-de-chaussee." }
+    ],
+    "permeable": [
+      { "cond": { "permeable_pct_lt": 30 }, "short": "Permeabilite insuffisante — risque de non-conformite PLU.", "text": "Le taux de surface permeable de {permeable_pct}% est insuffisant au regard des exigences typiques du PLU (40% en general). Une revision du plan masse est necessaire pour augmenter les espaces de pleine terre, ou recourir a des chaussees reservoirs et toitures vegetalisees." },
+      { "cond": { "permeable_pct_gte": 30, "permeable_pct_lt": 50 }, "short": "Permeabilite acceptable — verifier seuil PLU local." },
+      { "cond": { "permeable_pct_gte": 50 }, "short": "Permeabilite elevee — gestion eaux pluviales facilitee.", "text": "Avec {permeable_pct}% de surface permeable, l'infiltration naturelle est privilegiee. La gestion des eaux pluviales en sera grandement facilitee et le bilan ecologique du projet ameliore." }
+    ],
+    "vegetation": [
+      { "cond": { "arbres_count_gte": 20 }, "short": "Vegetation dense — bonne reponse a la trame verte.", "text": "Avec {arbres_count} arbres prevus, la vegetalisation du projet est consequente. La trame verte favorise la biodiversite, le confort microclimatique et l'absorption des eaux pluviales. Le choix d'essences endemiques ou indigenes sera determinant." },
+      { "cond": { "arbres_count_lt": 20, "arbres_count_gt": 0 }, "short": "Vegetation modeste — densifier si compatible avec emprise." },
+      { "cond": { "missing": "arbres_count" }, "short": "Plan de plantation non renseigne — a definir en phase ESQ." }
+    ]
+  },
+
+  "giep": {
+    "score": [
+      { "cond": { "giep_score_gte": 70 }, "short": "GIEP performant — gestion integree efficace.", "text": "Avec un score GIEP de {giep_score}/100, la gestion integree des eaux pluviales est performante. Les dispositifs prevus (noues, chaussees reservoirs, toitures vegetalisees) permettent une reduction significative des debits rejetes au reseau ou a la ravine." },
+      { "cond": { "giep_score_gte": 40, "giep_score_lt": 70 }, "short": "GIEP moyen — marges d'amelioration sur l'infiltration.", "text": "Le score GIEP de {giep_score}/100 reste perfectible. L'augmentation des surfaces d'infiltration, la deconnexion de surfaces impermeables vers les ouvrages vegetalises, ou l'ajout de stockages tampons peuvent ameliorer significativement la performance." },
+      { "cond": { "giep_score_lt": 40 }, "short": "GIEP insuffisant — revision du plan d'amenagement necessaire.", "text": "Le score GIEP de {giep_score}/100 est insuffisant. Le projet ne reduit pas suffisamment les debits ruisseles. Une revision du plan d'amenagement est necessaire : augmentation de la pleine terre, integration de noues, bassins d'infiltration, deconnexion des descentes de toiture." }
+    ],
+    "reduction": [
+      { "cond": { "giep_reduction_pct_gte": 50 }, "short": "Reduction des debits superieure a 50% — objectif SCoT atteint." },
+      { "cond": { "giep_reduction_pct_lt": 50, "giep_reduction_pct_gte": 20 }, "short": "Reduction des debits partielle — objectif SCoT non atteint.", "text": "La reduction des debits de pointe atteint {giep_reduction_pct}%, ce qui reste en-deca des objectifs prescrits par le SCoT. Une augmentation des surfaces vegetalisees et des dispositifs de retention amelioreront ce ratio." },
+      { "cond": { "giep_reduction_pct_lt": 20 }, "short": "Reduction des debits faible — risque d'aggravation aval.", "text": "La reduction des debits n'atteint que {giep_reduction_pct}%, insuffisante pour eviter une aggravation des ecoulements aval. Le projet doit etre repense pour respecter le principe de non-aggravation hydraulique impose par le SCoT et le PPR." }
+    ],
+    "infiltration": [
+      { "cond": { "giep_deficit_gt": 0 }, "short": "Deficit d'infiltration — surfaces a augmenter ou bassin a prevoir.", "text": "Le calcul d'infiltration revele un deficit de {giep_deficit} m2 de surface d'absorption. Soit les espaces verts doivent etre augmentes, soit un bassin d'infiltration ou un puits perdu doivent etre integres au plan masse." },
+      { "cond": { "giep_deficit_lte": 0 }, "short": "Surfaces d'infiltration suffisantes — marge confortable." }
+    ]
+  },
+
+  "chantier": {
+    "saison": [
+      { "cond": { "saison_demarrage": "hors_cyclone" }, "short": "Demarrage hors saison cyclonique — fenetre de chantier optimale.", "text": "Le demarrage hors saison cyclonique (mai a octobre) constitue la fenetre optimale. Les travaux de gros oeuvre les plus exposes (terrassements, charpentes) peuvent etre realises avant la saison des pluies, reduisant les risques d'arret de chantier." },
+      { "cond": { "saison_demarrage": "cyclone" }, "short": "Demarrage en saison cyclonique — protections renforcees.", "text": "Le demarrage en saison cyclonique (novembre a avril) impose des protections de chantier renforcees : bachage, ancrage des installations temporaires, plan de mise en securite cyclonique. Les travaux de terrassement seront sensibles aux fortes pluies." }
+    ],
+    "gestion_eaux": [
+      { "cond": { "gestion_eaux_chantier": "bassin" }, "short": "Bassin de decantation — gestion eaux chantier conforme.", "text": "Un bassin de decantation est prevu pour les eaux de chantier. Cette solution permet de retenir les matieres en suspension et de respecter les obligations vis-a-vis du milieu recepteur. Un dimensionnement adapte a la pluviometrie est necessaire." },
+      { "cond": { "gestion_eaux_chantier": "cunettes" }, "short": "Cunettes peripheriques — solution legere a surveiller.", "text": "La gestion des eaux par cunettes peripheriques est une solution legere mais qui requiert un entretien constant et un controle des rejets. Pour les chantiers en pente ou de grande emprise, un bassin de decantation est preferable." },
+      { "cond": { "gestion_eaux_chantier": "a_definir" }, "short": "Gestion eaux chantier a definir — obligation reglementaire.", "text": "La gestion des eaux de chantier n'est pas encore definie. Cette mesure est imperative au titre du code de l'environnement, particulierement en zone proche d'une ravine ou d'un milieu sensible. A integrer dans la note d'organisation du chantier." }
+    ]
+  },
+
+  "sdis": {
+    "synthese": [
+      { "cond": { "sdis_all_ok": true }, "short": "Acces SDIS conformes — defense incendie validee." },
+      { "cond": { "sdis_warn": true }, "short": "Acces SDIS partiellement conformes — points a verifier.", "text": "Plusieurs criteres SDIS necessitent une verification ou une mise en conformite. La voirie d'acces, la presence d'un hydrant, le degagement de manoeuvre ou la portance peuvent imposer des amenagements complementaires. Un avis prealable du SDIS 974 est recommande." },
+      { "cond": { "sdis_err": true }, "short": "Acces SDIS non conformes — defense incendie a revoir.", "text": "Plusieurs criteres SDIS sont non conformes. La defense incendie est un prerequis au permis de construire et doit etre traitee en amont du projet. Un dialogue avec le SDIS 974 est imperatif pour definir les amenagements et eviter un refus du dossier." }
+    ],
+    "largeur": [
+      { "cond": { "sdis_largeur": "ok" }, "short": "Largeur de voirie conforme (>= 3 m)." },
+      { "cond": { "sdis_largeur": "warn" }, "short": "Largeur de voirie a verifier — limite SDIS." },
+      { "cond": { "sdis_largeur": "err" }, "short": "Largeur de voirie insuffisante — elargissement necessaire." }
+    ],
+    "hydrant": [
+      { "cond": { "sdis_hydrant": "ok" }, "short": "Hydrant present a moins de 150 m." },
+      { "cond": { "sdis_hydrant": "err" }, "short": "Hydrant manquant a moins de 150 m — creation d'un reseau dedie." }
+    ],
+    "portance": [
+      { "cond": { "sdis_portance": "ok" }, "short": "Portance de voirie compatible (16 t)." },
+      { "cond": { "sdis_portance": "warn" }, "short": "Portance a verifier — controle structurel necessaire." }
+    ]
+  },
+
+  "bioclimatique_extra": {
+    "vent_dominant": [
+      { "cond": { "dir_dominante": "E" }, "short": "Vent dominant Est — alizes captables pour la ventilation traversante.", "text": "Le vent dominant est oriente Est, ce qui correspond aux alizes typiques de la cote au vent. Les facades Est devront etre proteges de la pluie battante mais peuvent etre equipees d'ouvrants pour capter la ventilation traversante. L'axe long des batiments sera oriente Nord-Sud pour optimiser cet effet." },
+      { "cond": { "dir_dominante": "O" }, "short": "Vent dominant Ouest — brises thermiques de cote sous le vent.", "text": "Le vent dominant est oriente Ouest, signature des brises thermiques de la cote sous le vent. Ces brises moins puissantes mais regulieres en fin de journee peuvent etre captees par des ouvertures generees en partie haute des facades pour ventiler le sejour." },
+      { "cond": { "dir_dominante": "N" }, "short": "Vent dominant Nord — secteur peu frequent, contexte de relief proche.", "text": "Le vent dominant est oriente Nord, ce qui est inhabituel et signale generalement un effet de relief proche. La modelisation aerodynamique du contexte bati immediat est recommandee pour comprendre ce regime particulier et caler l'orientation des batiments." },
+      { "cond": { "dir_dominante": "S" }, "short": "Vent dominant Sud — composante synoptique ou effet de site.", "text": "Le vent dominant est oriente Sud. Cette direction peut traduire un regime synoptique (alizes sud-est) ou un effet de site canalise par la topographie. La verification croisee avec les stations Meteo-France voisines permettra de confirmer la robustesse de cette donnee." }
+    ],
+    "vent_vitesse": [
+      { "cond": { "mean_speed_lt": 3 }, "short": "Vent moyen faible — ventilation naturelle a optimiser finement.", "text": "La vitesse moyenne du vent ({mean_speed} m/s) est faible. La ventilation naturelle reste possible mais demande une optimisation fine des ouvertures, des hauteurs sous plafond et de la disposition interieure pour favoriser l'effet cheminee et la convection." },
+      { "cond": { "mean_speed_gte": 3, "mean_speed_lt": 6 }, "short": "Vent moyen modere — ventilation traversante efficace possible." },
+      { "cond": { "mean_speed_gte": 6 }, "short": "Vent moyen soutenu — protections necessaires sur facades exposees.", "text": "Avec une vitesse moyenne de {mean_speed} m/s, le vent est soutenu. La ventilation traversante est tres efficace mais des protections (varangues, brise-vent paysagers) seront necessaires sur les facades les plus exposees pour garantir le confort des espaces exterieurs." }
+    ],
+    "pluviometrie": [
+      { "cond": { "annual_mm_lt": 1000 }, "short": "Pluviometrie faible — collecte et stockage prioritaires.", "text": "La pluviometrie annuelle ({annual_mm} mm) est faible pour La Reunion, caracteristique de la cote sous le vent. La collecte des eaux pluviales (cuves, citernes) prend tout son sens pour l'arrosage et les usages non potables, contribuant a l'autonomie hydrique du projet." },
+      { "cond": { "annual_mm_gte": 1000, "annual_mm_lt": 2500 }, "short": "Pluviometrie moyenne — gestion alternative des EP a integrer." },
+      { "cond": { "annual_mm_gte": 2500 }, "short": "Pluviometrie elevee — dimensionnement GIEP renforce.", "text": "La pluviometrie annuelle ({annual_mm} mm) est elevee. Le dimensionnement des ouvrages de gestion des eaux pluviales (noues, bassins, drains) doit etre majore. Les fortes pluies cycloniques imposent par ailleurs un ouvrage de surverse securise vers la ravine ou le reseau." }
+    ]
   }
 }
