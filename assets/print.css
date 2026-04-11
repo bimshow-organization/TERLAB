@@ -307,7 +307,7 @@ body {
   align-content: start;
 }
 .pb2 { grid-template-columns: 3fr 5fr; }
-.pb3 { grid-template-columns: 1fr 1fr 1fr; }
+.pb3 { grid-template-columns: 1fr 1fr; }   /* 2 cols : 4 sections en 2x2 */
 
 /* ============================================================
    SECTIONS DE DONNEES

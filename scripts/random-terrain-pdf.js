@@ -1080,8 +1080,16 @@ async function processOneTerrain(browser, runIndex) {
             const IGN = window.IGNElevationService;
             const LS = window.LidarService;
             const geojson = terrain.parcelle_geojson;
-            const coords = geojson?.coordinates?.[0] ?? geojson?.coordinates?.[0]?.[0];
-            console.log('[PDF] Coupes : TP=' + !!TP?.render + ' IGN=' + !!IGN?.getProfile + ' coords=' + (coords?.length ?? 0));
+            // Extraction robuste : Polygon -> [0], MultiPolygon -> [0][0], Feature -> .geometry
+            const flatRing = (g) => {
+              if (!g) return null;
+              if (g.type === 'Feature') return flatRing(g.geometry);
+              if (g.type === 'Polygon')      return g.coordinates?.[0] ?? null;
+              if (g.type === 'MultiPolygon') return g.coordinates?.[0]?.[0] ?? null;
+              return null;
+            };
+            const coords = flatRing(geojson);
+            console.log('[PDF] Coupes : TP=' + !!TP?.render + ' IGN=' + !!IGN?.getProfile + ' geomType=' + (geojson?.type ?? '?') + ' coords=' + (coords?.length ?? 0));
             if (TP?.render && coords?.length >= 4) {
               const lidarPts = LS?._rawPoints ?? LS?._lastPoints ?? null;
               const hasLidar = !!(LS?.getProfileFromPoints && lidarPts?.length);
