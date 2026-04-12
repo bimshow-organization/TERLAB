@@ -77,14 +77,19 @@
   <div class="form-section anim-slide-up" id="auto-profile-section" style="display:none">
     <div class="fs-head">Profil automatique N-S <span class="topo-source-badge">API IGN</span></div>
     <div id="auto-profile-container" style="width:100%;min-height:140px"></div>
-    <div class="topo-btn-group" style="margin-top:4px">
+    <div class="topo-btn-group" style="margin-top:4px;display:flex;gap:6px">
       <button class="topo-btn" onclick="P01.autoProfile()" id="btn-auto-profile">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
           <path d="M1 9 L3 5 L6 7 L9 3 L11 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
         Profil N-S automatique
       </button>
+      <button class="topo-btn" onclick="P01.showTopoMask()" id="btn-topo-mask" style="display:none">
+        ☀ Masques topo (Izard)
+      </button>
     </div>
+    <!-- Résultat masques topographiques -->
+    <div id="p01-topo-mask-result" style="display:none;padding:6px 10px;margin-top:6px;background:var(--card);border:1px solid var(--border);border-radius:var(--r-sm);font-size:10px;line-height:1.6"></div>
   </div>
 
   <!-- Progression chargement LiDAR -->
@@ -168,6 +173,116 @@
     <div class="lidar-stats" id="lidar-stats"></div>
 
     <!-- Toutes les classes sont chargées d'un coup (même coût réseau COPC) -->
+  </div>
+
+  <!-- ═══ LIDAR MAKE MESH — Maillage terrain TIN adaptatif ═══ -->
+  <div class="form-section anim-slide-up" id="lidar-mesh-section" style="display:none">
+    <div class="fs-head">Maillage terrain TIN
+      <span class="topo-source-badge" id="mesh-source-badge">Delaunay</span>
+    </div>
+    <p class="field-note" style="margin-bottom:8px">
+      Triangulation adaptative des points LiDAR sol + breaklines cadastre, ravines, batiments et routes.
+    </p>
+
+    <!-- Bouton principal -->
+    <button class="topo-btn lidar-btn" onclick="P01.makeLidarMesh()" id="btn-lidar-mesh"
+            style="width:100%;padding:10px 14px;font-size:12px;font-weight:600;background:linear-gradient(135deg,#2a6a4e,#1a4a3e);border-color:#3a8a6e">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2L2 19h20L12 2z"/><path d="M7 14l5-8 5 8"/><path d="M4.5 17l3-5"/><path d="M19.5 17l-3-5"/>
+      </svg>
+      LiDAR Make Mesh
+    </button>
+
+    <!-- Progression mesh -->
+    <div id="mesh-progress" style="display:none;margin-top:8px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="lidar-spinner" style="width:16px;height:16px;border-width:2px"></div>
+        <span class="field-note" id="mesh-progress-text" style="font-size:10px">Construction du maillage...</span>
+      </div>
+      <div class="lidar-progress-bar" style="margin-top:4px">
+        <div id="mesh-progress-fill" class="lidar-progress-fill"></div>
+      </div>
+    </div>
+
+    <!-- Stats mesh (visible apres construction) -->
+    <div id="mesh-stats" style="display:none;margin-top:8px">
+      <div class="topo-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="topo-cell">
+          <span class="topo-label">Sommets</span>
+          <span class="topo-val" id="mesh-vertices">—</span>
+        </div>
+        <div class="topo-cell">
+          <span class="topo-label">Triangles</span>
+          <span class="topo-val" id="mesh-triangles">—</span>
+        </div>
+        <div class="topo-cell">
+          <span class="topo-label">Breaklines</span>
+          <span class="topo-val" id="mesh-breaklines">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Selecteur de couche couleur -->
+    <div id="mesh-layer-selector" style="display:none;margin-top:10px">
+      <div class="field-note" style="font-size:9px;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-tertiary,#a09080)">Mode couleur</div>
+      <div class="lidar-layer-selector">
+        <button class="lidar-layer-btn active" id="btn-mesh-classification" onclick="P01.setMeshLayer('classification')">
+          <span class="lidar-swatch lidar-swatch-class"></span>
+          Classes
+        </button>
+        <button class="lidar-layer-btn" id="btn-mesh-slope" onclick="P01.setMeshLayer('slope')">
+          <span class="lidar-swatch" style="background:linear-gradient(90deg,#4caf50,#ffeb3b,#f44336);border-radius:2px"></span>
+          Pente
+        </button>
+        <button class="lidar-layer-btn" id="btn-mesh-altitude" onclick="P01.setMeshLayer('altitude')">
+          <span class="lidar-swatch" style="background:linear-gradient(90deg,#2166ac,#f7f7f7,#b2182b);border-radius:2px"></span>
+          Altitude
+        </button>
+        <button class="lidar-layer-btn" id="btn-mesh-ortho" onclick="P01.setMeshLayer('ortho')">
+          <span class="lidar-swatch" style="background:linear-gradient(135deg,#5a7a3a,#8a6a4a);border-radius:2px"></span>
+          Ortho
+        </button>
+      </div>
+
+      <!-- Legende pente (masquee par defaut) -->
+      <div id="mesh-legend-slope" style="display:none;margin-top:6px">
+        <div class="lidar-legend">
+          <div class="lidar-legend-item"><span class="lidar-dot" style="background:#4caf50"></span>&lt;5%</div>
+          <div class="lidar-legend-item"><span class="lidar-dot" style="background:#8bc34a"></span>5-10%</div>
+          <div class="lidar-legend-item"><span class="lidar-dot" style="background:#ffeb3b"></span>10-15%</div>
+          <div class="lidar-legend-item"><span class="lidar-dot" style="background:#ff9800"></span>15-25%</div>
+          <div class="lidar-legend-item"><span class="lidar-dot" style="background:#f44336"></span>25-40%</div>
+          <div class="lidar-legend-item"><span class="lidar-dot" style="background:#9e2929"></span>&gt;40%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Options avancees -->
+    <details style="margin-top:8px">
+      <summary class="field-note" style="cursor:pointer;font-size:9px;color:var(--text-tertiary,#a09080)">Options avancees</summary>
+      <div style="margin-top:6px">
+        <div class="check-row" style="margin-bottom:4px">
+          <input type="checkbox" id="mesh-opt-cadastre" checked>
+          <label for="mesh-opt-cadastre" class="field-note" style="font-size:10px">Breaklines cadastre</label>
+        </div>
+        <div class="check-row" style="margin-bottom:4px">
+          <input type="checkbox" id="mesh-opt-ravines" checked>
+          <label for="mesh-opt-ravines" class="field-note" style="font-size:10px">Breaklines ravines / cours d'eau</label>
+        </div>
+        <div class="check-row" style="margin-bottom:4px">
+          <input type="checkbox" id="mesh-opt-batiments" checked>
+          <label for="mesh-opt-batiments" class="field-note" style="font-size:10px">Breaklines batiments</label>
+        </div>
+        <div class="check-row" style="margin-bottom:4px">
+          <input type="checkbox" id="mesh-opt-routes" checked>
+          <label for="mesh-opt-routes" class="field-note" style="font-size:10px">Breaklines routes</label>
+        </div>
+        <div class="check-row">
+          <input type="checkbox" id="mesh-opt-ground-only" checked>
+          <label for="mesh-opt-ground-only" class="field-note" style="font-size:10px">Points sol uniquement (classe 2)</label>
+        </div>
+      </div>
+    </details>
   </div>
 
   <!-- Profil altimétrique -->
@@ -775,6 +890,8 @@ const P01 = {
   },
 
   // ─── Profil automatique N-S (API IGN) ──────────────────────────
+  _lastProfileData: null,
+
   async autoProfile() {
     const terrain = SessionManager.getTerrain();
     if (!terrain?.lat || !terrain?.lng) return;
@@ -788,11 +905,145 @@ const P01 = {
         window.TerlabToast?.show('Profil IGN indisponible — tracez manuellement', 'warning');
         return;
       }
+      this._lastProfileData = result.data;
       if (btn) btn.textContent = '↻ Régénérer le profil N-S';
+      // Afficher le bouton masques topo
+      const maskBtn = document.getElementById('btn-topo-mask');
+      if (maskBtn) maskBtn.style.display = '';
     } catch (e) {
       console.warn('[P01] autoProfile:', e.message);
       if (btn) btn.textContent = '⚠ Erreur — réessayer';
     }
+  },
+
+  /** Masques topographiques — Izard Altitude 2 (dissymétrie matin/après-midi) */
+  showTopoMask() {
+    const MU = window.TerlabMU;
+    const data = this._lastProfileData;
+    if (!MU?.topoMask || !data?.length) {
+      window.TerlabToast?.show('Profil non disponible — générez d\'abord le profil N-S', 'warning');
+      return;
+    }
+
+    // Convertir {distance, altitude} → {dist, alt} pour topoMask
+    const profile = data.map(p => ({ dist: p.distance, alt: p.altitude }));
+    const midIdx  = Math.floor(profile.length / 2); // parcelle ≈ milieu du profil
+
+    // Solstice hiver austral (21 juin = jour 172) = pire cas ensoleillement
+    const mask = MU.topoMask(profile, midIdx, 172);
+
+    const el = document.getElementById('p01-topo-mask-result');
+    if (!el) return;
+    el.style.display = 'block';
+
+    const hasLoss = mask.hoursLostMorning > 0 || mask.hoursLostEvening > 0;
+    const totalLoss = mask.hoursLostMorning + mask.hoursLostEvening;
+
+    el.innerHTML = `
+      <div style="font-weight:bold;color:${hasLoss ? '#f0c040' : '#4ade80'};margin-bottom:4px">
+        ☀ Masques topographiques — Solstice hiver (21 juin)
+      </div>
+      <table style="width:100%;font-size:10px;border-collapse:collapse;font-family:var(--font-mono)">
+        <tr><td style="color:var(--ink3);padding:2px 4px">Masque Est (matin)</td>
+            <td style="font-weight:bold">${mask.maskAngleEast}°${mask.hoursLostMorning > 0 ? ` <span style="color:#f0c040">−${mask.hoursLostMorning.toFixed(1)}h</span>` : ' <span style="color:#4ade80">aucun</span>'}</td></tr>
+        <tr><td style="color:var(--ink3);padding:2px 4px">Masque Ouest (soir)</td>
+            <td style="font-weight:bold">${mask.maskAngleWest}°${mask.hoursLostEvening > 0 ? ` <span style="color:#f0c040">−${mask.hoursLostEvening.toFixed(1)}h</span>` : ' <span style="color:#4ade80">aucun</span>'}</td></tr>
+        ${hasLoss ? `<tr style="border-top:1px solid var(--border)"><td style="color:var(--ink3);padding:2px 4px;font-weight:bold">Perte totale</td>
+            <td style="font-weight:bold;color:#f07070">−${totalLoss.toFixed(1)}h d'ensoleillement</td></tr>` : ''}
+      </table>
+      ${hasLoss ? `<div style="margin-top:4px;font-size:9px;color:var(--ink4);font-style:italic">
+        Izard Altitude 2 — dissymétrie matin/après-midi. Orientez les pièces de vie vers les façades non masquées.
+      </div>` : `<div style="margin-top:4px;font-size:9px;color:#4ade80;font-style:italic">
+        Pas de masque topographique significatif — ensoleillement complet au solstice d'hiver.
+      </div>`}
+    `;
+
+    // Dessiner les cônes d'ombre sur le profil SVG existant
+    this._drawMaskOverlay(profile, midIdx, mask);
+  },
+
+  /** Overlay SVG des cônes d'ombre sur le profil altimétrique */
+  _drawMaskOverlay(profile, obsIdx, mask) {
+    const container = document.getElementById('auto-profile-container');
+    const svg = container?.querySelector('svg');
+    if (!svg) return;
+
+    // Supprimer ancien overlay
+    svg.querySelectorAll('.topo-mask-overlay').forEach(e => e.remove());
+
+    const vb = svg.viewBox.baseVal;
+    const W = vb.width, H = vb.height;
+    const margin = { top: 24, right: 40, bottom: 36, left: 52 };
+    const cW = W - margin.left - margin.right;
+    const cH = H - margin.top - margin.bottom;
+
+    const dists = profile.map(p => p.dist);
+    const alts  = profile.map(p => p.alt);
+    const minD = Math.min(...dists), maxD = Math.max(...dists);
+    const minA = Math.min(...alts),  maxA = Math.max(...alts);
+    const range = (maxA - minA) * 1.5; // verticalExaggeration
+    const pad = range * 0.12;
+    const dMinA = minA - pad, dMaxA = minA - pad + range + 2 * pad;
+
+    const xScale = d => margin.left + ((d - minD) / (maxD - minD)) * cW;
+    const yScale = a => margin.top + cH - ((a - dMinA) / (dMaxA - dMinA)) * cH;
+
+    const obsX = xScale(profile[obsIdx].dist);
+    const obsY = yScale(profile[obsIdx].alt);
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.classList.add('topo-mask-overlay');
+
+    // Cône d'ombre Est (vers la droite)
+    if (mask.maskAngleEast > 2) {
+      const endX = xScale(maxD);
+      const dy   = (endX - obsX) * Math.tan(mask.maskAngleEast * Math.PI / 180);
+      const path = `M${obsX},${obsY} L${endX},${obsY - dy} L${endX},${obsY} Z`;
+      const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      p.setAttribute('d', path);
+      p.setAttribute('fill', 'rgba(240,192,64,0.12)');
+      p.setAttribute('stroke', '#f0c040');
+      p.setAttribute('stroke-width', '0.8');
+      p.setAttribute('stroke-dasharray', '3,2');
+      g.appendChild(p);
+    }
+
+    // Cône d'ombre Ouest (vers la gauche)
+    if (mask.maskAngleWest > 2) {
+      const endX = xScale(minD);
+      const dy   = (obsX - endX) * Math.tan(mask.maskAngleWest * Math.PI / 180);
+      const path = `M${obsX},${obsY} L${endX},${obsY - dy} L${endX},${obsY} Z`;
+      const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      p.setAttribute('d', path);
+      p.setAttribute('fill', 'rgba(240,192,64,0.12)');
+      p.setAttribute('stroke', '#f0c040');
+      p.setAttribute('stroke-width', '0.8');
+      p.setAttribute('stroke-dasharray', '3,2');
+      g.appendChild(p);
+    }
+
+    // Point d'observation
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', obsX);
+    circle.setAttribute('cy', obsY);
+    circle.setAttribute('r', '4');
+    circle.setAttribute('fill', '#f0c040');
+    circle.setAttribute('stroke', '#000');
+    circle.setAttribute('stroke-width', '1');
+    g.appendChild(circle);
+
+    // Label
+    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    text.setAttribute('x', obsX);
+    text.setAttribute('y', obsY - 8);
+    text.setAttribute('fill', '#f0c040');
+    text.setAttribute('font-size', '8');
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('font-family', 'var(--font-mono)');
+    text.textContent = `☀ Parcelle`;
+    g.appendChild(text);
+
+    svg.appendChild(g);
   },
 
   // ─── Valider la coupe au dossier ──────────────────────────────
@@ -946,6 +1197,9 @@ const P01 = {
     });
     window.TerlabToast?.show('Altimétrie analysée — données sur la parcelle', 'success');
 
+    // Overlay PERENE sur la carte (Izard — zones climatiques altitude)
+    window.TerlabMap?.addPereneOverlay?.(altMoy);
+
     // Afficher la section profil auto et déclencher le profil N-S
     document.getElementById('auto-profile-section').style.display = '';
     this.autoProfile();
@@ -1071,6 +1325,9 @@ const P01 = {
       const etageId = altMoy < 400 ? 'etage-aw' : altMoy < 900 ? 'etage-cf' : 'etage-cwb';
       document.getElementById(etageId)?.classList.add('active');
 
+      // Overlay PERENE sur la carte (Izard)
+      window.TerlabMap?.addPereneOverlay?.(altMoy);
+
       // Auto-select orientation radio
       const expMap = { 'N': 'Nord', 'NE': 'Nord-Est', 'E': 'Est', 'SE': 'Sud-Est', 'S': 'Sud', 'SO': 'Sud-Ouest', 'O': 'Ouest', 'NO': 'Nord-Ouest' };
       const expVal = expMap[analysis.exposition];
@@ -1091,6 +1348,9 @@ const P01 = {
 
       // Afficher la section Coupes A/B (LiDAR disponible pour HD)
       document.getElementById('section-ab-section').style.display = '';
+
+      // Afficher la section Maillage terrain TIN
+      document.getElementById('lidar-mesh-section').style.display = '';
 
     } catch (err) {
       console.error('[P01] Erreur LiDAR:', err);
@@ -1228,6 +1488,157 @@ const P01 = {
     }
   },
 
+  // ─── LIDAR MAKE MESH — Maillage terrain TIN adaptatif ─────────
+  _terrainMesh: null,
+  _meshColorLayer: 'classification',
+
+  async makeLidarMesh() {
+    const terrain = SessionManager.getTerrain();
+    if (!terrain?.parcelle_geojson) {
+      window.TerlabToast?.show('Parcelle non definie — completez la Phase 0', 'warning');
+      return;
+    }
+
+    const points = this._lidarPoints ?? LidarService?.getRawPoints?.();
+    if (!points?.length) {
+      window.TerlabToast?.show('Chargez d\'abord les points LiDAR HD', 'warning');
+      return;
+    }
+
+    const btn = document.getElementById('btn-lidar-mesh');
+    const progressEl = document.getElementById('mesh-progress');
+    const progressText = document.getElementById('mesh-progress-text');
+    const progressFill = document.getElementById('mesh-progress-fill');
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Construction en cours...'; }
+    if (progressEl) progressEl.style.display = 'block';
+
+    const onProgress = (phase, pct, msg) => {
+      if (progressText) progressText.textContent = msg;
+      if (progressFill) progressFill.style.width = pct + '%';
+    };
+
+    try {
+      // Collecter les breaklines en parallele
+      const lat = parseFloat(terrain.lat);
+      const lng = parseFloat(terrain.lng);
+
+      const useCadastre  = document.getElementById('mesh-opt-cadastre')?.checked !== false;
+      const useRavines   = document.getElementById('mesh-opt-ravines')?.checked !== false;
+      const useBatiments = document.getElementById('mesh-opt-batiments')?.checked !== false;
+      const useRoutes    = document.getElementById('mesh-opt-routes')?.checked !== false;
+      const groundOnly   = document.getElementById('mesh-opt-ground-only')?.checked !== false;
+
+      onProgress('fetch', 5, 'Chargement des breaklines (cadastre, BD TOPO)...');
+
+      const [cadastre, coursEau, batiments, routes] = await Promise.all([
+        useCadastre  ? (window.CadastreContextService?.fetchNeighbors?.(lat, lng, 200) ?? null) : null,
+        useRavines   ? (window.BdTopoService?.fetchCoursEau?.(lat, lng, 500) ?? null) : null,
+        useBatiments ? (window.BdTopoService?.fetchBatiments?.(lat, lng, 300) ?? null) : null,
+        useRoutes    ? (window.BdTopoService?.fetchRoutes?.(lat, lng, 300) ?? null) : null,
+      ]);
+
+      // Construire le mesh TIN
+      const result = await TerrainMeshBuilder.build(points, {
+        parcelleGeojson: terrain.parcelle_geojson,
+        breaklines: { cadastre, coursEau, batiments, routes },
+        colorLayer: this._meshColorLayer,
+        groundOnly,
+        onProgress,
+      });
+
+      this._terrainMesh = result.mesh;
+
+      // Ajouter a la scene 3D Mapbox (ou stocker pour P07)
+      if (window.MapViewer?.addTerrainMesh) {
+        MapViewer.addTerrainMesh(result.mesh);
+      }
+
+      // Sauvegarder en session
+      SessionManager.savePhase(1, {
+        terrain_mesh_built: true,
+        terrain_mesh_vertices: result.metadata.nVertices,
+        terrain_mesh_triangles: result.metadata.nTriangles,
+        terrain_mesh_breaklines: result.metadata.nBreaklinePoints,
+        terrain_mesh_date: new Date().toISOString(),
+      });
+
+      // Mettre a jour l'UI stats
+      const statsEl = document.getElementById('mesh-stats');
+      if (statsEl) statsEl.style.display = 'block';
+      const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      setVal('mesh-vertices', result.metadata.nVertices.toLocaleString('fr'));
+      setVal('mesh-triangles', result.metadata.nTriangles.toLocaleString('fr'));
+      setVal('mesh-breaklines', result.metadata.nBreaklinePoints.toLocaleString('fr'));
+
+      // Afficher le selecteur de couches
+      document.getElementById('mesh-layer-selector').style.display = 'block';
+
+      const blParts = [];
+      if (cadastre?.features?.length) blParts.push(`${cadastre.features.length} parcelles`);
+      if (coursEau?.features?.length) blParts.push(`${coursEau.features.length} cours d'eau`);
+      if (batiments?.features?.length) blParts.push(`${batiments.features.length} batiments`);
+      if (routes?.features?.length) blParts.push(`${routes.features.length} routes`);
+      const blMsg = blParts.length ? ` · breaklines: ${blParts.join(', ')}` : '';
+
+      window.TerlabToast?.show(
+        `TIN terrain — ${result.metadata.nVertices.toLocaleString('fr')} sommets, `
+        + `${result.metadata.nTriangles.toLocaleString('fr')} triangles${blMsg}`,
+        'success', 5000
+      );
+
+    } catch (err) {
+      console.error('[P01] Erreur Terrain Mesh:', err);
+      window.TerlabToast?.show(`Erreur mesh terrain : ${err.message}`, 'error');
+    } finally {
+      if (progressEl) progressEl.style.display = 'none';
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 19h20L12 2z"/><path d="M7 14l5-8 5 8"/><path d="M4.5 17l3-5"/><path d="M19.5 17l-3-5"/></svg> LiDAR Make Mesh`;
+      }
+    }
+  },
+
+  // ─── Changement de couche couleur sur le mesh TIN ─────────────
+  async setMeshLayer(layer) {
+    // UI toggle
+    document.querySelectorAll('#mesh-layer-selector .lidar-layer-btn').forEach(b => b.classList.remove('active'));
+    const btnMap = { classification: 'btn-mesh-classification', slope: 'btn-mesh-slope', altitude: 'btn-mesh-altitude', ortho: 'btn-mesh-ortho' };
+    document.getElementById(btnMap[layer])?.classList.add('active');
+
+    // Legends
+    document.getElementById('mesh-legend-slope').style.display = layer === 'slope' ? 'block' : 'none';
+
+    this._meshColorLayer = layer;
+
+    if (!TerrainMeshBuilder?.getLastMesh?.()) {
+      window.TerlabToast?.show('Construisez d\'abord le mesh TIN', 'warning');
+      return;
+    }
+
+    try {
+      if (layer === 'ortho') {
+        const terrain = SessionManager.getTerrain();
+        const pts = this._lidarPoints ?? [];
+        if (!pts.length) return;
+        let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+        for (const p of pts) {
+          if (p[0] < minLng) minLng = p[0]; if (p[0] > maxLng) maxLng = p[0];
+          if (p[1] < minLat) minLat = p[1]; if (p[1] > maxLat) maxLat = p[1];
+        }
+        await TerrainMeshBuilder.applyOrthoTexture({
+          west: minLng, east: maxLng, south: minLat, north: maxLat,
+        });
+      } else {
+        await TerrainMeshBuilder.setColorLayer(layer);
+      }
+      window.TerlabToast?.show(`Couche terrain : ${layer}`, 'info', 2000);
+    } catch (err) {
+      console.error('[P01] Erreur setMeshLayer:', err);
+      window.TerlabToast?.show(`Erreur couche : ${err.message}`, 'error');
+    }
+  },
+
   // ─── COUPES A/B — Génération automatique ───────────────────────
   _sectionAxes: null,
   _sectionSplitId: null,
@@ -1293,17 +1704,30 @@ const P01 = {
       // 5. Render profiles
       const srcLabel = (s) => s === 'lidar_hd' ? 'LiDAR HD ±0.15m' : s === 'ign_api' ? 'IGN ~2m' : 'DEM ~10m';
 
+      // 5b. Extraire le scatter LiDAR brut pour le background des coupes
+      let scatterA = null, scatterB = null;
+      if (lidarPts?.length && LidarService?.getScatterFromPoints) {
+        const corridorW = 8;
+        const resA = LidarService.getScatterFromPoints(lidarPts, axes.A.start, axes.A.end, corridorW);
+        const resB = LidarService.getScatterFromPoints(lidarPts, axes.B.start, axes.B.end, corridorW);
+        if (resA.scatter.length) scatterA = resA.scatter;
+        if (resB.scatter.length) scatterB = resB.scatter;
+        console.log(`[P01] Scatter LiDAR — A: ${resA.scatter.length} pts, B: ${resB.scatter.length} pts`);
+      }
+
       if (profileA.data.length) {
-        SectionViewer.render('A', 'section-viewer-A', profileA.data, annoA);
+        SectionViewer.render('A', 'section-viewer-A', profileA.data, annoA, { scatter: scatterA });
         SectionViewer._viewers.A.source = profileA.source;
-        SectionViewer._renderSVG('A'); // re-render pour afficher le badge source
+        SectionViewer._viewers.A.corridorWidth = 8;
+        SectionViewer._renderSVG('A'); // re-render pour afficher le badge source + scatter
         const lenA = Math.round(profileA.data[profileA.data.length - 1]?.distance_m || 0);
         document.getElementById('section-info-A').textContent = `${lenA}m · ${srcLabel(profileA.source)}`;
       }
 
       if (profileB.data.length) {
-        SectionViewer.render('B', 'section-viewer-B', profileB.data, annoB);
+        SectionViewer.render('B', 'section-viewer-B', profileB.data, annoB, { scatter: scatterB });
         SectionViewer._viewers.B.source = profileB.source;
+        SectionViewer._viewers.B.corridorWidth = 8;
         SectionViewer._renderSVG('B');
         const lenB = Math.round(profileB.data[profileB.data.length - 1]?.distance_m || 0);
         document.getElementById('section-info-B').textContent = `${lenB}m · ${srcLabel(profileB.source)}`;

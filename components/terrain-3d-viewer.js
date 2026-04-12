@@ -1261,6 +1261,29 @@ const Terrain3D = {
     this._buildGabarit();
   },
 
+  // ─── INJECTER UN MESH TIN TERRAIN (depuis TerrainMeshBuilder) ──
+  addTerrainTIN(mesh) {
+    if (!this._scene) { console.warn('[Terrain3D] Scene non initialisee'); return; }
+
+    // Supprimer l'ancien TIN s'il existe
+    const old = this._scene.getObjectByName('TerrainTIN');
+    if (old) { this._scene.remove(old); old.geometry?.dispose(); old.material?.dispose(); }
+
+    // Adapter l'echelle au SCALE_FACTOR de la scene
+    if (mesh.geometry?.boundingBox) {
+      mesh.geometry.computeBoundingBox();
+      const bb = mesh.geometry.boundingBox;
+      const maxSpan = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) || 1;
+      const s = (this.SCALE_FACTOR * 0.8) / maxSpan;
+      mesh.scale.set(s, s * (this.VERTICAL_EXAG ?? 0.4), s);
+      mesh.position.set(0, 0, 0);
+    }
+
+    mesh.name = 'TerrainTIN';
+    this._scene.add(mesh);
+    console.log('[Terrain3D] TIN mesh ajoute a la scene');
+  },
+
   // ─── EXPORT GLB ────────────────────────────────────────────────
   async exportGLB() {
     // Exporter terrain + gabarit dans un groupe temporaire

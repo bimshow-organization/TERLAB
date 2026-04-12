@@ -9,6 +9,17 @@ const SECTION_COLORS = {
   B: { line: '#4A90D9', fill: 'rgba(74,144,217,0.12)', label: '#4A90D9' },
 };
 
+// Couleurs scatter par classe LiDAR (hex pour SVG)
+const SCATTER_CLASS_COLORS = {
+  2: '#b8860b',  // sol — brun
+  3: '#90ee90',  // veg basse — vert clair
+  4: '#32cd32',  // veg moyenne — vert
+  5: '#006400',  // veg haute — vert fonce
+  6: '#ff4444',  // batiments — rouge
+  9: '#4488ff',  // eau — bleu
+  0: '#888888',  // non classe — gris
+};
+
 const VIEWER_DEFAULTS = {
   width: 720,
   height: 220,
@@ -240,12 +251,21 @@ const SectionProfileViewer = {
     if (!Number.isFinite(state.panX)) state.panX = 0;
     state.data = profileData;
     state.annotations = annotations || [];
+    state.scatter = options.scatter ?? state.scatter ?? null;
     state.el = el;
     state.colors = colors;
     state.cfg = cfg;
 
     this._renderSVG(sectionId);
     return el;
+  },
+
+  // ── Injecter/mettre a jour le scatter LiDAR d'une coupe ───────
+  setScatter(sectionId, scatter) {
+    const state = this._viewers[sectionId];
+    if (!state) return;
+    state.scatter = scatter;
+    this._renderSVG(sectionId);
   },
 
   _renderSVG(sectionId) {
@@ -266,7 +286,15 @@ const SectionProfileViewer = {
       return;
     }
     const minD = Math.min(...dists), maxD = Math.max(...dists);
-    const minA = Math.min(...alts),  maxA = Math.max(...alts);
+    let minA = Math.min(...alts),  maxA = Math.max(...alts);
+
+    // Elargir les bornes altitude si scatter LiDAR present (vegetation, batiments = plus haut)
+    if (state.scatter?.length) {
+      for (const pt of state.scatter) {
+        if (pt.z < minA) minA = pt.z;
+        if (pt.z > maxA) maxA = pt.z;
+      }
+    }
     const range = (maxA - minA) * cfg.verticalExaggeration;
     const pad = Math.max(range * 0.15, 0.5);
     const dMinA = minA - pad, dMaxA = maxA + pad;
@@ -318,8 +346,35 @@ const SectionProfileViewer = {
       parts.push(`<text x="${W - m.right}" y="${m.top + 14}" text-anchor="end" font-size="7.5" fill="#8b7355">${srcLabel}</text>`);
     }
 
-    // Terrain path (clipped)
+    // ── Scatter LiDAR background (clipped) ──────────────────────
     parts.push(`<g clip-path="url(#clip-${sectionId})">`);
+
+    if (state.scatter?.length) {
+      // Decimer si trop de points pour le SVG (>5000 = lent)
+      let scPts = state.scatter;
+      if (scPts.length > 5000) {
+        const step = scPts.length / 5000;
+        const decimated = [];
+        for (let i = 0; i < scPts.length; i += step) decimated.push(scPts[Math.floor(i)]);
+        scPts = decimated;
+      }
+
+      const corridorW = state.corridorWidth ?? 8;
+      for (const pt of scPts) {
+        const x = sx(pt.d);
+        const y = sy(pt.z);
+        if (x < m.left - 2 || x > m.left + cW + 2) continue;
+        if (y < m.top - 2 || y > m.top + cH + 2) continue;
+
+        const color = SCATTER_CLASS_COLORS[pt.cls] ?? SCATTER_CLASS_COLORS[0];
+        // Opacite decroit avec la distance perpendiculaire (plus proche = plus opaque)
+        const alpha = Math.max(0.15, 1.0 - (pt.perp / corridorW) * 0.7);
+        const r = pt.cls === 2 ? 1.0 : 1.3; // sol = plus petit, vegetation/bati = plus gros
+        parts.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="${color}" opacity="${alpha.toFixed(2)}"/>`);
+      }
+    }
+
+    // ── Terrain profile path ──────────────────────────────────────
     const validData = data.filter(p => Number.isFinite(p.altitude_m) && Number.isFinite(p.distance_m));
     const pathD = this._buildPath(validData, sx, sy, cfg.smoothing);
 

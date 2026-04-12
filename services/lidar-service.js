@@ -274,6 +274,41 @@ const LidarService = {
     return profile;
   },
 
+  // ── Nuage de points bruts projetés sur un axe de coupe ──────────
+  // Retourne TOUS les points dans le corridor (pas binnés), avec classe et
+  // distance perpendiculaire pour opacité/taille variable.
+  // Utilisé comme background scatter dans les coupes A/B.
+  getScatterFromPoints(points, startLngLat, endLngLat, corridorWidth = 8) {
+    const dx = (endLngLat[0] - startLngLat[0]) * LIDAR_CFG.M_PER_DEG_LNG;
+    const dy = (endLngLat[1] - startLngLat[1]) * LIDAR_CFG.M_PER_DEG_LAT;
+    const totalDist = Math.sqrt(dx * dx + dy * dy);
+    if (totalDist < 1) return { scatter: [], totalDist: 0 };
+
+    const ux = dx / totalDist, uy = dy / totalDist;
+    const scatter = [];
+
+    for (const p of points) {
+      const px = (p[0] - startLngLat[0]) * LIDAR_CFG.M_PER_DEG_LNG;
+      const py = (p[1] - startLngLat[1]) * LIDAR_CFG.M_PER_DEG_LAT;
+
+      const perpDist = Math.abs(-uy * px + ux * py);
+      if (perpDist > corridorWidth) continue;
+
+      const alongDist = ux * px + uy * py;
+      if (alongDist < -1 || alongDist > totalDist + 1) continue;
+
+      const cls = p.length >= 7 ? p[6] : 0;
+      scatter.push({
+        d: alongDist,           // distance le long de l'axe (m)
+        z: p[2],                // altitude (m)
+        cls,                    // classification LiDAR
+        perp: perpDist,         // distance perpendiculaire (m) — pour opacité
+      });
+    }
+
+    return { scatter, totalDist };
+  },
+
   // ── Helpers internes ────────────────────────────────────────────────
 
   _bboxFromGeojson(geojson, marginMeters) {
