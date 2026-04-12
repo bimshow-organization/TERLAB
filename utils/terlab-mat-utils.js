@@ -482,6 +482,156 @@ export function rtaaMinOpening(Shab) { return Shab / 6; }
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// D2 · SOLAR — géométrie solaire d'après Izard / Parties 1.3-1.4 + altitude
+//   Fonctions autonomes (pas de dépendance SunCalcService).
+//   Latitude par défaut : La Réunion −21.1° (hémisphère sud).
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const DEG = Math.PI / 180;
+const DEFAULT_LAT = -21.1;
+
+/**
+ * Déclinaison solaire (angle entre plan équatorial et direction Terre-Soleil).
+ * @param {number} dayOfYear  1–365
+ * @returns {number} degrés (+ = nord, − = sud)
+ */
+export function solarDeclination(dayOfYear) {
+  return 23.45 * Math.sin((360 / 365) * (dayOfYear - 81) * DEG);
+}
+
+/**
+ * Altitude solaire (hauteur au-dessus de l'horizon).
+ * @param {number} hour       heure décimale locale (12 = midi solaire)
+ * @param {number} dayOfYear  1–365
+ * @param {number} lat        latitude en degrés (négatif = sud)
+ * @returns {number} degrés [0, 90] — clampé à 0 si sous l'horizon
+ */
+export function solarHeight(hour, dayOfYear, lat = DEFAULT_LAT) {
+  const latR  = lat * DEG;
+  const declR = solarDeclination(dayOfYear) * DEG;
+  const ha    = (hour - 12) * 15 * DEG;
+  const sinAlt = Math.sin(latR) * Math.sin(declR)
+               + Math.cos(latR) * Math.cos(declR) * Math.cos(ha);
+  return Math.max(0, Math.asin(sinAlt) / DEG);
+}
+
+/**
+ * Azimut solaire (angle depuis le Nord, sens horaire).
+ * @param {number} hour       heure décimale locale
+ * @param {number} dayOfYear  1–365
+ * @param {number} lat        latitude en degrés
+ * @returns {number} degrés [0, 360)
+ */
+export function solarAzimuth(hour, dayOfYear, lat = DEFAULT_LAT) {
+  const latR  = lat * DEG;
+  const declR = solarDeclination(dayOfYear) * DEG;
+  const ha    = (hour - 12) * 15 * DEG;
+  const sinAlt = Math.sin(latR) * Math.sin(declR)
+               + Math.cos(latR) * Math.cos(declR) * Math.cos(ha);
+  const alt    = Math.asin(sinAlt);
+  const cosAlt = Math.cos(alt);
+  if (cosAlt < 1e-9) return 180; // zénith
+  const cosAzi = (Math.sin(declR) - Math.sin(latR) * sinAlt) / (Math.cos(latR) * cosAlt);
+  let azimuth = Math.acos(Math.max(-1, Math.min(1, cosAzi))) / DEG;
+  if (hour > 12) azimuth = 360 - azimuth;
+  return azimuth;
+}
+
+/**
+ * Position solaire complète (altitude + azimut + aboveHorizon).
+ * Compatible avec l'interface SunCalcService.getPosition().
+ */
+export function solarPosition(hour, dayOfYear, lat = DEFAULT_LAT) {
+  const altitude = solarHeight(hour, dayOfYear, lat);
+  const azimuth  = solarAzimuth(hour, dayOfYear, lat);
+  return { altitude, azimuth, aboveHorizon: altitude > 0 };
+}
+
+/**
+ * Angle d'occultation minimum pour protéger une façade (Izard Fig.17-21).
+ * Scanne le solstice d'été austral (jour 355) et retourne l'angle minimal
+ * du brise-soleil horizontal nécessaire.
+ * @param {number} facadeAzDeg  azimut façade en degrés (0=N, 90=E, 180=S)
+ * @param {number} lat          latitude
+ * @returns {{ angle, altitude, hour, facadeAz }}
+ */
+export function overhangAngle(facadeAzDeg, lat = DEFAULT_LAT) {
+  const hotDay = 355; // solstice été austral = 21 déc
+  let maxAlt = 0, criticalHour = 12;
+
+  for (let h = 5; h <= 19; h += 0.25) {
+    const alt = solarHeight(h, hotDay, lat);
+    if (alt < 1) continue;
+    const az  = solarAzimuth(h, hotDay, lat);
+    let diff = Math.abs(az - facadeAzDeg);
+    if (diff > 180) diff = 360 - diff;
+    if (diff > 60) continue;
+    if (alt > maxAlt) { maxAlt = alt; criticalHour = h; }
+  }
+
+  return {
+    angle:    maxAlt > 0 ? Math.round(90 - maxAlt) : 0,
+    altitude: Math.round(maxAlt),
+    hour:     criticalHour,
+    facadeAz: facadeAzDeg,
+  };
+}
+
+/**
+ * Masque topographique : pour un profil altimétrique [{dist, alt}],
+ * calcule l'angle d'élévation du relief vu depuis un point donné.
+ * Retourne les heures perdues matin/soir au solstice d'hiver.
+ * @param {Array<{dist:number, alt:number}>} profile  profil altimétrique
+ * @param {number} observerIdx  index du point d'observation dans le profil
+ * @param {number} dayOfYear    jour de calcul (défaut 172 = solstice hiver austral)
+ * @param {number} lat          latitude
+ * @returns {{ maskAngleEast, maskAngleWest, hoursLostMorning, hoursLostEvening }}
+ */
+export function topoMask(profile, observerIdx, dayOfYear = 172, lat = DEFAULT_LAT) {
+  if (!profile?.length || observerIdx < 0 || observerIdx >= profile.length) {
+    return { maskAngleEast: 0, maskAngleWest: 0, hoursLostMorning: 0, hoursLostEvening: 0 };
+  }
+
+  const obs = profile[observerIdx];
+
+  // Angle de masque max à l'est (indices croissants = vers l'est par convention)
+  let maskAngleEast = 0;
+  for (let i = observerIdx + 1; i < profile.length; i++) {
+    const dx = profile[i].dist - obs.dist;
+    const dz = profile[i].alt - obs.alt;
+    if (dx > 0) {
+      const angle = Math.atan2(dz, dx) / DEG;
+      if (angle > maskAngleEast) maskAngleEast = angle;
+    }
+  }
+
+  // Angle de masque max à l'ouest (indices décroissants)
+  let maskAngleWest = 0;
+  for (let i = observerIdx - 1; i >= 0; i--) {
+    const dx = obs.dist - profile[i].dist;
+    const dz = profile[i].alt - obs.alt;
+    if (dx > 0) {
+      const angle = Math.atan2(dz, dx) / DEG;
+      if (angle > maskAngleWest) maskAngleWest = angle;
+    }
+  }
+
+  // Calcul des heures perdues (solstice hiver = jour le plus court)
+  let hoursLostMorning = 0, hoursLostEvening = 0;
+  for (let h = 5; h <= 12; h += 0.25) {
+    const alt = solarHeight(h, dayOfYear, lat);
+    if (alt > 0 && alt < maskAngleEast) hoursLostMorning += 0.25;
+  }
+  for (let h = 12; h <= 19; h += 0.25) {
+    const alt = solarHeight(h, dayOfYear, lat);
+    if (alt > 0 && alt < maskAngleWest) hoursLostEvening += 0.25;
+  }
+
+  return { maskAngleEast: Math.round(maskAngleEast), maskAngleWest: Math.round(maskAngleWest), hoursLostMorning, hoursLostEvening };
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // E · SVG — builders d'éléments SVG pour schémas aérauliques animés
 // ═══════════════════════════════════════════════════════════════════════════════
 

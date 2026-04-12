@@ -489,6 +489,124 @@ const FootprintHelpers = {
       return { x: p.x, y: p.y };
     });
   },
+
+  // ── L-shape centré (6 sommets) ────────────────────────────────────
+  // Génère un footprint en L par retrait d'un coin d'un rectangle.
+  // corner : 'NE'|'NW'|'SE'|'SW' — coin retiré dans le repère local
+  // wMajor/lMajor : dimensions du rectangle englobant
+  // wMinor/lMinor : dimensions de l'aile secondaire (la partie qui reste
+  //   quand on retire le coin). wMinor < wMajor, lMinor < lMajor.
+  // Retourne 6 points en CCW (repère math Y-nord), orientés par thetaDeg.
+  lShapeCentered(cx, cy, wMajor, lMajor, wMinor, lMinor, thetaDeg, corner = 'NE') {
+    const hw = wMajor / 2, hl = lMajor / 2;
+    // Rectangle englobant en local : (-hl, -hw) → (+hl, +hw)
+    // On retire le coin spécifié
+    let pts;
+    const wCut = wMajor - wMinor;
+    const lCut = lMajor - lMinor;
+    switch (corner) {
+      case 'NE': // retrait en haut-droite
+        pts = [[-hl,-hw],[hl,-hw],[hl,hw-wCut],[hl-lCut,hw-wCut],[hl-lCut,hw],[-hl,hw]];
+        break;
+      case 'NW': // retrait en haut-gauche
+        pts = [[-hl,-hw],[hl,-hw],[hl,hw],[-hl+lCut,hw],[-hl+lCut,hw-wCut],[-hl,hw-wCut]];
+        break;
+      case 'SE': // retrait en bas-droite
+        pts = [[-hl,-hw],[hl-lCut,-hw],[hl-lCut,-hw+wCut],[hl,-hw+wCut],[hl,hw],[-hl,hw]];
+        break;
+      case 'SW': // retrait en bas-gauche
+        pts = [[-hl,-hw],[-hl+lCut,-hw],[-hl+lCut,-hw+wCut],[-hl,-hw+wCut],[-hl,hw],[hl,hw],[hl,-hw]];
+        // Correction : SW a 7 points, simplifions
+        pts = [[-hl,-hw+wCut],[-hl+lCut,-hw+wCut],[-hl+lCut,-hw],[hl,-hw],[hl,hw],[-hl,hw]];
+        break;
+      default:
+        pts = [[-hl,-hw],[hl,-hw],[hl,hw-wCut],[hl-lCut,hw-wCut],[hl-lCut,hw],[-hl,hw]];
+    }
+    const r = thetaDeg * Math.PI / 180;
+    const cos = Math.cos(r), sin = Math.sin(r);
+    return pts.map(([lx, ly]) => ({
+      x: cx + lx * cos - ly * sin,
+      y: cy + lx * sin + ly * cos,
+    }));
+  },
+
+  // ── Trapézoïde centré (4 sommets) ──────────────────────────────────
+  // Parallèle à l'axe thetaDeg, le côté "début" a largeur wStart,
+  // le côté "fin" a largeur wEnd. Profondeur = l.
+  trapezoidCentered(cx, cy, wStart, wEnd, l, thetaDeg) {
+    const hl = l / 2;
+    const hw0 = wStart / 2, hw1 = wEnd / 2;
+    // En local : début = -hl, fin = +hl
+    const pts = [
+      [-hl, -hw0], [hl, -hw1], [hl, hw1], [-hl, hw0],
+    ];
+    const r = thetaDeg * Math.PI / 180;
+    const cos = Math.cos(r), sin = Math.sin(r);
+    return pts.map(([lx, ly]) => ({
+      x: cx + lx * cos - ly * sin,
+      y: cy + lx * sin + ly * cos,
+    }));
+  },
+
+  // ── Hull from zone (épouse zone avec surface cible) ────────────────
+  // Prend l'enveloppe constructible et retourne un polygone adapté
+  // qui respecte une surface cible (areaCap).
+  // Si l'enveloppe est plus petite que areaCap, retourne l'enveloppe insettée.
+  // Si plus grande, inset progressif jusqu'à atteindre la surface cible.
+  hullFromZone(envXY, wallRetreat = 0.5, areaCap = Infinity) {
+    if (!envXY || envXY.length < 3) return [];
+    let clipped = envXY.map(p => ({ x: p.x, y: p.y }));
+
+    // Inset mur
+    if (wallRetreat > 0.01) {
+      const orient = this.signedArea(envXY) >= 0 ? 1 : -1;
+      const n = envXY.length;
+      for (let i = 0; i < n; i++) {
+        const a = envXY[i];
+        const b = envXY[(i + 1) % n];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = -dy / len * orient;
+        const ny =  dx / len * orient;
+        const px = a.x + nx * wallRetreat;
+        const py = a.y + ny * wallRetreat;
+        clipped = this._clipHalfPlane(clipped, { x: px, y: py }, nx, ny);
+        if (clipped.length < 3) return [];
+      }
+    }
+
+    // Si la surface dépasse areaCap, inset uniforme progressif
+    let area = this.area(clipped);
+    if (area > areaCap && areaCap > 0) {
+      let retreat = 0.5;
+      for (let iter = 0; iter < 20 && area > areaCap * 1.02; iter++) {
+        const orient = this.signedArea(clipped) >= 0 ? 1 : -1;
+        const n = clipped.length;
+        let shrunk = clipped.map(p => ({ ...p }));
+        for (let i = 0; i < n; i++) {
+          const a = clipped[i];
+          const b = clipped[(i + 1) % n];
+          const dx = b.x - a.x, dy = b.y - a.y;
+          const len = Math.hypot(dx, dy) || 1;
+          const nx = -dy / len * orient;
+          const ny =  dx / len * orient;
+          const px = a.x + nx * retreat;
+          const py = a.y + ny * retreat;
+          shrunk = this._clipHalfPlane(shrunk, { x: px, y: py }, nx, ny);
+          if (shrunk.length < 3) break;
+        }
+        if (shrunk.length >= 3) {
+          clipped = shrunk;
+          area = this.area(clipped);
+        } else {
+          break;
+        }
+        retreat *= 0.8;
+      }
+    }
+
+    return clipped.length >= 3 ? clipped : [];
+  },
 };
 
 export default FootprintHelpers;

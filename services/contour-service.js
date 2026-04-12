@@ -6,6 +6,224 @@
 
 const ContourService = {
 
+  // ══════════════════════════════════════════════════════════════════
+  // A · LISSAGE DEM — Gaussian blur 3×3 (supprime le crénelage à la source)
+  // ══════════════════════════════════════════════════════════════════
+
+  /**
+   * Gaussian blur 3×3 itéré `passes` fois sur une grille Float32Array (row-major).
+   * Noyau normalisé [1 2 1; 2 4 2; 1 2 1] / 16.
+   * Les bords sont gérés par clamping (pas de shrink).
+   * Mutate-free : retourne un NOUVEAU Float32Array.
+   */
+  _gaussianBlur3x3(heights, W, H, passes = 2) {
+    let src = heights;
+    for (let p = 0; p < passes; p++) {
+      const dst = new Float32Array(W * H);
+      for (let j = 0; j < H; j++) {
+        for (let i = 0; i < W; i++) {
+          // Clamp-access pour les bords
+          const ic = (ii) => Math.max(0, Math.min(W - 1, ii));
+          const jc = (jj) => Math.max(0, Math.min(H - 1, jj));
+          const g = (ii, jj) => {
+            const v = src[jc(jj) * W + ic(ii)];
+            return (v != null && isFinite(v)) ? v : src[j * W + i];
+          };
+          dst[j * W + i] = (
+            g(i-1,j-1) + 2*g(i,j-1) + g(i+1,j-1) +
+            2*g(i-1,j) + 4*g(i,j)   + 2*g(i+1,j) +
+            g(i-1,j+1) + 2*g(i,j+1) + g(i+1,j+1)
+          ) / 16;
+        }
+      }
+      src = dst;
+    }
+    return src;
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // B · LISSAGE POLYLINE — Chaikin corner-cutting
+  // ══════════════════════════════════════════════════════════════════
+
+  /**
+   * Chaikin corner-cutting : coupe chaque segment à 25%/75%.
+   * Chaque passe double ~les points et lisse les angles.
+   * Converge vers une B-spline quadratique (C1, dans l'enveloppe convexe).
+   * @param {Array<[x,y]>} pts   polyline ouverte
+   * @param {number}       passes nombre d'itérations (2-3 = bon compromis)
+   * @returns {Array<[x,y]>}
+   */
+  _chaikinSmooth(pts, passes = 2) {
+    if (pts.length < 3) return pts;
+    let line = pts;
+    for (let p = 0; p < passes; p++) {
+      const out = [line[0]]; // conserver le premier point
+      for (let i = 0; i < line.length - 1; i++) {
+        const [ax, ay] = line[i];
+        const [bx, by] = line[i + 1];
+        out.push([ax * 0.75 + bx * 0.25, ay * 0.75 + by * 0.25]);
+        out.push([ax * 0.25 + bx * 0.75, ay * 0.25 + by * 0.75]);
+      }
+      out.push(line[line.length - 1]); // conserver le dernier point
+      line = out;
+    }
+    return line;
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // C · STAMP PLATEFORMES — modification locale du DEM pour le projet
+  // ══════════════════════════════════════════════════════════════════
+
+  /**
+   * Applique des plateformes projet sur un DEM, retourne un nouveau DEM (terrain projet).
+   *
+   * Chaque plateforme :
+   *   { polygon: [[x,y]...],  — coordonnées grille (gi, gj) float
+   *     altitude: number,      — cote NGR cible
+   *     talusRatio: number }   — pente talus 1V:Nh (défaut 1.5 = 1V:1.5H)
+   *
+   * Pixels intérieurs au polygone → altitude cible.
+   * Pixels dans la bande talus → interpolation linéaire entre altitude cible et TN.
+   *
+   * @param {Float32Array} heights  DEM source (row-major)
+   * @param {number} W, H          dimensions grille
+   * @param {Array} platforms       liste de plateformes
+   * @returns {Float32Array}        DEM modifié (terrain projet)
+   */
+  stampPlatforms(heights, W, H, platforms) {
+    const tp = new Float32Array(heights); // copie
+    if (!platforms || !platforms.length) return tp;
+
+    for (const pf of platforms) {
+      const poly = pf.polygon; // [[gi,gj], ...] en coordonnées grille
+      if (!poly || poly.length < 3) continue;
+      const alt = pf.altitude;
+      const talusR = pf.talusRatio ?? 1.5;
+
+      // BBox du polygone + marge talus
+      let gMin = Infinity, gMax = -Infinity, jMin = Infinity, jMax = -Infinity;
+      for (const [gi, gj] of poly) {
+        if (gi < gMin) gMin = gi; if (gi > gMax) gMax = gi;
+        if (gj < jMin) jMin = gj; if (gj > jMax) jMax = gj;
+      }
+      // Marge talus en pixels (hauteur max estimée / pixelSize * talusR)
+      const marge = 10; // pixels de sécurité
+      const i0 = Math.max(0, Math.floor(gMin - marge));
+      const i1 = Math.min(W - 1, Math.ceil(gMax + marge));
+      const j0 = Math.max(0, Math.floor(jMin - marge));
+      const j1 = Math.min(H - 1, Math.ceil(jMax + marge));
+
+      for (let j = j0; j <= j1; j++) {
+        for (let i = i0; i <= i1; i++) {
+          const dist = this._distToPolygon(i, j, poly);
+          if (dist <= 0) {
+            // Intérieur au polygone → altitude cible
+            tp[j * W + i] = alt;
+          } else {
+            // Bande talus : distance en pixels, convertie en mètres via hauteur
+            const tn = heights[j * W + i];
+            const dh = Math.abs(alt - tn);
+            const talusW = dh * talusR; // largeur talus en pixels (si pixelSize=1m)
+            if (dist < talusW && dh > 0.05) {
+              const t = dist / talusW; // 0=bord plateforme → 1=terrain naturel
+              tp[j * W + i] = alt + t * (tn - alt);
+            }
+            // else : hors talus → TN inchangé
+          }
+        }
+      }
+    }
+    return tp;
+  },
+
+  /**
+   * Distance signée approchée d'un point (px,py) à un polygone.
+   * Négatif = intérieur, positif = extérieur.
+   * Utilise la distance minimale aux arêtes + ray-casting pour le signe.
+   */
+  _distToPolygon(px, py, poly) {
+    let minDist2 = Infinity;
+    let inside = false;
+    const n = poly.length;
+    for (let i = 0, j = n - 1; i < n; j = i++) {
+      const [xi, yi] = poly[i];
+      const [xj, yj] = poly[j];
+
+      // Ray-casting (point-in-polygon)
+      if (((yi > py) !== (yj > py)) &&
+          (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+        inside = !inside;
+      }
+
+      // Distance au segment [j→i]
+      const dx = xj - xi, dy = yj - yi;
+      const len2 = dx * dx + dy * dy;
+      let t = len2 > 0 ? ((px - xi) * dx + (py - yi) * dy) / len2 : 0;
+      t = Math.max(0, Math.min(1, t));
+      const cx = xi + t * dx, cy = yi + t * dy;
+      const d2 = (px - cx) ** 2 + (py - cy) ** 2;
+      if (d2 < minDist2) minDist2 = d2;
+    }
+    const dist = Math.sqrt(minDist2);
+    return inside ? -dist : dist;
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // D · CUBATURE — calcul déblais / remblais pixel par pixel
+  // ══════════════════════════════════════════════════════════════════
+
+  /**
+   * Calcule les volumes de déblais et remblais entre TN et TP.
+   * @param {Float32Array} demTN   terrain naturel (row-major)
+   * @param {Float32Array} demTP   terrain projet  (row-major)
+   * @param {number} W, H          dimensions grille
+   * @param {number} pixelSizeM    taille pixel en mètres
+   * @param {Array} [clipPoly]     polygone de clipping optionnel [[gi,gj]...]
+   *                               (si fourni, seuls les pixels à l'intérieur comptent)
+   * @returns {{ V_cut_m3, V_fill_m3, balance, ratio, grid, maxCut, maxFill,
+   *             cutArea_m2, fillArea_m2 }}
+   */
+  computeEarthworks(demTN, demTP, W, H, pixelSizeM, clipPoly) {
+    const cellArea = pixelSizeM * pixelSizeM;
+    const grid = new Float32Array(W * H); // dh par pixel (positif=remblai, négatif=déblai)
+    let V_cut = 0, V_fill = 0, maxCut = 0, maxFill = 0;
+    let cutCells = 0, fillCells = 0;
+
+    for (let j = 0; j < H; j++) {
+      for (let i = 0; i < W; i++) {
+        const idx = j * W + i;
+        // Clipping optionnel
+        if (clipPoly && this._distToPolygon(i, j, clipPoly) > 0) {
+          grid[idx] = 0;
+          continue;
+        }
+        const dh = demTP[idx] - demTN[idx]; // >0=remblai, <0=déblai
+        grid[idx] = dh;
+        if (dh < -0.01) {
+          V_cut += (-dh) * cellArea;
+          cutCells++;
+          if (-dh > maxCut) maxCut = -dh;
+        } else if (dh > 0.01) {
+          V_fill += dh * cellArea;
+          fillCells++;
+          if (dh > maxFill) maxFill = dh;
+        }
+      }
+    }
+    const total = V_cut + V_fill;
+    return {
+      V_cut_m3: V_cut,
+      V_fill_m3: V_fill,
+      balance_m3: V_fill - V_cut,  // >0 = besoin d'apport, <0 = excédent
+      ratio: total > 0 ? 1 - Math.abs(V_cut - V_fill) / total : 1,
+      grid,  // pour rendu SVG coloré
+      maxCut_m: maxCut,
+      maxFill_m: maxFill,
+      cutArea_m2: cutCells * cellArea,
+      fillArea_m2: fillCells * cellArea,
+    };
+  },
+
   // ── Marching Squares : extraction d'isolignes depuis une grille ────
   // heights: Float32Array (row-major, top→bottom)
   // W, H: dimensions grille
@@ -142,11 +360,20 @@ const ContourService = {
     const interval = opts.interval ?? this.autoInterval(hMin, hMax);
     const startLevel = Math.ceil(hMin / interval) * interval;
 
+    // Lissage DEM (supprime le crénelage Marching Squares à la source)
+    const blurPasses = opts.blurPasses ?? 2;
+    const smoothed = blurPasses > 0 ? this._gaussianBlur3x3(heights, W, H, blurPasses) : heights;
+
+    // Chaikin passes pour les polylines (0 = désactivé)
+    const chaikinPasses = opts.chaikinPasses ?? 2;
+
     const result = [];
     for (let level = startLevel; level <= hMax; level += interval) {
-      const segments = this._marchingSquares(heights, W, H, level);
-      const polylines = this._joinSegments(segments);
-      for (const pts of polylines) {
+      const segments = this._marchingSquares(smoothed, W, H, level);
+      let polylines = this._joinSegments(segments);
+      for (let pts of polylines) {
+        // Lissage Chaikin sur la polyline en coordonnées grille
+        if (chaikinPasses > 0) pts = this._chaikinSmooth(pts, chaikinPasses);
         // Convertir grid → UTM → WGS84
         const coords = pts.map(([gi, gj]) => {
           const easting  = minX + gi * px;
@@ -158,7 +385,11 @@ const ContourService = {
         }
       }
     }
-    return { lines: result, interval, minAlt: hMin, maxAlt: hMax };
+    // Retourner aussi le DEM brut + smoothed + métadonnées grille pour re-contouring projet
+    return {
+      lines: result, interval, minAlt: hMin, maxAlt: hMax,
+      _grid: { heights, smoothed, W, H, px, bbox, minX, minY },
+    };
   },
 
   // ── Générer des isolignes depuis BackgroundTerrain DEM Mapbox ─────
@@ -189,11 +420,16 @@ const ContourService = {
     const interval = opts.interval ?? this.autoInterval(hMin, hMax);
     const startLevel = Math.ceil(hMin / interval) * interval;
 
+    const blurPasses = opts.blurPasses ?? 2;
+    const smoothed = blurPasses > 0 ? this._gaussianBlur3x3(heights, W, H, blurPasses) : heights;
+    const chaikinPasses = opts.chaikinPasses ?? 2;
+
     const result = [];
     for (let level = startLevel; level <= hMax; level += interval) {
-      const segments = this._marchingSquares(heights, W, H, level);
-      const polylines = this._joinSegments(segments);
-      for (const pts of polylines) {
+      const segments = this._marchingSquares(smoothed, W, H, level);
+      let polylines = this._joinSegments(segments);
+      for (let pts of polylines) {
+        if (chaikinPasses > 0) pts = this._chaikinSmooth(pts, chaikinPasses);
         const coords = pts.map(([gi, gj]) => [
           wgsBounds.west + (gi / (W - 1)) * dLng,
           wgsBounds.south + ((H - 1 - gj) / (H - 1)) * dLat,
@@ -386,6 +622,277 @@ const ContourService = {
     parts.push(`<rect x="${lbX}" y="${lbY}" width="${lbW}" height="${lbH}" fill="none" stroke="#1C1C1A" stroke-width="0.4"/>`);
     parts.push(`<text x="${lbX}" y="${lbY - 2}" font-size="6" fill="#6A6860">${Math.round(minAlt)}m</text>`);
     parts.push(`<text x="${lbX + lbW}" y="${lbY - 2}" text-anchor="end" font-size="6" fill="#6A6860">${Math.round(maxAlt)}m</text>`);
+
+    parts.push('</svg>');
+    return parts.join('');
+  },
+
+  // ═════════════════════════════════════════��════════════════════════
+  // E · PIPELINE PROJET — TN + plateformes → double jeu de courbes
+  //     + cubature déblais/remblais
+  // ═════════��════════════════════════════════════════════════════════
+
+  /**
+   * Pipeline complet : charge le BIL, génère les courbes TN lissées,
+   * applique les plateformes projet, génère les courbes TP, calcule la cubature.
+   *
+   * @param {Object} wgsBounds  { west, south, east, north }
+   * @param {Array}  platforms  Plateformes en coordonnées WGS84 :
+   *   [{ polygon: [[lng,lat]...], altitude: number, talusRatio?: number, label?: string }]
+   * @param {Object} opts       Mêmes options que fromBIL + :
+   *   - parcelGeo: [[lng,lat]...] ring parcelle (pour clipping cubature)
+   * @returns {Promise<{
+   *   tn: contourData,   tp: contourData,
+   *   earthworks: cubatureResult,
+   *   platforms: Array
+   * }>}
+   */
+  async fromBILWithProject(wgsBounds, platforms, opts = {}) {
+    // 1. Charger TN via le pipeline standard (qui retourne aussi _grid)
+    const tn = await this.fromBIL(wgsBounds, opts);
+    const { heights, smoothed, W, H, px, minX, minY } = tn._grid;
+
+    // Helper : convertir [lng,lat] → [gi, gj] grille
+    const toGrid = ([lng, lat]) => {
+      const [e, n] = proj4('EPSG:4326', 'EPSG:2975', [lng, lat]);
+      return [(e - minX) / px, H - (n - minY) / px];
+    };
+
+    // 2. Convertir les plateformes en coordonnées grille
+    const gridPlatforms = (platforms || []).map(pf => ({
+      polygon: pf.polygon.map(toGrid),
+      altitude: pf.altitude,
+      talusRatio: pf.talusRatio ?? 1.5,
+      label: pf.label ?? '',
+    }));
+
+    // 3. Stamp sur le DEM lissé → terrain projet
+    const demTP = this.stampPlatforms(smoothed, W, H, gridPlatforms);
+
+    // 4. Contourner le terrain projet
+    const interval = tn.interval;
+    const startLevel = Math.ceil(tn.minAlt / interval) * interval;
+    const chaikinPasses = opts.chaikinPasses ?? 2;
+
+    const tpLines = [];
+    for (let level = startLevel; level <= tn.maxAlt + 5; level += interval) {
+      const segments = this._marchingSquares(demTP, W, H, level);
+      let polylines = this._joinSegments(segments);
+      for (let pts of polylines) {
+        if (chaikinPasses > 0) pts = this._chaikinSmooth(pts, chaikinPasses);
+        const coords = pts.map(([gi, gj]) => {
+          const easting  = minX + gi * px;
+          const northing = minY + (H - gj) * px;
+          return proj4('EPSG:2975', 'EPSG:4326', [easting, northing]);
+        });
+        if (coords.length >= 2) tpLines.push({ level, coords });
+      }
+    }
+    const tp = { lines: tpLines, interval, minAlt: tn.minAlt, maxAlt: tn.maxAlt };
+
+    // 5. Cubature déblais/remblais
+    const clipPoly = opts.parcelGeo ? opts.parcelGeo.map(toGrid) : null;
+    const earthworks = this.computeEarthworks(smoothed, demTP, W, H, px, clipPoly);
+
+    return {
+      tn,
+      tp,
+      earthworks,
+      platforms: gridPlatforms,
+      _grid: { W, H, px, minX, minY, demTN: smoothed, demTP },
+    };
+  },
+
+  // ════════��════════════════════════════���════════════════════════════
+  // F · PLAN DÉBLAIS/REMBLAIS SVG — rendu coloré pixel par pixel
+  // ═══════��═══════════════════════════��══════════════════════════════
+
+  /**
+   * Produit un SVG indépendant : plan déblais/remblais coloré
+   * (bleu = déblai, rouge/orange = remblai) + parcelle + plateformes
+   * + légende volumes.
+   *
+   * @param {Object} projectData  Sortie de fromBILWithProject()
+   * @param {Array}  parcelGeo    [[lng,lat]...] ring parcelle
+   * @param {Object} opts         { width, height, title }
+   * @returns {string}            SVG markup
+   */
+  renderEarthworksSVG(projectData, parcelGeo, opts = {}) {
+    const { earthworks, _grid, tn, tp, platforms } = projectData;
+    if (!earthworks || !_grid || !parcelGeo?.length) return '';
+
+    const SVG_W = opts.width  ?? 600;
+    const SVG_H = opts.height ?? 500;
+    const margin = 24;
+    const { W, H, px, minX, minY, demTN, demTP } = _grid;
+
+    // Projection locale (m��tres, Y inversé)
+    let clng = 0, clat = 0;
+    for (const [lng, lat] of parcelGeo) { clng += lng; clat += lat; }
+    clng /= parcelGeo.length; clat /= parcelGeo.length;
+    const LNG = 111320 * Math.cos(clat * Math.PI / 180);
+    const LAT = 111320;
+    const toLocal = ([lng, lat]) => [(lng - clng) * LNG, -(lat - clat) * LAT];
+
+    // BBox locale
+    let bx0 = Infinity, bx1 = -Infinity, by0 = Infinity, by1 = -Infinity;
+    const parcelLocal = parcelGeo.map(toLocal);
+    for (const [x, y] of parcelLocal) {
+      if (x < bx0) bx0 = x; if (x > bx1) bx1 = x;
+      if (y < by0) by0 = y; if (y > by1) by1 = y;
+    }
+    // Marge 15%
+    const padX = (bx1 - bx0) * 0.15, padY = (by1 - by0) * 0.15;
+    bx0 -= padX; bx1 += padX; by0 -= padY; by1 += padY;
+
+    const dxL = bx1 - bx0, dyL = by1 - by0;
+    const viewH = SVG_H - 80; // réserver espace légende bas
+    const scale = Math.min((SVG_W - margin * 2) / dxL, (viewH - margin * 2) / dyL);
+    const offX = (SVG_W - dxL * scale) / 2 - bx0 * scale;
+    const offY = (viewH - dyL * scale) / 2 - by0 * scale;
+    const sx = x => x * scale + offX;
+    const sy = y => y * scale + offY;
+
+    const parts = [];
+    parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${SVG_W}" height="${SVG_H}" font-family="IBM Plex Mono,monospace">`);
+    parts.push(`<rect width="${SVG_W}" height="${SVG_H}" fill="#fcf9f3"/>`);
+
+    // Titre
+    const title = opts.title ?? 'Plan deblais / remblais';
+    parts.push(`<text x="${SVG_W/2}" y="14" text-anchor="middle" font-size="10" font-weight="700" fill="#1C1C1A">${title}</text>`);
+
+    // ── Heatmap déblais/remblais (image bitmap rasterisée) ──
+    // On rasterise la grille earthworks.grid en une petite image colorée,
+    // puis on l'intègre en data-URI dans le SVG.
+    const maxDh = Math.max(earthworks.maxCut_m, earthworks.maxFill_m, 0.5);
+    const imgW = W, imgH = H;
+    const canvas = (typeof document !== 'undefined') ? document.createElement('canvas') : null;
+
+    if (canvas) {
+      canvas.width = imgW; canvas.height = imgH;
+      const ctx = canvas.getContext('2d');
+      const imgData = ctx.createImageData(imgW, imgH);
+      const d = imgData.data;
+
+      for (let j = 0; j < H; j++) {
+        for (let i = 0; i < W; i++) {
+          const idx = j * W + i;
+          const dh = earthworks.grid[idx];
+          const pIdx = (j * imgW + i) * 4;
+
+          if (Math.abs(dh) < 0.01) {
+            // Pas de mouvement → transparent
+            d[pIdx] = 0; d[pIdx+1] = 0; d[pIdx+2] = 0; d[pIdx+3] = 0;
+          } else if (dh < 0) {
+            // Déblai = bleu (plus intense si profond)
+            const t = Math.min(1, (-dh) / maxDh);
+            d[pIdx]   = Math.round(30 + 40 * (1-t));    // R
+            d[pIdx+1] = Math.round(100 + 80 * (1-t));   // G
+            d[pIdx+2] = Math.round(180 + 75 * t);       // B
+            d[pIdx+3] = Math.round(80 + 160 * t);       // A
+          } else {
+            // Remblai = orange/rouge
+            const t = Math.min(1, dh / maxDh);
+            d[pIdx]   = Math.round(200 + 55 * t);       // R
+            d[pIdx+1] = Math.round(140 - 80 * t);       // G
+            d[pIdx+2] = Math.round(50 - 30 * t);        // B
+            d[pIdx+3] = Math.round(80 + 160 * t);       // A
+          }
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+
+      // Positionner l'image dans le SVG
+      // Grille pixel 0,0 = UTM (minX, minY+H*px) → WGS84 → local
+      const sw = proj4('EPSG:2975', 'EPSG:4326', [minX, minY]);
+      const ne = proj4('EPSG:2975', 'EPSG:4326', [minX + W * px, minY + H * px]);
+      const [lx0, ly1] = toLocal(sw);
+      const [lx1, ly0] = toLocal(ne);
+      const imgSvgX = sx(lx0), imgSvgY = sy(ly0);
+      const imgSvgW = sx(lx1) - sx(lx0);
+      const imgSvgH = sy(ly1) - sy(ly0);
+
+      const dataUrl = canvas.toDataURL('image/png');
+      parts.push(`<image x="${imgSvgX.toFixed(1)}" y="${imgSvgY.toFixed(1)}" width="${imgSvgW.toFixed(1)}" height="${imgSvgH.toFixed(1)}" href="${dataUrl}" image-rendering="pixelated"/>`);
+    }
+
+    // ── Courbes TN (gris fin) ──
+    for (const line of (tn?.lines ?? [])) {
+      const isMajor = (Math.round(line.level) % ((tn.interval ?? 1) * 5)) === 0;
+      const pts = line.coords.map(c => {
+        const [x, y] = toLocal(c);
+        return `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`;
+      }).join(' ');
+      parts.push(`<polyline points="${pts}" fill="none" stroke="#9E9A92" stroke-width="${isMajor ? 0.6 : 0.25}" stroke-opacity="${isMajor ? 0.5 : 0.3}" stroke-linejoin="round"/>`);
+    }
+
+    // ── Courbes TP (trait fort brun) ��─
+    for (const line of (tp?.lines ?? [])) {
+      const isMajor = (Math.round(line.level) % ((tp.interval ?? 1) * 5)) === 0;
+      const pts = line.coords.map(c => {
+        const [x, y] = toLocal(c);
+        return `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`;
+      }).join(' ');
+      parts.push(`<polyline points="${pts}" fill="none" stroke="${isMajor ? '#8a5e1e' : '#b8946a'}" stroke-width="${isMajor ? 1.0 : 0.4}" stroke-opacity="${isMajor ? 0.85 : 0.55}" stroke-linejoin="round"/>`);
+    }
+
+    // ── Plateformes (contour pointillé + label) ──
+    if (platforms?.length) {
+      for (const pf of platforms) {
+        // Convertir grille → UTM → WGS84 → local
+        const pfLocal = pf.polygon.map(([gi, gj]) => {
+          const e = minX + gi * px;
+          const n = minY + (H - gj) * px;
+          const [lng, lat] = proj4('EPSG:2975', 'EPSG:4326', [e, n]);
+          return toLocal([lng, lat]);
+        });
+        const pfPts = pfLocal.map(([x, y]) => `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join(' ');
+        parts.push(`<polygon points="${pfPts}" fill="none" stroke="#2563EB" stroke-width="1.2" stroke-dasharray="4,2" stroke-linejoin="round"/>`);
+        // Label altitude
+        if (pf.label || pf.altitude) {
+          const cx = pfLocal.reduce((s, [x]) => s + x, 0) / pfLocal.length;
+          const cy = pfLocal.reduce((s, [,y]) => s + y, 0) / pfLocal.length;
+          const lbl = pf.label || `${pf.altitude.toFixed(1)} m`;
+          parts.push(`<text x="${sx(cx).toFixed(1)}" y="${sy(cy).toFixed(1)}" text-anchor="middle" font-size="7" font-weight="600" fill="#2563EB">${lbl}</text>`);
+        }
+      }
+    }
+
+    // ── Parcelle ──
+    const pPts = parcelLocal.map(([x, y]) => `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join(' ');
+    parts.push(`<polygon points="${pPts}" fill="none" stroke="#C1652B" stroke-width="1.5" stroke-linejoin="round"/>`);
+
+    // ── Légende en bas ──
+    const legY = SVG_H - 65;
+
+    // Barre gradient déblai ← → remblai
+    const barW = 160, barH = 8;
+    const barX = (SVG_W - barW) / 2;
+    // Gradient
+    parts.push(`<defs><linearGradient id="ew-grad" x1="0" y1="0" x2="1" y2="0">`);
+    parts.push(`<stop offset="0%" stop-color="#3478c6"/>`);
+    parts.push(`<stop offset="50%" stop-color="#fcf9f3"/>`);
+    parts.push(`<stop offset="100%" stop-color="#d4602a"/>`);
+    parts.push(`</linearGradient></defs>`);
+    parts.push(`<rect x="${barX}" y="${legY}" width="${barW}" height="${barH}" fill="url(#ew-grad)" stroke="#1C1C1A" stroke-width="0.4" rx="2"/>`);
+    parts.push(`<text x="${barX}" y="${legY - 2}" font-size="6" fill="#3478c6">Deblai</text>`);
+    parts.push(`<text x="${barX + barW}" y="${legY - 2}" text-anchor="end" font-size="6" fill="#d4602a">Remblai</text>`);
+
+    // Volumes
+    const ew = earthworks;
+    const volY = legY + barH + 12;
+    parts.push(`<text x="${SVG_W/2}" y="${volY}" text-anchor="middle" font-size="8" fill="#1C1C1A">`);
+    parts.push(`Deblai ${ew.V_cut_m3.toFixed(1)} m3`);
+    parts.push(`  |  Remblai ${ew.V_fill_m3.toFixed(1)} m3`);
+    parts.push(`  |  Balance ${ew.balance_m3 > 0 ? '+' : ''}${ew.balance_m3.toFixed(1)} m3`);
+    parts.push(`  |  Equilibre ${(ew.ratio * 100).toFixed(0)}%`);
+    parts.push(`</text>`);
+
+    // Max hauteurs
+    parts.push(`<text x="${SVG_W/2}" y="${volY + 12}" text-anchor="middle" font-size="6.5" fill="#6A6860">`);
+    parts.push(`Deblai max ${ew.maxCut_m.toFixed(2)} m · Remblai max ${ew.maxFill_m.toFixed(2)} m`);
+    parts.push(`  · Surfaces : deblai ${ew.cutArea_m2.toFixed(0)} m2, remblai ${ew.fillArea_m2.toFixed(0)} m2`);
+    parts.push(`</text>`);
 
     parts.push('</svg>');
     return parts.join('');

@@ -324,6 +324,8 @@ const TerrainP07Adapter = {
     let result = this.insetPoly(poly, reculs);
 
     if (!result.collapsed) {
+      // Arc corners post-processing (convex parcels only, before removeAcuteSpikes)
+      result.env = this.arcInterpolateCorners(result.env, poly, reculs);
       return { ...result, reculsEffectifs: reculs };
     }
 
@@ -338,7 +340,137 @@ const TerrainP07Adapter = {
       result.warnings.push(`RECULS_REDUITS ×${ratio.toFixed(2)}`);
     }
 
+    // Arc corners post-processing (convex parcels only, before removeAcuteSpikes)
+    result.env = this.arcInterpolateCorners(result.env, poly, reculs);
+
     return { ...result, ratio, reculsEffectifs: reculs };
+  },
+
+  /**
+   * Post-processeur arc corners : remplace les coins vifs de la zone
+   * constructible par des arcs circulaires (Minkowski offset) quand deux
+   * aretes adjacentes de la parcelle ont un recul > 0.
+   *
+   * N'applique que sur parcelles convexes (pour concaves, le raster approach
+   * gere deja les coins implicitement). Appeler AVANT removeAcuteSpikes.
+   *
+   * @param {Array} env     — [[x,y]...] zone constructible (resultat insetPoly)
+   * @param {Array} poly    — [[x,y]...] parcelle locale
+   * @param {number[]} reculs — recul par arete parcelle
+   * @param {number} [nSegments=6] — segments par arc
+   * @returns {Array} [[x,y]...] zone avec arcs aux coins
+   */
+  arcInterpolateCorners(env, poly, reculs, nSegments = 6) {
+    if (!env || env.length < 3 || !poly || poly.length < 3) return env;
+
+    // Convexity check — only apply on convex parcels
+    if (!this._isConvexArr(poly)) return env;
+
+    // Try GeoUtils if available (browser context)
+    const GU = (typeof window !== 'undefined') ? window.GeoUtils : null;
+    if (GU?.arcInterpolateCorners) {
+      // Convert [[x,y]] → {x,y}
+      const envXY  = env.map(([x, y]) => ({ x, y }));
+      const polyXY = poly.map(([x, y]) => ({ x, y }));
+      const result = GU.arcInterpolateCorners(envXY, polyXY, reculs, nSegments);
+      if (result && result.length >= 3) {
+        return result.map(p => [p.x, p.y]);
+      }
+      return env;
+    }
+
+    // Inline fallback (same algorithm, [[x,y]] format)
+    const n = poly.length;
+    const sa = this._signedArea(poly);
+    const cw = sa > 0 ? 1 : -1;
+
+    // Inward normals per parcel edge
+    const normals = [];
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      const dx = poly[j][0] - poly[i][0], dy = poly[j][1] - poly[i][1];
+      const len = Math.hypot(dx, dy);
+      if (len < 0.1) { normals.push(null); continue; }
+      normals.push([cw * (-dy / len), cw * (dx / len)]);
+    }
+
+    const EPS = 0.15;
+    const result = [];
+    for (let zi = 0; zi < env.length; zi++) {
+      const [zx, zy] = env[zi];
+      let matched = false;
+
+      for (let k = 0; k < n; k++) {
+        const iPrev = (k - 1 + n) % n, iNext = k;
+        const rP = reculs[iPrev] || 0, rN = reculs[iNext] || 0;
+        if (rP <= 0 || rN <= 0) continue;
+        const nP = normals[iPrev], nN = normals[iNext];
+        if (!nP || !nN) continue;
+
+        // Expected sharp corner = intersection of two offset lines
+        const V = poly[k], pPrev = poly[iPrev], pNext = poly[(k + 1) % n];
+        // Offset line prev
+        const o1x = pPrev[0] + nP[0] * rP, o1y = pPrev[1] + nP[1] * rP;
+        const o2x = V[0] + nP[0] * rP, o2y = V[1] + nP[1] * rP;
+        // Offset line next
+        const o3x = V[0] + nN[0] * rN, o3y = V[1] + nN[1] * rN;
+        const o4x = pNext[0] + nN[0] * rN, o4y = pNext[1] + nN[1] * rN;
+        // Line-line intersection
+        const a1 = o2x - o1x, b1 = o2y - o1y;
+        const a2 = o4x - o3x, b2 = o4y - o3y;
+        const det = a1 * b2 - b1 * a2;
+        let ix, iy;
+        if (Math.abs(det) < 1e-9) {
+          ix = (o2x + o3x) / 2; iy = (o2y + o3y) / 2;
+        } else {
+          const t = ((o3x - o1x) * b2 - (o3y - o1y) * a2) / det;
+          ix = o1x + t * a1; iy = o1y + t * b1;
+        }
+
+        if (Math.hypot(zx - ix, zy - iy) > EPS) continue;
+
+        // Match — replace with arc
+        matched = true;
+        const angStart = Math.atan2(nP[1], nP[0]);
+        const angEnd   = Math.atan2(nN[1], nN[0]);
+        let delta = angEnd - angStart;
+        while (delta > Math.PI)  delta -= 2 * Math.PI;
+        while (delta <= -Math.PI) delta += 2 * Math.PI;
+        if (sa < 0 && delta > 0) delta -= 2 * Math.PI;
+        if (sa > 0 && delta < 0) delta += 2 * Math.PI;
+
+        for (let s = 0; s <= nSegments; s++) {
+          const t = s / nSegments;
+          const a = angStart + delta * t;
+          const R = (1 - t) * rP + t * rN;
+          result.push([V[0] + R * Math.cos(a), V[1] + R * Math.sin(a)]);
+        }
+        break;
+      }
+      if (!matched) result.push([zx, zy]);
+    }
+    return result.length >= 3 ? result : env;
+  },
+
+  /**
+   * Convexity test for [[x,y]] array polygons
+   * @private
+   */
+  _isConvexArr(poly) {
+    const n = poly.length;
+    if (n < 4) return true;
+    let sign = 0;
+    for (let i = 0; i < n; i++) {
+      const [ax, ay] = poly[i];
+      const [bx, by] = poly[(i + 1) % n];
+      const [cx, cy] = poly[(i + 2) % n];
+      const cr = (bx - ax) * (cy - by) - (by - ay) * (cx - bx);
+      if (Math.abs(cr) < 1e-6) continue;
+      const s = cr > 0 ? 1 : -1;
+      if (sign === 0) sign = s;
+      else if (s !== sign) return false;
+    }
+    return true;
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -544,33 +676,122 @@ const TerrainP07Adapter = {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Infère edgeTypes[] depuis le polygone et la session
-   * Arête la plus au sud → 'voie', arêtes ⊥ → 'lat', nord → 'fond'
-   * Surcharge via session.terrain.bearing_voie_deg si présent
+   * Infère edgeTypes[] depuis le polygone et la session.
+   * Pipeline de confiance (du plus fiable au moins fiable) :
+   *   1. Override manuel (session.terrain._edgeTypesManual)
+   *   2. Road matching Mapbox/BDTOPO (session.terrain.rues_adjacentes)
+   *   3. Fallback géométrique (midY min = voie, midY max = fond)
+   *
+   * Détecte aussi les parcelles enclavées (aucune arête à <15m d'une route).
+   *
+   * @param {Array} polyCCW   — [[x,y]...] local CCW (Y-up)
+   * @param {Object} session  — session TERLAB
+   * @returns {string[]}      — 'voie'|'fond'|'lat' par arête
    */
   inferEdgeTypes(polyCCW, session = {}) {
     const n = polyCCW.length;
     if (n < 3) return Array(n).fill('lat');
 
-    // Calculer midpoint Y de chaque arête
-    const edgeMids = Array.from({ length: n }, (_, i) => {
-      const [, y1] = polyCCW[i], [, y2] = polyCCW[(i + 1) % n];
-      return { i, midY: (y1 + y2) / 2 };
-    });
+    const terrain = session.terrain ?? session ?? {};
+    const types   = new Array(n).fill('lat');
 
-    // Arête voie = midY le plus bas (le plus au sud après rotation)
-    const voieIdx = edgeMids.reduce((a, b) => b.midY < a.midY ? b : a).i;
-    // Arête fond = midY le plus haut (le plus au nord)
-    const fondIdx = edgeMids.reduce((a, b) => b.midY > a.midY ? b : a).i;
+    // ── Niveau 1 : override manuel (clic étudiant) ────────────────
+    const manual = terrain._edgeTypesManual;
+    if (Array.isArray(manual) && manual.length === n) {
+      return [...manual];
+    }
 
-    // Surcharge si bearing_voie_deg fourni dans la session
-    // (on pourrait affiner avec l'angle de chaque arête vs le bearing)
+    // ── Niveau 2 : road matching Mapbox/BDTOPO ────────────────────
+    const rues = terrain.rues_adjacentes ?? [];
+    let voieFound = false;
 
-    return Array.from({ length: n }, (_, i) => {
-      if (i === voieIdx) return 'voie';
-      if (i === fondIdx) return 'fond';
-      return 'lat';
-    });
+    if (rues.length > 0 && terrain._parcelOrigin) {
+      const origin = terrain._parcelOrigin; // {lat, lng}
+      for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        const emx = (polyCCW[i][0] + polyCCW[j][0]) / 2;
+        const emy = (polyCCW[i][1] + polyCCW[j][1]) / 2;
+
+        for (const rue of rues) {
+          const ruePts = rue.points ?? [];
+          if (ruePts.length < 2) continue;
+
+          // Convertir [lng,lat] → local si nécessaire
+          const rueLocal = (Math.abs(ruePts[0][0]) > 50)
+            ? this.geoToLocal(ruePts, terrain.bearing_voie_deg ?? 0, origin.lat, origin.lng)
+            : ruePts;
+
+          for (let k = 0; k < rueLocal.length - 1; k++) {
+            const ax = rueLocal[k][0],   ay = rueLocal[k][1];
+            const bx = rueLocal[k+1][0], by = rueLocal[k+1][1];
+            const dist = this._distPtSeg(emx, emy, ax, ay, bx, by);
+            if (dist < 12) { // 12m seuil adaptatif (> 8m ancien)
+              types[i] = 'voie';
+              voieFound = true;
+              break;
+            }
+          }
+          if (types[i] === 'voie') break;
+        }
+      }
+    }
+
+    // ── Niveau 3 : fallback géométrique (Y-position) ─────────────
+    if (!voieFound) {
+      const edgeMids = Array.from({ length: n }, (_, i) => {
+        const [, y1] = polyCCW[i], [, y2] = polyCCW[(i + 1) % n];
+        const len = Math.hypot(
+          polyCCW[(i + 1) % n][0] - polyCCW[i][0],
+          polyCCW[(i + 1) % n][1] - polyCCW[i][1],
+        );
+        return { i, midY: (y1 + y2) / 2, len };
+      });
+
+      // Voie = arête la plus basse de longueur > 3m
+      const sorted = [...edgeMids].sort((a, b) => a.midY - b.midY);
+      for (const s of sorted) {
+        if (s.len > 3) { types[s.i] = 'voie'; voieFound = true; break; }
+      }
+    }
+
+    // ── Fond = arête opposée à la voie ────────────────────────────
+    const voieIdx = types.indexOf('voie');
+    if (voieIdx >= 0) {
+      // Chercher l'arête la plus éloignée de la voie
+      const voieMidY = (polyCCW[voieIdx][1] + polyCCW[(voieIdx + 1) % n][1]) / 2;
+      let bestDist = -1, bestIdx = -1;
+      for (let i = 0; i < n; i++) {
+        if (types[i] === 'voie') continue;
+        const midY = (polyCCW[i][1] + polyCCW[(i + 1) % n][1]) / 2;
+        const d = Math.abs(midY - voieMidY);
+        if (d > bestDist) { bestDist = d; bestIdx = i; }
+      }
+      if (bestIdx >= 0) types[bestIdx] = 'fond';
+    }
+
+    // ── Détection enclave ─────────────────────────────────────────
+    if (!voieFound && rues.length === 0) {
+      // Aucune route connue → potentiellement enclavée
+      types._enclave = true;
+      types._enclaveReason = 'Aucune voie détectée à proximité';
+    } else if (!voieFound && rues.length > 0) {
+      types._enclave = true;
+      types._enclaveReason = 'Routes détectées mais aucune arête adjacente (<12m)';
+    } else {
+      types._enclave = false;
+    }
+
+    return types;
+  },
+
+  /** Distance point (px,py) → segment (ax,ay)-(bx,by) */
+  _distPtSeg(px, py, ax, ay, bx, by) {
+    const dx = bx - ax, dy = by - ay;
+    const len2 = dx * dx + dy * dy;
+    if (len2 < 0.01) return Math.hypot(px - ax, py - ay);
+    let t = ((px - ax) * dx + (py - ay) * dy) / len2;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
   },
 
   /**
@@ -660,6 +881,93 @@ const TerrainP07Adapter = {
     }
 
     return { valid: errors.length === 0, warnings, errors };
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Inlet notches on mitoyen boundaries
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Apply inlet notches to a constructible zone.
+   * For each active inlet on a mitoyen lateral edge, compute the rectangular
+   * notch and subtract it from the zone polygon.
+   *
+   * @param {Array} env         — [[x,y]...] zone constructible (from adaptiveInset)
+   * @param {Array} poly        — [[x,y]...] parcel polygon (local metres)
+   * @param {string[]} edgeTypes — type per parcel edge
+   * @param {Array} inlets      — session.phases[7].data.inlets
+   * @param {Object} [mitOpts]  — { mitoyen_g, mitoyen_d }
+   * @returns {{ env: Array, notches: Array, warnings: string[] }}
+   */
+  applyInletNotches(env, poly, edgeTypes, inlets, mitOpts = {}) {
+    const warnings = [];
+    const notches = [];
+    if (!env || env.length < 3) return { env, notches, warnings };
+    if (!Array.isArray(inlets) || inlets.length === 0) return { env, notches, warnings };
+
+    const GU = (typeof window !== 'undefined') ? window.GeoUtils : null;
+    if (!GU || !GU.buildInletNotch || !GU.subtractNotchFromZone) {
+      warnings.push('INLET_NO_GEOUTILS');
+      return { env, notches, warnings };
+    }
+
+    const n = poly.length;
+    const { mitoyen_g = false, mitoyen_d = false } = mitOpts;
+
+    // Classify lateral sides for G/D matching
+    const lateralSides = this._classifyLateralSidesArr(poly, edgeTypes);
+
+    // Convert parcel to {x,y} format for GeoUtils
+    const parcXY = poly.map(([x, y]) => ({ x, y }));
+    const sa = this._signedArea(poly);
+
+    // Convert env to {x,y} for subtraction
+    let envXY = env.map(([x, y]) => ({ x, y }));
+
+    for (const inlet of inlets) {
+      if (!inlet.active) continue;
+      const side = inlet.side; // 'g' or 'd'
+
+      // Find the matching mitoyen lateral edge
+      let edgeIdx = -1;
+      for (let i = 0; i < n; i++) {
+        const type = edgeTypes[i];
+        if (type !== 'lateral' && type !== 'lat') continue;
+        // Must be mitoyen (recul = 0 on this edge)
+        const isMitoyen = (side === 'g' && mitoyen_g) || (side === 'd' && mitoyen_d);
+        if (!isMitoyen) continue;
+        // Must match the correct side
+        if (lateralSides[i] !== side) continue;
+        edgeIdx = i;
+        break;
+      }
+
+      if (edgeIdx < 0) {
+        warnings.push(`INLET_NO_EDGE_${side.toUpperCase()}`);
+        continue;
+      }
+
+      const notchResult = GU.buildInletNotch(parcXY, edgeIdx, inlet, sa);
+      if (!notchResult) {
+        warnings.push(`INLET_BUILD_FAILED_${side.toUpperCase()}`);
+        continue;
+      }
+
+      notches.push({ ...notchResult, edgeIdx, side });
+
+      // Subtract notch from zone
+      const newEnv = GU.subtractNotchFromZone(envXY, notchResult.notch);
+      if (newEnv && newEnv.length >= 3) {
+        envXY = newEnv;
+      } else {
+        warnings.push(`INLET_SUBTRACT_FAILED_${side.toUpperCase()}`);
+      }
+    }
+
+    // Convert back to [[x,y]] format
+    const envOut = envXY.map(p => [p.x, p.y]);
+
+    return { env: envOut, notches, warnings };
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
