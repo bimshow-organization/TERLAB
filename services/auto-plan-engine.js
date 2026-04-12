@@ -14,6 +14,7 @@
 import TopoCaseService    from './topo-case-service.js';
 import FH                 from './footprint-helpers.js';
 import AutoPlanStrategies from './auto-plan-strategies.js';
+import ExistingBuildings  from './existing-buildings.js';
 
 const H_NIV  = 3.0;   // hauteur par niveau (m)
 const MIN_W  = 4;     // largeur min bâtiment (m)
@@ -106,7 +107,20 @@ const AutoPlanEngine = {
       console.warn('[AutoPlan] Enveloppe effondrée même après adaptation');
       return [];
     }
-    const env = insetResult.env;
+    let env = insetResult.env;
+
+    // 5b. Inlet notches on mitoyen boundaries (backwards compatible: no-op if absent)
+    const inlets = p7.inlets;
+    if (Array.isArray(inlets) && inlets.length > 0) {
+      const inletResult = TA.applyInletNotches(env, poly, edgeTypes, inlets, mitOpts);
+      env = inletResult.env;
+      if (inletResult.warnings.length) {
+        console.warn('[AutoPlan] Inlet warnings:', inletResult.warnings);
+      }
+      if (inletResult.notches.length) {
+        console.info(`[AutoPlan] ${inletResult.notches.length} inlet notch(es) applied`);
+      }
+    }
 
     // 6. Bearing
     const bearing = this._resolveBearing(session, poly, edgeTypes);
@@ -283,16 +297,51 @@ const AutoPlanEngine = {
 
   /**
    * Mode bâtiments existants :
-   * 'demolition'   → enveloppe complète
-   * 'conservation' → zone libre = env - footprints existants
-   * 'extension'    → bat collé au bâtiment existant
+   * 'demolition'   → enveloppe complète (existants rasés)
+   * 'conservation' → zone libre = env - AABB(footprints + gap)
+   * 'extension'    → bande collée à la plus longue façade libre
+   * @param {Array} env       — polygone enveloppe constructible [{x,y}...]
+   * @param {Object} existing — résultat ExistingBuildings.analyse()
+   * @param {string} mode     — 'demolition'|'conservation'|'extension'
+   * @returns {Array<{x,y}>}  — enveloppe effective (réduite)
    */
   _applyExistingMode(env, existing, mode) {
     if (!existing || mode === 'demolition') return env;
 
-    // Conservation : simplification par AABB exclusion
-    // On garde l'enveloppe telle quelle mais le PIR sera calculé en excluant les footprints
-    // Cette logique est gérée au niveau du placement PIR
+    const fps = existing.footprints;
+    if (!fps?.length) return env;
+
+    if (mode === 'conservation') {
+      // Soustraire chaque footprint (+ gap) de l'enveloppe par AABB exclusion
+      const result = ExistingBuildings.computeFreeZone(env, fps);
+      const freeZone = result.freeZone;
+      // Guard : si la zone libre est trop petite (< 20 m²), fallback à l'enveloppe complète
+      const freeArea = FH.area(freeZone.map(p => FH.toXY(p)));
+      if (freeArea < 20) {
+        console.warn('[AutoPlan] Conservation : zone libre trop petite (%s m²), fallback enveloppe complète', freeArea.toFixed(1));
+        return env;
+      }
+      console.info('[AutoPlan] Conservation : enveloppe réduite de %s m² → %s m² (occupation %s%)',
+        FH.area(env.map(p => FH.toXY(p))).toFixed(0),
+        freeArea.toFixed(0),
+        (result.occupancyRate * 100).toFixed(0),
+      );
+      return freeZone;
+    }
+
+    if (mode === 'extension') {
+      // Bande d'extension collée à la plus longue façade libre du bâtiment principal
+      const strip = ExistingBuildings.computeExtensionStrip(env, fps);
+      const stripArea = FH.area(strip.map(p => FH.toXY(p)));
+      if (stripArea < 15) {
+        console.warn('[AutoPlan] Extension : bande trop petite (%s m²), fallback enveloppe complète', stripArea.toFixed(1));
+        return env;
+      }
+      console.info('[AutoPlan] Extension : bande %s m² le long de la façade libre', stripArea.toFixed(0));
+      return strip;
+    }
+
+    // Mode inconnu → enveloppe complète
     return env;
   },
 
@@ -379,6 +428,27 @@ const AutoPlanEngine = {
         strategy: 'zone',
         color: '#14B8A6',
       },
+      // B3 = Bi-volume L — empreinte en L pour maximiser CES sur parcelles larges
+      {
+        key: 'B3', label: 'Bi-volume L',
+        nv: Math.min(2, nvMax), emprPct: Math.min(50, plu.emprMax),
+        strategy: 'lshape',
+        color: '#D97706',
+      },
+      // B4 = Trapézoïde — adapté aux parcelles en trapèze (voie ≠ fond)
+      ...(AutoPlanStrategies.isTrapezoidalParcel(parcelPoly, edgeTypes) ? [{
+        key: 'B4', label: 'Trapézoïde',
+        nv: Math.min(2, nvMax), emprPct: Math.min(45, plu.emprMax),
+        strategy: 'trapezoid',
+        color: '#DC2626',
+      }] : []),
+      // C2b = Hull zone (zone adaptative avec surface cible)
+      {
+        key: 'C2b', label: 'Zone adaptative',
+        nv: nvMax, emprPct: Math.min(35, plu.emprMax),
+        strategy: 'zoneHull',
+        color: '#059669',
+      },
     ];
 
     // D1 = Isohypses — bâtiment ⊥ à la pente, profMax topo respecté.
@@ -444,6 +514,21 @@ const AutoPlanEngine = {
         if (!blocs.length) {
           blocs = AutoPlanStrategies.rect(env, wTarget, lTarget, pir);
         }
+      } else if (fam.strategy === 'lshape') {
+        blocs = AutoPlanStrategies.lShape(env, wTarget, lTarget, pir);
+        if (!blocs.length) {
+          blocs = AutoPlanStrategies.rect(env, wTarget, lTarget, pir);
+        }
+      } else if (fam.strategy === 'trapezoid') {
+        blocs = AutoPlanStrategies.trapezoid(env, parcelPoly, edgeTypes, wTarget, lTarget);
+        if (!blocs.length) {
+          blocs = AutoPlanStrategies.rect(env, wTarget, lTarget, pir);
+        }
+      } else if (fam.strategy === 'zoneHull') {
+        blocs = AutoPlanStrategies.zoneHull(env, maxEmprise);
+        if (!blocs.length) {
+          blocs = AutoPlanStrategies.zone(env, 0.5, maxEmprise);
+        }
       } else if (fam.strategy === 'isohypses') {
         // Bâtiment ⊥ à la pente — profMax topo strict.
         // L'espace local TerrainP07Adapter est X-est, Y-nord (ySouth=false par défaut).
@@ -468,12 +553,18 @@ const AutoPlanEngine = {
       }
 
       let nv = fam.nv;
-      let sp = emprise * 0.82 * nv;
+      // Pilotis : ground floor is structural only (not habitable) → SP uses (nv - 1)
+      const topoCase = prog._topoConstraints?.topoCase;
+      const isPilotis = topoCase?.systemType === 'pilotis' || topoCase?.systemType === 'pilotis_long';
+      const habFloors = isPilotis ? Math.max(1, nv - 1) : nv;
+      let sp = emprise * 0.82 * habFloors;
 
       // COS : réduire niveaux si SP dépasse cosMaxSP
       if (sp > cosMaxSP && cosMaxSP > 0) {
-        nv = Math.max(1, Math.floor(cosMaxSP / (emprise * 0.82)));
-        sp = emprise * 0.82 * nv;
+        const minNv = isPilotis ? 2 : 1; // pilotis needs at least 2 (1 struct + 1 hab)
+        nv = Math.max(minNv, Math.floor(cosMaxSP / (emprise * 0.82)) + (isPilotis ? 1 : 0));
+        const habFloorsAdj = isPilotis ? Math.max(1, nv - 1) : nv;
+        sp = emprise * 0.82 * habFloorsAdj;
       }
       const he = nv * H_NIV;
 
@@ -486,12 +577,15 @@ const AutoPlanEngine = {
       const empPct = parcelArea > 0 ? (emprise / parcelArea * 100) : 0;
       const permPct = Math.max(0, 100 - empPct);
 
-      // Score Pareto : densité × perméabilité × conformité
+      // Score Pareto : densité × perméabilité × conformité × coût topo
       const densScore = nLgts / Math.max(1, parcelArea / 10000);
       const permScore = permPct / 100;
       const cosOk = sp <= cosMaxSP;
       const confScore = (empPct <= plu.emprMax + 1 && he <= plu.heMax && cosOk) ? 1 : 0.5;
-      const score = densScore * permScore * confScore;
+      // Cost score : dampen high-cost topo cases (flat = 1.0 → costScore = 1)
+      const coutMult = topoCase?.coutMultiplicateur ?? 1.0;
+      const costScore = 1 / Math.sqrt(coutMult);
+      const score = densScore * permScore * confScore * costScore;
 
       // Dérivée legacy : bat = AABB de l'union des blocs, polygon = bloc primaire
       const aabb = FH.aabbOfBlocs(blocs);
@@ -523,11 +617,151 @@ const AutoPlanEngine = {
         permPct,
         score,
         bearing,
-        scoreData: { densScore, permScore, confScore },
+        scoreData: { densScore, permScore, confScore, costScore },
+
+        // Topo-driven metadata
+        ...(isPilotis ? { pilotisLevel: true } : {}),
+        ...(isPilotis ? { parkingUnderPilotis: true } : {}),
+        ...(topoCase?.pmrNaturelAmont ? { pmrAccess: 'amont' } : {}),
       });
     }
 
     return solutions;
+  },
+
+  // ── Programme mixte : partitionner l'enveloppe par type ──────────
+  // progMix = [{ type:'collectif', pct:60, nvMax:4 }, { type:'bande', pct:25, nvMax:2 }, ...]
+  // Découpe l'enveloppe en sous-zones proportionnelles et génère dans chacune.
+  async generateMixed(session, progMix, existing = null) {
+    if (!progMix || !progMix.length) return [];
+    if (progMix.length === 1) {
+      return this.generate(session, {
+        type: progMix[0].type, nvMax: progMix[0].nvMax ?? 3,
+        profMax: progMix[0].profMax ?? 13,
+      }, existing);
+    }
+
+    const totalPct = progMix.reduce((s, p) => s + (p.pct || 0), 0) || 100;
+    const mix = progMix.map(p => ({ ...p, pct: (p.pct || 0) / totalPct }));
+
+    const TA = window.TerrainP07Adapter;
+    if (!TA) return [];
+    const p4 = session?.phases?.[4]?.data ?? {};
+    const realPlu = window.PluRulesEngine?.computeEffectivePlu?.(p4, session) ?? p4;
+    const plu = {
+      emprMax: parseFloat(realPlu.ces_max ?? realPlu.emprise_max ?? 50),
+      heMax:   parseFloat(realPlu.hauteur_max ?? 12),
+      recul_voie: parseFloat(realPlu.recul_voie ?? 2),
+      recul_lat:  parseFloat(realPlu.recul_lat ?? 3),
+      recul_fond: parseFloat(realPlu.recul_fond ?? 3),
+    };
+    const poly = TA._parcelLocal ?? TA.parcelLocalPoly?.();
+    if (!poly || poly.length < 3) return [];
+    const edgeTypes = TA._edgeTypes ?? TA.edgeTypes?.() ?? [];
+    const reculsTyped = { voie: plu.recul_voie, lat: plu.recul_lat, fond: plu.recul_fond };
+    const p7 = session?.phases?.[7]?.data ?? {};
+    const mitOpts = {
+      mitoyen_g: !!(p7.mitoyen_g || p7.mitoyen_lateral),
+      mitoyen_d: !!(p7.mitoyen_d || p7.mitoyen_lateral),
+    };
+    const insetResult = TA.adaptiveInset(poly, reculsTyped, edgeTypes, mitOpts);
+    if (insetResult.collapsed) return [];
+    const env = insetResult.env.map(p => FH.toXY(Array.isArray(p) ? { x: p[0], y: p[1] } : p));
+
+    const obb = FH.obb(env);
+    const subZones = this._splitEnvelopeByArea(env, obb, mix.map(m => m.pct));
+
+    const allBlocs = [];
+    const breakdown = [];
+    for (let i = 0; i < subZones.length; i++) {
+      const sz = subZones[i];
+      if (!sz || sz.length < 3) continue;
+      const m = mix[i];
+      const szObb = FH.obb(sz);
+      const c = FH.centroidWeighted(sz);
+      const pir = { x: c.x, y: c.y };
+      const wT = Math.min(13, szObb.w * 0.9);
+      const lT = Math.min(m.profMax ?? 13, szObb.l * 0.9);
+
+      let blocs;
+      if (m.type === 'collectif') {
+        blocs = AutoPlanStrategies.rect(sz, wT, lT, pir);
+      } else if (m.type === 'bande') {
+        blocs = AutoPlanStrategies.multiRect(sz, Math.min(8, wT), lT, 4, 4);
+        if (!blocs.length) blocs = AutoPlanStrategies.rect(sz, wT, lT, pir);
+      } else {
+        blocs = AutoPlanStrategies.rect(sz, Math.min(10, wT), Math.min(10, lT), pir);
+      }
+      if (!blocs.length) continue;
+
+      const nv = m.nvMax ?? (m.type === 'collectif' ? 3 : m.type === 'bande' ? 2 : 1);
+      blocs = AutoPlanStrategies.applyLevels(blocs, nv);
+      const empr = FH.totalArea(blocs);
+      const sp = empr * 0.82 * nv;
+      const nLgts = m.type === 'maison' ? blocs.length : Math.floor(sp / SP_MOY);
+      allBlocs.push(...blocs);
+      breakdown.push({ type: m.type, pct: m.pct, blocs, empr, sp, nLgts, nv });
+    }
+
+    if (!allBlocs.length) return [];
+    const totalEmpr = FH.totalArea(allBlocs);
+    const totalSP = breakdown.reduce((s, b) => s + b.sp, 0);
+    const totalLgts = breakdown.reduce((s, b) => s + b.nLgts, 0);
+    const area = FH.area(poly.map(p => Array.isArray(p) ? { x: p[0], y: p[1] } : p));
+
+    return [{
+      family: 'MIX', familyKey: 'mix', label: 'Programme mixte',
+      color: '#8B5CF6', strategy: 'mixed',
+      blocs: allBlocs, nbBlocs: allBlocs.length,
+      bat: FH.derivedAABB(allBlocs),
+      polygon: allBlocs[0]?.polygon ?? null,
+      niveaux: Math.max(...breakdown.map(b => b.nv)),
+      hauteur: Math.max(...breakdown.map(b => b.nv)) * H_NIV,
+      surface: totalEmpr, spTot: totalSP, nLgts: totalLgts,
+      empPct: area > 0 ? totalEmpr / area * 100 : 0,
+      permPct: area > 0 ? Math.max(0, 100 - totalEmpr / area * 100) : 0,
+      score: totalLgts / Math.max(1, area / 10000),
+      mixBreakdown: breakdown,
+    }];
+  },
+
+  // Partitionne une enveloppe convexe en sous-zones par sweep perp à l'axe OBB.
+  _splitEnvelopeByArea(envXY, obb, percentages) {
+    const n = percentages.length;
+    if (n <= 1) return [envXY];
+    const u = obb.u;
+    const projs = envXY.map(p => (p.x - obb.center.x) * u.x + (p.y - obb.center.y) * u.y);
+    const uMin = Math.min(...projs), uMax = Math.max(...projs);
+    const uRange = uMax - uMin;
+    if (uRange < 1) return [envXY];
+
+    const cuts = [uMin];
+    let cumPct = 0;
+    for (let i = 0; i < n - 1; i++) {
+      cumPct += percentages[i];
+      cuts.push(uMin + uRange * cumPct);
+    }
+    cuts.push(uMax);
+
+    const MIN_STRIP = 4;
+    const subZones = [];
+    for (let i = 0; i < n; i++) {
+      let cStart = cuts[i] - 0.5;
+      let cEnd = cuts[i + 1] + 0.5;
+      if (cEnd - cStart < MIN_STRIP) {
+        const mid = (cStart + cEnd) / 2;
+        cStart = mid - MIN_STRIP / 2;
+        cEnd = mid + MIN_STRIP / 2;
+      }
+      const pStart = { x: obb.center.x + u.x * cStart, y: obb.center.y + u.y * cStart };
+      let sub = FH._clipHalfPlane(envXY, pStart, u.x, u.y);
+      if (sub.length >= 3) {
+        const pEnd = { x: obb.center.x + u.x * cEnd, y: obb.center.y + u.y * cEnd };
+        sub = FH._clipHalfPlane(sub, pEnd, -u.x, -u.y);
+      }
+      subZones.push(sub.length >= 3 ? sub : null);
+    }
+    return subZones;
   },
 };
 

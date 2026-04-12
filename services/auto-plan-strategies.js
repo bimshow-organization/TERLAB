@@ -311,6 +311,138 @@ const AutoPlanStrategies = {
     }));
   },
 
+  // ── Stratégie 6 : L-shape (bi-volume en L) ─────────────────────────
+  // Construit un L orienté sur l'axe de l'enveloppe, clippé dedans.
+  // lRatio contrôle la proportion de l'aile secondaire (0.4 → 0.7).
+  // On essaie les 4 coins de retrait et on garde celui qui donne la meilleure emprise.
+  lShape(env, wTarget, lTarget, pir, bearing = null, lRatio = 0.6) {
+    if (!env || env.length < 3) return [];
+    const envXY = env.map(p => FH.toXY(p));
+
+    let theta;
+    if (bearing != null && !isNaN(bearing)) {
+      theta = bearing;
+    } else {
+      theta = FH.obb(envXY).theta;
+    }
+
+    const cx = pir?.x ?? FH.centroidWeighted(envXY).x;
+    const cy = pir?.y ?? FH.centroidWeighted(envXY).y;
+
+    const wMinor = wTarget * lRatio;
+    const lMinor = lTarget * lRatio;
+    const corners = ['NE', 'NW', 'SE', 'SW'];
+
+    let bestClipped = [], bestArea = 0, bestCorner = 'NE';
+    for (const corner of corners) {
+      const raw = FH.lShapeCentered(cx, cy, wTarget, lTarget, wMinor, lMinor, theta, corner);
+      const clipped = FH.clipPolygon(raw, envXY);
+      const a = clipped.length >= 3 ? FH.area(clipped) : 0;
+      if (a > bestArea) { bestArea = a; bestClipped = clipped; bestCorner = corner; }
+    }
+
+    // Réduction si nécessaire
+    let scale = 1.0;
+    while ((bestClipped.length < 3 || bestArea < MIN_W * MIN_L) && scale > 0.4) {
+      scale *= 0.85;
+      bestArea = 0;
+      for (const corner of corners) {
+        const raw = FH.lShapeCentered(cx, cy, wTarget * scale, lTarget * scale,
+          wMinor * scale, lMinor * scale, theta, corner);
+        const clipped = FH.clipPolygon(raw, envXY);
+        const a = clipped.length >= 3 ? FH.area(clipped) : 0;
+        if (a > bestArea) { bestArea = a; bestClipped = clipped; bestCorner = corner; }
+      }
+    }
+
+    if (bestClipped.length < 3) return [];
+    return [{
+      polygon: bestClipped,
+      theta,
+      w: wTarget * scale,
+      l: lTarget * scale,
+      strategy: 'lshape',
+      shapeType: 'lshape',
+      corner: bestCorner,
+      areaM2: FH.area(bestClipped),
+    }];
+  },
+
+  // ── Stratégie 7 : Trapézoïde (adapté aux parcelles qui rétrécissent) ──
+  // Détecte la largeur côté voie vs côté fond et crée un trapèze adapté.
+  trapezoid(env, parcelPoly, edgeTypes, wTarget, lTarget) {
+    if (!env || env.length < 3 || !parcelPoly || parcelPoly.length < 3) return [];
+    const envXY = env.map(p => FH.toXY(p));
+    const parcelXY = parcelPoly.map(p => FH.toXY(p));
+    const obb = FH.obb(envXY);
+
+    // Détecter les largeurs côté voie et côté fond via projection
+    const n = parcelXY.length;
+    const voieIdx = (edgeTypes ?? []).indexOf('voie');
+    const fondIdx = (edgeTypes ?? []).indexOf('fond');
+    if (voieIdx < 0 || fondIdx < 0) return [];
+
+    // Largeur côté voie
+    const va = parcelXY[voieIdx], vb = parcelXY[(voieIdx + 1) % n];
+    const wVoie = Math.hypot(vb.x - va.x, vb.y - va.y);
+    // Largeur côté fond
+    const fa = parcelXY[fondIdx], fb = parcelXY[(fondIdx + 1) % n];
+    const wFond = Math.hypot(fb.x - fa.x, fb.y - fa.y);
+
+    // Si ratio < 1.15, la parcelle est quasi-rectangulaire, le trapèze n'apporte rien
+    const ratio = Math.max(wVoie, wFond) / (Math.min(wVoie, wFond) || 1);
+    if (ratio < 1.15) return [];
+
+    const c = FH.centroidWeighted(envXY);
+    const theta = obb.theta;
+
+    // wStart = côté le plus large (voie ou fond), wEnd = côté le plus étroit
+    // La profondeur suit lTarget
+    const wStart = Math.min(wTarget, Math.max(wVoie, wFond) * 0.85);
+    const wEnd = Math.min(wTarget * 0.95, Math.min(wVoie, wFond) * 0.85);
+
+    const raw = FH.trapezoidCentered(c.x, c.y, wStart, wEnd, lTarget, theta);
+    let clipped = FH.clipPolygon(raw, envXY);
+
+    // Réduction si nécessaire
+    let scale = 1.0;
+    while ((clipped.length < 3 || FH.area(clipped) < MIN_W * MIN_L) && scale > 0.4) {
+      scale *= 0.85;
+      const r = FH.trapezoidCentered(c.x, c.y, wStart * scale, wEnd * scale, lTarget * scale, theta);
+      clipped = FH.clipPolygon(r, envXY);
+    }
+
+    if (clipped.length < 3) return [];
+    return [{
+      polygon: clipped,
+      theta,
+      w: (wStart + wEnd) / 2 * scale,
+      l: lTarget * scale,
+      strategy: 'trapezoid',
+      shapeType: 'trapezoid',
+      areaM2: FH.area(clipped),
+    }];
+  },
+
+  // ── Stratégie 3b : Épouse zone améliorée (hull avec surface cible) ──
+  zoneHull(env, areaCap = Infinity) {
+    if (!env || env.length < 3) return [];
+    const envXY = env.map(p => FH.toXY(p));
+    const clipped = FH.hullFromZone(envXY, 0.5, areaCap);
+    if (clipped.length < 3) return [];
+
+    const aabb = FH.aabb(clipped);
+    return [{
+      polygon: clipped,
+      theta: 0,
+      w: Math.min(aabb.w, aabb.l),
+      l: Math.max(aabb.w, aabb.l),
+      strategy: 'zoneHull',
+      shapeType: 'zone',
+      areaM2: FH.area(clipped),
+    }];
+  },
+
   // ── Test si une parcelle est "longue et étroite" ─────────────────
   // Retourne true si le ratio l/w de l'OBB de l'enveloppe ≥ threshold
   isLongAndNarrow(env, threshold = 2.5) {
@@ -319,6 +451,21 @@ const AutoPlanStrategies = {
     const obb = FH.obb(envXY);
     if (obb.w < 0.1) return false;
     return (obb.l / obb.w) >= threshold;
+  },
+
+  // ── Test si une parcelle est trapézoïdale ───────────────────────────
+  // Retourne true si le ratio largeur voie / largeur fond ≥ threshold
+  isTrapezoidalParcel(parcelPoly, edgeTypes, threshold = 1.2) {
+    if (!parcelPoly || parcelPoly.length < 3) return false;
+    const n = parcelPoly.length;
+    const voieIdx = (edgeTypes ?? []).indexOf('voie');
+    const fondIdx = (edgeTypes ?? []).indexOf('fond');
+    if (voieIdx < 0 || fondIdx < 0) return false;
+    const va = FH.toXY(parcelPoly[voieIdx]), vb = FH.toXY(parcelPoly[(voieIdx + 1) % n]);
+    const fa = FH.toXY(parcelPoly[fondIdx]), fb = FH.toXY(parcelPoly[(fondIdx + 1) % n]);
+    const wV = Math.hypot(vb.x - va.x, vb.y - va.y);
+    const wF = Math.hypot(fb.x - fa.x, fb.y - fa.y);
+    return Math.max(wV, wF) / (Math.min(wV, wF) || 1) >= threshold;
   },
 };
 

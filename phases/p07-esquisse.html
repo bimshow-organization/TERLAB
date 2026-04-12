@@ -325,6 +325,87 @@
     <div id="p07-wind-navigator" style="height:280px"></div>
   </div>
 
+  <!-- Protection solaire — Débords orientation (Izard Partie 1.4) -->
+  <div class="form-section anim-slide-up" id="p07-debords-section">
+    <div class="fs-head">Protection solaire — Débords</div>
+    <div style="padding:8px 12px">
+      <p style="font-size:.72rem;color:var(--ink3);font-style:italic;margin-bottom:8px">
+        Dimensionnement du brise-soleil par orientation de façade (Izard Fig.17-21).
+        Angle d'occultation recommandé : 60° Nord, 75° Sud, 75° Est/Ouest.
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <label class="sg-label" style="font-size:.68rem;white-space:nowrap">Façade</label>
+        <select id="p07-debord-facade" onchange="P07.updateDebord()"
+          style="flex:1;padding:4px 6px;background:var(--raised);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--font-mono);font-size:10px">
+          <option value="0">Nord (0°)</option>
+          <option value="45">Nord-Est (45°)</option>
+          <option value="90">Est (90°)</option>
+          <option value="135">Sud-Est (135°)</option>
+          <option value="180" selected>Sud (180°)</option>
+          <option value="225">Sud-Ouest (225°)</option>
+          <option value="270">Ouest (270°)</option>
+          <option value="315">Nord-Ouest (315°)</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+        <label class="sg-label" style="font-size:.68rem;white-space:nowrap">Fenêtre H</label>
+        <input type="range" id="p07-debord-hfen" min="0.6" max="2.4" step="0.1" value="1.2"
+          oninput="P07.updateDebord()" style="flex:1">
+        <span id="p07-debord-hfen-val" style="font-family:var(--font-mono);font-size:10px;min-width:36px">1.2 m</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <label class="sg-label" style="font-size:.68rem;white-space:nowrap">Débord</label>
+        <input type="range" id="p07-debord-prof" min="0.3" max="3.0" step="0.1" value="1.0"
+          oninput="P07.updateDebord()" style="flex:1">
+        <span id="p07-debord-prof-val" style="font-family:var(--font-mono);font-size:10px;min-width:36px">1.0 m</span>
+      </div>
+      <!-- Badge résultat -->
+      <div id="p07-debord-badge" style="display:none;padding:5px 8px;border-radius:var(--r-sm);font-size:.72rem;font-weight:bold;text-align:center;margin-bottom:6px"></div>
+      <!-- Coupe SVG -->
+      <svg id="p07-debord-svg" viewBox="0 0 260 140" style="width:100%;height:auto;background:var(--bg2);border-radius:var(--r-sm)"></svg>
+    </div>
+  </div>
+
+  <!-- Varangues — ombrage au sol (Izard Partie 1.5) -->
+  <div class="form-section anim-slide-up" id="p07-varangue-section">
+    <div class="fs-head">Varangues — Ombrage</div>
+    <div style="padding:8px 12px">
+      <p style="font-size:.72rem;color:var(--ink3);font-style:italic;margin-bottom:8px">
+        Simulation d'ombre portée de la varangue. Objectif Izard : ≥ 75% du plancher ombragé.
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <label class="sg-label" style="font-size:.68rem;white-space:nowrap">Type</label>
+        <select id="p07-var-type" onchange="P07.updateVarangue()"
+          style="flex:1;padding:4px 6px;background:var(--raised);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--font-mono);font-size:10px">
+          <option value="encastree" selected>Encastrée (autoprotection latérale)</option>
+          <option value="accolee">Accolée (3 côtés ouverts)</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+        <label class="sg-label" style="font-size:.68rem;white-space:nowrap">Profondeur</label>
+        <input type="range" id="p07-var-prof" min="1.5" max="4.0" step="0.1" value="2.5"
+          oninput="P07.updateVarangue()" style="flex:1">
+        <span id="p07-var-prof-val" style="font-family:var(--font-mono);font-size:10px;min-width:36px">2.5 m</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+        <label class="sg-label" style="font-size:.68rem;white-space:nowrap">Largeur</label>
+        <input type="range" id="p07-var-larg" min="3.0" max="8.0" step="0.5" value="5.0"
+          oninput="P07.updateVarangue()" style="flex:1">
+        <span id="p07-var-larg-val" style="font-family:var(--font-mono);font-size:10px;min-width:36px">5.0 m</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <label class="sg-label" style="font-size:.68rem;white-space:nowrap">Heure</label>
+        <input type="range" id="p07-var-hour" min="6" max="18" step="0.5" value="12"
+          oninput="P07.updateVarangue()" style="flex:1">
+        <span id="p07-var-hour-val" style="font-family:var(--font-mono);font-size:10px;min-width:36px">12:00</span>
+      </div>
+      <!-- Badge résultat -->
+      <div id="p07-var-badge" style="display:none;padding:5px 8px;border-radius:var(--r-sm);font-size:.72rem;font-weight:bold;text-align:center;margin-bottom:6px"></div>
+      <!-- Coupe SVG vue en plan -->
+      <svg id="p07-var-svg" viewBox="0 0 260 180" style="width:100%;height:auto;background:var(--bg2);border-radius:var(--r-sm)"></svg>
+    </div>
+  </div>
+
   <!-- Comparateur plan-masse — Sprint 3 -->
   <div class="form-section anim-slide-up" id="p07-planner-section">
     <div class="fs-head">Comparateur Variantes Plan-Masse</div>
@@ -652,6 +733,10 @@
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="p07-ew-fill"     checked style="width:11px;height:11px;margin:0"><span style="color:#2563eb">Remblai</span></label>
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="p07-ew-talus"    checked style="width:11px;height:11px;margin:0">Talus</label>
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="p07-ew-pilotis"  checked style="width:11px;height:11px;margin:0">Pilotis</label>
+          <div style="margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,.1)">
+            <div style="margin-bottom:4px;font-weight:600;color:#4a9fd4">Aéraulique Izard</div>
+            <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="p07-ew-wind" style="width:11px;height:11px;margin:0"><span style="color:#4a9fd4">Sillage + Cp</span></label>
+          </div>
         </div>
         <!-- Panneau métriques earthworks -->
         <div id="p07-earthworks-panel" style="position:absolute;bottom:8px;left:8px;right:8px;background:rgba(0,0,0,.78);padding:8px 12px;border-radius:4px;font-family:'Inconsolata',monospace;font-size:9px;color:#cbd5e0;display:none;max-height:140px;overflow:auto"></div>
@@ -1446,6 +1531,253 @@ const P07 = {
       window.TerlabToast?.show('Variantes aérauliques sauvegardées', 'success', 2500);
     }
   },
+
+  // ─── Débords orientation (Izard Partie 1.4 — Fig.17-21) ──────────
+  updateDebord() {
+    const facadeAz = +document.getElementById('p07-debord-facade').value;
+    const hFen     = +document.getElementById('p07-debord-hfen').value;
+    const prof     = +document.getElementById('p07-debord-prof').value;
+
+    document.getElementById('p07-debord-hfen-val').textContent = hFen.toFixed(1) + ' m';
+    document.getElementById('p07-debord-prof-val').textContent = prof.toFixed(1) + ' m';
+
+    // Angle d'occultation réel = atan(prof / hFen)
+    const angleDeg = Math.atan2(prof, hFen) * 180 / Math.PI;
+
+    // Angles recommandés Izard par orientation
+    const IZARD_ANGLES = {
+      0: 60, 45: 60, 90: 75, 135: 75, 180: 75, 225: 75, 270: 75, 315: 60
+    };
+    const required = IZARD_ANGLES[facadeAz] ?? 60;
+    const ok = angleDeg >= required;
+
+    // Appel computeOverhang si SunCalcService dispo (enrichit le message)
+    let solarInfo = null;
+    try {
+      const mod = window._P07SunDiagram;
+      if (mod?.computeOverhang) solarInfo = mod.computeOverhang(facadeAz);
+    } catch(_) {}
+
+    // Badge
+    const badge = document.getElementById('p07-debord-badge');
+    if (badge) {
+      badge.style.display = 'block';
+      badge.style.background = ok ? '#163b2a' : '#3b1010';
+      badge.style.color      = ok ? '#4ade80' : '#f07070';
+      badge.textContent = ok
+        ? `✓ Angle ${angleDeg.toFixed(0)}° ≥ ${required}° requis — Protection suffisante`
+        : `✗ Angle ${angleDeg.toFixed(0)}° < ${required}° requis — Augmenter le débord`;
+    }
+
+    this._drawDebordSVG(hFen, prof, angleDeg, required, ok, solarInfo);
+  },
+
+  /** Coupe de façade SVG — angle occultation Izard */
+  _drawDebordSVG(hFen, prof, angleDeg, required, ok, solarInfo) {
+    const svg = document.getElementById('p07-debord-svg');
+    if (!svg) return;
+
+    const vb = { w: 260, h: 140 };
+    const scale = 40; // px per meter
+    const wallX = 60;
+    const wallTop = 25;
+    const fenTop  = wallTop + 10;
+    const fenH    = hFen * scale;
+    const fenBot  = fenTop + fenH;
+    const debordW = prof * scale;
+
+    const DEG = Math.PI / 180;
+    // Rayon solaire depuis bord du debord vers bas fenetre
+    const rayEndX = wallX + debordW;
+    const rayEndY = fenTop;
+    // Angle réel : du bord du débord vers le bas de la fenêtre
+    const rayLen = 80;
+    const realRad = angleDeg * DEG;
+    const raySunX = rayEndX + rayLen * Math.cos(realRad);
+    const raySunY = rayEndY - rayLen * Math.sin(realRad);
+
+    // Angle requis
+    const reqRad = required * DEG;
+    const rayReqX = rayEndX + rayLen * Math.cos(reqRad);
+    const rayReqY = rayEndY - rayLen * Math.sin(reqRad);
+
+    // Zone d'ombre sous le debord
+    const shadowEndX = wallX + debordW;
+    const shadowEndY = fenBot;
+
+    const accentColor = ok ? '#4ade80' : '#f07070';
+
+    svg.innerHTML = `
+      <defs>
+        <marker id="arrowSun" viewBox="0 0 6 6" refX="0" refY="3" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M6,0 L0,3 L6,6 Z" fill="#f0c040"/>
+        </marker>
+      </defs>
+      <!-- Mur -->
+      <rect x="${wallX - 6}" y="${wallTop}" width="6" height="${fenBot - wallTop + 20}" fill="#445566" stroke="var(--ink2)" stroke-width="1"/>
+      <!-- Fenetre -->
+      <rect x="${wallX}" y="${fenTop}" width="3" height="${fenH}" fill="#3498db" opacity="0.4" stroke="#3498db" stroke-width="1"/>
+      <text x="${wallX + 8}" y="${fenTop + fenH/2 + 3}" fill="var(--ink3)" font-size="7" font-family="var(--font-mono)">H=${hFen.toFixed(1)}m</text>
+      <!-- Debord / auvent -->
+      <rect x="${wallX}" y="${fenTop - 4}" width="${debordW}" height="4" fill="#667788" stroke="var(--ink2)" stroke-width="1" rx="1"/>
+      <text x="${wallX + debordW/2}" y="${fenTop - 8}" fill="var(--ink2)" font-size="7" text-anchor="middle" font-family="var(--font-mono)">D=${prof.toFixed(1)}m</text>
+      <!-- Zone ombre (triangle) -->
+      <polygon points="${wallX},${fenTop} ${shadowEndX},${fenTop} ${wallX},${shadowEndY}" fill="${accentColor}" opacity="0.08"/>
+      <!-- Rayon solaire reel -->
+      <line x1="${raySunX}" y1="${raySunY}" x2="${rayEndX}" y2="${rayEndY}" stroke="#f0c040" stroke-width="1.5" stroke-dasharray="4,2" marker-start="url(#arrowSun)"/>
+      <!-- Angle requis (ligne pointillee) -->
+      <line x1="${rayReqX}" y1="${rayReqY}" x2="${rayEndX}" y2="${rayEndY}" stroke="var(--ink4)" stroke-width="0.8" stroke-dasharray="2,2"/>
+      <!-- Arc angle reel -->
+      <path d="${this._svgArc(rayEndX, rayEndY, 20, 0, angleDeg)}" fill="none" stroke="${accentColor}" stroke-width="1.5"/>
+      <text x="${rayEndX + 24}" y="${rayEndY - 8}" fill="${accentColor}" font-size="8" font-weight="bold" font-family="var(--font-mono)">${angleDeg.toFixed(0)}°</text>
+      <!-- Arc angle requis -->
+      <path d="${this._svgArc(rayEndX, rayEndY, 28, 0, required)}" fill="none" stroke="var(--ink4)" stroke-width="0.6" stroke-dasharray="2,1"/>
+      <text x="${rayEndX + 32}" y="${rayEndY - 18}" fill="var(--ink4)" font-size="6" font-family="var(--font-mono)">req. ${required}°</text>
+      <!-- Sol -->
+      <line x1="10" y1="${fenBot + 20}" x2="${vb.w - 10}" y2="${fenBot + 20}" stroke="var(--ink4)" stroke-width="0.5" stroke-dasharray="3,2"/>
+      <!-- Label -->
+      <text x="${vb.w/2}" y="14" fill="var(--ink2)" font-size="9" text-anchor="middle" font-weight="bold" font-family="var(--font-mono)">Coupe façade — Izard Fig.17</text>
+      ${solarInfo?.message ? `<text x="${vb.w/2}" y="${vb.h - 4}" fill="var(--ink4)" font-size="5.5" text-anchor="middle" font-family="var(--font-mono)">${solarInfo.message}</text>` : ''}
+    `;
+  },
+
+  /** Helper : arc SVG entre deux angles (en deg, sens trigo depuis horizontal droite) */
+  _svgArc(cx, cy, r, startDeg, endDeg) {
+    const DEG = Math.PI / 180;
+    const x1 = cx + r * Math.cos(-startDeg * DEG);
+    const y1 = cy + r * Math.sin(-startDeg * DEG);
+    const x2 = cx + r * Math.cos(-endDeg * DEG);
+    const y2 = cy + r * Math.sin(-endDeg * DEG);
+    const large = (endDeg - startDeg) > 180 ? 1 : 0;
+    return `M${x1.toFixed(1)},${y1.toFixed(1)} A${r},${r} 0 ${large} 0 ${x2.toFixed(1)},${y2.toFixed(1)}`;
+  },
+
+  // ─── Varangues — ombrage au sol (Izard Partie 1.5) ────────────
+  updateVarangue() {
+    const type = document.getElementById('p07-var-type').value;
+    const prof = +document.getElementById('p07-var-prof').value;
+    const larg = +document.getElementById('p07-var-larg').value;
+    const hour = +document.getElementById('p07-var-hour').value;
+
+    document.getElementById('p07-var-prof-val').textContent = prof.toFixed(1) + ' m';
+    document.getElementById('p07-var-larg-val').textContent = larg.toFixed(1) + ' m';
+    const hh = Math.floor(hour), mm = Math.round((hour - hh) * 60);
+    document.getElementById('p07-var-hour-val').textContent = `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+
+    const MU = window.TerlabMU;
+    // Orientation par défaut : façade Nord (azimut 0°), jour 355 (été austral)
+    const facadeAz = 0;
+    const day = 355;
+    const sunAlt = MU?.solarHeight?.(hour, day) ?? 45;
+    const sunAz  = MU?.solarAzimuth?.(hour, day) ?? 180;
+
+    // Calcul ombre portée simplifiée
+    // L'ombre du débord sur le plancher = prof / tan(altitude solaire)
+    const tanAlt = Math.tan(Math.max(5, sunAlt) * Math.PI / 180);
+    const shadowDepth = prof / tanAlt; // profondeur d'ombre au sol
+    const shadowDepthClamped = Math.min(shadowDepth, prof * 3);
+
+    // Calcul couverture
+    const floorArea = prof * larg;
+    // Varangue encastrée : ombre latérale par les murs → couverture ~100% si ombre > prof
+    // Varangue accolée : pas de protection latérale → ombre réduite
+    let shadowArea;
+    if (type === 'encastree') {
+      shadowArea = Math.min(shadowDepthClamped, prof) * larg;
+    } else {
+      // Accolée : l'ombre ne couvre que la zone centrale (pas les bords latéraux)
+      const effectiveWidth = Math.max(0, larg - 2 * shadowDepthClamped * 0.3);
+      shadowArea = Math.min(shadowDepthClamped, prof) * effectiveWidth;
+    }
+    const coverage = Math.min(100, (shadowArea / floorArea) * 100);
+    const ok = coverage >= 75;
+
+    // Badge
+    const badge = document.getElementById('p07-var-badge');
+    if (badge) {
+      badge.style.display = 'block';
+      badge.style.background = ok ? '#163b2a' : '#3b1010';
+      badge.style.color      = ok ? '#4ade80' : '#f07070';
+      badge.textContent = ok
+        ? `✓ Couverture ${coverage.toFixed(0)}% ≥ 75% — Ombrage suffisant (${type === 'encastree' ? 'encastrée' : 'accolée'})`
+        : `✗ Couverture ${coverage.toFixed(0)}% < 75% — ${type === 'accolee' ? 'Préférer encastrée ou augmenter profondeur' : 'Augmenter la profondeur'}`;
+    }
+
+    this._drawVarangueSVG(type, prof, larg, sunAlt, sunAz, facadeAz, shadowDepthClamped, coverage, ok);
+  },
+
+  /** Vue en plan de la varangue avec zone d'ombre */
+  _drawVarangueSVG(type, prof, larg, sunAlt, sunAz, facadeAz, shadowDepth, coverage, ok) {
+    const svg = document.getElementById('p07-var-svg');
+    if (!svg) return;
+
+    const vb = { w: 260, h: 180 };
+    const scale = Math.min(30, 120 / Math.max(prof, larg));
+
+    // Coordonnées varangue (vue en plan)
+    const cx = vb.w / 2;
+    const wallY = 40;
+    const varW = larg * scale;
+    const varD = prof * scale;
+    const varX = cx - varW / 2;
+    const varY = wallY;
+
+    // Ombre projetée (vers le sud = vers le bas en plan)
+    const shadowD = Math.min(shadowDepth, prof) * scale;
+    const accentColor = ok ? '#4ade80' : '#f07070';
+
+    // Murs latéraux (encastrée seulement)
+    let walls = '';
+    if (type === 'encastree') {
+      walls = `
+        <rect x="${varX - 3}" y="${varY}" width="3" height="${varD}" fill="#556677" stroke="var(--ink2)" stroke-width="0.5"/>
+        <rect x="${varX + varW}" y="${varY}" width="3" height="${varD}" fill="#556677" stroke="var(--ink2)" stroke-width="0.5"/>
+      `;
+    }
+
+    // Flèche soleil
+    const sunRad = (sunAz - facadeAz) * Math.PI / 180;
+    const arrowLen = 25;
+    const arrowX = cx;
+    const arrowY = wallY - 15;
+    const arrowEndX = arrowX + arrowLen * Math.sin(sunRad);
+    const arrowEndY = arrowY + arrowLen * Math.cos(sunRad);
+
+    svg.innerHTML = `
+      <defs>
+        <marker id="arrowSunV" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#f0c040"/>
+        </marker>
+      </defs>
+      <!-- Mur fond (bâtiment) -->
+      <rect x="${varX - 8}" y="${wallY - 4}" width="${varW + 16}" height="4" fill="#445566" stroke="var(--ink2)" stroke-width="0.5"/>
+      <text x="${cx}" y="${wallY - 8}" fill="var(--ink3)" font-size="7" text-anchor="middle" font-family="var(--font-mono)">Bâtiment</text>
+      <!-- Varangue (plancher) -->
+      <rect x="${varX}" y="${varY}" width="${varW}" height="${varD}" fill="none" stroke="var(--ink2)" stroke-width="1" stroke-dasharray="3,2"/>
+      <!-- Zone d'ombre -->
+      <rect x="${varX + (type === 'accolee' ? varW * 0.1 : 0)}" y="${varY}" width="${type === 'accolee' ? varW * 0.8 : varW}" height="${shadowD}" fill="${accentColor}" opacity="0.15" rx="1"/>
+      ${walls}
+      <!-- Cotes -->
+      <line x1="${varX}" y1="${varY + varD + 8}" x2="${varX + varW}" y2="${varY + varD + 8}" stroke="var(--ink3)" stroke-width="0.5"/>
+      <text x="${cx}" y="${varY + varD + 17}" fill="var(--ink3)" font-size="7" text-anchor="middle" font-family="var(--font-mono)">${larg.toFixed(1)}m</text>
+      <line x1="${varX - 12}" y1="${varY}" x2="${varX - 12}" y2="${varY + varD}" stroke="var(--ink3)" stroke-width="0.5"/>
+      <text x="${varX - 16}" y="${varY + varD/2 + 3}" fill="var(--ink3)" font-size="7" text-anchor="end" font-family="var(--font-mono)">${prof.toFixed(1)}m</text>
+      <!-- Flèche soleil -->
+      <line x1="${arrowX}" y1="${arrowY}" x2="${arrowEndX}" y2="${arrowEndY}" stroke="#f0c040" stroke-width="1.5" marker-end="url(#arrowSunV)"/>
+      <text x="${arrowX + 15}" y="${arrowY - 2}" fill="#f0c040" font-size="7" font-family="var(--font-mono)">☀ alt=${Math.round(sunAlt)}°</text>
+      <!-- Jauge couverture -->
+      <rect x="${vb.w - 30}" y="${varY}" width="12" height="${varD}" fill="none" stroke="var(--ink4)" stroke-width="0.5" rx="2"/>
+      <rect x="${vb.w - 30}" y="${varY + varD * (1 - coverage/100)}" width="12" height="${varD * coverage/100}" fill="${accentColor}" opacity="0.4" rx="2"/>
+      <text x="${vb.w - 24}" y="${varY + varD + 12}" fill="${accentColor}" font-size="7" text-anchor="middle" font-weight="bold" font-family="var(--font-mono)">${coverage.toFixed(0)}%</text>
+      <!-- Seuil 75% -->
+      <line x1="${vb.w - 32}" y1="${varY + varD * 0.25}" x2="${vb.w - 16}" y2="${varY + varD * 0.25}" stroke="#f07070" stroke-width="0.5" stroke-dasharray="2,1"/>
+      <text x="${vb.w - 14}" y="${varY + varD * 0.25 + 3}" fill="#f07070" font-size="5" font-family="var(--font-mono)">75%</text>
+      <!-- Label -->
+      <text x="${cx}" y="${vb.h - 6}" fill="var(--ink4)" font-size="6" text-anchor="middle" font-family="var(--font-mono)">Izard Fig.25-26 — Varangue ${type === 'encastree' ? 'encastrée' : 'accolée'} · Vue en plan</text>
+      <!-- Titre -->
+      <text x="${cx}" y="12" fill="var(--ink2)" font-size="9" text-anchor="middle" font-weight="bold" font-family="var(--font-mono)">Ombrage varangue · Couverture ${coverage.toFixed(0)}%</text>
+    `;
+  },
 };
 
 // Init terrain strip (fallback si initP07Real n'a pas encore rempli)
@@ -1476,6 +1808,16 @@ document.querySelectorAll('.p07-vtab[data-view]').forEach(btn => {
 
 if (typeof P07._initSunPanel === 'function') P07._initSunPanel();
 
+// Init débords SVG avec valeurs par défaut
+P07.updateDebord();
+
+// Lazy-load SunDiagramSVG pour enrichir computeOverhang dans P07
+import('../utils/sun-diagram-svg.js').then(mod => {
+  window._P07SunDiagram = mod.default;
+  P07.updateDebord(); // re-render avec info solaire
+  P07.updateVarangue(); // init varangue SVG
+}).catch(() => {});
+
 // ─── Lazy-init aéraulique (IntersectionObserver) ──────────────────
 const _aeroSection = document.getElementById('p07-aeraulique-section');
 if (_aeroSection) {
@@ -1494,6 +1836,23 @@ window.addEventListener('terlab:planner-score', ({ detail }) => {
   if (detail?.score > 40) {
     const c = document.getElementById('p07-check-aeraulique');
     if (c) { c.setAttribute('aria-checked','true'); c.classList.add('checked'); }
+  }
+});
+
+// ─── Alerte parcelle enclavée ─────────────────────────────────────
+window.addEventListener('terlab:parcelle-enclavee', ({ detail }) => {
+  window.TerlabToast?.show(
+    `⚠ Parcelle potentiellement enclavée — ${detail.reason}. Vérifiez la desserte et la servitude de passage (Art. 682 CC).`,
+    'warning', 8000
+  );
+  // Afficher un bandeau persistant dans l'esquisse
+  const wrap = document.getElementById('p07-gabarit-wrap') ?? document.getElementById('map');
+  if (wrap && !document.getElementById('enclave-alert')) {
+    const alert = document.createElement('div');
+    alert.id = 'enclave-alert';
+    alert.style.cssText = 'position:absolute;top:0;left:0;right:0;z-index:100;background:rgba(185,28,28,0.9);color:#fff;padding:8px 12px;font-size:11px;font-family:var(--font-mono);text-align:center';
+    alert.innerHTML = `⚠ <strong>Parcelle enclavée</strong> — Aucune voie publique détectée. Servitude de passage obligatoire (Art. 682 CC). <button onclick="this.parentElement.remove()" style="margin-left:8px;background:none;border:1px solid #fff;color:#fff;border-radius:3px;padding:2px 8px;cursor:pointer;font-size:10px">×</button>`;
+    wrap.parentElement?.insertBefore(alert, wrap);
   }
 });
 
@@ -2288,6 +2647,16 @@ const GabaritUI = {
           _gabaritThree?.toggleEarthworksLayer(layer, cb.checked);
         });
       }
+      // Toggle sillage/Cp vent (Izard)
+      const windCb = document.getElementById('p07-ew-wind');
+      if (windCb) windCb.addEventListener('change', () => {
+        if (windCb.checked) {
+          const windDir = +(SessionManager.getPhase(1)?.data?.aeraulique_rugosite === 'ouvert' ? 80 : 105);
+          _gabaritThree?.showWindViz(windDir);
+        } else {
+          _gabaritThree?.clearWindViz();
+        }
+      });
       // Écouter les mises à jour earthworks pour rafraîchir le panneau
       window.addEventListener('terlab:earthworks-updated', (e) => {
         GabaritUI._renderEarthworksPanel(e.detail.earthworks, e.detail.V_cut_csg, e.detail.V_fill_csg);

@@ -50,6 +50,10 @@ const EsquisseCanvas = {
   _vegetationStats:  null,
   _vegetationVisible: true,
 
+  // ── ANC (Assainissement Non Collectif) ─────────────────────────
+  _ancResult: null,          // résultat ANCService.computeFromSession()
+  _ancVisible: true,
+
   // ── ÉTUDE DE CAPACITÉ (Sprint p07 zero-to-hero) ────────────────
   _existingBuildings: null,   // résultat ExistingBuildings.analyse()
   _existingMode: 'demolition', // 'demolition' | 'conservation' | 'extension'
@@ -190,6 +194,8 @@ const EsquisseCanvas = {
         this._renderGardenHint(this._proposals[0]);
       }
       this._fullRedraw();
+      // ANC auto-compute si terrain en ANC
+      if (this._session?.terrain?.assainissement === 'ANC') this.computeANC();
     };
 
     if (this._map) {
@@ -1294,6 +1300,9 @@ const EsquisseCanvas = {
 
     // Labels par arete
     this._drawEdgeLabels(pts, g);
+
+    // Arêtes cliquables pour override type
+    this._makeEdgesClickable();
   },
 
   _drawEdgeLabels(svgPts, g) {
@@ -1590,70 +1599,36 @@ const EsquisseCanvas = {
     return { x: cx / (6 * A), y: cy / (6 * A) };
   },
 
-  // ── CLASSIFICATION DES LIMITES (CORRIGEE) ──────────────────────
-  // CORRIGE : dans l'espace local Y-inverse, y_max = sud geographique
+  // ── CLASSIFICATION DES LIMITES (UNIFIEE) ────────────────────────
+  // Délègue à TerrainP07Adapter.inferEdgeTypes() pour pipeline unifié.
+  // Convertit {x,y} → [x,y] pour compatibilité, puis reconvertit le résultat.
   _classifyEdges(session) {
     const n = this._parcelLocal?.length ?? 0;
     if (n < 3) return new Array(n).fill('lateral');
 
-    const terrain = session.terrain ?? {};
-    const rues    = terrain.rues_adjacentes ?? [];
-    const types   = new Array(n).fill('lateral');
+    const TA = window.TerrainP07Adapter;
+    if (TA?.inferEdgeTypes) {
+      // Convertir [{x,y}...] → [[x,y]...] pour TA
+      const polyCCW = this._parcelLocal.map(p => [p.x, p.y]);
+      const types = TA.inferEdgeTypes(polyCCW, session);
 
-    // Methode 1 : matching avec les rues connues
-    if (rues.length > 0) {
-      for (let i = 0; i < n; i++) {
-        const j  = (i + 1) % n;
-        const em = { x: (this._parcelLocal[i].x + this._parcelLocal[j].x) / 2,
-                     y: (this._parcelLocal[i].y + this._parcelLocal[j].y) / 2 };
-        for (const rue of rues) {
-          const ruePts = rue.points ?? [];
-          if (!ruePts.length) continue;
-          // Convertir en local si [lng,lat]
-          const rueLocal = Array.isArray(ruePts[0]) && ruePts[0].length === 2 && Math.abs(ruePts[0][0]) > 50
-            ? this._geoToLocal(ruePts)
-            : ruePts;
-          for (let k = 0; k < rueLocal.length - 1; k++) {
-            if (this._distPointToSegment(em, rueLocal[k], rueLocal[k + 1]) < 8) {
-              types[i] = 'voie';
-              break;
-            }
-          }
-        }
+      // Propager le flag enclave
+      if (types._enclave) {
+        this._isEnclave = true;
+        this._enclaveReason = types._enclaveReason;
+        window.dispatchEvent(new CustomEvent('terlab:parcelle-enclavee', {
+          detail: { reason: types._enclaveReason }
+        }));
+      } else {
+        this._isEnclave = false;
       }
+
+      // Normaliser 'lat' → 'lateral' pour compat EsquisseCanvas
+      return types.map(t => t === 'lat' ? 'lateral' : t);
     }
 
-    // Methode 2 : heuristique geometrique (si pas de rues connues)
-    if (!types.includes('voie')) {
-      const mids = [];
-      for (let i = 0; i < n; i++) {
-        const j = (i + 1) % n;
-        mids.push({
-          idx:  i,
-          midY: (this._parcelLocal[i].y + this._parcelLocal[j].y) / 2,
-          len:  Math.hypot(this._parcelLocal[j].x - this._parcelLocal[i].x,
-                           this._parcelLocal[j].y - this._parcelLocal[i].y),
-        });
-      }
-      // CORRIGE : y max = le plus au sud (Y inverse)
-      const sortedS = [...mids].sort((a, b) => b.midY - a.midY);
-      let voieCount = 0;
-      for (const s of sortedS) {
-        if (voieCount >= 1) break;
-        if (s.len > 3) { types[s.idx] = 'voie'; voieCount++; }
-      }
-    }
-
-    // Fond = arete opposee a la voie
-    if (!types.includes('fond')) {
-      const voieIdx = types.indexOf('voie');
-      if (voieIdx >= 0) {
-        const oppositeIdx = (voieIdx + Math.floor(n / 2)) % n;
-        if (types[oppositeIdx] === 'lateral') types[oppositeIdx] = 'fond';
-      }
-    }
-
-    return types;
+    // Fallback si TA non disponible (ne devrait pas arriver)
+    return new Array(n).fill('lateral');
   },
 
   // Distance point → segment
@@ -1952,8 +1927,184 @@ const EsquisseCanvas = {
       if (this._vegetationPlants.length > 0) this._drawVegetation(g);
     }
 
+    // ANC — fosse + zone traitement sur espace vert
+    if (this._ancVisible && this._ancResult?.besoinANC && this._ancResult.dimensionnement) {
+      this._drawANC(g, prop);
+    }
+
     // Jardins recommandes BPF
     this._renderGardenHint(prop);
+  },
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ANC — Assainissement Non Collectif sur plan masse
+  // ══════════════════════════════════════════════════════════════════════════
+
+  async computeANC() {
+    try {
+      const { default: ANCService } = await import('../services/anc-service.js');
+      const session = window.SessionManager?.getAll?.() ?? { terrain: window.SessionManager?.getTerrain?.() ?? {} };
+      this._ancResult = ANCService.computeFromSession(session);
+      this._fullRedraw();
+    } catch (e) {
+      console.warn('[EsquisseCanvas] ANC compute error:', e.message);
+    }
+  },
+
+  /**
+   * Dessine fosse toutes eaux + zone de traitement sur le plan masse.
+   * Placement : côté aval du bâtiment (y min = bas du plan), dans l'espace vert.
+   * Coordonnées en mètres locaux, projection via _localToSvgPt / _project.
+   */
+  _drawANC(parentG, prop) {
+    const res = this._ancResult;
+    if (!res?.dimensionnement) return;
+
+    const dim = res.dimensionnement;
+    const bat = this._buildingAABB;
+    if (!bat) return;
+
+    const g = this._el('g', { class: 'anc-layer', opacity: '0.85' }, 'anc-layer', parentG);
+
+    // ── Placement en mètres locaux : fosse 3m sous le bâtiment, traitement 2m sous la fosse
+    const fosseLong = dim.fosse?.longueur_m ?? 2.5;
+    const fosseLarg = dim.fosse?.largeur_m ?? 1.2;
+
+    // Centre fosse : centré horizontalement, 3m sous le bâtiment (y croissant = vers le haut en local)
+    // Convention : y positif = nord ; bâtiment à bat.y (coin bas-gauche), bat.l = profondeur
+    // "En aval" = y le plus petit → bat.y - offset
+    const fosseCx = bat.x + bat.w / 2;
+    const fosseCy = bat.y - 3;
+
+    // Zone traitement
+    const traitW = this._ancTraitWidth(dim);
+    const traitH = this._ancTraitHeight(dim);
+    const traitCx = fosseCx;
+    const traitCy = fosseCy - fosseLarg / 2 - 1.5 - traitH / 2;
+
+    // ── Canalisation (ligne pointillée fosse → traitement)
+    const canPts = [
+      { x: fosseCx, y: fosseCy - fosseLarg / 2 },
+      { x: traitCx, y: traitCy + traitH / 2 },
+    ];
+    const canSvg = this._localToSvg(canPts);
+    if (canSvg.length >= 2) {
+      this._el('line', {
+        x1: canSvg[0].x, y1: canSvg[0].y,
+        x2: canSvg[1].x, y2: canSvg[1].y,
+        stroke: '#6B7280', 'stroke-width': 1.5, 'stroke-dasharray': '4,2', opacity: '0.6',
+      }, null, g);
+    }
+
+    // ── Fosse toutes eaux (rectangle gris)
+    if (dim.fosse) {
+      const fosseCorners = [
+        { x: fosseCx - fosseLong / 2, y: fosseCy - fosseLarg / 2 },
+        { x: fosseCx + fosseLong / 2, y: fosseCy - fosseLarg / 2 },
+        { x: fosseCx + fosseLong / 2, y: fosseCy + fosseLarg / 2 },
+        { x: fosseCx - fosseLong / 2, y: fosseCy + fosseLarg / 2 },
+      ];
+      const fPts = this._localToSvg(fosseCorners);
+      if (fPts.length >= 4) {
+        const ptsStr = fPts.map(p => `${p.x},${p.y}`).join(' ');
+        this._el('polygon', {
+          points: ptsStr,
+          fill: 'rgba(107,114,128,0.35)', stroke: '#374151', 'stroke-width': 1.5,
+        }, null, g);
+        // Label
+        const fc = this._localToSvg([{ x: fosseCx, y: fosseCy }]);
+        if (fc.length) {
+          this._label(fc[0].x, fc[0].y - 2, 'FTE', { size: 8, color: '#374151', bold: true, anchor: 'middle' }, null, g);
+          this._label(fc[0].x, fc[0].y + 8, `${dim.fosse.volume_m3} m³`, { size: 7, color: '#6B7280', anchor: 'middle' }, null, g);
+        }
+      }
+    }
+
+    // ── Zone traitement (rectangle coloré selon filière)
+    const colors = {
+      epandage_classique:           { fill: 'rgba(167,139,250,0.25)', stroke: '#7C3AED', label: 'ÉPANDAGE' },
+      filtre_sable_vertical:        { fill: 'rgba(251,191,36,0.25)',  stroke: '#D97706', label: 'FILTRE SABLE' },
+      filtre_sable_vertical_draine: { fill: 'rgba(251,191,36,0.25)',  stroke: '#D97706', label: 'FILTRE DRAINÉ' },
+      micro_station:                { fill: 'rgba(96,165,250,0.3)',   stroke: '#2563EB', label: 'MICRO-STATION' },
+      filtre_plante:                { fill: 'rgba(52,211,153,0.3)',   stroke: '#059669', label: 'PHYTO' },
+      filtre_compact:               { fill: 'rgba(244,114,182,0.25)', stroke: '#DB2777', label: 'COMPACT' },
+      tertre_infiltration:          { fill: 'rgba(212,165,116,0.3)',  stroke: '#92400E', label: 'TERTRE' },
+    };
+    const col = colors[dim.filiereId] ?? colors.epandage_classique;
+
+    const traitCorners = [
+      { x: traitCx - traitW / 2, y: traitCy - traitH / 2 },
+      { x: traitCx + traitW / 2, y: traitCy - traitH / 2 },
+      { x: traitCx + traitW / 2, y: traitCy + traitH / 2 },
+      { x: traitCx - traitW / 2, y: traitCy + traitH / 2 },
+    ];
+    const tPts = this._localToSvg(traitCorners);
+    if (tPts.length >= 4) {
+      const ptsStr = tPts.map(p => `${p.x},${p.y}`).join(' ');
+      this._el('polygon', {
+        points: ptsStr,
+        fill: col.fill, stroke: col.stroke, 'stroke-width': 1.5, 'stroke-dasharray': '5,2',
+      }, null, g);
+
+      // Hachures pour épandage (tranchées)
+      if (dim.tranchees && dim.tranchees.nombre > 1) {
+        const entraxe = traitW / dim.tranchees.nombre;
+        for (let i = 0; i < dim.tranchees.nombre; i++) {
+          const lx = traitCx - traitW / 2 + entraxe * (i + 0.5);
+          const lPts = this._localToSvg([
+            { x: lx, y: traitCy - traitH / 2 },
+            { x: lx, y: traitCy + traitH / 2 },
+          ]);
+          if (lPts.length >= 2) {
+            this._el('line', {
+              x1: lPts[0].x, y1: lPts[0].y, x2: lPts[1].x, y2: lPts[1].y,
+              stroke: col.stroke, 'stroke-width': 0.8, 'stroke-dasharray': '3,2', opacity: '0.4',
+            }, null, g);
+          }
+        }
+      }
+
+      // Label
+      const tc = this._localToSvg([{ x: traitCx, y: traitCy }]);
+      if (tc.length) {
+        this._label(tc[0].x, tc[0].y - 2, col.label, { size: 8, color: col.stroke, bold: true, anchor: 'middle' }, null, g);
+        this._label(tc[0].x, tc[0].y + 8, `${dim.empriseFiliere_m2} m²`, { size: 7, color: col.stroke, anchor: 'middle' }, null, g);
+      }
+    }
+
+    // ── Recul 5m parcelle (cercle pointillé autour fosse)
+    if (dim.reculs?.habitation) {
+      const rc = this._localToSvg([{ x: fosseCx, y: fosseCy }]);
+      if (rc.length) {
+        const scale = this._map ? this._mapScale() : (this.SCALE || 5);
+        const rPx = dim.reculs.habitation * scale;
+        this._el('circle', {
+          cx: rc[0].x, cy: rc[0].y, r: rPx,
+          fill: 'none', stroke: '#EF4444', 'stroke-width': 0.8, 'stroke-dasharray': '3,2', opacity: '0.35',
+        }, null, g);
+      }
+    }
+  },
+
+  _ancTraitWidth(dim) {
+    if (dim.tranchees) return Math.max(4, dim.tranchees.nombre * dim.tranchees.entraxe_m);
+    if (dim.filtres)   return Math.max(3, Math.sqrt(dim.filtres.total_m2) * 1.3);
+    return Math.max(2, Math.sqrt(dim.empriseFiliere_m2));
+  },
+
+  _ancTraitHeight(dim) {
+    if (dim.tranchees) return Math.max(3, dim.tranchees.longueur_m * 0.4);
+    if (dim.filtres)   return Math.max(2.5, Math.sqrt(dim.filtres.total_m2) * 0.8);
+    return Math.max(2, Math.sqrt(dim.empriseFiliere_m2) * 0.7);
+  },
+
+  _mapScale() {
+    if (!this._map) return this.SCALE || 5;
+    const c = this._map.getCenter();
+    const p0 = this._map.project(c);
+    const p1 = this._map.project([c.lng + 0.00001, c.lat]);
+    const mPerPx = 0.00001 * 111320 * Math.cos(c.lat * Math.PI / 180) / Math.max(0.01, Math.abs(p1.x - p0.x));
+    return 1 / mPerPx;
   },
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -2150,6 +2301,7 @@ const EsquisseCanvas = {
     this._vegetationPlants    = result.plants ?? [];
     this._vegetationAmenities = result.amenities ?? [];
     this._vegetationStats     = result.stats ?? null;
+    this._vegetationZones     = result.zones ?? [];
     this._vegetationVisible   = true;
     this._fullRedraw();
     this._renderVegetationStats();
@@ -2351,6 +2503,9 @@ const EsquisseCanvas = {
   _drawVegetation(parentG) {
     const g = this._el('g', { class: 'vegetation-layer', opacity: '0.85' }, 'veg-layer', parentG);
 
+    // ── Scatter dots fond de massif (zones type massif/foret) ──
+    this._drawZoneScatter(g);
+
     for (const plant of this._vegetationPlants) {
       // Projeter position locale → pixel SVG
       const pt = this._map
@@ -2390,34 +2545,76 @@ const EsquisseCanvas = {
     }
   },
 
+  _drawZoneScatter(parentG) {
+    const zones = this._vegetationZones;
+    if (!zones?.length) return;
+    const massifTypes = ['massif', 'foret'];
+    for (const zone of zones) {
+      if (!massifTypes.includes(zone.patternType)) continue;
+      const poly = zone.polygon;
+      if (!poly || poly.length < 3) continue;
+
+      // Projeter polygone local → SVG
+      const svgPts = this._map
+        ? (() => {
+            const geo = this._localToGeo(poly);
+            return geo.map(g2 => this._project(g2)).filter(Boolean);
+          })()
+        : poly.map(p => this._localToSvgPt(p)).filter(Boolean);
+      if (svgPts.length < 3) continue;
+
+      // Bounding box SVG
+      let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+      for (const p of svgPts) {
+        if (p.x < xMin) xMin = p.x; if (p.x > xMax) xMax = p.x;
+        if (p.y < yMin) yMin = p.y; if (p.y > yMax) yMax = p.y;
+      }
+
+      // Clip path pour restreindre les dots au polygone
+      const clipId = `zone-clip-${zone.type}-${(zone.polygon[0]?.x ?? 0).toFixed(0)}`;
+      const clipEl = this._el('clipPath', { id: clipId }, null, parentG);
+      this._el('polygon', {
+        points: svgPts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' '),
+      }, null, clipEl);
+
+      const scatterG = this._el('g', { 'clip-path': `url(#${clipId})` }, null, parentG);
+
+      // Seeded RNG (deterministe)
+      let rngState = Math.abs(Math.round((zone.polygon[0]?.x ?? 1) * 1000 + (zone.polygon[0]?.y ?? 1) * 7777));
+      const rng = () => { rngState = (rngState * 1664525 + 1013904223) >>> 0; return (rngState & 0x7fffffff) / 0x7fffffff; };
+
+      // Scatter dots
+      const nDots = Math.min(120, Math.max(15, Math.round((xMax - xMin) * (yMax - yMin) * 0.008)));
+      const dotColor = zone.patternType === 'foret' ? 'rgba(30,80,20,0.18)' : 'rgba(40,100,35,0.15)';
+      for (let i = 0; i < nDots; i++) {
+        const dx = xMin + rng() * (xMax - xMin);
+        const dy = yMin + rng() * (yMax - yMin);
+        const dr = 1.2 + rng() * 2.5;
+        const opacity = 0.12 + rng() * 0.2;
+        this._el('circle', {
+          cx: dx.toFixed(1), cy: dy.toFixed(1), r: dr.toFixed(1),
+          fill: dotColor, opacity: opacity.toFixed(2), stroke: 'none',
+        }, null, scatterG);
+      }
+    }
+  },
+
   _drawPlantSVG(g, cx, cy, r, plant, seed) {
     const sym = plant.svgSymbol ?? 'broadleaf';
 
-    // Couleurs par espèce / strate
+    // Couleurs par espèce (color2D du JSON) ou fallback par symbole
     let fc, sc;
-    switch (plant.speciesKey) {
-      case 'flamboyant':
-        fc = 'rgba(180,52,26,0.58)'; sc = 'rgba(144,26,8,0.46)'; break;
-      case 'mango':
-        fc = 'rgba(20,80,28,0.65)'; sc = 'rgba(8,58,16,0.52)'; break;
-      case 'bougainvillea':
-        fc = 'rgba(180,50,120,0.55)'; sc = 'rgba(140,30,90,0.45)'; break;
-      case 'terminalia_catappa':
-        fc = 'rgba(36,88,44,0.6)'; sc = 'rgba(18,66,26,0.46)'; break;
-      default:
-        if (sym === 'palm')
-          { fc = 'rgba(50,104,36,0.6)'; sc = 'rgba(26,78,18,0.48)'; }
-        else if (sym === 'conifer' || sym === 'bamboo')
-          { fc = 'rgba(56,108,42,0.53)'; sc = 'rgba(34,84,26,0.43)'; }
-        else if (sym === 'shrub_flower' || sym === 'broadleaf_flower')
-          { fc = 'rgba(42,102,42,0.58)'; sc = 'rgba(20,76,20,0.46)'; }
-        else if (sym === 'tropical_shrub')
-          { fc = 'rgba(42,100,50,0.55)'; sc = 'rgba(22,74,30,0.44)'; }
-        else if (sym === 'grass')
-          { fc = 'rgba(70,120,50,0.5)'; sc = 'rgba(44,88,30,0.4)'; }
-        else
-          { fc = 'rgba(42,102,42,0.58)'; sc = 'rgba(20,76,20,0.46)'; }
-    }
+    const hex = plant.color2D;
+    if (hex) {
+      const r2 = parseInt(hex.slice(1, 3), 16), g2 = parseInt(hex.slice(3, 5), 16), b2 = parseInt(hex.slice(5, 7), 16);
+      fc = `rgba(${r2},${g2},${b2},0.58)`;
+      sc = `rgba(${Math.max(0, r2 - 30)},${Math.max(0, g2 - 30)},${Math.max(0, b2 - 30)},0.46)`;
+    } else if (sym === 'palm')
+      { fc = 'rgba(50,104,36,0.6)'; sc = 'rgba(26,78,18,0.48)'; }
+    else if (sym === 'conifer' || sym === 'bamboo')
+      { fc = 'rgba(56,108,42,0.53)'; sc = 'rgba(34,84,26,0.43)'; }
+    else
+      { fc = 'rgba(42,102,42,0.58)'; sc = 'rgba(20,76,20,0.46)'; }
 
     // Ombre portée
     this._el('circle', {
@@ -2455,13 +2652,37 @@ const EsquisseCanvas = {
           fill: 'none', stroke: fc, 'stroke-width': '2', 'stroke-linecap': 'round',
         }, null, g);
       }
+    } else if (sym === 'grass') {
+      // ── GRAMINEE — brins radiants depuis le centre ──
+      const nBlades = 9;
+      for (let i = 0; i < nBlades; i++) {
+        const a = i * Math.PI * 2 / nBlades + this._fbm(i + seed, 2) * 0.4;
+        const len = r * (0.7 + this._fbm(i * 0.8 + seed, 2) * 0.3);
+        const tip = this._fbm(i + seed + 3, 2) * r * 0.2;
+        this._el('path', {
+          d: `M${cx},${cy} Q${cx + Math.sin(a) * len * 0.6 + tip},${cy - Math.cos(a) * len * 0.6} ${cx + Math.sin(a) * len},${cy - Math.cos(a) * len}`,
+          fill: 'none', stroke: fc, 'stroke-width': String(Math.max(0.8, r * 0.08)), 'stroke-linecap': 'round',
+        }, null, g);
+      }
+    } else if (sym === 'shrub' || sym === 'tropical_shrub') {
+      // ── ARBUSTE — lobes superposés ──
+      const nLobes = 5 + Math.floor(this._fbm(seed, 2) * 3);
+      for (let i = 0; i < nLobes; i++) {
+        const a = i * Math.PI * 2 / nLobes + this._fbm(i + seed, 2) * 0.5;
+        const dist = r * (0.3 + this._fbm(i * 0.7 + seed, 2) * 0.25);
+        const lr = r * (0.35 + this._fbm(i * 1.1 + seed, 2) * 0.15);
+        this._el('circle', {
+          cx: cx + Math.sin(a) * dist, cy: cy - Math.cos(a) * dist, r: lr,
+          fill: fc, stroke: sc, 'stroke-width': '0.4',
+        }, null, g);
+      }
     } else {
-      // ── FEUILLU — polygone irrégulier (FBM noise) ──
-      const N = 16;
+      // ── FEUILLU (broadleaf / broadleaf_flower / shrub_flower) — polygone irrégulier (FBM noise) ──
+      const N = 32;
       const pts = [];
       for (let i = 0; i < N; i++) {
         const a = i * Math.PI * 2 / N;
-        const rr = r * (0.78 + this._fbm(i * 0.6 + seed, 3) * 0.24);
+        const rr = r * (0.78 + this._fbm(i * 0.6 + seed, 3) * 0.22);
         pts.push(`${(cx + Math.sin(a) * rr).toFixed(1)},${(cy - Math.cos(a) * rr).toFixed(1)}`);
       }
       this._el('polygon', {
@@ -2470,32 +2691,31 @@ const EsquisseCanvas = {
       }, null, g);
     }
 
+    // Inner shadow (profondeur canopée)
+    if (r > 8 && sym !== 'grass') {
+      this._el('circle', {
+        cx: cx - r * 0.06, cy: cy - r * 0.06, r: r * 0.45,
+        fill: 'rgba(0,0,0,0.1)', stroke: 'none',
+      }, null, g);
+    }
+
     // Tronc central
-    if (r > 6) {
+    if (r > 6 && sym !== 'grass') {
       this._el('circle', {
         cx, cy, r: Math.max(1.2, r * 0.12),
         fill: 'rgba(76,52,18,0.65)', stroke: 'none',
       }, null, g);
     }
 
-    // Pastilles fleurs (flamboyant)
-    if (plant.speciesKey === 'flamboyant') {
+    // Pastilles fleurs (toute espece avec flowerColor)
+    if (plant.flowerColor && r > 5) {
       for (let i = 0; i < 4; i++) {
-        const a = i * 1.1 + seed;
+        const a = i * 1.2 + seed;
+        const fh = plant.flowerColor;
+        const fr = parseInt(fh.slice(1, 3), 16), fg = parseInt(fh.slice(3, 5), 16), fb = parseInt(fh.slice(5, 7), 16);
         this._el('circle', {
-          cx: cx + Math.sin(a) * r * 0.52, cy: cy - Math.cos(a) * r * 0.52, r: 1.8,
-          fill: 'rgba(218,68,28,0.7)', stroke: 'none',
-        }, null, g);
-      }
-    }
-
-    // Pastilles bougainvillier
-    if (plant.speciesKey === 'bougainvillea') {
-      for (let i = 0; i < 4; i++) {
-        const a = i * 1.3 + seed;
-        this._el('circle', {
-          cx: cx + Math.sin(a) * r * 0.45, cy: cy - Math.cos(a) * r * 0.45, r: 1.5,
-          fill: 'rgba(200,50,140,0.7)', stroke: 'none',
+          cx: cx + Math.sin(a) * r * 0.5, cy: cy - Math.cos(a) * r * 0.5, r: Math.max(1.2, r * 0.1),
+          fill: `rgba(${fr},${fg},${fb},0.7)`, stroke: 'none',
         }, null, g);
       }
     }
@@ -3810,6 +4030,62 @@ const EsquisseCanvas = {
       _streetsGeo: [], _voisinsGeo: [], _edgeTypes: [],
       _map: null, _svg: null, _canvas: null, _boundRender: null,
     });
+  },
+
+  // ── OVERRIDE MANUEL DU TYPE D'ARÊTE ────────────────────────────
+  /**
+   * Permet à l'étudiant de forcer le type d'une arête (voie/fond/lateral).
+   * Cycle : lateral → voie → fond → lateral.
+   * Persiste dans session.terrain._edgeTypesManual pour le pipeline unifié.
+   */
+  cycleEdgeType(edgeIdx) {
+    if (edgeIdx < 0 || edgeIdx >= this._edgeTypes.length) return;
+    const CYCLE = { lateral: 'voie', voie: 'fond', fond: 'lateral', lat: 'voie' };
+    const current = this._edgeTypes[edgeIdx] ?? 'lateral';
+    this._edgeTypes[edgeIdx] = CYCLE[current] ?? 'voie';
+
+    // Persister dans la session pour le pipeline unifié
+    const terrain = this._session?.terrain ?? {};
+    terrain._edgeTypesManual = [...this._edgeTypes];
+    if (this._session?.terrain) this._session.terrain._edgeTypesManual = terrain._edgeTypesManual;
+    window.SessionManager?.saveTerrain?.({ _edgeTypesManual: terrain._edgeTypesManual });
+
+    // Redessiner
+    this._refresh();
+    window.TerlabToast?.show(
+      `Arête ${edgeIdx + 1} → ${this._edgeTypes[edgeIdx].toUpperCase()}`,
+      'info', 2000
+    );
+    window.dispatchEvent(new CustomEvent('terlab:edge-type-changed', {
+      detail: { edgeIdx, type: this._edgeTypes[edgeIdx], edgeTypes: this._edgeTypes }
+    }));
+  },
+
+  /** Active les arêtes cliquables (appelé après _drawParcel) */
+  _makeEdgesClickable() {
+    const pts = this._map ? this._projectAll(this._parcelGeo) : this._localToSvg(this._parcelLocal);
+    const n = pts.length;
+    if (n < 3) return;
+
+    const g = this._el('g', { id: 'edge-click-layer', cursor: 'pointer' });
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      const line = this._el('line', {
+        x1: pts[i].x, y1: pts[i].y, x2: pts[j].x, y2: pts[j].y,
+        stroke: 'transparent', 'stroke-width': 14, // zone de clic large
+        'data-edge-idx': i,
+      }, null, g);
+      line.addEventListener('click', () => this.cycleEdgeType(i));
+      // Tooltip
+      line.addEventListener('mouseenter', () => {
+        const type = this._edgeTypes[i] ?? 'lateral';
+        line.setAttribute('stroke', 'rgba(255,255,255,0.15)');
+        line.style.cursor = 'pointer';
+      });
+      line.addEventListener('mouseleave', () => {
+        line.setAttribute('stroke', 'transparent');
+      });
+    }
   },
 };
 
