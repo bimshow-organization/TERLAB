@@ -7,6 +7,8 @@
 import MapCapture from './map-capture.js';
 import GIEPPlanService from '../services/giep-plan-service.js';
 import GIEPCalculator from '../services/giep-calculator-service.js';
+import ANCService from '../services/anc-service.js';
+import ANCPlanService from '../services/anc-plan-service.js';
 import DiagRenderer from './diag-renderer.js';
 import { buildCoupeSVGDocument } from '../utils/coupe-renderer.js';
 import { loadPhrases, pickShort, buildPluContext, buildFullContext } from '../services/rapport-phrases-engine.js';
@@ -281,6 +283,7 @@ const ExportEngine = {
     if (mode === 'projet') {
       html += this._renderPlanche4(session, terrain, maps, ref, tp);
       html += this._renderPlancheGIEP(session, terrain, ref, tp);
+      html += this._renderPlancheANC(session, terrain, ref, tp);
     }
 
     html += this._renderPlanche5_6(session, terrain, maps, ref, tp); // Voisinage + Gabarit fusionnés
@@ -708,6 +711,81 @@ const ExportEngine = {
   },
 
   // ═══════════════════════════════════════════════════════════════
+  //  PLANCHE ANC — Assainissement Non Collectif
+  // ═══════════════════════════════════════════════════════════════
+
+  _renderPlancheANC(session, terrain, ref, tp) {
+    const sessionData = {
+      terrain,
+      phases: {
+        4: { data: this._getPhaseData(session, 4) },
+        7: { data: this._getPhaseData(session, 7) },
+      },
+      pluResolved: terrain._pluRules,
+    };
+    const ancResult = ANCService.computeFromSession(sessionData);
+    if (!ancResult?.besoinANC) return '';
+
+    const proposal = this._visuals?.activeProposal ?? window._activeProposal ?? null;
+    const ancSVG = proposal ? ANCPlanService.generatePlan(session, proposal, ancResult) : '';
+
+    const dim = ancResult.dimensionnement;
+    const cout = ancResult.cout;
+
+    // Tableau technique
+    const techHTML = `
+      <div style="display:flex;flex-wrap:wrap;gap:2px 12px;font-size:7.5pt;line-height:1.5">
+        <span><strong>Filiere</strong> ${ancResult.recommandation?.label ?? '—'}</span>
+        <span><strong>EH</strong> ${ancResult.eh}</span>
+        <span><strong>Volume EU</strong> ${ancResult.volume_m3_jour} m3/j</span>
+        <span><strong>K sol</strong> ${ancResult.k_mmh} mm/h (${ancResult.classeK?.label})</span>
+        <span><strong>Pente</strong> ${ancResult.pente_pct}%</span>
+        ${dim?.fosse ? `<span><strong>Fosse</strong> ${dim.fosse.volume_m3} m3</span>` : ''}
+        ${dim ? `<span><strong>Emprise ANC</strong> ${dim.empriseTotal_m2} m2</span>` : ''}
+        ${cout ? `<span><strong>CapEx</strong> ${cout.capex_min.toLocaleString()}-${cout.capex_max.toLocaleString()} EUR</span>` : ''}
+        ${cout ? `<span><strong>OpEx</strong> ${cout.opex_annuel} EUR/an</span>` : ''}
+      </div>`;
+
+    // Score badge
+    const scoreBadge = `<div style="text-align:center;margin:4px 0">
+      <span style="font-size:22pt;font-weight:bold;color:${ancResult.scoreColor};font-family:var(--font-serif)">${ancResult.score}<small>/100</small></span>
+      <span style="color:${ancResult.scoreColor};font-size:10pt;margin-left:8px">${ancResult.scoreLabel}</span>
+    </div>`;
+
+    // Conformité
+    const confHTML = ancResult.conformite?.length ? `
+      <div style="font-size:7.5pt;margin-top:4px">
+        ${ancResult.conformite.map(c => {
+          const color = c.severity === 'error' ? '#DC2626' : c.severity === 'warning' ? '#D97706' : '#16A34A';
+          const icon = c.severity === 'error' ? '✗' : c.severity === 'warning' ? '⚠' : '✓';
+          return `<div style="color:${color}">${icon} ${c.text}</div>`;
+        }).join('')}
+      </div>` : '';
+
+    // SPANC
+    const spancHTML = ancResult.spanc ? `
+      <div style="font-size:7pt;margin-top:4px;padding:4px;background:#EFF6FF;border-radius:3px">
+        SPANC : <strong>${ancResult.spanc.nom}</strong> — ${ancResult.spanc.tel}
+      </div>` : '';
+
+    return `<div class="page">
+      ${plancheHead('Plan ANC — Assainissement Non Collectif', 'ANC', tp, ref)}
+      <div class="pb" style="display:flex;flex-direction:column;gap:4px">
+        ${scoreBadge}
+        ${techHTML}
+        ${ancSVG ? `<div class="map-wrap" style="flex:1;min-height:350px">
+          ${ancSVG}
+          <span class="map-lbl">Plan ANC</span>
+          <span class="map-src">DTU 64.1 · Arrete 7 sept. 2009 · Guide SPANC Reunion</span>
+        </div>` : ''}
+        ${confHTML}
+        ${spancHTML}
+      </div>
+      ${plancheFoot(terrain.commune, ref, 'ANC', tp)}
+    </div>`;
+  },
+
+  // ═══════════════════════════════════════════════════════════════
   //  PLANCHE 5+6 — Voisinage & Esquisse (fusionnée)
   // ═══════════════════════════════════════════════════════════════
 
@@ -975,8 +1053,16 @@ const ExportEngine = {
     // Negatif
     if (terrain.zone_pprn === 'R1' || terrain.zone_pprn === 'R2')
       items.push({ icon: '-', cls: 'm', text: 'Zone rouge PPR — inconstructible' });
-    if (terrain.assainissement === 'ANC')
-      items.push({ icon: '-', cls: 'm', text: 'Assainissement non collectif — etude filiere requise' });
+    if (terrain.assainissement === 'ANC') {
+      const ancFil = terrain.anc_filiere;
+      const ancLabels = {
+        epandage_classique: 'epandage classique', filtre_sable_vertical: 'filtre a sable',
+        filtre_sable_vertical_draine: 'filtre a sable draine', micro_station: 'micro-station',
+        filtre_plante: 'phytoepuration', filtre_compact: 'filtre compact', tertre_infiltration: 'tertre hors sol',
+      };
+      const filLabel = ancLabels[ancFil] ?? 'etude filiere requise';
+      items.push({ icon: '-', cls: 'm', text: `ANC — ${filLabel} · K=${terrain.anc_k_mmh ?? '?'} mm/h` });
+    }
     if (items.length === 0) {
       items.push({ icon: '?', cls: 'a', text: 'Analyse incomplete — completer les phases pour obtenir la synthese' });
     }

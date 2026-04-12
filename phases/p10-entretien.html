@@ -107,6 +107,53 @@
     </div>
   </div>
 
+  <!-- ═══ ENTRETIEN ANC ═══ -->
+  <div class="form-section anim-slide-up" id="p10-anc-section" style="display:none">
+    <div class="fs-head">🚿 Entretien ANC — Assainissement Non Collectif</div>
+    <div id="p10-anc-content">
+      <div class="anc-maint-grid">
+        <div class="anc-maint-item">
+          <div class="anc-maint-icon">🪣</div>
+          <div class="anc-maint-body">
+            <div class="anc-maint-label">Vidange fosse toutes eaux</div>
+            <div class="anc-maint-freq" id="p10-anc-vidange">Tous les 4 ans</div>
+            <div class="anc-maint-cost" id="p10-anc-vidange-cost">~200 €/vidange</div>
+          </div>
+        </div>
+        <div class="anc-maint-item">
+          <div class="anc-maint-icon">🔍</div>
+          <div class="anc-maint-body">
+            <div class="anc-maint-label">Contrôle SPANC</div>
+            <div class="anc-maint-freq">Obligatoire — tous les 8 ans (max)</div>
+            <div class="anc-maint-cost">~150–200 €/contrôle</div>
+          </div>
+        </div>
+        <div class="anc-maint-item">
+          <div class="anc-maint-icon">⚙️</div>
+          <div class="anc-maint-body">
+            <div class="anc-maint-label" id="p10-anc-entretien-label">Entretien filière</div>
+            <div class="anc-maint-freq" id="p10-anc-entretien-freq">—</div>
+            <div class="anc-maint-cost" id="p10-anc-entretien-cost">—</div>
+          </div>
+        </div>
+        <div class="anc-maint-item">
+          <div class="anc-maint-icon">📋</div>
+          <div class="anc-maint-body">
+            <div class="anc-maint-label">Coût annuel OpEx estimé</div>
+            <div class="anc-maint-freq" id="p10-anc-opex">—</div>
+            <div class="anc-maint-cost" id="p10-anc-duree">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="anc-maint-checks">
+        <label class="maint-item"><input type="checkbox" data-key="anc_carnet" data-session-key="anc_carnet"/>Carnet d'entretien ANC prévu</label>
+        <label class="maint-item"><input type="checkbox" data-key="anc_acces" data-session-key="anc_acces"/>Accès véhicule vidange prévu (fosse)</label>
+        <label class="maint-item"><input type="checkbox" data-key="anc_regards" data-session-key="anc_regards"/>Regards de visite sur canalisation EU</label>
+      </div>
+      <div id="p10-anc-spanc" class="anc-maint-spanc" style="display:none"></div>
+    </div>
+  </div>
+
   <!-- ═══ FIN DE VIE & RÉEMPLOI ═══ -->
   <div class="form-section anim-slide-up">
     <div class="fs-head">Déconstruction sélective</div>
@@ -178,6 +225,59 @@
       </div>
     </div>
     <p class="field-note">Le passeport matériaux (métadonnées BIM par élément) facilite la traçabilité pour le réemploi et réduit les coûts de déconstruction sélective.</p>
+  </div>
+
+  <!-- ═══ DIAGNOSTIC CONDENSATION — Izard Altitude 1 & 2 ═══ -->
+  <div class="form-section anim-slide-up" id="p10-condensation-section">
+    <div class="fs-head">Risque de condensation (Izard Altitude)</div>
+    <div style="padding:8px 12px">
+      <p style="font-size:.72rem;color:var(--ink3);font-style:italic;margin-bottom:8px">
+        Diagramme psychrométrique simplifié. En altitude (&gt;800m), l'air intérieur chaud et humide
+        peut condenser sur les parois froides mal isolées (Izard Fig.53-54).
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+        <label class="sg-label" style="font-size:.68rem;white-space:nowrap">T° ext.</label>
+        <input type="range" id="p10-cond-text" min="5" max="30" step="0.5" value="15"
+          oninput="P10.updateCondensation()" style="flex:1">
+        <span id="p10-cond-text-val" style="font-family:var(--font-mono);font-size:10px;min-width:36px">15°C</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+        <label class="sg-label" style="font-size:.68rem;white-space:nowrap">HR ext.</label>
+        <input type="range" id="p10-cond-hr" min="40" max="100" step="1" value="85"
+          oninput="P10.updateCondensation()" style="flex:1">
+        <span id="p10-cond-hr-val" style="font-family:var(--font-mono);font-size:10px;min-width:36px">85%</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <label class="sg-label" style="font-size:.68rem;white-space:nowrap">T° paroi</label>
+        <input type="range" id="p10-cond-tparoi" min="5" max="30" step="0.5" value="12"
+          oninput="P10.updateCondensation()" style="flex:1">
+        <span id="p10-cond-tparoi-val" style="font-family:var(--font-mono);font-size:10px;min-width:36px">12°C</span>
+      </div>
+      <div id="p10-cond-badge" style="display:none;padding:5px 8px;border-radius:var(--r-sm);font-size:.72rem;font-weight:bold;text-align:center;margin-bottom:6px"></div>
+      <svg id="p10-cond-svg" viewBox="0 0 280 160" style="width:100%;height:auto;background:var(--bg2);border-radius:var(--r-sm)"></svg>
+    </div>
+  </div>
+
+  <!-- ═══ PATHOLOGIES TOITURE — Izard Hauts Solaire ═══ -->
+  <div class="form-section anim-slide-up" id="p10-toiture-section">
+    <div class="fs-head">Pathologies toiture (Izard Hauts)</div>
+    <div style="padding:8px 12px">
+      <p style="font-size:.72rem;color:var(--ink3);font-style:italic;margin-bottom:8px">
+        Dalles de couverture non isolées = pathologie majeure dans les Hauts (&gt;400m).
+        Flux thermique descendant le jour, rayonnement vers le ciel la nuit (T° radiante ≈ −17°C).
+      </p>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <label class="sg-label" style="font-size:.68rem;white-space:nowrap">Type</label>
+        <select id="p10-toit-type" onchange="P10.updateToiture()"
+          style="flex:1;padding:4px 6px;background:var(--raised);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--font-mono);font-size:10px">
+          <option value="dalle_nue">Dalle béton nue (non isolée)</option>
+          <option value="dalle_isolee">Dalle béton + isolant</option>
+          <option value="tole_ventilee" selected>Tôle ventilée (standard Réunion)</option>
+        </select>
+      </div>
+      <div id="p10-toit-badge" style="display:none;padding:5px 8px;border-radius:var(--r-sm);font-size:.72rem;font-weight:bold;text-align:center;margin-bottom:6px"></div>
+      <svg id="p10-toit-svg" viewBox="0 0 280 140" style="width:100%;height:auto;background:var(--bg2);border-radius:var(--r-sm)"></svg>
+    </div>
   </div>
 
   <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
@@ -265,6 +365,16 @@
 .cs-badge.forte { background:var(--danger2); color:var(--danger); }
 .cs-badge.moderee { background:var(--warning2); color:var(--warning); }
 .cs-badge.faible { background:var(--success2); color:var(--success); }
+
+/* ── Entretien ANC ─────────────────────────────────────────────── */
+.anc-maint-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px; }
+.anc-maint-item { background:var(--bg); border:1px solid var(--border); border-radius:var(--r-sm); padding:8px; display:flex; gap:7px; }
+.anc-maint-icon { font-size:18px; flex-shrink:0; }
+.anc-maint-label { font-family:var(--font-mono); font-size:8.5px; color:var(--faint); text-transform:uppercase; letter-spacing:.06em; margin-bottom:3px; }
+.anc-maint-freq { font-size:11px; font-weight:500; }
+.anc-maint-cost { font-size:10px; color:var(--faint); margin-top:2px; }
+.anc-maint-checks { margin-bottom:8px; }
+.anc-maint-spanc { background:var(--accent2); border:1px solid rgba(59,130,246,.2); border-radius:var(--r-sm); padding:8px 10px; font-size:11px; }
 </style>
 <script type="module">
 const SessionManager = window.SessionManager;
@@ -296,9 +406,218 @@ const P10 = {
       checkItems[4].classList.add('checked');
       checkItems[4].setAttribute('aria-checked', 'true');
     }
-  }
+  },
+
+  // ─── Diagnostic condensation (Izard Altitude 1 & 2) ──────────
+  updateCondensation() {
+    const Tair   = +document.getElementById('p10-cond-text').value;
+    const HR     = +document.getElementById('p10-cond-hr').value;
+    const Tparoi = +document.getElementById('p10-cond-tparoi').value;
+
+    document.getElementById('p10-cond-text-val').textContent   = Tair.toFixed(1) + '°C';
+    document.getElementById('p10-cond-hr-val').textContent     = HR + '%';
+    document.getElementById('p10-cond-tparoi-val').textContent = Tparoi.toFixed(1) + '°C';
+
+    // Température de rosée (approximation Magnus)
+    const a = 17.27, b = 237.7;
+    const gamma = (a * Tair) / (b + Tair) + Math.log(HR / 100);
+    const Tdew = (b * gamma) / (a - gamma);
+
+    const risk = Tparoi <= Tdew;
+
+    const badge = document.getElementById('p10-cond-badge');
+    if (badge) {
+      badge.style.display = 'block';
+      badge.style.background = risk ? '#3b1010' : '#163b2a';
+      badge.style.color      = risk ? '#f07070' : '#4ade80';
+      badge.textContent = risk
+        ? `⚠ CONDENSATION — T° paroi ${Tparoi.toFixed(1)}°C ≤ T° rosée ${Tdew.toFixed(1)}°C`
+        : `✓ Pas de risque — T° paroi ${Tparoi.toFixed(1)}°C > T° rosée ${Tdew.toFixed(1)}°C`;
+    }
+
+    this._drawCondensationSVG(Tair, HR, Tparoi, Tdew, risk);
+  },
+
+  /** Diagramme psychrométrique simplifié SVG */
+  _drawCondensationSVG(Tair, HR, Tparoi, Tdew, risk) {
+    const svg = document.getElementById('p10-cond-svg');
+    if (!svg) return;
+
+    const vb = { w: 280, h: 160 };
+    const m = { top: 20, right: 20, bottom: 30, left: 40 };
+    const cW = vb.w - m.left - m.right;
+    const cH = vb.h - m.top - m.bottom;
+
+    // Axes : T (0-35°C) horizontal, HR saturante courbe
+    const Tmin = 0, Tmax = 35;
+    const xScale = t => m.left + ((t - Tmin) / (Tmax - Tmin)) * cW;
+    const yScale = w => m.top + cH - (w / 30) * cH; // w en g/kg (0-30)
+
+    // Courbe de saturation (HR=100%)
+    let satPath = '';
+    for (let t = Tmin; t <= Tmax; t += 1) {
+      const pSat = 610.78 * Math.exp((17.27 * t) / (237.3 + t)); // Pa
+      const wSat = 621.97 * pSat / (101325 - pSat); // g/kg
+      const x = xScale(t), y = yScale(wSat);
+      satPath += (t === Tmin ? 'M' : 'L') + x.toFixed(1) + ',' + y.toFixed(1);
+    }
+
+    // Point air extérieur
+    const pAir = 610.78 * Math.exp((17.27 * Tair) / (237.3 + Tair));
+    const wAir = 621.97 * pAir / (101325 - pAir) * (HR / 100);
+    const ptAirX = xScale(Tair), ptAirY = yScale(wAir);
+
+    // Point de rosée
+    const ptDewX = xScale(Tdew), ptDewY = yScale(wAir);
+
+    // Point paroi
+    const ptParoiX = xScale(Tparoi);
+
+    // Grille T
+    let grid = '';
+    for (let t = 5; t <= 30; t += 5) {
+      const x = xScale(t);
+      grid += `<line x1="${x}" y1="${m.top}" x2="${x}" y2="${m.top + cH}" stroke="var(--ink4)" stroke-width="0.3" stroke-dasharray="2,2"/>`;
+      grid += `<text x="${x}" y="${vb.h - 8}" fill="var(--ink3)" font-size="7" text-anchor="middle" font-family="var(--font-mono)">${t}°C</text>`;
+    }
+
+    svg.innerHTML = `
+      ${grid}
+      <!-- Axe -->
+      <line x1="${m.left}" y1="${m.top + cH}" x2="${m.left + cW}" y2="${m.top + cH}" stroke="var(--ink3)" stroke-width="0.5"/>
+      <line x1="${m.left}" y1="${m.top}" x2="${m.left}" y2="${m.top + cH}" stroke="var(--ink3)" stroke-width="0.5"/>
+      <text x="${vb.w/2}" y="${vb.h - 1}" fill="var(--ink3)" font-size="7" text-anchor="middle" font-family="var(--font-mono)">Température (°C)</text>
+      <text x="10" y="${m.top + cH/2}" fill="var(--ink3)" font-size="6" text-anchor="middle" font-family="var(--font-mono)" transform="rotate(-90,10,${m.top + cH/2})">w (g/kg)</text>
+      <!-- Courbe saturation -->
+      <path d="${satPath}" fill="none" stroke="#3498db" stroke-width="1.5"/>
+      <text x="${xScale(32)}" y="${yScale(28)}" fill="#3498db" font-size="6" font-family="var(--font-mono)">HR=100%</text>
+      <!-- Zone condensation -->
+      <rect x="${m.left}" y="${m.top}" width="${Math.max(0, ptDewX - m.left)}" height="${cH}" fill="rgba(239,68,68,0.06)"/>
+      <!-- Ligne T paroi -->
+      <line x1="${ptParoiX}" y1="${m.top}" x2="${ptParoiX}" y2="${m.top + cH}" stroke="${risk ? '#f07070' : '#4ade80'}" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="${ptParoiX}" y="${m.top - 4}" fill="${risk ? '#f07070' : '#4ade80'}" font-size="6.5" text-anchor="middle" font-weight="bold" font-family="var(--font-mono)">T paroi</text>
+      <!-- Ligne T rosée -->
+      <line x1="${ptDewX}" y1="${m.top}" x2="${ptDewX}" y2="${m.top + cH}" stroke="#f0c040" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="${ptDewX}" y="${m.top + cH + 12}" fill="#f0c040" font-size="6" text-anchor="middle" font-family="var(--font-mono)">T rosée ${Tdew.toFixed(1)}°</text>
+      <!-- Point air -->
+      <circle cx="${ptAirX}" cy="${ptAirY}" r="4" fill="#4a9fd4" stroke="#fff" stroke-width="1"/>
+      <text x="${ptAirX + 6}" y="${ptAirY - 4}" fill="#4a9fd4" font-size="6.5" font-family="var(--font-mono)">Air ${Tair}°C ${HR}%</text>
+      <!-- Flèche horizontale air → rosée -->
+      <line x1="${ptAirX}" y1="${ptAirY}" x2="${ptDewX}" y2="${ptDewY}" stroke="#f0c040" stroke-width="0.8" stroke-dasharray="2,1"/>
+      <circle cx="${ptDewX}" cy="${ptDewY}" r="3" fill="#f0c040" stroke="#fff" stroke-width="0.5"/>
+      <!-- Titre -->
+      <text x="${vb.w/2}" y="12" fill="var(--ink2)" font-size="8" text-anchor="middle" font-weight="bold" font-family="var(--font-mono)">Diagramme psychrométrique simplifié — Izard Fig.53</text>
+    `;
+  },
+
+  // ─── Pathologies toiture (Izard Hauts Solaire) ────────────────
+  updateToiture() {
+    const type = document.getElementById('p10-toit-type').value;
+    const terrain = window.SessionManager?.getTerrain?.() ?? {};
+    const alt = parseFloat(terrain.altitude_ngr ?? 0);
+    const zone = alt < 400 ? 1 : alt < 800 ? 2 : 3;
+
+    const TYPES = {
+      dalle_nue:      { label: 'Dalle béton nue', R: 0.05, risk: zone >= 2, color: '#ef4444', desc: 'Aucune isolation — flux thermique direct, condensation nocturne' },
+      dalle_isolee:   { label: 'Dalle + isolant', R: 2.5,  risk: false,     color: '#22c55e', desc: 'Isolation conforme RTAA — R ≥ 2.5 m²·K/W' },
+      tole_ventilee:  { label: 'Tôle ventilée',   R: 1.0,  risk: zone >= 3, color: '#f59e0b', desc: 'Standard Réunion — lame d\'air ventilée 4cm minimum' },
+    };
+    const t = TYPES[type];
+
+    const badge = document.getElementById('p10-toit-badge');
+    if (badge) {
+      badge.style.display = 'block';
+      badge.style.background = t.risk ? '#3b1010' : '#163b2a';
+      badge.style.color      = t.risk ? '#f07070' : '#4ade80';
+      badge.textContent = t.risk
+        ? `⚠ ${t.label} en zone PERENE ${zone} — ${t.desc}`
+        : `✓ ${t.label} — ${t.desc}`;
+    }
+
+    this._drawToitureSVG(type, t, zone);
+  },
+
+  /** Coupe de toiture SVG — flux thermique jour/nuit */
+  _drawToitureSVG(type, t, zone) {
+    const svg = document.getElementById('p10-toit-svg');
+    if (!svg) return;
+
+    const vb = { w: 280, h: 140 };
+    const cx = vb.w / 2;
+    const roofY = 35;
+    const slabH = 12;
+    const roomH = 50;
+    const roomY = roofY + slabH;
+
+    // Couches selon type
+    let layers = '';
+    let isolantY = 0;
+    if (type === 'dalle_nue') {
+      layers = `<rect x="60" y="${roofY}" width="160" height="${slabH}" fill="#778899" stroke="var(--ink2)" stroke-width="0.5"/>
+                <text x="${cx}" y="${roofY + slabH/2 + 3}" fill="var(--ink2)" font-size="6" text-anchor="middle" font-family="var(--font-mono)">Dalle béton 20cm</text>`;
+    } else if (type === 'dalle_isolee') {
+      isolantY = roofY - 6;
+      layers = `<rect x="60" y="${isolantY}" width="160" height="6" fill="#f59e0b" opacity="0.5" stroke="var(--ink2)" stroke-width="0.5"/>
+                <text x="${cx}" y="${isolantY + 4}" fill="#f59e0b" font-size="5" text-anchor="middle" font-family="var(--font-mono)">Isolant R=2.5</text>
+                <rect x="60" y="${roofY}" width="160" height="${slabH}" fill="#778899" stroke="var(--ink2)" stroke-width="0.5"/>`;
+    } else {
+      // Tôle ventilée
+      const toleY = roofY - 10;
+      layers = `<line x1="50" y1="${toleY}" x2="230" y2="${toleY}" stroke="#a0a0a0" stroke-width="2"/>
+                <text x="${cx}" y="${toleY - 4}" fill="var(--ink3)" font-size="5" text-anchor="middle" font-family="var(--font-mono)">Tôle</text>
+                <text x="${cx}" y="${toleY + 7}" fill="#4a9fd4" font-size="5" text-anchor="middle" font-family="var(--font-mono)">↔ lame d'air 4cm</text>
+                <rect x="60" y="${roofY}" width="160" height="${slabH}" fill="#778899" stroke="var(--ink2)" stroke-width="0.5"/>`;
+    }
+
+    // Flèches flux thermique
+    const arrowColor = t.risk ? '#ef4444' : '#22c55e';
+    // Jour : soleil → toiture → intérieur (flèche descendante)
+    const dayArrows = `
+      <line x1="100" y1="8" x2="100" y2="${roofY - 2}" stroke="#f0c040" stroke-width="1.5" marker-end="url(#arrowDown)"/>
+      <text x="105" y="14" fill="#f0c040" font-size="6" font-family="var(--font-mono)">☀ 1024 W/m²</text>
+      <line x1="100" y1="${roomY + 2}" x2="100" y2="${roomY + 20}" stroke="${arrowColor}" stroke-width="1" marker-end="url(#arrowDown)"/>
+    `;
+    // Nuit : intérieur → ciel (flèche montante) — rayonnement T_rad = -17°C
+    const nightArrows = `
+      <line x1="180" y1="${roofY - 2}" x2="180" y2="8" stroke="#3498db" stroke-width="1.5" marker-end="url(#arrowUp)"/>
+      <text x="185" y="14" fill="#3498db" font-size="6" font-family="var(--font-mono)">🌙 T_rad ≈ −17°C</text>
+      <line x1="180" y1="${roomY + 20}" x2="180" y2="${roomY + 2}" stroke="#3498db" stroke-width="0.8" marker-end="url(#arrowUp)"/>
+    `;
+
+    // Pièce intérieure
+    const room = `<rect x="60" y="${roomY}" width="160" height="${roomH}" fill="none" stroke="var(--ink3)" stroke-width="0.5" stroke-dasharray="3,2"/>
+                  <text x="${cx}" y="${roomY + roomH/2 + 3}" fill="var(--ink3)" font-size="7" text-anchor="middle" font-family="var(--font-mono)">Pièce de vie</text>`;
+
+    svg.innerHTML = `
+      <defs>
+        <marker id="arrowDown" viewBox="0 0 6 6" refX="3" refY="6" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M0,0 L3,6 L6,0 Z" fill="currentColor"/>
+        </marker>
+        <marker id="arrowUp" viewBox="0 0 6 6" refX="3" refY="0" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M0,6 L3,0 L6,6 Z" fill="currentColor"/>
+        </marker>
+      </defs>
+      ${layers}
+      ${room}
+      ${dayArrows}
+      ${nightArrows}
+      <!-- Sol -->
+      <line x1="40" y1="${roomY + roomH}" x2="240" y2="${roomY + roomH}" stroke="var(--ink4)" stroke-width="0.5"/>
+      <!-- Labels jour/nuit -->
+      <text x="80" y="${vb.h - 6}" fill="#f0c040" font-size="7" text-anchor="middle" font-weight="bold" font-family="var(--font-mono)">JOUR</text>
+      <text x="200" y="${vb.h - 6}" fill="#3498db" font-size="7" text-anchor="middle" font-weight="bold" font-family="var(--font-mono)">NUIT</text>
+      <!-- Zone PERENE -->
+      <text x="${vb.w - 10}" y="${vb.h - 6}" fill="var(--ink4)" font-size="5" text-anchor="end" font-family="var(--font-mono)">Zone PERENE ${zone}</text>
+      <!-- Titre -->
+      <text x="${cx}" y="${vb.h - 16}" fill="var(--ink4)" font-size="5.5" text-anchor="middle" font-family="var(--font-mono)">Izard Hauts Solaire — Fig.64-65 — Flux thermique toiture</text>
+    `;
+  },
 };
 window.P10 = P10;
+
+// Init Izard visualisations
+P10.updateCondensation();
+P10.updateToiture();
 
 // Filière note dynamic
 document.querySelector('[data-session-key="filiere_dechets"]')?.addEventListener('change', function() {
@@ -344,6 +663,63 @@ const _csTimer = setInterval(() => {
   }
 }, 500);
 setTimeout(() => clearInterval(_csTimer), 15000);
+
+// ── Entretien ANC — affichage conditionnel ────────────────────────
+(async function initANCMaintenance() {
+  const terrain = SessionManager.getTerrain?.() ?? {};
+  if (terrain.assainissement !== 'ANC') return;
+
+  const section = document.getElementById('p10-anc-section');
+  if (section) section.style.display = 'block';
+
+  try {
+    const { default: ANCService } = await import('../services/anc-service.js');
+    const session = SessionManager.getAll?.() ?? { terrain };
+    const result = ANCService.computeFromSession(session);
+    if (!result?.besoinANC) return;
+
+    const dim = result.dimensionnement;
+    const cout = result.cout;
+    const filiere = ANCService.getFilieres()[result.recommandation?.id];
+
+    // Vidange
+    if (dim?.fosse) {
+      const el = document.getElementById('p10-anc-vidange');
+      if (el) el.textContent = `Tous les 4 ans — fosse ${dim.fosse.volume_m3} m³`;
+      const costEl = document.getElementById('p10-anc-vidange-cost');
+      if (costEl) costEl.textContent = `~200 €/vidange (Réunion)`;
+    }
+
+    // Entretien filière
+    if (filiere) {
+      const lbl = document.getElementById('p10-anc-entretien-label');
+      if (lbl) lbl.textContent = `Entretien ${filiere.short}`;
+      const freq = document.getElementById('p10-anc-entretien-freq');
+      if (freq) freq.textContent = filiere.entretien;
+      const cost = document.getElementById('p10-anc-entretien-cost');
+      if (cost) cost.textContent = `Durée de vie : ${filiere.duree_vie_ans} ans`;
+    }
+
+    // OpEx
+    if (cout) {
+      const opex = document.getElementById('p10-anc-opex');
+      if (opex) opex.textContent = `${cout.opex_annuel} €/an`;
+      const duree = document.getElementById('p10-anc-duree');
+      if (duree) duree.textContent = `Coût global sur ${cout.duree_vie_ans} ans : ~${cout.cout_global.toLocaleString()} €`;
+    }
+
+    // SPANC
+    if (result.spanc) {
+      const spancEl = document.getElementById('p10-anc-spanc');
+      if (spancEl) {
+        spancEl.style.display = 'block';
+        spancEl.innerHTML = `📞 <strong>${result.spanc.nom}</strong> — ${result.spanc.tel}`;
+      }
+    }
+  } catch (e) {
+    console.warn('[P10] ANC init error:', e.message);
+  }
+})();
 
 // enviroBAT cards
 if (window.EnvirobatCards) EnvirobatCards.render('eb-cards-p10', 'p10');
