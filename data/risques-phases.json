@@ -158,6 +158,33 @@
       "action": "Consulter le SPANC (Service Public d'Assainissement Non Collectif) de la commune avant tout projet en zone non raccordée."
     },
     {
+      "id": "anc-nappe-haute",
+      "phase": 5,
+      "niveau": "warning",
+      "titre": "ANC — nappe phréatique haute (< 1.5m)",
+      "corps": "Une nappe phréatique à moins de 1.5m de profondeur interdit l'épandage classique et la plupart des filtres enterrés. Un tertre d'infiltration hors sol ou une micro-station avec rejet en surface est nécessaire.",
+      "consequence": "Sur-coût de 10 000 à 20 000€. Pompe de relevage obligatoire (consommation électrique).",
+      "action": "Vérifier la profondeur de nappe par sondage ou données BRGM. Consulter le SPANC pour les filières autorisées."
+    },
+    {
+      "id": "anc-sol-impermeable",
+      "phase": 5,
+      "niveau": "info",
+      "titre": "ANC — sol à faible perméabilité",
+      "corps": "Un sol à perméabilité < 6 mm/h (argile, basalte altéré) impose une filière drainée avec exutoire (ravine, fossé) ou une micro-station. L'étude de sol avec test de percolation est indispensable.",
+      "consequence": "Filière drainée ou compacte obligatoire. Nécessité d'un exutoire pour le rejet des eaux traitées.",
+      "action": "Commander une étude de sol avec test de percolation in situ avant le dépôt de permis."
+    },
+    {
+      "id": "anc-parcelle-exigue",
+      "phase": 5,
+      "niveau": "info",
+      "titre": "ANC — parcelle < 500 m² en zone ANC",
+      "corps": "Sur une parcelle de moins de 500 m², l'espace disponible pour l'ANC (fosse + traitement + reculs réglementaires) est très contraint. Seules les filières compactes (micro-station, filtre compact) sont envisageables.",
+      "consequence": "Filière compacte imposée. Impossibilité d'épandage classique. Accès véhicule vidange à prévoir.",
+      "action": "Vérifier que la surface disponible (hors bâti, hors reculs) permet l'implantation d'une filière compacte (~10-15 m²)."
+    },
+    {
       "id": "acces-sdis-non-conforme",
       "phase": 5,
       "niveau": "danger",
@@ -165,6 +192,15 @@
       "corps": "Si la voie d'accès au terrain ne permet pas l'intervention des engins de pompiers (largeur < 3m, hauteur libre < 3.5m, portance insuffisante), le SDIS peut rendre un avis défavorable au PC.",
       "consequence": "Refus de PC, ou obligation de créer une voie conforme (coût parfois prohibitif).",
       "action": "Vérifier les dimensions de la voie d'accès sur place et via Google Maps (mesures approximatives). Contacter le SDIS 974 si doute."
+    },
+    {
+      "id": "bati-ancien-amiante",
+      "phase": 5,
+      "niveau": "warning",
+      "titre": "Bâti voisin ancien — risque amiante et plomb",
+      "corps": "Un tissu bâti majoritairement antérieur à 1975 signale un environnement construit avant les réglementations sur l'amiante (1997) et le plomb (1949). En cas de démolition partielle ou de rénovation sur l'existant, un diagnostic amiante et plomb est obligatoire.",
+      "consequence": "Coûts de désamiantage non anticipés. Risque sanitaire pour les ouvriers et les riverains.",
+      "action": "Vérifier l'ancienneté des bâtiments voisins via la BDNB ou le cadastre. Si intervention sur existant pré-1997 : diagnostic amiante avant travaux obligatoire (Code de la santé publique)."
     },
     {
       "id": "eclairage-petrel",

@@ -244,19 +244,22 @@
         { "id": "v05a", "texte": "ICPE dans un rayon de 500m vérifiées (oui/non + distance)", "bloquant": false },
         { "id": "v05b", "texte": "Présence d'un hydrant SDIS confirmée", "bloquant": false },
         { "id": "v05c", "texte": "Accès sapeurs-pompiers conforme vérifié", "bloquant": false },
-        { "id": "v05d", "texte": "Réseau assainissement (collectif / ANC) identifié", "bloquant": false }
+        { "id": "v05d", "texte": "Réseau assainissement (collectif / ANC) identifié", "bloquant": false },
+        { "id": "v05e", "texte": "Si ANC : filière recommandée analysée (perméabilité, emprise, coût)", "bloquant": false }
       ],
       "input_fields": [
         { "id": "icpe_present", "label": "ICPE dans rayon 500m", "type": "radio", "options": ["Oui", "Non", "À vérifier"], "required": true },
         { "id": "icpe_distance_m", "label": "Distance ICPE la plus proche (m)", "type": "number", "unit": "m", "required": false },
         { "id": "assainissement", "label": "Réseau assainissement", "type": "radio", "options": ["Collectif (tout-à-l'égout)", "ANC — Assainissement Non Collectif", "Inconnu — vérification mairie"], "required": true },
+        { "id": "anc_filiere", "label": "Filière ANC recommandée", "type": "computed", "source": "anc-service", "required": false },
+        { "id": "anc_k_mmh", "label": "Perméabilité sol K (mm/h)", "type": "number", "unit": "mm/h", "required": false },
         { "id": "eau_potable", "label": "Réseau eau potable", "type": "radio", "options": ["Oui (réseau public)", "Captage privé", "Inconnu"], "required": true },
         { "id": "fibre_optique", "label": "Fibre optique / THD disponible", "type": "radio", "options": ["Oui", "Non (ADSL)", "Non (zone blanche)"], "required": false },
         { "id": "nuisances_sonores", "label": "Nuisances sonores (route, industrie, aéroport)", "type": "radio", "options": ["Importantes", "Modérées", "Faibles", "Aucune"], "required": false },
         { "id": "bati_voisin_hauteurs", "label": "Hauteurs bâtiments voisins (m) — vérification carte", "type": "text", "required": false }
       ],
       "auto_detected": ["batiments_mapbox_3d", "icpe_georisques", "basias_basol"],
-      "risques_phase": ["basol-cache", "anc-pente", "acces-sdis-non-conforme"]
+      "risques_phase": ["basol-cache", "anc-pente", "anc-nappe-haute", "anc-sol-impermeable", "anc-parcelle-exigue", "acces-sdis-non-conforme"]
     },
     {
       "id": 6,

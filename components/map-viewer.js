@@ -297,6 +297,74 @@ const MapViewer = {
     m.setFog({ range: [0.5, 10], color: '#0a0a14', 'high-color': '#1a1a2e', 'horizon-blend': 0.02 });
   },
 
+  // ── OVERLAY ZONES PERENE (Izard — 3 zones altitude) ──────────
+  addPereneOverlay(altitudeMoy) {
+    const m = this._map;
+    if (!m || m.getSource('perene-zone')) return;
+
+    const zone = altitudeMoy < 400 ? 1 : altitudeMoy < 800 ? 2 : 3;
+    const PERENE = {
+      1: { color: '#22c55e', label: 'PERENE 1 — Bas (<400m)',       opacity: 0.12 },
+      2: { color: '#f59e0b', label: 'PERENE 2 — Mi-pentes (400-800m)', opacity: 0.15 },
+      3: { color: '#ef4444', label: 'PERENE 3 — Hauts (>800m)',     opacity: 0.18 },
+    };
+    const p = PERENE[zone];
+
+    // Cercle de contexte (~500m) autour de la parcelle
+    const terrain = window.SessionManager?.getTerrain?.() ?? {};
+    const center = terrain.center_lnglat ?? terrain.lnglat ?? this.DEFAULT_CENTER;
+    const lng = Array.isArray(center) ? center[0] : center.lng;
+    const lat = Array.isArray(center) ? center[1] : center.lat;
+
+    // Générer un polygone circulaire ~500m
+    const R = 0.005; // ~500m en degrés à lat -21°
+    const pts = [];
+    for (let i = 0; i <= 64; i++) {
+      const a = (i / 64) * 2 * Math.PI;
+      pts.push([lng + R * Math.cos(a), lat + R * Math.sin(a) * 1.08]);
+    }
+
+    m.addSource('perene-zone', {
+      type: 'geojson',
+      data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [pts] }, properties: { zone, label: p.label } }
+    });
+    m.addLayer({
+      id: 'perene-zone-fill',
+      type: 'fill',
+      source: 'perene-zone',
+      paint: { 'fill-color': p.color, 'fill-opacity': p.opacity }
+    });
+    m.addLayer({
+      id: 'perene-zone-line',
+      type: 'line',
+      source: 'perene-zone',
+      paint: { 'line-color': p.color, 'line-width': 2, 'line-opacity': 0.6, 'line-dasharray': [4, 2] }
+    });
+    m.addLayer({
+      id: 'perene-zone-label',
+      type: 'symbol',
+      source: 'perene-zone',
+      layout: {
+        'text-field': ['get', 'label'],
+        'text-size': 11,
+        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+        'text-anchor': 'center',
+      },
+      paint: { 'text-color': p.color, 'text-halo-color': 'rgba(0,0,0,0.8)', 'text-halo-width': 1.5 }
+    });
+
+    return zone;
+  },
+
+  removePereneOverlay() {
+    const m = this._map;
+    if (!m) return;
+    ['perene-zone-label', 'perene-zone-line', 'perene-zone-fill'].forEach(id => {
+      if (m.getLayer(id)) m.removeLayer(id);
+    });
+    if (m.getSource('perene-zone')) m.removeSource('perene-zone');
+  },
+
   // ── COURBES DE NIVEAU 2D (GeoJSON isolignes) ─────────────────
   async addContourLines(wgsBounds, opts = {}) {
     const m = this._map;
@@ -617,6 +685,10 @@ const MapViewer = {
     m.addSource('reculs-p4', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     m.addLayer({ id: 'reculs-p4-fill', type: 'fill', source: 'reculs-p4', paint: { 'fill-color': '#a78bfa', 'fill-opacity': 0.15 } });
     m.addLayer({ id: 'reculs-p4-line', type: 'line', source: 'reculs-p4', paint: { 'line-color': '#a78bfa', 'line-width': 1, 'line-dasharray': [4, 3] } });
+
+    // Overlay PERENE automatique si altitude connue (Izard — zones RTAA)
+    const altNgr = parseFloat(window.SessionManager?.getTerrain?.()?.altitude_ngr);
+    if (altNgr > 0) this.addPereneOverlay(altNgr);
   },
 
   // ── BÂTIMENTS 3D + ICPE (Phase 5) ────────────────────────────
@@ -643,6 +715,39 @@ const MapViewer = {
       paint: { 'fill-color': '#f59e0b', 'fill-opacity': 0.08 } });
     m.addLayer({ id: 'icpe-circle-line', type: 'line', source: 'icpe-radius',
       paint: { 'line-color': '#f59e0b', 'line-width': 1, 'line-dasharray': [4, 3] } });
+
+    // ── Heatmap ICU — Îlot de chaleur urbain (Izard Microclimat Urbain 1) ──
+    // Densité bâtie → proxy ICU. Plus le tissu est dense, plus l'effet est marqué.
+    m.addLayer({
+      id: 'icu-heatmap',
+      type: 'heatmap',
+      source: 'composite',
+      'source-layer': 'building',
+      maxzoom: 18,
+      layout: { visibility: 'none' },
+      paint: {
+        'heatmap-weight': ['interpolate', ['linear'], ['coalesce', ['get', 'height'], 6], 0, 0, 6, 0.4, 15, 0.8, 30, 1],
+        'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 11, 0.3, 15, 1],
+        'heatmap-color': [
+          'interpolate', ['linear'], ['heatmap-density'],
+          0,    'rgba(0,0,0,0)',
+          0.2,  'rgba(34,197,94,0.3)',
+          0.4,  'rgba(234,179,8,0.5)',
+          0.6,  'rgba(249,115,22,0.6)',
+          0.8,  'rgba(239,68,68,0.7)',
+          1,    'rgba(185,28,28,0.8)',
+        ],
+        'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 11, 8, 15, 20, 17, 30],
+        'heatmap-opacity': 0.7,
+      }
+    });
+  },
+
+  /** Toggle heatmap ICU (appelé depuis P05) */
+  toggleICUHeatmap(visible) {
+    const m = this._map;
+    if (!m || !m.getLayer('icu-heatmap')) return;
+    m.setLayoutProperty('icu-heatmap', 'visibility', visible ? 'visible' : 'none');
   },
 
   // ── NATURE + ZNIEFF (Phase 6) ─────────────────────────────────
@@ -1830,6 +1935,17 @@ const MapViewer = {
 
   setLidarRawPoints(points) {
     this._lidarRawPoints = points;
+  },
+
+  // ── Injecter un mesh TIN terrain dans le viewer 3D ──────────────
+  addTerrainMesh(mesh) {
+    if (window.Terrain3D?.addTerrainTIN) {
+      window.Terrain3D.addTerrainTIN(mesh);
+    } else {
+      // Stocker pour injection differee quand Terrain3D sera initialise
+      this._pendingTerrainMesh = mesh;
+      console.log('[MapViewer] TIN mesh stocke (Terrain3D non encore init)');
+    }
   },
 
   setLidarPointSize(size) {

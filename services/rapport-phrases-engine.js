@@ -206,6 +206,7 @@ export function buildFullContext(terrain = {}, phases = {}, extras = {}) {
     // Reseaux
     eau_potable: terrain.eau_potable ?? null,
     assainissement: terrain.assainissement ?? null,
+    anc_filiere: terrain.anc_filiere ?? null,
     electricite: terrain.electricite ?? null,
     fibre: terrain.fibre ?? null,
     icpe: terrain.icpe ?? null,

@@ -178,6 +178,8 @@
       "p05_voisinage": {
         "icpe_present": false,
         "assainissement": "ANC",
+        "anc_filiere": "micro_station",
+        "anc_k_mmh": 6,
         "eau_potable": "reseau_public",
         "fibre": false,
         "sdis_hydrant_distance_m": 210,
@@ -293,6 +295,8 @@
       "p05_voisinage": {
         "icpe_present": false,
         "assainissement": "ANC_obligatoire",
+        "anc_filiere": "filtre_plante",
+        "anc_k_mmh": 20,
         "eau_potable": "captage_prive_AEP",
         "electricite_disponible": true,
         "fibre": false,

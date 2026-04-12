@@ -707,7 +707,185 @@ export class GabaritThree {
     }
   }
 
+  // ── SILLAGE + PRESSION FACADES (Izard Microclimat Urbain 2) ──
+  /**
+   * Affiche la visualisation aéraulique sur le bâtiment :
+   *  - Coloration Cp des 4 façades (rouge surpression, bleu dépression)
+   *  - Zone de sillage semi-transparente derrière le bâtiment
+   *  - Particules de vent animées
+   * @param {number} windDirDeg  Direction du vent en degrés (0=N, 90=E)
+   * @param {number} windSpeed   Vitesse ref m/s (optionnel, pour particules)
+   */
+  showWindViz(windDirDeg = 105, windSpeed = 4) {
+    const THREE = window.THREE;
+    const MU = window.TerlabMU;
+    if (!THREE || !MU) return;
+
+    this.clearWindViz();
+
+    // Trouver le bâtiment solution dans la scène
+    const solutionMeshes = this.groups.solution.children.filter(c => c.isMesh && !c.material?.wireframe);
+    if (!solutionMeshes.length) return;
+
+    const bldg = solutionMeshes[0];
+    const bb = new THREE.Box3().setFromObject(bldg);
+    const size = new THREE.Vector3();
+    bb.getSize(size);
+    const center = new THREE.Vector3();
+    bb.getCenter(center);
+
+    const W = size.x; // largeur
+    const D = size.z; // profondeur
+    const H = size.y; // hauteur
+    const A = Math.max(W, D); // dimension caractéristique
+
+    this._windGroup = new THREE.Group();
+    this.scene.add(this._windGroup);
+
+    const windRad = (windDirDeg - 90) * Math.PI / 180; // convertir en angle scène
+    const windDirX = Math.cos(windRad);
+    const windDirZ = Math.sin(windRad);
+
+    // ── 1. Façades colorées par Cp ──────────────────────────────
+    const faces = [
+      { name: 'windward',  normal: [-windDirX, 0, -windDirZ] },
+      { name: 'leeward',   normal: [windDirX, 0, windDirZ] },
+      { name: 'side',      normal: [-windDirZ, 0, windDirX] },
+      { name: 'side',      normal: [windDirZ, 0, -windDirX] },
+    ];
+
+    for (const face of faces) {
+      const cp = MU.pressureCp(face.name, 0);
+      const [r, g, b] = MU.cpToRGB(cp, [-2, 1]);
+
+      // Créer un plan sur chaque façade
+      const nx = face.normal[0], nz = face.normal[2];
+      let pw, ph, px, py, pz, rotY;
+
+      if (Math.abs(nx) > Math.abs(nz)) {
+        // Façade parallèle à Z
+        pw = D; ph = H;
+        px = center.x + nx * (W / 2 + 0.1);
+        py = center.y;
+        pz = center.z;
+        rotY = 0;
+      } else {
+        // Façade parallèle à X
+        pw = W; ph = H;
+        px = center.x;
+        py = center.y;
+        pz = center.z + nz * (D / 2 + 0.1);
+        rotY = Math.PI / 2;
+      }
+
+      const geo = new THREE.PlaneGeometry(pw, ph);
+      const mat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(r, g, b),
+        transparent: true,
+        opacity: 0.35,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      });
+      const plane = new THREE.Mesh(geo, mat);
+      plane.position.set(px, py, pz);
+      plane.rotation.y = rotY;
+      // Orienter la face vers l'extérieur
+      plane.lookAt(px + face.normal[0] * 10, py, pz + face.normal[2] * 10);
+      this._windGroup.add(plane);
+    }
+
+    // ── 2. Zone de sillage (Izard — wakeLength) ─────────────────
+    const wakeLen = MU.wakeLength(A, 'flat');
+    const wakeGeo = new THREE.BoxGeometry(W * 0.9, H * 0.6, wakeLen);
+    const wakeMat = new THREE.MeshBasicMaterial({
+      color: 0x4a9fd4, transparent: true, opacity: 0.06,
+      side: THREE.DoubleSide, depthWrite: false,
+    });
+    const wakeMesh = new THREE.Mesh(wakeGeo, wakeMat);
+    wakeMesh.position.set(
+      center.x + windDirX * (D / 2 + wakeLen / 2),
+      center.y * 0.6,
+      center.z + windDirZ * (D / 2 + wakeLen / 2),
+    );
+    this._windGroup.add(wakeMesh);
+
+    // Contour sillage
+    const wakeEdges = new THREE.EdgesGeometry(wakeGeo);
+    const wakeWire = new THREE.LineSegments(wakeEdges,
+      new THREE.LineBasicMaterial({ color: 0x4a9fd4, opacity: 0.3, transparent: true }));
+    wakeWire.position.copy(wakeMesh.position);
+    this._windGroup.add(wakeWire);
+
+    // Label sillage
+    this._addWindSprite(`Sillage ${wakeLen.toFixed(0)}m`, {
+      x: wakeMesh.position.x,
+      y: H * 0.8,
+      z: wakeMesh.position.z,
+    }, '#4a9fd4');
+
+    // ── 3. Particules vent animées ──────────────────────────────
+    if (MU.threeWindParticles) {
+      const bounds = [
+        center.x - A * 2, center.x + A * 2,
+        0, H * 1.5,
+        center.z - A * 2, center.z + A * 2,
+      ];
+      const particles = MU.threeWindParticles(300, bounds, 0x4a9fd4);
+      this._windGroup.add(particles.mesh);
+      this._windParticles = particles;
+      this._windDir = { x: windDirX * windSpeed, z: windDirZ * windSpeed };
+    }
+
+    // Modifier la boucle d'animation pour mettre à jour les particules
+    if (this._windParticles) {
+      const origLoop = this.renderer.info.autoReset;
+      this.renderer.setAnimationLoop(() => {
+        if (this._windParticles) {
+          this._windParticles.update(0.016, (pos) => ({
+            x: this._windDir.x,
+            y: 0,
+            z: this._windDir.z,
+          }));
+        }
+        this.renderer.render(this.scene, this.camera);
+      });
+    }
+  }
+
+  clearWindViz() {
+    if (this._windGroup) {
+      this.scene.remove(this._windGroup);
+      this._windGroup.traverse(c => {
+        if (c.geometry) c.geometry.dispose();
+        if (c.material) {
+          if (c.material.map) c.material.map.dispose();
+          c.material.dispose();
+        }
+      });
+      this._windGroup = null;
+    }
+    this._windParticles = null;
+    this._windDir = null;
+  }
+
+  _addWindSprite(text, pos, color) {
+    const THREE = window.THREE;
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 32;
+    const ctx = canvas.getContext('2d');
+    ctx.font = 'bold 16px monospace';
+    ctx.fillStyle = color;
+    ctx.fillText(text, 4, 22);
+    const tex = new THREE.CanvasTexture(canvas);
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(12, 1.5, 1);
+    sprite.position.set(pos.x, pos.y, pos.z);
+    this._windGroup.add(sprite);
+  }
+
   dispose() {
+    this.clearWindViz();
     if (this.renderer) {
       this.renderer.setAnimationLoop(null);
       this.renderer.dispose();

@@ -55,6 +55,20 @@ const SessionManager = {
   //     sur limite séparative oblique). L'ancien flag combiné mitoyen_lateral
   //     reste lu pour compat ; il active les deux côtés simultanément.
   //
+  //   phases.7.data.inlets : Array<Object>|undefined — encoches sur limites mitoyennes
+  //     Profil segmente sur une arete mitoyenne : mitoyen1 -> inlet (retrait) -> mitoyen2.
+  //     Chaque entree :
+  //       { side: 'g'|'d', lmit1: number, linlet: number, prof: number,
+  //         lmit2: number, active: boolean }
+  //       - side    : cote lateral ('g' = gauche, 'd' = droite)
+  //       - lmit1   : longueur segment mitoyen avant l'encoche (m)
+  //       - linlet  : longueur de l'encoche le long de l'arete (m)
+  //       - prof    : profondeur de l'encoche perpendiculairement a l'arete (m)
+  //       - lmit2   : longueur segment mitoyen apres l'encoche (m)
+  //       - active  : flag activation (false = ignore)
+  //     Backwards compatible : si absent ou vide, comportement = mitoyen binaire actuel.
+  //     Lu par AutoPlanEngine -> TerrainP07Adapter.applyInletNotches.
+  //
   _defaultData() {
     return {
       schemaVersion: SCHEMA_VERSION,

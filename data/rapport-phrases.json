@@ -32,6 +32,16 @@
       { "cond": { "altitude_gte": 200, "altitude_lt": 600 }, "text": "À {altitude} m d'altitude, le terrain se situe dans les mi-pentes, bénéficiant de températures légèrement tempérées. La ventilation naturelle reste le principal levier de confort." },
       { "cond": { "altitude_gte": 600 }, "text": "À {altitude} m d'altitude, le terrain se situe dans les hauts. L'amplitude thermique jour/nuit peut atteindre 15°C. L'isolation thermique et l'inertie du bâti deviennent déterminantes." }
     ],
+    "systeme_constructif": [
+      { "cond": { "systemType": "pilotis" }, "text": "Le systeme constructif sur pilotis est recommande pour la pente de {pente_pct}%. Le rez-de-chaussee n'est pas habitable et sert de structure porteuse ; la surface de plancher se calcule sur les niveaux superieurs uniquement. Le stationnement peut etre integre sous le batiment." },
+      { "cond": { "systemType": "pilotis_long" }, "text": "La pente extreme ({pente_pct}%) impose un systeme sur pilotis longs avec un bureau d'etudes structure obligatoire. Le rez-de-chaussee est entierement dedie a la structure et au stationnement. Les niveaux habitables debutent au R+1." },
+      { "cond": { "systemType": "soubassement" }, "text": "La pente moderee ({pente_pct}%) permet un systeme en soubassement, avec adaptation des niveaux au terrain naturel. Les fondations semi-profondes sont a prevoir." },
+      { "cond": { "systemType": "deblai_remblai" }, "text": "La pente de {pente_pct}% necessite un systeme en deblai-remblai. Les murs de soutenement doivent respecter la hauteur reglementaire (2,50 m max apparent). Des pompes de relevage sont probables pour les niveaux enterres." }
+    ],
+    "cout_topo": [
+      { "cond": { "coutMultiplicateur_gte": 1.5 }, "text": "Le surcout lie a la topographie est estime a un facteur {cout_multiplicateur} par rapport a un terrain plat. Ce surcout impacte les fondations, les terrassements, l'assainissement et les acces chantier." },
+      { "cond": { "coutMultiplicateur_gte": 2.5 }, "text": "Le facteur de surcout topographique ({cout_multiplicateur}) est tres eleve. Une etude de faisabilite economique prealable est fortement recommandee avant de lancer la conception." }
+    ],
     "donnee_manquante": [
       { "cond": { "missing": "pente_pct" }, "text": "La pente du terrain n'a pas été relevée. Un levé topographique (géomètre-expert ou drone photogrammétrique) est nécessaire pour dimensionner les terrassements et vérifier les contraintes de hauteur incluant déblais/remblais." },
       { "cond": { "missing": "altitude_ngr" }, "text": "L'altitude NGR n'est pas renseignée. Cette donnée est indispensable pour déterminer la zone RTAA DOM, la zone climatique PERENE et le risque de submersion." }
@@ -266,6 +276,17 @@
     ]
   },
 
+  "anciennete_bati": {
+    "datation": [
+      { "cond": { "anciennete_annee_moy_lt": 1975 }, "short": "Tissu bati ancien (moy. avant 1975) — risque amiante et plomb.", "text": "Le tissu bati environnant est majoritairement anterieur a 1975 (annee moyenne {anciennete_annee_moy}). L'absence de reglementation thermique a cette epoque implique des performances energetiques faibles. Risques amiante (pre-1997) et plomb (pre-1949) a evaluer en cas d'intervention sur l'existant." },
+      { "cond": { "anciennete_annee_moy_gte": 1975, "anciennete_annee_moy_lt": 2000 }, "short": "Tissu bati intermediaire (moy. 1975-2000) — RT 1974/1988.", "text": "Le contexte bati se situe dans la tranche intermediaire (annee moyenne {anciennete_annee_moy}), correspondant aux premieres reglementations thermiques (RT 1974, RT 1988). Le bati est generalement en beton, a forte inertie, mais mal isole. Un projet neuf devra s'integrer a ce tissu tout en apportant une amelioration performancielle." },
+      { "cond": { "anciennete_annee_moy_gte": 2000 }, "short": "Tissu bati recent (moy. apres 2000) — RT 2000+.", "text": "Le voisinage est compose de constructions recentes (annee moyenne {anciennete_annee_moy}), conformes aux RT 2000/2005 ou RT 2012. Le projet s'inserera dans un tissu urbain contemporain. Les gabarits, retraits et hauteurs observes constituent des references pour la volumetrie du projet." }
+    ],
+    "heterogeneite": [
+      { "cond": { "anciennete_span_gte": 50 }, "short": "Tissu bati heterogene — epoques multiples.", "text": "L'analyse chronologique revele un tissu bati heterogene couvrant plusieurs epoques (de {anciennete_annee_min} a {anciennete_annee_max}). Cette diversite temporelle se traduit par une variete de gabarits et de materiaux. Le projet devra trouver un equilibre entre integration au contexte existant et expression contemporaine." }
+    ]
+  },
+
   "reseaux": {
     "eau_potable": [
       { "cond": { "eau_potable": "reseau_public" }, "short": "Eau potable — reseau public disponible.", "text": "Le terrain est desservi par un reseau public d'eau potable. Le raccordement au reseau existant est a confirmer aupres du gestionnaire (Creole, Runeo selon la commune). Le diametre et la pression doivent etre verifies pour la defense incendie." },
@@ -274,6 +295,13 @@
     ],
     "assainissement": [
       { "cond": { "assainissement": "collectif" }, "short": "Assainissement collectif — raccordement reseau public.", "text": "Le terrain est desservi par un reseau collectif d'assainissement. Le raccordement gravitaire ou par poste de relevage doit etre etudie selon la topographie. Une convention de rejet est etablie avec le gestionnaire." },
+      { "cond": { "assainissement": "ANC", "anc_filiere": "epandage_classique" }, "short": "ANC : fosse toutes eaux + tranchees d'epandage en sol naturel.", "text": "La permeabilite du sol autorise un epandage classique : fosse toutes eaux (pretraitement) alimentant des tranchees filtrantes en sol naturel. Les tranchees doivent etre perpendiculaires aux courbes de niveau sur terrain en pente. Reculs : 5 m des limites, 35 m de tout captage, 3 m des arbres. Vidange de la fosse tous les 4 ans." },
+      { "cond": { "assainissement": "ANC", "anc_filiere": "filtre_sable_vertical" }, "short": "ANC : fosse toutes eaux + filtre a sable vertical non draine.", "text": "Le sol etant trop permeable pour un epandage direct (risque de pollution de la nappe), un filtre a sable vertical calibre est preconise. Le massif de sable (0.25-4 mm) remplace le sol naturel et assure la filtration. Infiltration en fond. Remplacement du sable tous les 15 ans." },
+      { "cond": { "assainissement": "ANC", "anc_filiere": "filtre_sable_vertical_draine" }, "short": "ANC : filtre a sable vertical draine — exutoire necessaire.", "text": "Le sol a permeabilite lente impose un filtre a sable vertical draine. Les effluents traites sont evacues vers un exutoire (fosse, ravine) par drainage en fond du massif filtrant. La disponibilite d'un exutoire doit etre verifiee et l'autorisation de rejet obtenue." },
+      { "cond": { "assainissement": "ANC", "anc_filiere": "micro_station" }, "short": "ANC : micro-station d'epuration compacte agreee.", "text": "La forte pente ou le sol impermeable oriente vers une micro-station d'epuration agreee. Systeme compact (traitement biologique aerobie) adapte aux terrains contraints. Contrat de maintenance annuel obligatoire. Consommation electrique ~1 kWh/jour. Cout : 8 000-15 000 EUR (Reunion)." },
+      { "cond": { "assainissement": "ANC", "anc_filiere": "filtre_plante" }, "short": "ANC : filtre plante de roseaux (phytoepuration).", "text": "La phytoepuration par filtres plantes (2 etages de bassins plantes de Phragmites, Typha, Heliconia) est particulierement adaptee au climat tropical reunionnais. Croissance vegetale rapide, pas de fosse sur les systemes agrees recents. Faucardage annuel. Curage boues etage 1 tous les 10 ans. Solution perenne (25 ans) a faible cout d'exploitation." },
+      { "cond": { "assainissement": "ANC", "anc_filiere": "filtre_compact" }, "short": "ANC : filtre compact agree (zeolithe, coco, laine de roche).", "text": "L'emprise reduite du terrain impose un filtre compact agree (zeolithe, fibre de coco ou laine de roche). Emprise minimale (~1.5 m2/EH) compatible avec les parcelles exigues. Remplacement du media filtrant tous les 10 ans. Agrement ministeriel obligatoire." },
+      { "cond": { "assainissement": "ANC", "anc_filiere": "tertre_infiltration" }, "short": "ANC : tertre d'infiltration hors sol — pompe de relevage.", "text": "Le sol impermeable et/ou la nappe haute imposent un tertre d'infiltration hors sol. Le filtre a sable est sureleve (~1.2 m) au-dessus du terrain naturel. Une pompe de relevage est necessaire pour alimenter le tertre. Cout eleve : 10 000-20 000 EUR (Reunion). Entretien pompe annuel." },
       { "cond": { "assainissement": "ANC" }, "short": "Assainissement non collectif — etude de filiere obligatoire.", "text": "L'absence de reseau collectif impose un assainissement non collectif (ANC). Une etude de filiere est obligatoire pour dimensionner le dispositif (fosse, epandage, filtre a sable, micro-station). La validation par le SPANC est preliminaire au depot de permis." },
       { "cond": { "assainissement": "extension" }, "short": "Extension de reseau necessaire — convention avec gestionnaire.", "text": "Un raccordement au reseau collectif necessite une extension. Une convention avec le gestionnaire et une participation financiere a l'extension sont a prevoir. Les delais de realisation peuvent impacter le planning de l'operation." }
     ],

@@ -634,6 +634,8 @@ const BpfBridge = {
     for (const zone of zones) {
       const pattern = _selectPattern(db, zone.type, zoneClim);
       if (!pattern) continue;
+      zone.patternId = pattern.patternId;
+      zone.patternType = pattern.type;
 
       const poly = zone.polygon;
       if (!poly || poly.length < 3) continue;
@@ -711,6 +713,8 @@ const BpfBridge = {
           trunkH: species.trunkH ?? 5,
           strate: species.strate ?? 'arbustif',
           svgSymbol: species.svgSymbol ?? 'broadleaf',
+          color2D: species.color2D,
+          flowerColor: species.flowerColor,
           isPalm: species.isPalm ?? false,
           growthForm: species.growthForm ?? 'tree',
           status: species.status ?? 'ok',
@@ -735,6 +739,7 @@ const BpfBridge = {
       zoneClim,
       plantRules,
       patterns: zones.map(z => z.type),
+      zones: zones.map(z => ({ type: z.type, polygon: z.polygon, patternId: z.patternId })),
     };
   },
 
@@ -750,7 +755,8 @@ const BpfBridge = {
       properties: {
         kind: 'plant', speciesKey: p.speciesKey, label: p.label, sci: p.sci,
         canopyRadius: p.canopyRadius, trunkH: p.trunkH, strate: p.strate,
-        svgSymbol: p.svgSymbol, zone: p.zone, status: p.status,
+        svgSymbol: p.svgSymbol, color2D: p.color2D, flowerColor: p.flowerColor,
+        zone: p.zone, status: p.status,
       },
     }));
 

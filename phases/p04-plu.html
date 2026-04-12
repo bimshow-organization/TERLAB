@@ -251,6 +251,85 @@
     </div>
   </div>
 
+  <!-- ═══ SERVITUDES, PASSAGES & RÉSEAUX ═══ -->
+  <div class="form-section anim-slide-up" id="p04-servitudes-section">
+    <div class="fs-head">Servitudes, Passages & Réseaux</div>
+    <div style="padding:8px 12px;font-size:11px;line-height:1.6">
+
+      <div style="margin-bottom:10px">
+        <div style="font-weight:bold;color:#a78bfa;margin-bottom:4px">Servitudes de passage (Art. 682-685 CC)</div>
+        <div class="dur-item" style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:14px">🚶</span>
+          <div>
+            <div style="font-weight:600;font-size:10px">Enclave &mdash; droit de passage</div>
+            <div style="font-size:9px;color:var(--ink3)">Art. 682 CC : parcelle sans acces a la voie publique = droit de passage sur fonds voisin. Largeur vehicule 4m min. ou pieton 1.20m. Servitude conventionnelle (notaire) ou judiciaire (TGI). Indemnite proportionnelle au dommage.</div>
+          </div>
+        </div>
+        <div class="dur-item" style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:14px">🚗</span>
+          <div>
+            <div style="font-weight:600;font-size:10px">Desserte &mdash; acces pompiers SDIS</div>
+            <div style="font-size:9px;color:var(--ink3)">Voie engin 8m libre + 3.50m chaussee. Voie echelle si R+3 : 6m libre. Impasse &gt; 30m = aire de retournement. Pente max 15%. Ref : arrete du 31/01/1986 + reglement SDIS 974.</div>
+          </div>
+        </div>
+        <div class="dur-item" style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:14px">⚡</span>
+          <div>
+            <div style="font-weight:600;font-size:10px">Servitudes de reseaux (SUP)</div>
+            <div style="font-size:9px;color:var(--ink3)">EDF/EEC : ligne HT = bande inconstructible 10-30m selon tension. AEP : canalisation eau = recul 1.50m axe. Assainissement : collecteur EU/EP = bande 3m de part et d'autre. Telecom : passage cables = droit de poser sur facades.</div>
+          </div>
+        </div>
+        <div class="dur-item" style="display:flex;gap:8px;align-items:flex-start;padding:6px 0">
+          <span style="font-size:14px">💧</span>
+          <div>
+            <div style="font-weight:600;font-size:10px">Reseaux existants &mdash; raccordements</div>
+            <div style="font-size:9px;color:var(--ink3)">Verifier : regard EP/EU en limite, BT/HT, AEP, telecom, fibre. DICT obligatoire avant travaux (reseaux-et-canalisations.gouv.fr). A La Reunion : Run'Eva (dechets), CISE/Veolia (eau), EEC (elec), ZEOP/SFR (fibre).</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:8px">
+        <div style="font-weight:bold;color:#a78bfa;margin-bottom:4px">Verification de la parcelle</div>
+        <div class="field-row">
+          <label class="field-label">Acces a la voie publique</label>
+          <div class="radio-group">
+            <label class="radio-option" onclick="P04.sel(this,'acces_voie','direct')"><input type="radio" name="acces_voie" value="direct"/>Direct</label>
+            <label class="radio-option" onclick="P04.sel(this,'acces_voie','servitude')"><input type="radio" name="acces_voie" value="servitude"/>Servitude</label>
+            <label class="radio-option danger-rad" onclick="P04.sel(this,'acces_voie','enclave')"><input type="radio" name="acces_voie" value="enclave"/>Enclavee</label>
+          </div>
+        </div>
+        <div class="field-row">
+          <label class="field-label">Servitude de passage existante</label>
+          <div class="radio-group">
+            <label class="radio-option" onclick="P04.sel(this,'servitude_passage','non')"><input type="radio" name="servitude_passage" value="non"/>Non</label>
+            <label class="radio-option" onclick="P04.sel(this,'servitude_passage','oui_conventionnelle')"><input type="radio" name="servitude_passage" value="oui_conventionnelle"/>Conventionnelle</label>
+            <label class="radio-option" onclick="P04.sel(this,'servitude_passage','oui_judiciaire')"><input type="radio" name="servitude_passage" value="oui_judiciaire"/>Judiciaire</label>
+            <label class="radio-option" onclick="P04.sel(this,'servitude_passage','a_verifier')"><input type="radio" name="servitude_passage" value="a_verifier"/>A verifier</label>
+          </div>
+        </div>
+        <div class="field-row">
+          <label class="field-label">Largeur acces existant (m)</label>
+          <input type="number" class="field-input" data-session-key="largeur_acces_m" placeholder="Ex : 4" min="0" step="0.5"/>
+        </div>
+        <div class="field-row">
+          <label class="field-label">Reseaux en limite</label>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">
+            <label class="maint-item" style="font-size:10px"><input type="checkbox" data-session-key="reseau_ep"/>EP</label>
+            <label class="maint-item" style="font-size:10px"><input type="checkbox" data-session-key="reseau_eu"/>EU</label>
+            <label class="maint-item" style="font-size:10px"><input type="checkbox" data-session-key="reseau_aep"/>AEP</label>
+            <label class="maint-item" style="font-size:10px"><input type="checkbox" data-session-key="reseau_elec"/>Elec</label>
+            <label class="maint-item" style="font-size:10px"><input type="checkbox" data-session-key="reseau_telecom"/>Telecom</label>
+            <label class="maint-item" style="font-size:10px"><input type="checkbox" data-session-key="reseau_gaz"/>Gaz</label>
+          </div>
+        </div>
+      </div>
+
+      <div id="p04-enclave-alert" style="display:none;padding:6px 10px;background:rgba(185,28,28,0.15);border:1px solid rgba(185,28,28,0.4);border-radius:var(--r-sm);margin-bottom:6px;font-size:10px;color:#f07070">
+        <strong>⚠ Parcelle enclavee detectee</strong> &mdash; Verifier l'existence d'une servitude de passage. Sans servitude enregistree, le permis de construire peut etre refuse.
+      </div>
+    </div>
+  </div>
+
   <div style="padding:8px 13px;border-bottom:1px solid var(--border)">
     <button class="source-btn" onclick="TerlabSources.open(4)">→ Sources &amp; références PLU / SCoT</button>
     <a href="https://www.geoportail-urbanisme.gouv.fr" target="_blank" rel="noopener" class="source-btn" style="margin-left:10px">→ Géoportail Urbanisme ↗</a>
@@ -872,6 +951,17 @@ window.P04 = P04;
 P04._initSolarDiagram();
 // Lance le rendu du plan d'état des lieux dès que la session terrain est dispo
 P04.renderEtatDesLieux();
+
+// ─── Alerte parcelle enclavée (propagée depuis EsquisseCanvas) ──
+window.addEventListener('terlab:parcelle-enclavee', () => {
+  const alert = document.getElementById('p04-enclave-alert');
+  if (alert) alert.style.display = 'block';
+  // Auto-select "enclave" dans le radio
+  const radios = document.querySelectorAll('[name="acces_voie"]');
+  radios.forEach(r => {
+    if (r.value === 'enclave') { r.checked = true; r.closest('.radio-option')?.classList.add('selected'); }
+  });
+});
 
 // ─── Auto-fetch SCOT ────────────────────────────────────────────
 (async () => {

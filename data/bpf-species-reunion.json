@@ -13,6 +13,7 @@
       "trunkH": 15, "trunkR0": 0.24, "isPalm": true,
       "frondCount": 14, "frondLen": 4.5, "frondAng": 55,
       "canopyRadius": 5, "svgSymbol": "palm",
+      "color2D": "#4a7c3f",
       "zone": ["littoral"], "cycloneResist": "faible",
       "status": "ok", "strate": "canopee"
     },
@@ -22,6 +23,7 @@
       "trunkH": 7, "trunkR0": 0.18, "isPalm": true,
       "frondCount": 10, "frondLen": 2.5, "frondAng": 45,
       "canopyRadius": 3, "svgSymbol": "palm",
+      "color2D": "#3d7a4a",
       "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
       "status": "protege", "strate": "canopee"
     },
@@ -31,6 +33,7 @@
       "trunkH": 10, "trunkR0": 0.14, "isPalm": true,
       "frondCount": 16, "frondLen": 3.0, "frondAng": 50,
       "canopyRadius": 3.5, "svgSymbol": "palm",
+      "color2D": "#3b7848",
       "zone": ["mipentes", "hauts"], "cycloneResist": "moyenne",
       "status": "protege", "strate": "canopee"
     },
@@ -39,6 +42,7 @@
       "growthForm": "tree", "crownShape": "spreading",
       "trunkH": 8, "trunkR0": 0.38, "isPalm": false,
       "b1Count": 10, "canopyRadius": 6, "svgSymbol": "broadleaf",
+      "color2D": "#1a5020",
       "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
       "status": "ok", "strate": "canopee",
       "note": "Racines taproot — min 5m des fondations"
@@ -48,6 +52,7 @@
       "growthForm": "tree", "crownShape": "conical",
       "trunkH": 8, "trunkR0": 0.16, "isPalm": false,
       "b1Count": 12, "canopyRadius": 3.5, "svgSymbol": "conifer",
+      "color2D": "#4a8a3a",
       "zone": ["littoral"], "cycloneResist": "bonne",
       "status": "invasif_vigilance", "strate": "canopee",
       "note": "Brise-vent efficace mais invasif — usage contrôlé"
@@ -57,6 +62,7 @@
       "growthForm": "tree", "crownShape": "umbrella",
       "trunkH": 11, "trunkR0": 0.264, "isPalm": false,
       "b1Count": 8, "canopyRadius": 7, "svgSymbol": "broadleaf_flower",
+      "color2D": "#2a6828", "flowerColor": "#da441c",
       "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
       "status": "ok", "strate": "canopee"
     },
@@ -65,6 +71,7 @@
       "growthForm": "tree", "crownShape": "spreading",
       "trunkH": 12, "trunkR0": 0.32, "isPalm": false,
       "b1Count": 10, "canopyRadius": 6, "svgSymbol": "broadleaf",
+      "color2D": "#2a6830",
       "zone": ["littoral", "mipentes"], "cycloneResist": "bonne",
       "status": "ok", "strate": "canopee"
     },
@@ -73,6 +80,7 @@
       "growthForm": "tree", "crownShape": "spreading",
       "trunkH": 14, "trunkR0": 0.35, "isPalm": false,
       "b1Count": 10, "canopyRadius": 6, "svgSymbol": "broadleaf",
+      "color2D": "#3a7a3a",
       "zone": ["hauts"], "cycloneResist": "bonne",
       "status": "protege", "strate": "canopee"
     },
@@ -81,6 +89,7 @@
       "growthForm": "tree", "crownShape": "spreading",
       "trunkH": 18, "trunkR0": 0.45, "isPalm": false,
       "b1Count": 8, "canopyRadius": 7, "svgSymbol": "broadleaf",
+      "color2D": "#2a6a38",
       "zone": ["littoral", "mipentes"], "cycloneResist": "bonne",
       "status": "protege", "strate": "canopee"
     },
@@ -89,6 +98,7 @@
       "growthForm": "tree", "crownShape": "spreading",
       "trunkH": 14, "trunkR0": 0.35, "isPalm": false,
       "b1Count": 8, "canopyRadius": 5, "svgSymbol": "broadleaf",
+      "color2D": "#326a2e",
       "zone": ["littoral"], "cycloneResist": "bonne",
       "status": "ok", "strate": "canopee"
     },
@@ -98,6 +108,7 @@
       "trunkH": 5, "trunkR0": 0.25, "isPalm": true,
       "frondCount": 20, "frondLen": 2.0, "frondAng": 40,
       "canopyRadius": 3, "svgSymbol": "palm",
+      "color2D": "#5a8a40",
       "zone": ["littoral"], "cycloneResist": "bonne",
       "status": "ok", "strate": "canopee"
     },
@@ -106,6 +117,7 @@
       "growthForm": "palm", "crownShape": "palm_crown",
       "trunkH": 4, "trunkR0": 0.25, "isPalm": true,
       "frondCount": 5, "canopyRadius": 2, "svgSymbol": "tropical_shrub",
+      "color2D": "#3a8a48", "flowerColor": "#e8862a",
       "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
       "status": "ok", "strate": "arbustif"
     },
@@ -114,6 +126,7 @@
       "growthForm": "palm", "crownShape": "palm_crown",
       "trunkH": 4, "trunkR0": 0.25, "isPalm": true,
       "frondCount": 6, "canopyRadius": 2.5, "svgSymbol": "tropical_shrub",
+      "color2D": "#48923a",
       "zone": ["littoral", "mipentes"], "cycloneResist": "faible",
       "status": "ok", "strate": "arbustif"
     },
@@ -122,6 +135,7 @@
       "growthForm": "tree", "crownShape": "vase",
       "trunkH": 3.5, "trunkR0": 0.25, "isPalm": false,
       "b1Count": 5, "canopyRadius": 2.5, "svgSymbol": "broadleaf_flower",
+      "color2D": "#4a8a42", "flowerColor": "#f0d850",
       "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
       "status": "ok", "strate": "arbustif"
     },
@@ -130,6 +144,7 @@
       "growthForm": "shrub", "crownShape": "spherical",
       "trunkH": 6, "trunkR0": 0.08, "isPalm": false,
       "b1Count": 15, "canopyRadius": 2.5, "svgSymbol": "shrub_flower",
+      "color2D": "#5a8a50", "flowerColor": "#c8328c",
       "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
       "status": "ok", "strate": "arbustif"
     },
@@ -138,6 +153,7 @@
       "growthForm": "tree", "crownShape": "spreading",
       "trunkH": 12, "trunkR0": 0.25, "isPalm": false,
       "b1Count": 8, "canopyRadius": 5, "svgSymbol": "broadleaf_flower",
+      "color2D": "#38783a", "flowerColor": "#e8c840",
       "zone": ["littoral"], "cycloneResist": "bonne",
       "status": "ok", "strate": "canopee"
     },
@@ -146,6 +162,7 @@
       "growthForm": "palm", "crownShape": "palm_crown",
       "trunkH": 3, "trunkR0": 0.15, "isPalm": true,
       "frondCount": 5, "canopyRadius": 1.5, "svgSymbol": "tropical_shrub",
+      "color2D": "#4a9038", "flowerColor": "#e83020",
       "zone": ["littoral", "mipentes"], "cycloneResist": "faible",
       "status": "ok", "strate": "arbustif"
     },
@@ -154,6 +171,7 @@
       "growthForm": "herb", "crownShape": "spherical",
       "trunkH": 2.5, "trunkR0": 0.06, "isPalm": false,
       "canopyRadius": 1.0, "svgSymbol": "tropical_shrub",
+      "color2D": "#4a8a3e", "flowerColor": "#e82848",
       "zone": ["littoral", "mipentes"], "cycloneResist": "faible",
       "status": "ok", "strate": "couvre_sol"
     },
@@ -162,6 +180,7 @@
       "growthForm": "bamboo", "crownShape": "columnar",
       "trunkH": 6, "trunkR0": 0.072, "isPalm": false,
       "canopyRadius": 2, "svgSymbol": "bamboo",
+      "color2D": "#6a9a3a",
       "zone": ["littoral", "mipentes", "hauts"], "cycloneResist": "bonne",
       "status": "ok", "strate": "arbustif"
     },
@@ -170,6 +189,7 @@
       "growthForm": "tree", "crownShape": "conical",
       "trunkH": 22, "trunkR0": 0.4, "isPalm": false,
       "b1Count": 14, "canopyRadius": 4, "svgSymbol": "conifer",
+      "color2D": "#2a5a28",
       "zone": ["hauts"], "cycloneResist": "bonne",
       "status": "ok", "strate": "canopee"
     },
@@ -178,6 +198,7 @@
       "growthForm": "shrub", "crownShape": "spherical",
       "trunkH": 2.5, "trunkR0": 0.08, "isPalm": false,
       "canopyRadius": 1.5, "svgSymbol": "shrub",
+      "color2D": "#5a9a52",
       "zone": ["mipentes", "hauts"], "cycloneResist": "bonne",
       "status": "ok", "strate": "arbustif"
     },
@@ -186,6 +207,7 @@
       "growthForm": "tree", "crownShape": "spherical",
       "trunkH": 7, "trunkR0": 0.18, "isPalm": false,
       "b1Count": 10, "canopyRadius": 5, "svgSymbol": "broadleaf",
+      "color2D": "#2a6a2a",
       "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
       "status": "ok", "strate": "canopee"
     },
@@ -194,6 +216,7 @@
       "growthForm": "tree", "crownShape": "umbrella",
       "trunkH": 10, "trunkR0": 0.3, "isPalm": false,
       "b1Count": 6, "canopyRadius": 6, "svgSymbol": "broadleaf",
+      "color2D": "#245c2c",
       "zone": ["littoral"], "cycloneResist": "moyenne",
       "status": "ok", "strate": "canopee"
     },
@@ -202,6 +225,7 @@
       "growthForm": "palm", "crownShape": "palm_crown",
       "trunkH": 4, "trunkR0": 0.1, "isPalm": true,
       "frondCount": 8, "canopyRadius": 2, "svgSymbol": "palm",
+      "color2D": "#52943a",
       "zone": ["littoral", "mipentes"], "cycloneResist": "faible",
       "status": "ok", "strate": "arbustif"
     },
@@ -210,6 +234,7 @@
       "growthForm": "tree", "crownShape": "spherical",
       "trunkH": 10, "trunkR0": 0.25, "isPalm": false,
       "b1Count": 8, "canopyRadius": 5, "svgSymbol": "broadleaf",
+      "color2D": "#2e7030",
       "zone": ["mipentes"], "cycloneResist": "moyenne",
       "status": "ok", "strate": "canopee"
     },
@@ -218,6 +243,7 @@
       "growthForm": "tree", "crownShape": "spherical",
       "trunkH": 4, "trunkR0": 0.14, "isPalm": false,
       "canopyRadius": 3, "svgSymbol": "broadleaf",
+      "color2D": "#3e8a36",
       "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
       "status": "invasif", "strate": "arbustif"
     },
@@ -226,6 +252,7 @@
       "growthForm": "bamboo", "crownShape": "columnar",
       "trunkH": 8, "trunkR0": 0.25, "isPalm": false,
       "canopyRadius": 2.5, "svgSymbol": "bamboo",
+      "color2D": "#4a7a32",
       "zone": ["hauts"], "cycloneResist": "bonne",
       "status": "protege", "strate": "canopee"
     },
@@ -234,6 +261,7 @@
       "growthForm": "tree", "crownShape": "spreading",
       "trunkH": 10, "trunkR0": 0.22, "isPalm": false,
       "b1Count": 8, "canopyRadius": 4, "svgSymbol": "broadleaf_flower",
+      "color2D": "#3a7240", "flowerColor": "#e8a0c0",
       "zone": ["mipentes", "hauts"], "cycloneResist": "bonne",
       "status": "protege", "strate": "canopee"
     },
@@ -242,6 +270,7 @@
       "growthForm": "tree", "crownShape": "spherical",
       "trunkH": 12, "trunkR0": 0.25, "isPalm": false,
       "b1Count": 8, "canopyRadius": 4, "svgSymbol": "broadleaf",
+      "color2D": "#3a5a2a",
       "zone": ["mipentes", "hauts"], "cycloneResist": "bonne",
       "status": "protege", "strate": "canopee"
     },
@@ -250,6 +279,7 @@
       "growthForm": "tree", "crownShape": "spherical",
       "trunkH": 6, "trunkR0": 0.12, "isPalm": false,
       "canopyRadius": 2.5, "svgSymbol": "broadleaf",
+      "color2D": "#488a48",
       "zone": ["mipentes", "hauts"], "cycloneResist": "moyenne",
       "status": "protege", "strate": "arbustif"
     },
@@ -258,6 +288,7 @@
       "growthForm": "shrub", "crownShape": "spherical",
       "trunkH": 1.5, "trunkR0": 0.04, "isPalm": false,
       "canopyRadius": 0.8, "svgSymbol": "shrub_flower",
+      "color2D": "#4a8a42", "flowerColor": "#e83828",
       "zone": ["littoral", "mipentes"], "cycloneResist": "faible",
       "status": "ok", "strate": "couvre_sol"
     },
@@ -266,6 +297,7 @@
       "growthForm": "grass", "crownShape": "columnar",
       "trunkH": 1.5, "trunkR0": 0.03, "isPalm": false,
       "canopyRadius": 0.5, "svgSymbol": "grass",
+      "color2D": "#6a9a46",
       "zone": ["littoral", "mipentes", "hauts"], "cycloneResist": "bonne",
       "status": "ok", "strate": "couvre_sol",
       "note": "Anti-érosion — idéal talus et bords ravine"
@@ -275,6 +307,7 @@
       "growthForm": "herb", "crownShape": "spherical",
       "trunkH": 1.5, "trunkR0": 0.04, "isPalm": false,
       "canopyRadius": 0.6, "svgSymbol": "shrub_flower",
+      "color2D": "#5a9240", "flowerColor": "#e8a020",
       "zone": ["littoral", "mipentes"], "cycloneResist": "faible",
       "status": "ok", "strate": "couvre_sol"
     }

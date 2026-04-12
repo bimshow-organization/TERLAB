@@ -63,6 +63,7 @@ import ExistingBuildings      from './services/existing-buildings.js';
 import CapacityStudyRenderer  from './services/capacity-study-renderer.js';
 import EarthworksService      from './services/earthworks-service.js';
 import EarthworksMeshBuilder  from './services/earthworks-mesh-builder.js';
+import TerrainMeshBuilder    from './services/terrain-mesh-builder.js';
 import SdisChecker            from './services/sdis-checker.js';
 import RTAAAnalyzer           from './services/rtaa-analyzer.js';
 import UrbanismeAutorisations from './services/urbanisme-autorisations.js';
@@ -102,11 +103,13 @@ import GeoJsonPanel          from './components/geojson-panel.js';
 
 // ─── Data Providers Réunion (Sprint intégration 2026-04) ────
 import BdTopoService         from './services/bdtopo-service.js';
+import CadastreContextService from './services/cadastre-context-service.js';
 import EdfService            from './services/edf-service.js';
 import GpuService            from './services/gpu-service.js';
 import BiodiversiteService   from './services/biodiversite-service.js';
 import IsochroneService      from './services/isochrone-service.js';
 import PoiService             from './services/poi-service.js';
+import BuildingAgeService     from './services/building-age-service.js';
 
 // ─── Export Site 3D (DXF/IFC ArchiCAD) ──────────────────────
 import SiteCaptureService    from './services/site-capture-service.js';
@@ -269,6 +272,7 @@ async function init() {
     window.CapacityStudyRenderer  = CapacityStudyRenderer;
     window.EarthworksService      = EarthworksService;
     window.EarthworksMeshBuilder  = EarthworksMeshBuilder;
+    window.TerrainMeshBuilder    = TerrainMeshBuilder;
     window.SdisChecker            = SdisChecker;
     window.RTAAAnalyzer           = RTAAAnalyzer;
     window.UrbanismeAutorisations = UrbanismeAutorisations;
@@ -306,11 +310,13 @@ async function init() {
 
     // Data Providers Réunion
     window.BdTopoService        = BdTopoService;
+    window.CadastreContextService = CadastreContextService;
     window.EdfService           = EdfService;
     window.GpuService           = GpuService;
     window.BiodiversiteService  = BiodiversiteService;
     window.IsochroneService     = IsochroneService;
     window.PoiService           = PoiService;
+    window.BuildingAgeService   = BuildingAgeService;
 
     // Export Site 3D (DXF + IFC ArchiCAD)
     window.SiteCaptureService   = SiteCaptureService;
