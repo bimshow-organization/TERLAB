@@ -84,22 +84,88 @@ const ExistingBuildings = {
   },
 
   /**
-   * Zone constructible libre = enveloppe - Σ footprints existants
-   * Simplification : exclure par AABB pour le PIR, aire soustraite pour métriques
-   * @param {Array} envPoly     — polygone enveloppe [[x,y]...]
-   * @param {Array} footprints  — [{poly, area}...]
+   * Zone constructible libre = enveloppe - Σ footprints existants (AABB + gap)
+   * Pour chaque footprint, construit un rectangle interdit (AABB + interBuildingGap)
+   * et soustrait de l'enveloppe en gardant le plus grand fragment.
+   * @param {Array} envPoly     — polygone enveloppe [[x,y]...] ou [{x,y}...]
+   * @param {Array} footprints  — [{poly, area, hauteur}...]
+   * @param {Object} [opts]     — { interBuildingGap: number } gap override
    * @returns {{ freeZone, freeArea, occupancyRate }}
    */
-  computeFreeZone(envPoly, footprints) {
+  computeFreeZone(envPoly, footprints, opts = {}) {
+    const FH = window.FootprintHelpers;
     const TA = window.TerrainP07Adapter;
     const envArea = TA?.polyArea(envPoly) ?? this._polyArea(envPoly);
-    const totalFP = footprints.reduce((s, fp) => s + fp.area, 0);
-    const freeArea = Math.max(0, envArea - totalFP);
-    const occupancyRate = envArea > 0 ? totalFP / envArea : 0;
 
-    // Zone libre = enveloppe (on exclut les footprints au niveau du placement PIR)
+    if (!footprints?.length || !FH) {
+      const totalFP = (footprints ?? []).reduce((s, fp) => s + fp.area, 0);
+      return {
+        freeZone: envPoly,
+        freeArea: Math.max(0, envArea - totalFP),
+        occupancyRate: envArea > 0 ? totalFP / envArea : 0,
+      };
+    }
+
+    // Normaliser les points en {x,y}
+    let current = envPoly.map(p => FH.toXY(p));
+
+    for (const fp of footprints) {
+      if (!fp.poly?.length) continue;
+
+      // Gap = max(H/2 du bâtiment existant, 4m), surchargeable par opts
+      const hExist = parseFloat(fp.hauteur ?? 6);
+      const gap = opts.interBuildingGap ?? Math.max(4, hExist / 2);
+
+      // AABB du footprint étendu du gap
+      const fpXY = fp.poly.map(p => FH.toXY(p));
+      const bb = FH.aabb(fpXY);
+      const forbiddenXMin = bb.x  - gap;
+      const forbiddenXMax = bb.x1 + gap;
+      const forbiddenYMin = bb.y  - gap;
+      const forbiddenYMax = bb.y1 + gap;
+
+      // Soustraire le rectangle interdit de l'enveloppe courante.
+      // Approche : clipper l'enveloppe par chacun des 4 demi-plans EXTERIEURS
+      // au rectangle, produisant 4 fragments. Garder le plus grand.
+      const fragments = [];
+
+      // Demi-plan gauche : x < forbiddenXMin  → clip par normal (-1, 0) au point (forbiddenXMin, 0)
+      const fragLeft = FH._clipHalfPlane(current,
+        { x: forbiddenXMin, y: 0 }, -1, 0);
+      if (fragLeft.length >= 3) fragments.push(fragLeft);
+
+      // Demi-plan droit : x > forbiddenXMax  → clip par normal (+1, 0) au point (forbiddenXMax, 0)
+      const fragRight = FH._clipHalfPlane(current,
+        { x: forbiddenXMax, y: 0 }, 1, 0);
+      if (fragRight.length >= 3) fragments.push(fragRight);
+
+      // Demi-plan bas : y < forbiddenYMin  → clip par normal (0, -1) au point (0, forbiddenYMin)
+      const fragBottom = FH._clipHalfPlane(current,
+        { x: 0, y: forbiddenYMin }, 0, -1);
+      if (fragBottom.length >= 3) fragments.push(fragBottom);
+
+      // Demi-plan haut : y > forbiddenYMax  → clip par normal (0, +1) au point (0, forbiddenYMax)
+      const fragTop = FH._clipHalfPlane(current,
+        { x: 0, y: forbiddenYMax }, 0, 1);
+      if (fragTop.length >= 3) fragments.push(fragTop);
+
+      if (fragments.length) {
+        // Garder le plus grand fragment
+        let bestArea = -1, bestFrag = current;
+        for (const frag of fragments) {
+          const a = FH.area(frag);
+          if (a > bestArea) { bestArea = a; bestFrag = frag; }
+        }
+        current = bestFrag;
+      }
+      // Si aucun fragment valide, l'enveloppe est entièrement couverte — on garde current tel quel
+    }
+
+    const freeArea = FH.area(current);
+    const occupancyRate = envArea > 0 ? (envArea - freeArea) / envArea : 0;
+
     return {
-      freeZone: envPoly,
+      freeZone: current,
       freeArea,
       occupancyRate,
     };
@@ -168,6 +234,69 @@ const ExistingBuildings = {
       text.textContent = `${style.label} ${fp.area.toFixed(0)}m²`;
       g.appendChild(text);
     }
+  },
+
+  /**
+   * Calcule une bande d'extension collée à la plus longue facade libre
+   * du bâtiment existant principal (le plus grand footprint).
+   * @param {Array} envPoly     — polygone enveloppe [{x,y}...]
+   * @param {Array} footprints  — [{poly, area, hauteur}...]
+   * @param {Object} [opts]     — { stripDepth: number (m, def 8) }
+   * @returns {Array<{x,y}>}   — polygone de la bande d'extension, ou envPoly si échec
+   */
+  computeExtensionStrip(envPoly, footprints, opts = {}) {
+    const FH = window.FootprintHelpers;
+    if (!FH || !footprints?.length || !envPoly?.length) return envPoly;
+
+    // Trouver le plus grand bâtiment
+    let largest = footprints[0];
+    for (const fp of footprints) {
+      if (fp.area > largest.area) largest = fp;
+    }
+    const fpXY = largest.poly.map(p => FH.toXY(p));
+    const envXY = envPoly.map(p => FH.toXY(p));
+    if (fpXY.length < 3) return envPoly;
+
+    // Trouver la facade la plus "libre" = celle dont le milieu est le plus loin
+    // de la frontière de l'enveloppe (= le plus de recul disponible)
+    const nEdges = fpXY.length;
+    let bestIdx = 0, bestDist = -1;
+    for (let i = 0; i < nEdges; i++) {
+      const a = fpXY[i];
+      const b = fpXY[(i + 1) % nEdges];
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      const d = FH.minDistPointPoly(mx, my, envXY);
+      if (d > bestDist) { bestDist = d; bestIdx = i; }
+    }
+
+    // Direction perpendiculaire à cette façade, pointant vers l'extérieur du bâtiment
+    const fa = fpXY[bestIdx];
+    const fb = fpXY[(bestIdx + 1) % nEdges];
+    const edx = fb.x - fa.x, edy = fb.y - fa.y;
+    const elen = Math.hypot(edx, edy) || 1;
+    // Normale vers l'extérieur : on teste quel côté est vers le centroïde de l'enveloppe
+    const fpCent = FH.centroid(fpXY);
+    let nx = -edy / elen, ny = edx / elen;
+    // Si la normale pointe vers le centroïde du bâtiment, inverser
+    const toFpDot = (fpCent.x - fa.x) * nx + (fpCent.y - fa.y) * ny;
+    if (toFpDot > 0) { nx = -nx; ny = -ny; }
+
+    // Construire la bande : rectangle le long de la facade, profondeur stripDepth
+    const stripDepth = opts.stripDepth ?? 8;
+    const strip = [
+      { x: fa.x,                    y: fa.y },
+      { x: fb.x,                    y: fb.y },
+      { x: fb.x + nx * stripDepth,  y: fb.y + ny * stripDepth },
+      { x: fa.x + nx * stripDepth,  y: fa.y + ny * stripDepth },
+    ];
+
+    // Clipper la bande par l'enveloppe constructible
+    const clipped = FH.clipPolygon(strip, envXY);
+    if (clipped.length >= 3 && FH.area(clipped) > 10) {
+      return clipped;
+    }
+    // Fallback : retourner l'enveloppe complète
+    return envPoly;
   },
 
   /**

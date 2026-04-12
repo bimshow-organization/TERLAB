@@ -89,6 +89,66 @@
     <div class="anc-alert" id="anc-alert" style="display:none">
       ANC sur pente — Filière compacte agréée SPANC requise. Coût indicatif : 8 000–15 000€. Contacter le SPANC de la commune avant toute conception.
     </div>
+
+    <!-- ── Panneau détail ANC (visible si ANC sélectionné) ──────── -->
+    <div id="anc-detail-panel" style="display:none">
+      <div class="anc-detail-header">
+        <span class="anc-detail-icon">🔬</span>
+        <span>Analyse ANC — filière recommandée</span>
+        <span id="anc-score-badge" class="anc-score-badge"></span>
+      </div>
+
+      <!-- Données sol -->
+      <div class="anc-row">
+        <div class="anc-cell">
+          <div class="anc-cell-label">Perméabilité sol (K)</div>
+          <div id="anc-k-value" class="anc-cell-value">—</div>
+          <div id="anc-k-class" class="anc-cell-sub">—</div>
+        </div>
+        <div class="anc-cell">
+          <div class="anc-cell-label">Equiv. habitants</div>
+          <div id="anc-eh-value" class="anc-cell-value">—</div>
+          <div id="anc-vol-value" class="anc-cell-sub">—</div>
+        </div>
+        <div class="anc-cell">
+          <div class="anc-cell-label">Pente terrain</div>
+          <div id="anc-pente-value" class="anc-cell-value">—</div>
+        </div>
+      </div>
+
+      <!-- Filière recommandée -->
+      <div class="anc-reco-box" id="anc-reco-box">
+        <div class="anc-reco-title" id="anc-reco-title">—</div>
+        <div class="anc-reco-desc" id="anc-reco-desc"></div>
+        <div class="anc-reco-metrics">
+          <span id="anc-reco-emprise">—</span>
+          <span id="anc-reco-cout">—</span>
+        </div>
+        <div class="anc-reco-alertes" id="anc-reco-alertes"></div>
+      </div>
+
+      <!-- Alternatives -->
+      <div id="anc-alternatives" class="anc-alternatives"></div>
+
+      <!-- Dimensionnement résumé -->
+      <div class="anc-dim-box" id="anc-dim-box" style="display:none">
+        <div class="anc-dim-title">Dimensionnement indicatif</div>
+        <div id="anc-dim-details" class="anc-dim-details"></div>
+        <div class="anc-dim-reculs" id="anc-dim-reculs"></div>
+      </div>
+
+      <!-- Conformité + SPANC -->
+      <div id="anc-conformite" class="anc-conformite"></div>
+      <div id="anc-spanc" class="anc-spanc" style="display:none"></div>
+
+      <!-- Override K manuel -->
+      <div class="anc-override">
+        <label class="anc-override-label">K mesuré (mm/h) — si test percolation disponible :</label>
+        <input type="number" id="anc-k-override" class="anc-override-input" min="0" max="200" step="1" placeholder="auto (BRGM)">
+      </div>
+
+      <div class="anc-source">DTU 64.1 · Arrêté 7 sept. 2009 · Guide SPANC Réunion — estimation pédagogique, étude de filière professionnelle requise</div>
+    </div>
   </div>
 
   <!-- Section Accessibilité 1/4 heure — ville du 1/4 h (Moreno) -->
@@ -139,9 +199,14 @@
       </button>
     </div>
     <div id="p05-rb-results" style="display:none;padding:4px 12px 8px">
+      <!-- Classification H/L Izard -->
+      <div id="p05-rb-class" style="display:none;margin-bottom:6px;padding:5px 8px;border-radius:var(--r-sm);font-size:.72rem;font-weight:bold;text-align:center"></div>
+      <!-- Coupe SVG transversale -->
+      <svg id="p05-rb-svg" viewBox="0 0 260 120" style="display:none;width:100%;height:auto;margin-bottom:6px;background:var(--bg2);border-radius:var(--r-sm)"></svg>
       <table style="width:100%;font-size:.72rem;border-collapse:collapse">
         <tr><td style="color:var(--ink3);font-style:italic;padding:2px 4px">W (largeur rue)</td><td id="p05-rb-W">—</td></tr>
         <tr><td style="color:var(--ink3);font-style:italic;padding:2px 4px">H (hauteur bâtiments)</td><td id="p05-rb-H">—</td></tr>
+        <tr><td style="color:var(--ink3);font-style:italic;padding:2px 4px">H/L</td><td id="p05-rb-HL">—</td></tr>
         <tr><td style="color:var(--ink3);font-style:italic;padding:2px 4px">Rb</td><td id="p05-rb-Rb">—</td></tr>
         <tr><td style="color:var(--ink3);font-style:italic;padding:2px 4px">V rue / V libre</td><td id="p05-rb-Vrel">—</td></tr>
         <tr><td style="color:var(--ink3);font-style:italic;padding:2px 4px;font-weight:bold">Indicateur C</td>
@@ -151,6 +216,66 @@
         <button class="source-btn" onclick="P05.saveRbSession()">
           Sauvegarder dans la session
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Heatmap ICU — Izard Microclimat Urbain 1 -->
+  <div class="form-section anim-slide-up" id="p05-icu-section">
+    <div class="fs-head">Îlot de chaleur urbain (ICU)</div>
+    <div style="padding:8px 12px">
+      <p style="font-size:.72rem;color:var(--ink3);font-style:italic;margin-bottom:6px">
+        Heatmap de densité bâtie — proxy de l'effet d'îlot de chaleur (Izard Microclimat Urbain 1).
+        Plus la zone est rouge, plus l'ICU potentiel est élevé.
+      </p>
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.72rem;font-family:var(--font-mono)">
+        <input type="checkbox" id="p05-icu-toggle" onchange="P05.toggleICU(this.checked)" style="width:13px;height:13px">
+        Afficher heatmap ICU sur la carte
+      </label>
+    </div>
+  </div>
+
+  <!-- Anciennete du bati — analyse chrono-morphologique -->
+  <div class="form-section anim-slide-up" id="p05-age-section">
+    <div class="fs-head">
+      Anciennete du bati
+      <span id="p05-age-badge" style="display:none;font-size:8px;background:var(--success2);color:var(--success);padding:2px 6px;border-radius:3px;margin-left:6px;font-family:var(--font-mono)">AUTO</span>
+    </div>
+    <div style="padding:8px 12px">
+      <p style="font-size:.72rem;color:var(--ink3);font-style:italic;margin-bottom:8px">
+        Datation des batiments voisins par tranche reglementaire (RT).
+        Source : BDNB (CSTB, fichiers fonciers + DPE) ou OSM.
+      </p>
+      <div id="p05-age-loader" style="font-size:11px;color:var(--muted);font-style:italic;margin-bottom:6px">Chargement anciennete...</div>
+
+      <!-- Legende couleur -->
+      <div id="p05-age-legend" style="display:none;margin-bottom:8px">
+        <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:6px" id="p05-age-legend-items"></div>
+      </div>
+
+      <!-- Stats resume -->
+      <div id="p05-age-stats" style="display:none;font-size:11px;line-height:1.6;margin-bottom:8px"></div>
+
+      <!-- Toggle couche carte -->
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.72rem;font-family:var(--font-mono);margin-bottom:6px">
+        <input type="checkbox" id="p05-age-toggle" onchange="P05.toggleAgeLayer(this.checked)" style="width:13px;height:13px">
+        Afficher anciennete sur la carte
+      </label>
+
+      <!-- Photos historiques IGN -->
+      <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
+        <div style="font-family:var(--font-mono);font-size:8.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-bottom:4px">Photos aeriennes IGN</div>
+        <div style="display:flex;gap:6px">
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:.72rem;font-family:var(--font-mono)">
+            <input type="checkbox" id="p05-hist-1950" onchange="P05.toggleHistPhoto('ortho-1950', this.checked)" style="width:12px;height:12px">
+            1950-1965
+          </label>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:.72rem;font-family:var(--font-mono)">
+            <input type="checkbox" id="p05-hist-now" onchange="P05.toggleHistPhoto('ortho-now', this.checked)" style="width:12px;height:12px">
+            Actuelle
+          </label>
+        </div>
+        <div style="font-size:9px;color:var(--faint);font-style:italic;margin-top:4px">IGN Remonter le Temps — comparer l'evolution urbaine</div>
       </div>
     </div>
   </div>
@@ -166,8 +291,9 @@
     <div class="check-item" role="checkbox" aria-checked="false" tabindex="0"><div class="check-box"></div><span>Accès SDIS + hydrant vérifiés</span></div>
     <div class="check-item" role="checkbox" aria-checked="false" tabindex="0" id="p05-check-rb"><div class="check-box"></div><span>Facteur Rb calculé sur au moins une rue du voisinage</span></div>
     <div class="check-item" role="checkbox" aria-checked="false" tabindex="0" id="p05-check-iso"><div class="check-box"></div><span>Accessibilité 1/4 heure analysée (Moreno)</span></div>
+    <div class="check-item" role="checkbox" aria-checked="false" tabindex="0" id="p05-check-age"><div class="check-box"></div><span>Anciennete du bati analysee</span></div>
     <div class="val-progress"><div class="val-bar"></div></div>
-    <div class="val-footer"><span>Phase indicative</span><span class="val-pct">0/5</span></div>
+    <div class="val-footer"><span>Phase indicative</span><span class="val-pct">0/6</span></div>
     <button class="next-btn">Phase 6 — Biodiversité →</button>
   </div>
 </div>
@@ -246,8 +372,45 @@
 .res-sel { width:100%; padding:5px 8px; font-size:11px; }
 .anc-alert { background:var(--warning2); border:1px solid rgba(245,158,11,.3); border-left:3px solid var(--warning); border-radius:var(--r-sm); padding:8px 10px; font-size:11px; color:var(--warning); margin-top:8px; }
 .danger-rad.selected { background:var(--danger2)!important; border-color:var(--danger)!important; color:var(--danger)!important; }
+
+/* ── Panneau détail ANC ─────────────────────────────────────────── */
+#anc-detail-panel { margin-top:10px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); padding:10px; }
+.anc-detail-header { display:flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--faint); margin-bottom:8px; }
+.anc-detail-icon { font-size:16px; }
+.anc-score-badge { margin-left:auto; padding:2px 8px; border-radius:3px; font-size:9px; font-weight:600; }
+.anc-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:8px; }
+.anc-cell { background:var(--bg); border-radius:var(--r-sm); padding:6px 8px; }
+.anc-cell-label { font-family:var(--font-mono); font-size:8px; color:var(--faint); text-transform:uppercase; letter-spacing:.06em; margin-bottom:3px; }
+.anc-cell-value { font-size:14px; font-weight:600; }
+.anc-cell-sub { font-size:10px; color:var(--faint); margin-top:2px; }
+.anc-reco-box { background:var(--bg); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:var(--r-sm); padding:8px 10px; margin-bottom:6px; }
+.anc-reco-title { font-size:12px; font-weight:600; margin-bottom:4px; }
+.anc-reco-desc { font-size:10.5px; color:var(--faint); margin-bottom:6px; line-height:1.4; }
+.anc-reco-metrics { display:flex; gap:12px; font-family:var(--font-mono); font-size:10px; margin-bottom:4px; }
+.anc-reco-metrics span { background:var(--card); padding:2px 6px; border-radius:3px; }
+.anc-reco-alertes { font-size:10px; color:var(--warning); }
+.anc-reco-alertes div { margin-top:2px; }
+.anc-alternatives { font-size:10px; color:var(--faint); margin-bottom:8px; }
+.anc-alternatives .anc-alt-item { display:inline-block; background:var(--bg); border:1px solid var(--border); border-radius:3px; padding:2px 6px; margin:2px 3px 2px 0; cursor:default; }
+.anc-dim-box { background:var(--bg); border-radius:var(--r-sm); padding:8px 10px; margin-bottom:6px; }
+.anc-dim-title { font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:.06em; color:var(--faint); margin-bottom:6px; }
+.anc-dim-details { font-size:11px; line-height:1.5; }
+.anc-dim-reculs { font-size:10px; color:var(--faint); margin-top:4px; }
+.anc-conformite { margin-bottom:6px; }
+.anc-conformite .anc-check { font-size:10.5px; padding:3px 0; display:flex; align-items:center; gap:4px; }
+.anc-conformite .anc-check-ok { color:var(--success); }
+.anc-conformite .anc-check-warn { color:var(--warning); }
+.anc-conformite .anc-check-err { color:var(--danger); }
+.anc-spanc { background:var(--accent2); border:1px solid rgba(59,130,246,.2); border-radius:var(--r-sm); padding:8px 10px; font-size:11px; margin-bottom:6px; }
+.anc-override { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.anc-override-label { font-size:10px; color:var(--faint); }
+.anc-override-input { width:80px; padding:4px 6px; font-size:11px; border:1px solid var(--border); border-radius:var(--r-sm); background:var(--bg); color:var(--text); }
+.anc-source { font-size:9px; color:var(--faint); font-style:italic; }
 </style>
 <script type="module">
+import ANCService from '../services/anc-service.js';
+import BuildingAgeService from '../services/building-age-service.js';
+
 const SessionManager = window.SessionManager;
 const P05 = {
   sel(label, field, val) {
@@ -260,6 +423,101 @@ const P05 = {
     const alert = document.getElementById('anc-alert');
     if (alert) alert.style.display = (sel.value === 'ANC' && pente > 8) ? 'block' : 'none';
     SessionManager.saveTerrain({ assainissement: sel.value });
+
+    // Panneau détail ANC
+    const panel = document.getElementById('anc-detail-panel');
+    if (!panel) return;
+    if (sel.value !== 'ANC') { panel.style.display = 'none'; return; }
+    panel.style.display = 'block';
+    this._renderANC();
+  },
+
+  _renderANC() {
+    const session = SessionManager.getAll?.() ?? { terrain: SessionManager.getTerrain?.() ?? {} };
+    const result = ANCService.computeFromSession(session);
+    if (!result || !result.besoinANC) return;
+
+    // Sauvegarder filière recommandée pour rapport-phrases-engine
+    if (result.recommandation?.id) {
+      SessionManager.saveTerrain({ anc_filiere: result.recommandation.id });
+    }
+
+    // Score badge
+    const badge = document.getElementById('anc-score-badge');
+    if (badge) {
+      badge.textContent = `${result.score}/100 — ${result.scoreLabel}`;
+      badge.style.background = result.scoreColor;
+      badge.style.color = '#fff';
+    }
+
+    // Données sol
+    const kVal = document.getElementById('anc-k-value');
+    const kCls = document.getElementById('anc-k-class');
+    const ehVal = document.getElementById('anc-eh-value');
+    const volVal = document.getElementById('anc-vol-value');
+    const penteVal = document.getElementById('anc-pente-value');
+    if (kVal) kVal.textContent = `${result.k_mmh} mm/h`;
+    if (kCls) kCls.textContent = result.classeK?.label + ' — ' + result.classeK?.verdict;
+    if (ehVal) ehVal.textContent = `${result.eh} EH`;
+    if (volVal) volVal.textContent = `${result.volume_m3_jour} m³/jour`;
+    if (penteVal) penteVal.textContent = `${result.pente_pct}%`;
+
+    // Filière recommandée
+    const reco = result.recommandation;
+    if (reco) {
+      const title = document.getElementById('anc-reco-title');
+      const desc = document.getElementById('anc-reco-desc');
+      const emprise = document.getElementById('anc-reco-emprise');
+      const cout = document.getElementById('anc-reco-cout');
+      const alertes = document.getElementById('anc-reco-alertes');
+      if (title) title.textContent = `✦ ${reco.label}`;
+      if (desc) desc.textContent = reco.description;
+      if (emprise) emprise.textContent = `Emprise ≈ ${reco.emprise_m2} m²`;
+      if (cout && result.cout) cout.textContent = `CapEx ≈ ${result.cout.capex_min.toLocaleString()}–${result.cout.capex_max.toLocaleString()} €`;
+      if (alertes) alertes.innerHTML = reco.alertes.map(a => `<div>⚠ ${a}</div>`).join('');
+    }
+
+    // Alternatives
+    const altBox = document.getElementById('anc-alternatives');
+    if (altBox && result.alternatives?.length) {
+      altBox.innerHTML = '<span style="font-family:var(--font-mono);font-size:8px;text-transform:uppercase;letter-spacing:.06em">Alternatives :</span> '
+        + result.alternatives.map(a => `<span class="anc-alt-item">${a.label} (${a.emprise_m2} m²)</span>`).join('');
+    }
+
+    // Dimensionnement
+    const dimBox = document.getElementById('anc-dim-box');
+    const dimDetails = document.getElementById('anc-dim-details');
+    const dimReculs = document.getElementById('anc-dim-reculs');
+    if (dimBox && result.dimensionnement) {
+      dimBox.style.display = 'block';
+      const d = result.dimensionnement;
+      let html = '';
+      if (d.fosse) html += `<div>Fosse toutes eaux : <strong>${d.fosse.volume_m3} m³</strong> (${d.fosse.longueur_m}×${d.fosse.largeur_m}×${d.fosse.profondeur_m} m)</div>`;
+      if (d.tranchees) html += `<div>Tranchées : <strong>${d.tranchees.nombre}×${d.tranchees.longueur_m} m</strong> (entraxe ${d.tranchees.entraxe_m} m) — ${d.tranchees.surface_totale_m2} m²</div>`;
+      if (d.filtres) html += `<div>Filtres plantés : étage 1 = ${d.filtres.etage_1_m2} m², étage 2 = ${d.filtres.etage_2_m2} m²</div>`;
+      html += `<div>Emprise totale ANC : <strong>${d.empriseTotal_m2} m²</strong></div>`;
+      if (dimDetails) dimDetails.innerHTML = html;
+      if (dimReculs && d.reculs) {
+        dimReculs.textContent = `Reculs : ${d.reculs.limite_parcelle}m limite · ${d.reculs.habitation}m habitation · ${d.reculs.captage}m captage · ${d.reculs.arbre}m arbre`;
+      }
+    }
+
+    // Conformité
+    const confBox = document.getElementById('anc-conformite');
+    if (confBox && result.conformite?.length) {
+      confBox.innerHTML = result.conformite.map(c => {
+        const cls = c.severity === 'error' ? 'anc-check-err' : c.severity === 'warning' ? 'anc-check-warn' : 'anc-check-ok';
+        const icon = c.severity === 'error' ? '✗' : c.severity === 'warning' ? '⚠' : '✓';
+        return `<div class="anc-check ${cls}">${icon} ${c.text}</div>`;
+      }).join('');
+    }
+
+    // SPANC
+    const spancBox = document.getElementById('anc-spanc');
+    if (spancBox && result.spanc) {
+      spancBox.style.display = 'block';
+      spancBox.innerHTML = `📞 <strong>${result.spanc.nom}</strong> — ${result.spanc.tel}<br><span style="font-size:10px;color:var(--faint)">${result.spanc.communes}</span>`;
+    }
   },
 
   // ─── Aéraulique Rb (Sprint 2) ───────────────────────────────
@@ -286,25 +544,154 @@ const P05 = {
   },
 
   _onRbResult({ W, H, Rb, Vrel, C, cLabel, ok }) {
-    this._lastRbResult = { W, H, Rb, Vrel, C, cLabel };
+    const HL = W > 0 ? H / W : 0;
+    const classif = HL < 0.5 ? 'degage' : HL < 1.5 ? 'intermediaire' : 'canyon';
+    this._lastRbResult = { W, H, Rb, Vrel, C, cLabel, HL, classif };
     const color = ok ? 'var(--accent)' : Rb < 0.4 ? '#b05800' : '#8a2020';
     const res   = document.getElementById('p05-rb-results');
     if (res) {
       res.style.display = 'block';
       document.getElementById('p05-rb-W').textContent    = W.toFixed(1) + ' m';
       document.getElementById('p05-rb-H').textContent    = H.toFixed(1) + ' m';
+      document.getElementById('p05-rb-HL').textContent   = HL.toFixed(2);
       document.getElementById('p05-rb-Rb').textContent   = Rb.toFixed(3);
       document.getElementById('p05-rb-Vrel').textContent = (Vrel*100).toFixed(0) + '%';
       const cEl = document.getElementById('p05-rb-C');
       if (cEl) { cEl.textContent = `${C.toFixed(2)} — ${cLabel}`; cEl.style.color = color; }
     }
-    window.dispatchEvent(new CustomEvent('terlab:rb-calculated', { detail: { Rb, C, ok } }));
+    // Classification Izard H/L
+    const classEl = document.getElementById('p05-rb-class');
+    if (classEl) {
+      const CLASSIF = {
+        degage:        { label: 'Dégagé (H/L < 0.5)', bg: '#163b2a', fg: '#4ade80', desc: 'Bonne ventilation naturelle' },
+        intermediaire: { label: 'Intermédiaire (0.5 ≤ H/L < 1.5)', bg: '#3b2e10', fg: '#f0c040', desc: 'Ventilation partielle' },
+        canyon:        { label: 'Canyon (H/L ≥ 1.5)', bg: '#3b1010', fg: '#f07070', desc: 'Ventilation très réduite' },
+      };
+      const cl = CLASSIF[classif];
+      classEl.style.display    = 'block';
+      classEl.style.background = cl.bg;
+      classEl.style.color      = cl.fg;
+      classEl.textContent      = `${cl.label} — ${cl.desc}`;
+    }
+    // Coupe SVG transversale
+    this._drawRbSVG(W, H, HL, classif, Vrel);
+    window.dispatchEvent(new CustomEvent('terlab:rb-calculated', { detail: { Rb, C, ok, HL, classif } }));
+  },
+
+  /** Coupe transversale SVG de la rue — Izard Microclimat Urbain 2 */
+  _drawRbSVG(W, H, HL, classif, Vrel) {
+    const svg = document.getElementById('p05-rb-svg');
+    if (!svg) return;
+    svg.style.display = 'block';
+
+    const vb = { w: 260, h: 120 };
+    const ground = 100; // y du sol
+    const maxDim = Math.max(W, H, 10);
+    const scale  = 70 / maxDim; // hauteur dispo ~70px
+    const bW     = Math.max(20, 18 * scale); // largeur batiment fixe
+    const bH     = H * scale;
+    const sW     = W * scale;
+    const cx     = vb.w / 2;
+    const bLeft  = cx - sW / 2 - bW;
+    const bRight = cx + sW / 2;
+
+    const COLORS = { degage: '#4ade80', intermediaire: '#f0c040', canyon: '#f07070' };
+    const streetColor = COLORS[classif] || '#888';
+
+    // Fleches de vent (streamlines simplifiees)
+    const nArrows = Math.max(2, Math.round(Vrel * 5));
+    let arrows = '';
+    for (let i = 0; i < nArrows; i++) {
+      const y  = ground - bH * 0.2 - (i * bH * 0.6 / Math.max(1, nArrows - 1));
+      const x1 = bLeft + bW + 4;
+      const x2 = bRight - 4;
+      const opacity = 0.3 + Vrel * 0.5;
+      arrows += `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="#4a9fd4" stroke-width="1" opacity="${opacity.toFixed(2)}" marker-end="url(#arrowRb)"/>`;
+    }
+
+    svg.innerHTML = `
+      <defs>
+        <marker id="arrowRb" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="5" markerHeight="5" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#4a9fd4"/>
+        </marker>
+      </defs>
+      <!-- Sol -->
+      <line x1="10" y1="${ground}" x2="${vb.w-10}" y2="${ground}" stroke="var(--ink3)" stroke-width="1" stroke-dasharray="3,2"/>
+      <!-- Batiment gauche -->
+      <rect x="${bLeft}" y="${ground - bH}" width="${bW}" height="${bH}" fill="#334455" stroke="var(--ink2)" stroke-width="1" rx="1"/>
+      <!-- Batiment droit -->
+      <rect x="${bRight}" y="${ground - bH}" width="${bW}" height="${bH}" fill="#334455" stroke="var(--ink2)" stroke-width="1" rx="1"/>
+      <!-- Rue (zone coloree) -->
+      <rect x="${bLeft + bW}" y="${ground - bH}" width="${sW}" height="${bH}" fill="${streetColor}" opacity="0.08" rx="1"/>
+      <!-- Cote W -->
+      <line x1="${bLeft + bW}" y1="${ground + 6}" x2="${bRight}" y2="${ground + 6}" stroke="${streetColor}" stroke-width="1"/>
+      <text x="${cx}" y="${ground + 15}" fill="${streetColor}" font-size="8" text-anchor="middle" font-family="var(--font-mono)">W=${W.toFixed(1)}m</text>
+      <!-- Cote H -->
+      <line x1="${bLeft - 4}" y1="${ground}" x2="${bLeft - 4}" y2="${ground - bH}" stroke="var(--ink3)" stroke-width="1"/>
+      <text x="${bLeft - 8}" y="${ground - bH/2 + 3}" fill="var(--ink3)" font-size="7" text-anchor="end" font-family="var(--font-mono)">H=${H.toFixed(1)}m</text>
+      <!-- Fleches vent -->
+      ${arrows}
+      <!-- Label classification -->
+      <text x="${cx}" y="14" fill="${streetColor}" font-size="9" text-anchor="middle" font-weight="bold" font-family="var(--font-mono)">${classif === 'degage' ? 'Dégagé' : classif === 'intermediaire' ? 'Intermédiaire' : 'Canyon'} · H/L=${HL.toFixed(2)}</text>
+      <!-- Legende Izard -->
+      <text x="${vb.w - 6}" y="${ground + 15}" fill="var(--ink4)" font-size="5.5" text-anchor="end" font-family="var(--font-mono)">Izard · Microclimat Urbain 2</text>
+    `;
   },
 
   saveRbSession() {
     if (!this._lastRbResult) return;
     SessionManager.savePhase(5, { aeraulique_rb: this._lastRbResult });
     window.TerlabToast?.show('Rb sauvegardé dans la session', 'success', 2500);
+  },
+
+  // ─── Heatmap ICU (Izard Microclimat Urbain 1) ────────────────
+  toggleICU(visible) {
+    window.TerlabMap?.toggleICUHeatmap?.(visible);
+  },
+
+  // ─── Anciennete du bati ──────────────────────────────────────
+  _ageGeojson: null,
+  _ageLayerVisible: false,
+
+  toggleAgeLayer(visible) {
+    const map = window.TerlabMap?.getMap?.();
+    if (!map || !this._ageGeojson) return;
+    this._ageLayerVisible = visible;
+    BuildingAgeService.toggleAgeLayer(map, visible);
+  },
+
+  toggleHistPhoto(layerId, visible) {
+    const map = window.TerlabMap?.getMap?.();
+    if (!map) return;
+    const def = BuildingAgeService.HIST_LAYERS.find(l => l.id === layerId);
+    if (def) BuildingAgeService.toggleHistoricalLayer(map, def, visible);
+  },
+
+  _renderAgeLegend(stats) {
+    const legendItems = document.getElementById('p05-age-legend-items');
+    const legendBox   = document.getElementById('p05-age-legend');
+    const statsBox    = document.getElementById('p05-age-stats');
+    if (!legendItems || !stats) return;
+
+    // Legende couleur
+    let html = '';
+    for (const t of BuildingAgeService.TRANCHES) {
+      const s = stats.tranches[t.id];
+      if (!s || s.count === 0) continue;
+      html += `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:3px;background:${t.color};color:${t.fg};font-size:10px;font-family:var(--font-mono)">`
+        + `${t.label} <strong>${s.count}</strong></span>`;
+    }
+    legendItems.innerHTML = html;
+    if (legendBox) legendBox.style.display = 'block';
+
+    // Stats resume
+    if (statsBox) {
+      statsBox.innerHTML = `<strong>${stats.total}</strong> batiments dates`
+        + ` · <strong>${stats.annee_min}</strong>–<strong>${stats.annee_max}</strong>`
+        + ` · moy. <strong>${stats.annee_moy}</strong>`
+        + `<br/><span style="font-size:10px;color:var(--faint)">Source : ${stats.source === 'bdnb' ? 'BDNB (CSTB — fichiers fonciers + DPE)' : 'OpenStreetMap start_date'}</span>`;
+      statsBox.style.display = 'block';
+    }
   },
 
   // ─── Toggle Carte / Vue 3D ──────────────────────────────────
@@ -423,6 +810,21 @@ if (terrain?.commune) document.getElementById('ts-c-p5').textContent = terrain.c
 const p4 = SessionManager.getPhase(4)?.data ?? {};
 if (p4.zone_plu) document.getElementById('ts-z-p5').textContent = p4.zone_plu.split(' ')[0];
 window.P05 = P05;
+
+// ── ANC : restore état + listener K override ──────────────────
+if (terrain?.assainissement === 'ANC') {
+  const ancSel = document.querySelector('[data-session-key="assainissement"]');
+  if (ancSel) { ancSel.value = 'ANC'; P05.checkANC(ancSel); }
+}
+const kInput = document.getElementById('anc-k-override');
+if (kInput) {
+  kInput.addEventListener('input', () => {
+    const v = kInput.value.trim();
+    if (v) SessionManager.saveTerrain({ anc_k_mmh: v });
+    else SessionManager.saveTerrain({ anc_k_mmh: null });
+    P05._renderANC();
+  });
+}
 
 // Validation Rb automatique
 window.addEventListener('terlab:rb-calculated', () => {
@@ -601,5 +1003,48 @@ if (window.AtlasModal) AtlasModal.injectPreview('atlas-preview-urbain', 'composi
   } catch (e) {
     console.warn('[P05] BASIAS auto-fetch failed:', e.message);
   }
+
+  // ─── Anciennete du bati (BDNB → OSM) ──────────────────────
+  (async () => {
+    const ageLoader = document.getElementById('p05-age-loader');
+    const ageBadge  = document.getElementById('p05-age-badge');
+    try {
+      const geojson = await BuildingAgeService.fetch(lat, lon, 300);
+      P05._ageGeojson = geojson;
+
+      if (geojson.features.length === 0) {
+        if (ageLoader) ageLoader.textContent = 'Aucune donnee d\'anciennete disponible pour ce secteur';
+        return;
+      }
+
+      // Charger la couche sur la carte (invisible par defaut)
+      const map = window.TerlabMap?.getMap?.();
+      if (map) {
+        BuildingAgeService.loadAgeLayer(map, geojson);
+        BuildingAgeService.toggleAgeLayer(map, false);
+        // Pre-charger les sources WMTS historiques
+        for (const def of BuildingAgeService.HIST_LAYERS) {
+          BuildingAgeService.addHistoricalLayer(map, def);
+        }
+      }
+
+      // Stats + legende
+      const stats = BuildingAgeService.analyzeAge(geojson);
+      P05._renderAgeLegend(stats);
+
+      // Sauvegarder dans la session
+      SessionManager.savePhase(5, { anciennete_bati: stats });
+
+      if (ageLoader) ageLoader.style.display = 'none';
+      if (ageBadge)  ageBadge.style.display  = 'inline';
+
+      // Validation auto
+      const chk = document.getElementById('p05-check-age');
+      if (chk) { chk.setAttribute('aria-checked','true'); chk.classList.add('checked'); }
+    } catch (e) {
+      console.warn('[P05] Building age failed:', e.message);
+      if (ageLoader) ageLoader.textContent = 'Anciennete indisponible — BDNB/OSM injoignable';
+    }
+  })();
 })();
 </script>
