@@ -98,29 +98,22 @@ Chaque phase possède :
 
 ### Phases-clés détaillées
 
+#### P01 — Topographie : maillage TIN adaptatif
+- `services/terrain-mesh-builder.js` : triangulation Delaunay (delaunator CDN) sur points LiDAR sol avec insertion de breaklines (cadastre, ravines, bâtiments, routes). Décimation adaptative 80k points max, layers couleur interchangeables (classification LiDAR, pente, altitude, ortho UV).
+- Section P01 interactive : bouton « LiDAR Make Mesh », progression, sélecteur de couche couleur, légende dynamique.
+
 #### P04 — PLU & SCoT
-Source de vérité unique : `data/plu-rules-reunion.json` (24 communes consolidées) + 24 fichiers `plu-rules-<commune>.json` individuels. Le service `plu-p07-adapter.js` gère la résolution zone PLU avec fuzzy match, gestion AVAP, ref_zone, fallback graceful. Calcul **CBS** (Coefficient Biotope) intégré, validation Saint-Paul Ua5 conforme.
+- Source de vérité unique : `data/plu-rules-reunion.json` (24 communes consolidées) + 24 fichiers `plu-rules-<commune>.json` individuels. Le service `plu-p07-adapter.js` gère la résolution zone PLU avec fuzzy match, gestion AVAP, ref_zone, fallback graceful. Calcul **CBS** (Coefficient Biotope) intégré, validation Saint-Paul Ua5 conforme.
+- Section servitudes Art. 682-685 CC (enclave, droit de passage, SDIS, SUP réseaux). Vérification parcelle (accès voie publique, servitudes, largeur accès, réseaux en limite). Alerte automatique parcelle enclavée propagée depuis EsquisseCanvas.
+
+#### P05 — Voisinage : ancienneté du bâti
+- `services/building-age-service.js` : ancienneté via BDNB CSTB (primaire) + OSM `start_date` (fallback). Tranches réglementaires thermiques (pré-1950, RT 1974/1988, RT 2000/2005, RT 2012 / RE 2020). Couche Mapbox colorée par époque.
 
 #### P07 — Esquisse interactive
 - `services/plan-masse-canvas.js` (PlanMasseCanvas) : éditeur SVG inline avec gabarit PLU temps réel, drag-handles, scénarios Pareto (A1/B1/B2/C1).
 - `components/gabarit-engine.js` (ConstraintSolver) : moteur de zones constructibles edge-aware, bandes de recul suivant l'inclinaison réelle des limites parcellaires (parcelles non orthogonales, trapèzes, polygones en L).
 - Règle **binaire** d'implantation latérale : 0 m (mitoyen) OU Lmin (recul standard), conforme à la jurisprudence réunionnaise.
 - Clamping AABB strict dans le polygone constructible réel (et non sa bbox).
-- `services/contour-service.js` : lissage DEM Gaussian blur 3×3 + lissage polyline Chaikin corner-cutting. Supprime le crénelage des courbes de niveau.
-- `services/geo-utils.js` : `arcInterpolateCorners` — post-processeur Minkowski qui remplace les coins vifs de la zone constructible par des arcs circulaires aux intersections de reculs.
-- `services/terrain-p07-adapter.js` : arc corners convex parcels + inlet notches sur limites mitoyennes + `inferEdgeTypes()` unifié.
-
-#### P01 — Topographie : maillage TIN adaptatif
-- `services/terrain-mesh-builder.js` : triangulation Delaunay (delaunator CDN) sur points LiDAR sol avec insertion de breaklines (cadastre, ravines, bâtiments, routes). Décimation adaptative 80k points max, layers couleur interchangeables (classification LiDAR, pente, altitude, ortho UV).
-- Section P01 interactive : bouton « LiDAR Make Mesh », progression, sélecteur de couche couleur, légende dynamique.
-
-#### P04 — PLU : servitudes, passages & réseaux
-- Section servitudes Art. 682-685 CC (enclave, droit de passage, SDIS, SUP réseaux).
-- Vérification parcelle (accès voie publique, servitudes, largeur accès, réseaux en limite).
-- Alerte automatique parcelle enclavée propagée depuis EsquisseCanvas.
-
-#### P05 — Voisinage : ancienneté du bâti
-- `services/building-age-service.js` : ancienneté via BDNB CSTB (primaire) + OSM `start_date` (fallback). Tranches réglementaires thermiques (pré-1950, RT 1974/1988, RT 2000/2005, RT 2012 / RE 2020). Couche Mapbox colorée par époque.
 
 #### P10 — Entretien : ANC (Assainissement Non Collectif)
 - `services/anc-service.js` : dimensionnement filière ANC adapté Réunion (DTU 64.1, arrêté 7 sept. 2009, guide SPANC Réunion/DEAL). Classes de perméabilité, scoring 0-100, coût CapEx/OpEx, conformité, SPANC local.
@@ -133,6 +126,11 @@ Source de vérité unique : `data/plu-rules-reunion.json` (24 communes consolid�
 - `services/bpf-bridge.js` : injection automatique végétation + aménités (Poisson disk, 35 espèces, 8 aménités).
 - `services/auto-plan-strategies.js` : 6 stratégies de placement (rect, oblique, zone, multi-blocs, L-shape, courtyard).
 - `services/existing-buildings.js` : modes conservation (zone libre = env − AABB footprints + gap) et extension (bande collée façade libre).
+
+#### Pipeline géométrique transverse
+- `services/contour-service.js` : lissage DEM Gaussian blur 3×3 + lissage polyline Chaikin corner-cutting. Supprime le crénelage des courbes de niveau.
+- `services/geo-utils.js` : `arcInterpolateCorners` — post-processeur Minkowski qui remplace les coins vifs de la zone constructible par des arcs circulaires aux intersections de reculs.
+- `services/terrain-p07-adapter.js` : arc corners convex parcels + inlet notches sur limites mitoyennes + `inferEdgeTypes()` unifié.
 
 ---
 
