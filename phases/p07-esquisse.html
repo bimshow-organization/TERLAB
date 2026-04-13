@@ -1944,6 +1944,13 @@ Object.assign(P07, {
       document.getElementById('t3d-loader').classList.add('done');
       P07._updateTopoPanel();
 
+      // Cablage vegetation : replay si deja genere + listener live
+      const EC2 = window.EsquisseCanvas;
+      if (EC2?._vegetationPlants?.length) Terrain3D.setVegetation(EC2._vegetationPlants);
+      window.addEventListener('terlab:vegetation-generated', (ev) => {
+        if (Terrain3D._scene) Terrain3D.setVegetation(ev.detail?.plants ?? []);
+      });
+
       // Ajouter mesh BackgroundTerrain IGN si disponible
       const BG = window.BackgroundTerrain;
       const t = SessionManager.getTerrain();

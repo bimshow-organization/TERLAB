@@ -20,22 +20,41 @@ const TerrainAnalysis = {
     return INTERCO_MAP[insee] ?? 'Non déterminé';
   },
 
-  // ── Pente depuis géométrie parcelle + API IGN altimétrie ──────────
-  // Source : carte-infos.js GIEP calculateSlopeFromGeometry
+  // ── Cache mémoire (clé = bbox arrondie) ────────────────────────────
+  _slopeCache: new Map(),
+  _slopeKey(bbox) {
+    return bbox.map(v => v.toFixed(5)).join(',');
+  },
+
+  // ── Pente depuis géométrie parcelle ────────────────────────────────
+  // Priorité : 1. cache mémoire  2. Mapbox DEM (instantané, 0 réseau)
+  //            3. IGN /altimétrie REST (fallback réseau, 15s)
+  //            4. estimation par altitude
   async calculateSlopeFromParcelle(parcelleGeoJSON, altitude_ngr) {
+    const bbox = this._getBbox(parcelleGeoJSON);
+    if (!bbox) return { slope: estimerPenteParAltitude(altitude_ngr), method: 'altitude_fallback' };
+
+    const cacheKey = this._slopeKey(bbox);
+    const cached = this._slopeCache.get(cacheKey);
+    if (cached) return cached;
+
+    const corners = [
+      { lng: bbox[0], lat: bbox[1] }, // SW
+      { lng: bbox[2], lat: bbox[1] }, // SE
+      { lng: bbox[2], lat: bbox[3] }, // NE
+      { lng: bbox[0], lat: bbox[3] }, // NW
+      { lng: (bbox[0] + bbox[2]) / 2, lat: (bbox[1] + bbox[3]) / 2 }, // centre
+    ];
+
+    // 1) Mapbox DEM déjà chargé → calcul instantané, zéro réseau
+    const mbxResult = this._tryMapboxDem(corners, bbox);
+    if (mbxResult) {
+      this._slopeCache.set(cacheKey, mbxResult);
+      return mbxResult;
+    }
+
+    // 2) IGN altimétrie REST (batch, retry 429, timeout 15s)
     try {
-      const bbox = this._getBbox(parcelleGeoJSON);
-      if (!bbox) return { slope: estimerPenteParAltitude(altitude_ngr), method: 'altitude_fallback' };
-
-      const corners = [
-        { lng: bbox[0], lat: bbox[1] }, // SW
-        { lng: bbox[2], lat: bbox[1] }, // SE
-        { lng: bbox[2], lat: bbox[3] }, // NE
-        { lng: bbox[0], lat: bbox[3] }, // NW
-        { lng: (bbox[0] + bbox[2]) / 2, lat: (bbox[1] + bbox[3]) / 2 }, // centre
-      ];
-
-      // API IGN altimétrie batch (GET, plus fiable que POST) — retry sur 429
       const lons = corners.map(c => c.lng).join('|');
       const lats = corners.map(c => c.lat).join('|');
       const altiUrl = `https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json`
@@ -44,45 +63,68 @@ const TerrainAnalysis = {
       let data;
       for (let attempt = 0; attempt <= 3; attempt++) {
         if (attempt > 0) await new Promise(r => setTimeout(r, 500 * Math.pow(2, attempt - 1)));
-        const res = await fetch(altiUrl, { signal: AbortSignal.timeout(8000) });
+        const res = await fetch(altiUrl, { signal: AbortSignal.timeout(15000) });
         if (res.status === 429 && attempt < 3) continue;
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         data = await res.json();
         break;
       }
       const elevations = data?.elevations?.map(e => e.z) ?? [];
-
       if (elevations.length < 4) throw new Error('Pas assez de points');
 
-      // Calculer la pente max entre les coins
       const validElevations = elevations.filter(z => z !== -99999 && z != null);
       if (validElevations.length < 2) throw new Error('Altitudes invalides');
 
-      const minZ = Math.min(...validElevations);
-      const maxZ = Math.max(...validElevations);
-      const dz = maxZ - minZ;
-
-      // Distance diagonale en mètres (approximation)
-      const dLng = (bbox[2] - bbox[0]) * 111000 * Math.cos((bbox[1] + bbox[3]) / 2 * Math.PI / 180);
-      const dLat = (bbox[3] - bbox[1]) * 111000;
-      const diag = Math.sqrt(dLng * dLng + dLat * dLat);
-
-      const slope = diag > 0 ? (dz / diag) * 100 : 0;
-
-      // Déduire l'exposition depuis les altitudes des coins
-      const exposition = this._deduireExposition(elevations, corners);
-
-      return {
-        slope: Math.round(slope * 10) / 10,
-        method: 'ign_alti',
-        altitudes: validElevations,
-        exposition,
-        denivelé_m: dz,
-      };
+      const result = this._buildSlopeResult(bbox, corners, elevations, 'ign_alti');
+      this._slopeCache.set(cacheKey, result);
+      return result;
     } catch (err) {
       console.warn('[TerrainAnalysis] Fallback altitude pour pente:', err.message);
-      return { slope: estimerPenteParAltitude(altitude_ngr), method: 'altitude_fallback' };
+      const fb = { slope: estimerPenteParAltitude(altitude_ngr), method: 'altitude_fallback' };
+      // Ne pas cacher le fallback : on préfère retenter au prochain appel
+      return fb;
     }
+  },
+
+  // Tente Mapbox DEM via map.queryTerrainElevation (sync, 0 réseau)
+  _tryMapboxDem(corners, bbox) {
+    const map = window.MapViewer?.getMap?.();
+    if (!map?.queryTerrainElevation) return null;
+    const elevations = corners.map(c => map.queryTerrainElevation([c.lng, c.lat]));
+    const valid = elevations.filter(z => z != null && !Number.isNaN(z));
+    if (valid.length < 4) return null;
+    return this._buildSlopeResult(bbox, corners, elevations, 'mapbox_dem');
+  },
+
+  _buildSlopeResult(bbox, corners, elevations, method) {
+    const validElevations = elevations.filter(z => z != null && z !== -99999);
+    const minZ = Math.min(...validElevations);
+    const maxZ = Math.max(...validElevations);
+    const dz = maxZ - minZ;
+    const dLng = (bbox[2] - bbox[0]) * 111000 * Math.cos((bbox[1] + bbox[3]) / 2 * Math.PI / 180);
+    const dLat = (bbox[3] - bbox[1]) * 111000;
+    const diag = Math.sqrt(dLng * dLng + dLat * dLat);
+    const slope = diag > 0 ? (dz / diag) * 100 : 0;
+    const exposition = this._deduireExposition(elevations, corners);
+    return {
+      slope: Math.round(slope * 10) / 10,
+      method,
+      altitudes: validElevations,
+      exposition,
+      denivelé_m: dz,
+    };
+  },
+
+  // ── Pré-charger le cache pente/altitudes en arrière-plan ──────────
+  // À appeler dès l'arrivée sur une phase qui aura besoin de ces valeurs
+  // (ex : P01 au chargement). Retourne immédiatement la promesse.
+  prefetchSlope(parcelleGeoJSON, altitude_ngr) {
+    if (!parcelleGeoJSON) return Promise.resolve(null);
+    const bbox = this._getBbox(parcelleGeoJSON);
+    if (!bbox) return Promise.resolve(null);
+    const key = this._slopeKey(bbox);
+    if (this._slopeCache.has(key)) return Promise.resolve(this._slopeCache.get(key));
+    return this.calculateSlopeFromParcelle(parcelleGeoJSON, altitude_ngr);
   },
 
   // ── Analyse complète automatique ──────────────────────────────────

@@ -1944,6 +1944,9 @@ const EsquisseCanvas = {
     try {
       const { default: ANCService } = await import('../services/anc-service.js');
       const session = window.SessionManager?.getAll?.() ?? { terrain: window.SessionManager?.getTerrain?.() ?? {} };
+      // Injecter le contexte géométrique actif pour que ANCService puisse placer
+      session._parcelLocal   = this._parcelLocal;
+      session._activeProposal = this._proposals?.[this._selected ?? 0] ?? null;
       this._ancResult = ANCService.computeFromSession(session);
       this._fullRedraw();
     } catch (e) {
@@ -1952,75 +1955,55 @@ const EsquisseCanvas = {
   },
 
   /**
-   * Dessine fosse toutes eaux + zone de traitement sur le plan masse.
-   * Placement : côté aval du bâtiment (y min = bas du plan), dans l'espace vert.
-   * Coordonnées en mètres locaux, projection via _localToSvgPt / _project.
+   * Dessine fosse + zone traitement sur plan masse, placement centralisé ANCService
+   * (aligné au bâtiment, testé inclusion parcelle, feasibility).
    */
-  _drawANC(parentG, prop) {
+  _drawANC(parentG, _prop) {
     const res = this._ancResult;
-    if (!res?.dimensionnement) return;
+    if (!res?.dimensionnement || !res.placement) return;
 
     const dim = res.dimensionnement;
-    const bat = this._buildingAABB;
-    if (!bat) return;
-
+    const pl = res.placement;
     const g = this._el('g', { class: 'anc-layer', opacity: '0.85' }, 'anc-layer', parentG);
 
-    // ── Placement en mètres locaux : fosse 3m sous le bâtiment, traitement 2m sous la fosse
-    const fosseLong = dim.fosse?.longueur_m ?? 2.5;
-    const fosseLarg = dim.fosse?.largeur_m ?? 1.2;
+    const cosA = Math.cos(pl.fosse.rotation ?? 0);
+    const sinA = Math.sin(pl.fosse.rotation ?? 0);
+    const rotCorners = (cx, cy, w, h) => {
+      const hw = w / 2, hh = h / 2;
+      return [[-hw,-hh],[hw,-hh],[hw,hh],[-hw,hh]].map(([lx,ly]) =>
+        ({ x: cx + lx * cosA - ly * sinA, y: cy + lx * sinA + ly * cosA }));
+    };
 
-    // Centre fosse : centré horizontalement, 3m sous le bâtiment (y croissant = vers le haut en local)
-    // Convention : y positif = nord ; bâtiment à bat.y (coin bas-gauche), bat.l = profondeur
-    // "En aval" = y le plus petit → bat.y - offset
-    const fosseCx = bat.x + bat.w / 2;
-    const fosseCy = bat.y - 3;
-
-    // Zone traitement
-    const traitW = this._ancTraitWidth(dim);
-    const traitH = this._ancTraitHeight(dim);
-    const traitCx = fosseCx;
-    const traitCy = fosseCy - fosseLarg / 2 - 1.5 - traitH / 2;
-
-    // ── Canalisation (ligne pointillée fosse → traitement)
-    const canPts = [
-      { x: fosseCx, y: fosseCy - fosseLarg / 2 },
-      { x: traitCx, y: traitCy + traitH / 2 },
-    ];
-    const canSvg = this._localToSvg(canPts);
-    if (canSvg.length >= 2) {
+    // ── Canalisation fosse → traitement (avec offsets le long de la normale)
+    const canPts = this._localToSvg([
+      { x: pl.fosse.cx, y: pl.fosse.cy },
+      { x: pl.traitement.cx, y: pl.traitement.cy },
+    ]);
+    if (canPts.length >= 2) {
       this._el('line', {
-        x1: canSvg[0].x, y1: canSvg[0].y,
-        x2: canSvg[1].x, y2: canSvg[1].y,
+        x1: canPts[0].x, y1: canPts[0].y, x2: canPts[1].x, y2: canPts[1].y,
         stroke: '#6B7280', 'stroke-width': 1.5, 'stroke-dasharray': '4,2', opacity: '0.6',
       }, null, g);
     }
 
-    // ── Fosse toutes eaux (rectangle gris)
+    // ── Fosse toutes eaux (rotation bâtiment)
     if (dim.fosse) {
-      const fosseCorners = [
-        { x: fosseCx - fosseLong / 2, y: fosseCy - fosseLarg / 2 },
-        { x: fosseCx + fosseLong / 2, y: fosseCy - fosseLarg / 2 },
-        { x: fosseCx + fosseLong / 2, y: fosseCy + fosseLarg / 2 },
-        { x: fosseCx - fosseLong / 2, y: fosseCy + fosseLarg / 2 },
-      ];
-      const fPts = this._localToSvg(fosseCorners);
+      const fCorners = rotCorners(pl.fosse.cx, pl.fosse.cy, pl.fosse.w, pl.fosse.h);
+      const fPts = this._localToSvg(fCorners);
       if (fPts.length >= 4) {
-        const ptsStr = fPts.map(p => `${p.x},${p.y}`).join(' ');
         this._el('polygon', {
-          points: ptsStr,
-          fill: 'rgba(107,114,128,0.35)', stroke: '#374151', 'stroke-width': 1.5,
+          points: fPts.map(p => `${p.x},${p.y}`).join(' '),
+          fill: 'rgba(107,114,128,0.55)', stroke: '#374151', 'stroke-width': 1.5,
         }, null, g);
-        // Label
-        const fc = this._localToSvg([{ x: fosseCx, y: fosseCy }]);
+        const fc = this._localToSvg([{ x: pl.fosse.cx, y: pl.fosse.cy }]);
         if (fc.length) {
-          this._label(fc[0].x, fc[0].y - 2, 'FTE', { size: 8, color: '#374151', bold: true, anchor: 'middle' }, null, g);
-          this._label(fc[0].x, fc[0].y + 8, `${dim.fosse.volume_m3} m³`, { size: 7, color: '#6B7280', anchor: 'middle' }, null, g);
+          this._label(fc[0].x, fc[0].y - 2, 'FTE', { size: 8, color: '#fff', bold: true, anchor: 'middle' }, null, g);
+          this._label(fc[0].x, fc[0].y + 8, `${dim.fosse.volume_m3} m³`, { size: 7, color: '#fff', anchor: 'middle' }, null, g);
         }
       }
     }
 
-    // ── Zone traitement (rectangle coloré selon filière)
+    // ── Zone traitement (rotation bâtiment)
     const colors = {
       epandage_classique:           { fill: 'rgba(167,139,250,0.25)', stroke: '#7C3AED', label: 'ÉPANDAGE' },
       filtre_sable_vertical:        { fill: 'rgba(251,191,36,0.25)',  stroke: '#D97706', label: 'FILTRE SABLE' },
@@ -2032,56 +2015,30 @@ const EsquisseCanvas = {
     };
     const col = colors[dim.filiereId] ?? colors.epandage_classique;
 
-    const traitCorners = [
-      { x: traitCx - traitW / 2, y: traitCy - traitH / 2 },
-      { x: traitCx + traitW / 2, y: traitCy - traitH / 2 },
-      { x: traitCx + traitW / 2, y: traitCy + traitH / 2 },
-      { x: traitCx - traitW / 2, y: traitCy + traitH / 2 },
-    ];
-    const tPts = this._localToSvg(traitCorners);
+    const tCorners = rotCorners(pl.traitement.cx, pl.traitement.cy, pl.traitement.w, pl.traitement.h);
+    const tPts = this._localToSvg(tCorners);
     if (tPts.length >= 4) {
-      const ptsStr = tPts.map(p => `${p.x},${p.y}`).join(' ');
       this._el('polygon', {
-        points: ptsStr,
+        points: tPts.map(p => `${p.x},${p.y}`).join(' '),
         fill: col.fill, stroke: col.stroke, 'stroke-width': 1.5, 'stroke-dasharray': '5,2',
       }, null, g);
-
-      // Hachures pour épandage (tranchées)
-      if (dim.tranchees && dim.tranchees.nombre > 1) {
-        const entraxe = traitW / dim.tranchees.nombre;
-        for (let i = 0; i < dim.tranchees.nombre; i++) {
-          const lx = traitCx - traitW / 2 + entraxe * (i + 0.5);
-          const lPts = this._localToSvg([
-            { x: lx, y: traitCy - traitH / 2 },
-            { x: lx, y: traitCy + traitH / 2 },
-          ]);
-          if (lPts.length >= 2) {
-            this._el('line', {
-              x1: lPts[0].x, y1: lPts[0].y, x2: lPts[1].x, y2: lPts[1].y,
-              stroke: col.stroke, 'stroke-width': 0.8, 'stroke-dasharray': '3,2', opacity: '0.4',
-            }, null, g);
-          }
-        }
-      }
-
-      // Label
-      const tc = this._localToSvg([{ x: traitCx, y: traitCy }]);
+      const tc = this._localToSvg([{ x: pl.traitement.cx, y: pl.traitement.cy }]);
       if (tc.length) {
         this._label(tc[0].x, tc[0].y - 2, col.label, { size: 8, color: col.stroke, bold: true, anchor: 'middle' }, null, g);
         this._label(tc[0].x, tc[0].y + 8, `${dim.empriseFiliere_m2} m²`, { size: 7, color: col.stroke, anchor: 'middle' }, null, g);
       }
     }
 
-    // ── Recul 5m parcelle (cercle pointillé autour fosse)
-    if (dim.reculs?.habitation) {
-      const rc = this._localToSvg([{ x: fosseCx, y: fosseCy }]);
-      if (rc.length) {
-        const scale = this._map ? this._mapScale() : (this.SCALE || 5);
-        const rPx = dim.reculs.habitation * scale;
-        this._el('circle', {
-          cx: rc[0].x, cy: rc[0].y, r: rPx,
-          fill: 'none', stroke: '#EF4444', 'stroke-width': 0.8, 'stroke-dasharray': '3,2', opacity: '0.35',
+    // ── Alerte infaisabilité (ANC ne tient pas sur parcelle)
+    if (!pl.feasible) {
+      const bc = this._localToSvg([{ x: pl.fosse.cx, y: pl.fosse.cy - 3 }]);
+      if (bc.length) {
+        this._el('rect', {
+          x: bc[0].x - 60, y: bc[0].y - 10, width: 120, height: 20,
+          fill: '#FEE2E2', stroke: '#DC2626', 'stroke-width': 1, rx: 3,
         }, null, g);
+        this._label(bc[0].x, bc[0].y - 2, '⚠ ANC infaisable', { size: 9, color: '#991B1B', bold: true, anchor: 'middle' }, null, g);
+        this._label(bc[0].x, bc[0].y + 6, `Réduire bâti ~${pl.reductionBatiment_m2} m²`, { size: 7, color: '#991B1B', anchor: 'middle' }, null, g);
       }
     }
   },

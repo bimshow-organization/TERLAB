@@ -2,6 +2,11 @@
 <!-- Éditeur SVG enveloppes volumétriques · Score Pareto · Jardin BPF -->
 
 <link rel="stylesheet" href="../assets/esquisse.css"/>
+<style>
+  .p11-view-btn.active { background: var(--accent, #9a7820); color: #000; font-weight: 700; }
+  #p11-programme-panel ul li.ok   { color: #059669; }
+  #p11-programme-panel ul li.warn { color: #B45309; }
+</style>
 
 <div class="left-panel">
   <div class="lp-head anim-slide-up">
@@ -38,6 +43,40 @@
       <div class="fs-head">Propositions générées</div>
       <div id="p11-score-panel" class="p11-proposals-list">
         <!-- Injecté par EsquisseCanvas._renderScorePanel() -->
+      </div>
+    </div>
+
+    <!-- Programme capacité (logements + RTAA) -->
+    <div class="form-section">
+      <div class="fs-head">📊 Programme capacité</div>
+      <div id="p11-programme-panel" style="padding:8px 13px;font-family:var(--font-mono);font-size:10px">
+        <div style="display:grid;grid-template-columns:auto 1fr auto;gap:4px 8px;align-items:center;margin-bottom:8px">
+          <label style="color:var(--muted);font-size:9px">Ind.</label>
+          <input type="range" id="prog-mix-ind"  min="0" max="100" value="33" oninput="P11.updateProgramme()" style="width:100%">
+          <span id="prog-mix-ind-val"  style="min-width:28px;text-align:right">33%</span>
+          <label style="color:var(--muted);font-size:9px">Bande</label>
+          <input type="range" id="prog-mix-band" min="0" max="100" value="34" oninput="P11.updateProgramme()" style="width:100%">
+          <span id="prog-mix-band-val" style="min-width:28px;text-align:right">34%</span>
+          <label style="color:var(--muted);font-size:9px">Coll.</label>
+          <input type="range" id="prog-mix-col"  min="0" max="100" value="33" oninput="P11.updateProgramme()" style="width:100%">
+          <span id="prog-mix-col-val"  style="min-width:28px;text-align:right">33%</span>
+          <label style="color:var(--muted);font-size:9px">Niveaux</label>
+          <select id="prog-niveaux" onchange="P11.updateProgramme()" style="grid-column:2/span 2;padding:2px 4px;font-family:inherit;font-size:10px">
+            <option value="1">RdC</option>
+            <option value="2" selected>R+1</option>
+            <option value="3">R+2</option>
+            <option value="4">R+3</option>
+          </select>
+        </div>
+        <div id="prog-results" style="display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;padding:6px;background:rgba(0,0,0,.04);border-radius:3px">
+          <div><span style="color:var(--muted)">Logements :</span> <strong id="prog-total-lgts">—</strong></div>
+          <div><span style="color:var(--muted)">Densité :</span> <strong id="prog-densite">—</strong></div>
+          <div><span style="color:var(--muted)">SHON :</span> <strong id="prog-shon">—</strong></div>
+          <div><span style="color:var(--muted)">Parking :</span> <strong id="prog-park">—</strong></div>
+          <div><span style="color:var(--muted)">CES effectif :</span> <strong id="prog-ces">—</strong></div>
+          <div><span style="color:var(--muted)">Topo :</span> <strong id="prog-tcase">—</strong></div>
+        </div>
+        <ul id="prog-rtaa" style="list-style:none;padding:4px 0 0 0;margin:6px 0 0 0;font-size:9px"></ul>
       </div>
     </div>
 
@@ -106,6 +145,9 @@
       <button class="p11-tool" id="p11-btn-cadastre" onclick="P11.toggleCadastre()" title="Afficher/masquer le plan cadastral IGN">⊞ Cadastre</button>
       <button class="p11-tool" id="p11-btn-contours" onclick="P11.toggleContours()" title="Afficher/masquer les courbes de niveau BIL">≈ Contours</button>
       <span class="p11-sep"></span>
+      <button class="p11-tool p11-view-btn active" id="p11-btn-plan"  onclick="P11.switchView('plan')"  title="Plan masse">📐 Plan</button>
+      <button class="p11-tool p11-view-btn"        id="p11-btn-coupe" onclick="P11.switchView('coupe')" title="Coupe N-S">✂ Coupe</button>
+      <span class="p11-sep"></span>
       <button class="p11-tool" onclick="P11.exportSVG()"        title="Export SVG">↓ SVG</button>
     </div>
 
@@ -114,6 +156,9 @@
          xmlns="http://www.w3.org/2000/svg"
          style="position:relative;z-index:1;width:100%;height:100%;cursor:default">
     </svg>
+
+    <!-- Conteneur coupe gabarit (injecté par CapacityStudyRenderer.renderCoupeGabarit) -->
+    <div id="p11-coupe-wrap" style="display:none;position:absolute;inset:40px 10px 10px 10px;overflow:auto;background:#F7F4EE;border-radius:4px;padding:8px;z-index:2"></div>
 
     <!-- Légende -->
     <div class="p11-legend">
@@ -227,7 +272,10 @@ const P11 = {
     window.addEventListener('terlab:proposal-selected', (e) => {
       const newProp = e.detail.proposal;
       if (newProp) {
+        this._selectedProp = newProp;
         this._render3D(newProp);
+        this.updateProgramme();
+        if (this._view === 'coupe') this._renderCoupe();
         // Re-RTAA si analyzer dispo
         RTAAAnalyzer?.analyze(SessionManager._data, { polygon: newProp.polygon }).then(report => {
           SessionManager.saveRTAAReport(report);
@@ -235,6 +283,78 @@ const P11 = {
         }).catch(err => console.warn('[P11] RTAA on selection failed:', err));
       }
     });
+
+    // Première sélection → init programme
+    this._selectedProp = EsquisseCanvas._proposals?.[0] ?? null;
+    this.updateProgramme();
+  },
+
+  _view: 'plan',
+  _selectedProp: null,
+
+  switchView(v) {
+    this._view = v;
+    const svgEl   = document.getElementById('p11-svg');
+    const coupeEl = document.getElementById('p11-coupe-wrap');
+    if (svgEl)   svgEl.style.display   = v === 'plan'  ? '' : 'none';
+    if (coupeEl) coupeEl.style.display = v === 'coupe' ? 'block' : 'none';
+    document.querySelectorAll('.p11-view-btn').forEach(b => {
+      b.classList.toggle('active', b.id === 'p11-btn-' + v);
+    });
+    if (v === 'coupe') this._renderCoupe();
+  },
+
+  _renderCoupe() {
+    const wrap = document.getElementById('p11-coupe-wrap');
+    if (!wrap) return;
+    const session  = SessionManager._data;
+    const proposal = this._selectedProp ?? EsquisseCanvas._proposals?.[0];
+    const niveaux  = parseInt(document.getElementById('prog-niveaux')?.value ?? 2, 10);
+    const prog     = { niveaux, mix: this._readMix() };
+    const svg = window.CapacityStudyRenderer?.renderCoupeGabarit(session, proposal ?? {}, prog) ?? '';
+    wrap.innerHTML = svg || '<div style="padding:20px;color:#92400E">⚠ Coupe indisponible — générer une proposition d\'abord.</div>';
+  },
+
+  _readMix() {
+    const ind  = parseInt(document.getElementById('prog-mix-ind')?.value  ?? 33, 10);
+    const band = parseInt(document.getElementById('prog-mix-band')?.value ?? 34, 10);
+    const col  = parseInt(document.getElementById('prog-mix-col')?.value  ?? 33, 10);
+    return { ind, band, col };
+  },
+
+  updateProgramme() {
+    const mix = this._readMix();
+    const set = (id, txt) => { const e = document.getElementById(id); if (e) e.textContent = txt; };
+    set('prog-mix-ind-val',  mix.ind  + '%');
+    set('prog-mix-band-val', mix.band + '%');
+    set('prog-mix-col-val',  mix.col  + '%');
+
+    const niveaux = parseInt(document.getElementById('prog-niveaux')?.value ?? 2, 10);
+    const PC = window.ProgrammeCapacite;
+    if (!PC) return;
+    const session  = SessionManager._data;
+    const proposal = this._selectedProp ?? EsquisseCanvas._proposals?.[0] ?? null;
+    const prog = PC.compute(proposal, session, mix, niveaux);
+
+    set('prog-total-lgts', prog.totLgts + ' lgts');
+    set('prog-densite',    prog.densite + ' lgts/ha');
+    set('prog-shon',       Math.round(prog.totShon) + ' m²');
+    set('prog-park',       Math.round(prog.totPark) + ' m²');
+    set('prog-ces',        (prog.cesEffectif * 100).toFixed(0) + '%');
+    set('prog-tcase',      prog.tcase.label + (prog.tcase.pilotis ? ' · pilotis' : ''));
+
+    const ul = document.getElementById('prog-rtaa');
+    if (ul) {
+      const items = [
+        { ok: prog.rtaa.profOk,     label: `Profondeur ${prog.depth.toFixed(1)}m ≤ 13,5m` },
+        { ok: prog.rtaa.dimOk,      label: `Dim. min ${prog.minDim.toFixed(1)}m ≥ 5m` },
+        { ok: prog.rtaa.profMaxOk,  label: `Profondeur ≤ profMax topo (${prog.tcase.profMax}m)` },
+        { ok: !prog.rtaa.ascenseurReqd, label: prog.rtaa.ascenseurReqd ? '⚠ Ascenseur requis (R+3+)' : 'Ascenseur non requis' },
+      ];
+      ul.innerHTML = items.map(i => `<li style="color:${i.ok ? '#059669' : '#B45309'};padding:1px 0">${i.ok ? '✓' : '✗'} ${i.label}</li>`).join('');
+    }
+
+    if (this._view === 'coupe') this._renderCoupe();
   },
 
   _gabarit3D: null,

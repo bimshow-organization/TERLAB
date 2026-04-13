@@ -302,6 +302,15 @@ const AutoPlanStrategies = {
     }];
   },
 
+  // ── Stratégie Alizés : rectangle orienté 45° NE (bioclimatique Réunion) ─
+  // Flux alizés dominants NE → façades principales orientées NE/SW pour
+  // captation ventilation naturelle traversante (RTAA DOM 2016).
+  // Délègue à rect() avec bearing=45° math (NE en repère Y-up).
+  alize(env, wTarget, lTarget, pir) {
+    const blocs = this.rect(env, wTarget, lTarget, pir, 45);
+    return blocs.map(b => ({ ...b, strategy: 'alize' }));
+  },
+
   // ── Tagger niveaux + hauteur sur une liste de blocs ──────────────
   applyLevels(blocs, niveaux, hNiv = H_NIV) {
     return blocs.map(b => ({

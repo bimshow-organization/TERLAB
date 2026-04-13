@@ -167,11 +167,12 @@ const ANCService = {
       // Locaux collectifs : 1 EH pour 15 m² de SDP (règle SPANC)
       return Math.max(5, Math.ceil((surfaceHabitable_m2 ?? 150) / 15));
     }
-    // Individuel : pièces principales = chambres + séjour
-    // Si occupants connus, on prend le max (sécurité)
-    const parOccupants = occupants ?? 4;
-    const parSurface = Math.ceil((surfaceHabitable_m2 ?? 100) / 20); // ~1 PP / 20m²
-    return Math.max(3, Math.max(parOccupants, parSurface));
+    // Individuel : priorité aux occupants déclarés (plus fiable).
+    // Sinon estimation par pièces principales (~25 m²/PP), plafonnée à 8 EH
+    // (au-delà c'est du collectif ou une très grande villa atypique).
+    if (occupants && occupants > 0) return Math.max(3, Math.min(10, occupants));
+    const parSurface = Math.ceil((surfaceHabitable_m2 ?? 100) / 25);
+    return Math.max(3, Math.min(8, parSurface));
   },
 
   // ── Volume eaux usées journalier ─────────────────────────────────
@@ -500,8 +501,24 @@ const ANCService = {
     const interco = terrain.interco ?? terrain.intercommunalite ?? null;
     const spanc = this.getSPANC(interco);
 
-    // Score ANC (0-100) : synthèse faisabilité
-    const score = best ? this._computeScore(best, conformite, pente, nappe) : 0;
+    // Placement géométrique sur parcelle (si proposal disponible)
+    let placement = null;
+    const parcelPoly = sessionData?._parcelLocal;
+    const activeProposal = sessionData?._activeProposal ?? sessionData?.proposal;
+    if (dim && parcelPoly && activeProposal) {
+      const bloc = activeProposal.blocs?.[0] ?? activeProposal;
+      const building = {
+        polygon: bloc.polygon ?? null,
+        aabb:    activeProposal.bat ?? bloc.aabb ?? null,
+      };
+      if (building.polygon || building.aabb) {
+        placement = this.placerSurParcelle(dim, building, parcelPoly);
+      }
+    }
+
+    // Score ANC (0-100) : synthèse faisabilité (pénalité si placement infaisable)
+    let score = best ? this._computeScore(best, conformite, pente, nappe) : 0;
+    if (placement && !placement.feasible) score = Math.max(0, score - 25);
     const lbl = this._labelFromScore(score);
 
     return {
@@ -532,6 +549,7 @@ const ANCService = {
         alertes: a.alertes,
       })),
       dimensionnement: dim,
+      placement,
       cout,
       conformite,
       spanc,
@@ -560,6 +578,257 @@ const ANCService = {
     if (score >= 45) return { label: 'Sous réserves', color: 'var(--warning)' };
     if (score >= 20) return { label: 'Contraint',    color: 'var(--accent)' };
     return                   { label: 'Très contraint', color: 'var(--danger)' };
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // PLACEMENT GÉOMÉTRIQUE — sur parcelle, aligné au bâtiment
+  // ══════════════════════════════════════════════════════════════════
+
+  /**
+   * Place fosse + zone traitement sur la parcelle, aligné à l'orientation
+   * principale du bâtiment, côté avec le plus d'espace libre.
+   *
+   * @param {Object}   dim       — résultat ANCService.dimensionner()
+   * @param {Object}   building  — { polygon: [{x,y}...], aabb: {x,y,w,l} }
+   * @param {Array}    parcelPoly — polygone parcelle [[x,y], ...] ou [{x,y}...]
+   * @param {Object}   [opts]    — { gapFosse_m, gapTrait_m, reculParcelle_m }
+   * @returns {Object} { fosse, traitement, feasible, margin_m, reductionBatiment_m2, candidats }
+   */
+  placerSurParcelle(dim, building, parcelPoly, opts = {}) {
+    const gapFosse = opts.gapFosse_m ?? 3;
+    const gapTrait = opts.gapTrait_m ?? 2;
+    const reculParcelle = opts.reculParcelle_m ?? (dim?.reculs?.limite_parcelle ?? 5);
+
+    if (!dim || !building || !parcelPoly || parcelPoly.length < 3) {
+      return { feasible: false, reason: 'Donnees insuffisantes' };
+    }
+
+    // Normaliser parcelle en [[x,y],...]
+    const parcel = parcelPoly.map(p => Array.isArray(p) ? p : [p.x, p.y]);
+
+    // Orientation du bâtiment : angle de l'arête la plus longue
+    const bldgPoly = building.polygon && building.polygon.length >= 3
+      ? building.polygon.map(p => ({ x: p.x ?? p[0], y: p.y ?? p[1] }))
+      : null;
+    const orient = bldgPoly
+      ? this._buildingOrientation(bldgPoly)
+      : { angle: 0, cx: building.aabb.x + building.aabb.w / 2, cy: building.aabb.y + building.aabb.l / 2 };
+
+    // Dimensions ANC
+    const fosseLong = dim.fosse?.longueur_m ?? 2.5;
+    const fosseLarg = dim.fosse?.largeur_m ?? 1.2;
+    const traitW = this._traitW(dim);
+    const traitH = this._traitH(dim);
+
+    // Points d'ancrage sur les 4 côtés du bâtiment, en repère local (bâtiment à l'origine, angle 0)
+    // - "mid-side" local coordinates depuis le centre bâtiment
+    const bldgW = orient.width  ?? building.aabb?.w ?? 10;
+    const bldgL = orient.length ?? building.aabb?.l ?? 10;
+
+    const sides = [
+      { name: 'sud', dxLocal: 0,             dyLocal: -bldgL / 2, normalLocal: { x: 0, y: -1 } },
+      { name: 'nord', dxLocal: 0,            dyLocal:  bldgL / 2, normalLocal: { x: 0, y:  1 } },
+      { name: 'est',  dxLocal:  bldgW / 2,   dyLocal: 0,          normalLocal: { x: 1, y:  0 } },
+      { name: 'ouest',dxLocal: -bldgW / 2,   dyLocal: 0,          normalLocal: { x:-1, y:  0 } },
+    ];
+
+    const cosA = Math.cos(orient.angle);
+    const sinA = Math.sin(orient.angle);
+    const rotate = (lx, ly) => ({
+      x: orient.cx + lx * cosA - ly * sinA,
+      y: orient.cy + lx * sinA + ly * cosA,
+    });
+
+    // Tester chaque côté
+    const candidats = [];
+    for (const s of sides) {
+      // Point médian du côté
+      const mid = rotate(s.dxLocal, s.dyLocal);
+      // Normale sortante en repère global
+      const nx = s.normalLocal.x * cosA - s.normalLocal.y * sinA;
+      const ny = s.normalLocal.x * sinA + s.normalLocal.y * cosA;
+
+      // Centre fosse : à gapFosse + fosseLarg/2 du bord bâtiment, le long de la normale
+      const fosseDist = gapFosse + fosseLarg / 2;
+      const fosseCx = mid.x + nx * fosseDist;
+      const fosseCy = mid.y + ny * fosseDist;
+
+      // Centre zone traitement : au-delà de la fosse
+      const traitDist = fosseDist + fosseLarg / 2 + gapTrait + traitH / 2;
+      const traitCx = mid.x + nx * traitDist;
+      const traitCy = mid.y + ny * traitDist;
+
+      // Coins des deux rectangles (rotation = orient.angle pour alignement bâtiment)
+      const fosseCorners = this._rotRectCorners(fosseCx, fosseCy, fosseLong, fosseLarg, orient.angle);
+      const traitCorners = this._rotRectCorners(traitCx,  traitCy,  traitW,    traitH,   orient.angle);
+
+      // Test inclusion parcelle avec recul
+      const parcelShrunk = this._insetPolygon(parcel, reculParcelle);
+      const fosseInside = fosseCorners.every(p => this._pointInPoly(p, parcelShrunk));
+      const traitInside = traitCorners.every(p => this._pointInPoly(p, parcelShrunk));
+      const allInside = fosseInside && traitInside;
+
+      // Marge minimale (distance du coin le plus proche au bord de parcelle rétrécie)
+      let margin = Infinity;
+      for (const p of [...fosseCorners, ...traitCorners]) {
+        const d = this._distPointToPoly(p, parcel) - reculParcelle;
+        if (d < margin) margin = d;
+      }
+
+      candidats.push({
+        side: s.name,
+        fosse: { cx: fosseCx, cy: fosseCy, w: fosseLong, h: fosseLarg, rotation: orient.angle },
+        traitement: { cx: traitCx, cy: traitCy, w: traitW, h: traitH, rotation: orient.angle },
+        inside: allInside,
+        fosseInside, traitInside,
+        margin: +margin.toFixed(2),
+      });
+    }
+
+    // Priorité : (1) tout inside, (2) meilleure marge
+    candidats.sort((a, b) => {
+      if (a.inside !== b.inside) return a.inside ? -1 : 1;
+      return b.margin - a.margin;
+    });
+    const best = candidats[0];
+
+    // Si infaisable → calculer réduction bâtiment nécessaire
+    let reductionBat_m2 = 0;
+    if (!best.inside) {
+      // Emprise ANC nécessaire (fosse + trait + gaps + reculs)
+      const empriseANC = dim.empriseTotal_m2 + Math.PI * (reculParcelle ** 2) * 0.3; // approx
+      reductionBat_m2 = Math.max(0, Math.round(empriseANC - Math.abs(best.margin) * 10));
+    }
+
+    return {
+      feasible: best.inside,
+      fosse: best.fosse,
+      traitement: best.traitement,
+      side: best.side,
+      margin_m: best.margin,
+      orientation_deg: +(orient.angle * 180 / Math.PI).toFixed(1),
+      reductionBatiment_m2: reductionBat_m2,
+      candidats,
+    };
+  },
+
+  // ── Orientation bâtiment depuis son polygone (arête la plus longue) ──
+  _buildingOrientation(pts) {
+    let maxLen = 0, bestAngle = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const len = Math.hypot(dx, dy);
+      if (len > maxLen) {
+        maxLen = len;
+        bestAngle = Math.atan2(dy, dx);
+      }
+    }
+    // Centre = centroïde
+    let cx = 0, cy = 0, area = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      const cross = a.x * b.y - b.x * a.y;
+      cx += (a.x + b.x) * cross;
+      cy += (a.y + b.y) * cross;
+      area += cross;
+    }
+    area *= 0.5;
+    if (Math.abs(area) > 1e-6) { cx /= (6 * area); cy /= (6 * area); }
+    else { cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+           cy = pts.reduce((s, p) => s + p.y, 0) / pts.length; }
+
+    // AABB local pour width/length (en repère aligné bâtiment)
+    const c = Math.cos(-bestAngle), s = Math.sin(-bestAngle);
+    let xmin = Infinity, xmax = -Infinity, ymin = Infinity, ymax = -Infinity;
+    for (const p of pts) {
+      const lx = (p.x - cx) * c - (p.y - cy) * s;
+      const ly = (p.x - cx) * s + (p.y - cy) * c;
+      if (lx < xmin) xmin = lx; if (lx > xmax) xmax = lx;
+      if (ly < ymin) ymin = ly; if (ly > ymax) ymax = ly;
+    }
+    return { angle: bestAngle, cx, cy, width: xmax - xmin, length: ymax - ymin };
+  },
+
+  _rotRectCorners(cx, cy, w, h, angle) {
+    const c = Math.cos(angle), s = Math.sin(angle);
+    const hw = w / 2, hh = h / 2;
+    return [
+      [-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]
+    ].map(([lx, ly]) => [cx + lx * c - ly * s, cy + lx * s + ly * c]);
+  },
+
+  _traitW(dim) {
+    if (dim.tranchees) return Math.max(4, dim.tranchees.nombre * dim.tranchees.entraxe_m);
+    if (dim.filtres)   return Math.max(3, Math.sqrt(dim.filtres.total_m2) * 1.3);
+    return Math.max(2, Math.sqrt(dim.empriseFiliere_m2 ?? 10));
+  },
+  _traitH(dim) {
+    if (dim.tranchees) return Math.max(3, dim.tranchees.longueur_m * 0.5);
+    if (dim.filtres)   return Math.max(2.5, Math.sqrt(dim.filtres.total_m2) * 0.8);
+    return Math.max(2, Math.sqrt(dim.empriseFiliere_m2 ?? 10) * 0.7);
+  },
+
+  _pointInPoly(p, poly) {
+    const x = p[0] ?? p.x, y = p[1] ?? p.y;
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i][0] ?? poly[i].x, yi = poly[i][1] ?? poly[i].y;
+      const xj = poly[j][0] ?? poly[j].x, yj = poly[j][1] ?? poly[j].y;
+      const intersect = ((yi > y) !== (yj > y))
+        && (x < (xj - xi) * (y - yi) / ((yj - yi) || 1e-9) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  },
+
+  _distPointToPoly(p, poly) {
+    const x = p[0] ?? p.x, y = p[1] ?? p.y;
+    let minD = Infinity;
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i], b = poly[(i + 1) % poly.length];
+      const ax = a[0] ?? a.x, ay = a[1] ?? a.y;
+      const bx = b[0] ?? b.x, by = b[1] ?? b.y;
+      const dx = bx - ax, dy = by - ay;
+      const len2 = dx * dx + dy * dy;
+      let t = len2 > 0 ? ((x - ax) * dx + (y - ay) * dy) / len2 : 0;
+      t = Math.max(0, Math.min(1, t));
+      const px = ax + t * dx, py = ay + t * dy;
+      const d = Math.hypot(x - px, y - py);
+      if (d < minD) minD = d;
+    }
+    const sign = this._pointInPoly(p, poly) ? 1 : -1;
+    return sign * minD;
+  },
+
+  _insetPolygon(poly, d) {
+    // Shrink simple par normale bissectrice
+    const n = poly.length;
+    if (n < 3 || d <= 0) return poly;
+    let sa = 0;
+    for (let i = 0; i < n; i++) {
+      const a = poly[i], b = poly[(i + 1) % n];
+      const ax = a[0] ?? a.x, ay = a[1] ?? a.y;
+      const bx = b[0] ?? b.x, by = b[1] ?? b.y;
+      sa += ax * by - bx * ay;
+    }
+    const ccw = sa > 0 ? 1 : -1;
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const prev = poly[(i - 1 + n) % n], curr = poly[i], next = poly[(i + 1) % n];
+      const px = prev[0] ?? prev.x, py = prev[1] ?? prev.y;
+      const cx = curr[0] ?? curr.x, cy = curr[1] ?? curr.y;
+      const nx = next[0] ?? next.x, ny = next[1] ?? next.y;
+      const d1x = cx - px, d1y = cy - py, l1 = Math.hypot(d1x, d1y) || 1;
+      const d2x = nx - cx, d2y = ny - cy, l2 = Math.hypot(d2x, d2y) || 1;
+      const n1x = -ccw * d1y / l1, n1y = ccw * d1x / l1;
+      const n2x = -ccw * d2y / l2, n2y = ccw * d2x / l2;
+      let bxn = n1x + n2x, byn = n1y + n2y;
+      const bl = Math.hypot(bxn, byn) || 1;
+      bxn /= bl; byn /= bl;
+      out.push([cx + bxn * d, cy + byn * d]);
+    }
+    return out;
   },
 
   // ── Accesseurs catalogue ─────────────────────────────────────────

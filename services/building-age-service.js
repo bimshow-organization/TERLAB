@@ -21,17 +21,27 @@ const BuildingAgeService = {
   // PostgREST API sur donnees croisees fichiers fonciers + DPE + BDTOPO
   BDNB_API: 'https://api.bdnb.io/v1/bdnb/donnees/batiment_groupe',
 
+  // La Reunion n'est pas couverte par BDNB (France metropolitaine uniquement)
+  _isReunion(lat, lng) {
+    return lng > 55 && lng < 56 && lat > -21.5 && lat < -20.7;
+  },
+
   // ─── Charger anciennete du bati autour d'un point ─────────────
   async fetch(lat, lng, radiusMeters = 300) {
+    const reunion = this._isReunion(lat, lng);
+
     // 1. BDNB (meilleure source, croisement fichiers fonciers + DPE)
-    try {
-      const bdnb = await this._fetchBDNB(lat, lng, radiusMeters);
-      if (bdnb?.features?.length) {
-        console.info(`[BuildingAge] BDNB: ${bdnb.features.length} batiments dates`);
-        return bdnb;
+    //    Skip hors metropole (Reunion, DROM) : BDNB ne couvre que la metropole
+    if (!reunion) {
+      try {
+        const bdnb = await this._fetchBDNB(lat, lng, radiusMeters);
+        if (bdnb?.features?.length) {
+          console.info(`[BuildingAge] BDNB: ${bdnb.features.length} batiments dates`);
+          return bdnb;
+        }
+      } catch (e) {
+        console.warn('[BuildingAge] BDNB failed:', e.message);
       }
-    } catch (e) {
-      console.warn('[BuildingAge] BDNB failed:', e.message);
     }
 
     // 2. Overpass OSM start_date (fallback communautaire)

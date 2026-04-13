@@ -58,6 +58,13 @@ const ANCPlanService = {
       ? parcelLocal.map(p => [p.x ?? p[0], p.y ?? p[1]])
       : [[0, 0], [30, 0], [30, 20], [0, 20]];
 
+    // Placement : utiliser celui calculé par ANCService si dispo, sinon fallback
+    let placement = ancResult.placement;
+    if (!placement) {
+      const building = { polygon: blocsList[0]?.polygon ?? null, aabb: bat };
+      placement = ANCService.placerSurParcelle(dim, building, poly);
+    }
+
     const bb = this._aabb(poly);
     const maxDim = Math.max(bb.w, bb.h);
     const margin = maxDim * 0.25;
@@ -91,26 +98,30 @@ const ANCPlanService = {
       svg += `<polygon points="${ptsStr}" fill="#B0BEC5" fill-opacity="0.6" stroke="#455A64" stroke-width="0.25"/>`;
     });
 
-    // 3. Placement ANC — côté aval du bâtiment (point bas parcelle)
-    const placement = this._computePlacement(bat, poly, pente_pct, dim);
-
-    // 4. Fosse toutes eaux
-    if (dim.fosse) {
-      svg += this._drawFosse(dim.fosse, placement.fosse, px, py);
+    // 4. Fosse toutes eaux (avec rotation bâtiment)
+    if (dim.fosse && placement?.fosse) {
+      svg += this._drawFosseRot(dim.fosse, placement.fosse, px, py);
     }
 
-    // 5. Zone de traitement (épandage / filtre / micro-station)
+    // 5. Zone de traitement (avec rotation bâtiment)
     const styleKey = FILIERE_TO_STYLE[dim.filiereId] ?? 'epandage';
-    svg += this._drawZoneTraitement(dim, placement.traitement, styleKey, px, py);
+    if (placement?.traitement) {
+      svg += this._drawZoneTraitementRot(dim, placement.traitement, styleKey, px, py);
+    }
 
     // 6. Canalisation fosse → traitement
-    if (placement.fosse && placement.traitement) {
+    if (placement?.fosse && placement?.traitement) {
       svg += this._drawCanalisation(placement.fosse, placement.traitement, px, py);
     }
 
     // 7. Reculs réglementaires
-    if (dim.reculs) {
+    if (dim.reculs && placement?.fosse) {
       svg += this._drawReculs(placement, dim.reculs, bat, poly, px, py, bb);
+    }
+
+    // 7b. Alerte si placement infaisable
+    if (placement && !placement.feasible) {
+      svg += this._drawInfeasibilityWarning(placement, bb, px, py);
     }
 
     // 8. Cotes et labels
@@ -173,7 +184,71 @@ const ANCPlanService = {
     return Math.max(2, Math.sqrt(dim.empriseFiliere_m2) * 0.7);
   },
 
-  // ── Dessin fosse toutes eaux ──────────────────────────────────
+  // ── Dessin fosse toutes eaux AVEC ROTATION (aligné bâtiment) ──
+  _drawFosseRot(fosse, pos, px, py) {
+    if (!fosse || !pos) return '';
+    const st = ANC_STYLES.fosse;
+    const angleDeg = (pos.rotation ?? 0) * 180 / Math.PI;
+    const cx = pos.cx, cy = pos.cy;
+    const hw = pos.w / 2, hh = pos.h / 2;
+    // Rectangle centré à l'origine puis transformé (translate + rotate)
+    let svg = `<g transform="translate(${px(cx)},${py(cy)}) rotate(${-angleDeg})">
+      <rect x="${-hw}" y="${-hh}" width="${pos.w}" height="${pos.h}"
+        fill="${st.fill}" fill-opacity="0.5" stroke="${st.stroke}" stroke-width="0.2" rx="0.3"/>
+      <text x="0" y="0.3" text-anchor="middle" font-size="0.8" fill="#fff" font-weight="bold">FTE</text>
+      <text x="0" y="1.2" text-anchor="middle" font-size="0.6" fill="${st.stroke}">${fosse.volume_m3} m³</text>
+    </g>`;
+    return svg;
+  },
+
+  // ── Dessin zone traitement AVEC ROTATION ─────────────────────
+  _drawZoneTraitementRot(dim, pos, styleKey, px, py) {
+    if (!pos) return '';
+    const st = ANC_STYLES[styleKey] ?? ANC_STYLES.epandage;
+    const angleDeg = (pos.rotation ?? 0) * 180 / Math.PI;
+    const hw = pos.w / 2, hh = pos.h / 2;
+    const fill = st.hatch ? 'url(#anc-hatch)' : st.fill;
+    const fillOp = st.hatch ? '1' : '0.4';
+
+    let inner = '';
+    if (st.hatch) {
+      inner += `<rect x="${-hw}" y="${-hh}" width="${pos.w}" height="${pos.h}"
+        fill="${st.fill}" fill-opacity="0.15" stroke="none" rx="0.2"/>`;
+    }
+    inner += `<rect x="${-hw}" y="${-hh}" width="${pos.w}" height="${pos.h}"
+      fill="${fill}" fill-opacity="${fillOp}" stroke="${st.stroke}" stroke-width="0.2"
+      stroke-dasharray="${st.dash ?? 'none'}" rx="0.2"/>`;
+
+    // Tranchées individuelles
+    if (dim.tranchees && dim.tranchees.nombre > 1) {
+      const entraxe = pos.w / dim.tranchees.nombre;
+      for (let i = 0; i < dim.tranchees.nombre; i++) {
+        const tx = -hw + entraxe * (i + 0.5);
+        inner += `<line x1="${tx}" y1="${-hh}" x2="${tx}" y2="${hh}"
+          stroke="${st.stroke}" stroke-width="0.15" stroke-dasharray="0.4,0.2" opacity="0.5"/>`;
+      }
+    }
+
+    const label = dim.filtres ? 'PHYTO' : dim.tranchees ? 'ÉPANDAGE' : styleKey.toUpperCase().replace('_', ' ');
+    inner += `<text x="0" y="0.3" text-anchor="middle" font-size="0.7" fill="${st.stroke}" font-weight="600">${label}</text>`;
+    inner += `<text x="0" y="1.2" text-anchor="middle" font-size="0.55" fill="${st.stroke}">${dim.empriseFiliere_m2} m²</text>`;
+
+    return `<g transform="translate(${px(pos.cx)},${py(pos.cy)}) rotate(${-angleDeg})">${inner}</g>`;
+  },
+
+  // ── Alerte placement infaisable ──────────────────────────────
+  _drawInfeasibilityWarning(placement, bb, px, py) {
+    const x = bb.x0 + 1;
+    const y = py(bb.y0 + 0.5);
+    const reduction = placement.reductionBatiment_m2 ?? 0;
+    return `<g>
+      <rect x="${x}" y="${y - 1.5}" width="${bb.w - 2}" height="2.5" fill="#FEE2E2" stroke="#DC2626" stroke-width="0.2" rx="0.3"/>
+      <text x="${x + 0.5}" y="${y - 0.2}" font-size="0.8" fill="#991B1B" font-weight="bold">⚠ Placement ANC infaisable</text>
+      <text x="${x + 0.5}" y="${y + 0.7}" font-size="0.6" fill="#991B1B">Réduire l'emprise du bâtiment de ~${reduction} m² ou choisir une filière compacte.</text>
+    </g>`;
+  },
+
+  // ── Dessin fosse toutes eaux (legacy, axis-aligned) ───────────
   _drawFosse(fosse, pos, px, py) {
     if (!fosse || !pos) return '';
     const st = ANC_STYLES.fosse;

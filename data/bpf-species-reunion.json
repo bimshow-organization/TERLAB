@@ -14,6 +14,7 @@
       "frondCount": 14, "frondLen": 4.5, "frondAng": 55,
       "canopyRadius": 5, "svgSymbol": "palm",
       "color2D": "#4a7c3f",
+      "impostorPath": "assets/impostors/impostor_palm_coconut.webp",
       "zone": ["littoral"], "cycloneResist": "faible",
       "status": "ok", "strate": "canopee"
     },
@@ -24,6 +25,7 @@
       "frondCount": 10, "frondLen": 2.5, "frondAng": 45,
       "canopyRadius": 3, "svgSymbol": "palm",
       "color2D": "#3d7a4a",
+      "impostorPath": "assets/impostors/impostor_latania.webp",
       "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
       "status": "protege", "strate": "canopee"
     },
@@ -34,6 +36,7 @@
       "frondCount": 16, "frondLen": 3.0, "frondAng": 50,
       "canopyRadius": 3.5, "svgSymbol": "palm",
       "color2D": "#3b7848",
+      "impostorPath": "assets/impostors/impostor_palm_howea.webp",
       "zone": ["mipentes", "hauts"], "cycloneResist": "moyenne",
       "status": "protege", "strate": "canopee"
     },
@@ -43,6 +46,7 @@
       "trunkH": 8, "trunkR0": 0.38, "isPalm": false,
       "b1Count": 10, "canopyRadius": 6, "svgSymbol": "broadleaf",
       "color2D": "#1a5020",
+      "impostorPath": "assets/impostors/impostor_mango.webp",
       "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
       "status": "ok", "strate": "canopee",
       "note": "Racines taproot — min 5m des fondations"
@@ -63,6 +67,7 @@
       "trunkH": 11, "trunkR0": 0.264, "isPalm": false,
       "b1Count": 8, "canopyRadius": 7, "svgSymbol": "broadleaf_flower",
       "color2D": "#2a6828", "flowerColor": "#da441c",
+      "impostorPath": "assets/impostors/impostor_flamboyant.webp",
       "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
       "status": "ok", "strate": "canopee"
     },
@@ -72,6 +77,7 @@
       "trunkH": 12, "trunkR0": 0.32, "isPalm": false,
       "b1Count": 10, "canopyRadius": 6, "svgSymbol": "broadleaf",
       "color2D": "#2a6830",
+      "impostorPath": "assets/impostors/impostor_tamarind.webp",
       "zone": ["littoral", "mipentes"], "cycloneResist": "bonne",
       "status": "ok", "strate": "canopee"
     },
@@ -109,6 +115,7 @@
       "frondCount": 20, "frondLen": 2.0, "frondAng": 40,
       "canopyRadius": 3, "svgSymbol": "palm",
       "color2D": "#5a8a40",
+      "impostorPath": "assets/impostors/impostor_pandanus.webp",
       "zone": ["littoral"], "cycloneResist": "bonne",
       "status": "ok", "strate": "canopee"
     },
@@ -136,6 +143,7 @@
       "trunkH": 3.5, "trunkR0": 0.25, "isPalm": false,
       "b1Count": 5, "canopyRadius": 2.5, "svgSymbol": "broadleaf_flower",
       "color2D": "#4a8a42", "flowerColor": "#f0d850",
+      "impostorPath": "assets/impostors/impostor_plumeria.webp",
       "zone": ["littoral", "mipentes"], "cycloneResist": "moyenne",
       "status": "ok", "strate": "arbustif"
     },
@@ -154,6 +162,7 @@
       "trunkH": 12, "trunkR0": 0.25, "isPalm": false,
       "b1Count": 8, "canopyRadius": 5, "svgSymbol": "broadleaf_flower",
       "color2D": "#38783a", "flowerColor": "#e8c840",
+      "impostorPath": "assets/impostors/impostor_hibiscus_tiliaceus.webp",
       "zone": ["littoral"], "cycloneResist": "bonne",
       "status": "ok", "strate": "canopee"
     },
@@ -217,6 +226,7 @@
       "trunkH": 10, "trunkR0": 0.3, "isPalm": false,
       "b1Count": 6, "canopyRadius": 6, "svgSymbol": "broadleaf",
       "color2D": "#245c2c",
+      "impostorPath": "assets/impostors/impostor_terminalia_catappa.webp",
       "zone": ["littoral"], "cycloneResist": "moyenne",
       "status": "ok", "strate": "canopee"
     },

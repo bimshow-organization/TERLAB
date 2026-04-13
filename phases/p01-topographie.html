@@ -220,6 +220,10 @@
           <span class="topo-val" id="mesh-breaklines">—</span>
         </div>
       </div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="ui-btn" style="flex:1;font-size:11px" onclick="P01.exportMesh('glb')" title="Telecharger le mesh au format glTF binaire (.glb)">⬇ Export GLB</button>
+        <button class="ui-btn" style="flex:1;font-size:11px" onclick="P01.exportMesh('obj')" title="Telecharger le mesh au format Wavefront OBJ">⬇ Export OBJ</button>
+      </div>
     </div>
 
     <!-- Selecteur de couche couleur -->
@@ -1599,6 +1603,83 @@ const P01 = {
     }
   },
 
+  // ─── Export mesh TIN (GLB ou OBJ) ─────────────────────────────
+  // Pour GLB : applique d'abord l'orthophoto IGN sur le mesh (UV mapping)
+  // afin que Blender/autres logiciels affichent la texture immediatement.
+  async exportMesh(format = 'glb') {
+    if (!this._terrainMesh) {
+      window.TerlabToast?.show('Aucun mesh a exporter — lancez LiDAR Make Mesh d\'abord', 'warning');
+      return;
+    }
+    const terrain = SessionManager.getTerrain();
+    const baseName = (terrain?.nom || 'terrain').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const filename = `terlab_mesh_${baseName}.${format}`;
+
+    const mesh = this._terrainMesh;
+    const prevMaterial = mesh.material;
+    const prevLayer = this._meshColorLayer;
+    let materialSwapped = false;
+
+    try {
+      // Appliquer la texture ortho IGN pour le GLB (Blender la prend direct).
+      // Pour OBJ, on ne peut pas embed le raster → on garde les vertex colors existantes.
+      if (format === 'glb') {
+        window.TerlabToast?.show('Application de l\'orthophoto sur le mesh...', 'info', 2000);
+        const pts = this._lidarPoints ?? [];
+        if (pts.length) {
+          let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+          for (const p of pts) {
+            if (p[0] < minLng) minLng = p[0]; if (p[0] > maxLng) maxLng = p[0];
+            if (p[1] < minLat) minLat = p[1]; if (p[1] > maxLat) maxLat = p[1];
+          }
+          try {
+            await TerrainMeshBuilder.applyOrthoTexture({
+              west: minLng, east: maxLng, south: minLat, north: maxLat,
+            });
+            materialSwapped = true;
+          } catch (texErr) {
+            console.warn('[P01] Ortho texture echouee, export GLB avec vertex colors :', texErr.message);
+          }
+        }
+
+        const { GLTFExporter } = await import('three/addons/exporters/GLTFExporter.js');
+        const exporter = new GLTFExporter();
+        const buffer = await new Promise((resolve, reject) => {
+          exporter.parse(mesh, resolve, reject, { binary: true, embedImages: true });
+        });
+        const blob = new Blob([buffer], { type: 'model/gltf-binary' });
+        this._downloadBlob(blob, filename);
+      } else if (format === 'obj') {
+        const { OBJExporter } = await import('three/addons/exporters/OBJExporter.js');
+        const exporter = new OBJExporter();
+        const text = exporter.parse(mesh);
+        const blob = new Blob([text], { type: 'text/plain' });
+        this._downloadBlob(blob, filename);
+      } else {
+        throw new Error(`Format inconnu: ${format}`);
+      }
+      window.TerlabToast?.show(`Export ${format.toUpperCase()} telecharge : ${filename}`, 'success', 4000);
+    } catch (err) {
+      console.error('[P01] Export mesh echec:', err);
+      window.TerlabToast?.show(`Erreur export ${format.toUpperCase()} : ${err.message}`, 'error');
+    } finally {
+      // Restaurer la couche precedente si on a swap pour l'ortho
+      if (materialSwapped && prevLayer && prevLayer !== 'ortho') {
+        try { await TerrainMeshBuilder.setColorLayer(prevLayer); }
+        catch { mesh.material = prevMaterial; }
+      }
+    }
+  },
+
+  _downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+  },
+
   // ─── Changement de couche couleur sur le mesh TIN ─────────────
   async setMeshLayer(layer) {
     // UI toggle
@@ -2264,6 +2345,14 @@ window.addEventListener('terlab:parcelle-found', async (e) => {
 
 // ─── AUTO-ANALYSE : lancer l'altimétrie automatiquement si terrain connu ──
 if (terrain?.lat && terrain?.lng) {
+  // Pré-chauffer le cache pente/altitudes en arrière-plan (non bloquant).
+  // Mapbox DEM d'abord (instantané), IGN REST en secours.
+  if (terrain.parcelle_geojson && !terrain.pente_moy_pct) {
+    TerrainAnalysis.prefetchSlope(terrain.parcelle_geojson, terrain.altitude_ngr)
+      .then(r => { if (r) console.log(`[P01] Pré-calcul pente ${r.method}: ${r.slope}%`); })
+      .catch(() => {});
+  }
+
   // Attendre que la carte soit idle (DEM chargé) avant d'analyser
   const _autoAnalyze = () => {
     console.log('[P01] Auto-analyse altimétrie…');

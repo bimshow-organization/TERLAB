@@ -433,6 +433,176 @@ const GeoUtils = {
     return isMulti ? result.filter(p => p && p.length >= 3) : result[0];
   },
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Zones constructibles (port testbench v2) — convexe + concave
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Toutes ces fonctions travaillent directement en MÈTRES (pas de facteur SC).
+  // Agnostiques à l'orientation : le sens de la normale intérieure est déduit
+  // de signedArea() en interne.
+
+  buildRawBand(parc, i, r_m) {
+    if (!parc || parc.length < 3 || !(r_m > 0)) return null;
+    const n = parc.length;
+    const p1 = parc[i], p2 = parc[(i + 1) % n];
+    const dx = p2.x - p1.x, dy = p2.y - p1.y;
+    const L = Math.hypot(dx, dy);
+    if (L < 1e-6) return null;
+    const cw = this.signedArea(parc) > 0 ? 1 : -1;
+    const nx = cw * (-dy / L), ny = cw * (dx / L);
+    return [
+      { x: p1.x, y: p1.y },
+      { x: p2.x, y: p2.y },
+      { x: p2.x + nx * r_m, y: p2.y + ny * r_m },
+      { x: p1.x + nx * r_m, y: p1.y + ny * r_m },
+    ];
+  },
+
+  buildZoneHalfplane(parc, reculs) {
+    if (!parc || parc.length < 3) return [];
+    const n = parc.length;
+    const cw = this.signedArea(parc) > 0 ? 1 : -1;
+    let zone = parc.map(p => ({ x: p.x, y: p.y }));
+    for (let i = 0; i < n; i++) {
+      const r = reculs[i] ?? 0;
+      if (r <= 0) continue;
+      const p1 = parc[i], p2 = parc[(i + 1) % n];
+      const dx = p2.x - p1.x, dy = p2.y - p1.y;
+      const L = Math.hypot(dx, dy);
+      if (L < 1e-6) continue;
+      const nx = cw * (-dy / L), ny = cw * (dx / L);
+      const q1 = { x: p1.x + nx * r, y: p1.y + ny * r };
+      const q2 = { x: p2.x + nx * r, y: p2.y + ny * r };
+      const EXT = 10000;
+      const q3 = { x: q2.x + nx * EXT, y: q2.y + ny * EXT };
+      const q4 = { x: q1.x + nx * EXT, y: q1.y + ny * EXT };
+      zone = this.clipSH(zone, [q1, q2, q3, q4]);
+      if (zone.length < 3) return [];
+    }
+    return zone;
+  },
+
+  buildZoneRaster(parc, reculs, cell = 0.4) {
+    if (!parc || parc.length < 3) return [];
+    const xs = parc.map(p => p.x), ys = parc.map(p => p.y);
+    const xmin = Math.min(...xs), xmax = Math.max(...xs);
+    const ymin = Math.min(...ys), ymax = Math.max(...ys);
+    const n = parc.length;
+    const cw = this.signedArea(parc) > 0 ? 1 : -1;
+    const edges = [];
+    for (let i = 0; i < n; i++) {
+      const p1 = parc[i], p2 = parc[(i + 1) % n];
+      const dx = p2.x - p1.x, dy = p2.y - p1.y;
+      const L = Math.hypot(dx, dy);
+      if (L < 1e-6) { edges.push(null); continue; }
+      edges.push({
+        p1,
+        nx: cw * (-dy / L),
+        ny: cw * (dx / L),
+        r: reculs[i] ?? 0,
+      });
+    }
+    const distSigned = (p, e) => (p.x - e.p1.x) * e.nx + (p.y - e.p1.y) * e.ny;
+    const valid = [];
+    for (let y = ymin; y <= ymax; y += cell) {
+      for (let x = xmin; x <= xmax; x += cell) {
+        const p = { x, y };
+        if (!this.pointInPoly(p, parc)) continue;
+        let ok = true;
+        for (const e of edges) {
+          if (!e) continue;
+          if (distSigned(p, e) < e.r) { ok = false; break; }
+        }
+        if (ok) valid.push(p);
+      }
+    }
+    if (valid.length < 3) return [];
+    return this._convexHull(valid);
+  },
+
+  _convexHull(points) {
+    const pts = [...points].sort((a, b) => a.x - b.x || a.y - b.y);
+    if (pts.length < 3) return pts;
+    const cr = (O, A, B) => (A.x - O.x) * (B.y - O.y) - (A.y - O.y) * (B.x - O.x);
+    const lo = [];
+    for (const p of pts) {
+      while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop();
+      lo.push(p);
+    }
+    const up = [];
+    for (let i = pts.length - 1; i >= 0; i--) {
+      const p = pts[i];
+      while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop();
+      up.push(p);
+    }
+    lo.pop(); up.pop();
+    return lo.concat(up);
+  },
+
+  buildZone(parc, reculs) {
+    if (!parc || parc.length < 3) return [];
+    const arr = Array.isArray(reculs) ? reculs : Array(parc.length).fill(reculs || 0);
+    return this.isConvex(parc)
+      ? this.buildZoneHalfplane(parc, arr)
+      : this.buildZoneRaster(parc, arr);
+  },
+
+  lostCornersFromBands(rawBands, parc) {
+    if (!rawBands || !parc || parc.length < 3) return [];
+    const n = parc.length;
+    const sa = this.signedArea(parc);
+    const ccw = sa > 0;
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const iPrev = (i - 1 + n) % n;
+      const bPrev = rawBands[iPrev];
+      const bCurr = rawBands[i];
+      if (!bPrev || !bCurr) continue;
+      const a = parc[iPrev], b = parc[i], c = parc[(i + 1) % n];
+      const cr = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+      const isConvexV = ccw ? cr > 0 : cr < 0;
+      if (!isConvexV) continue;
+      const inter = this.clipSH(bPrev, bCurr);
+      if (inter.length >= 3) out.push(inter);
+    }
+    return out;
+  },
+
+  buildConcaveCornerArcs(parc, reculs, nSegments = 12) {
+    if (!parc || parc.length < 3) return [];
+    const n = parc.length;
+    const sa = this.signedArea(parc);
+    const ccw = sa > 0;
+    const cw = ccw ? 1 : -1;
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const iPrev = (i - 1 + n) % n;
+      const a = parc[iPrev], b = parc[i], c = parc[(i + 1) % n];
+      const cr = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+      const isConvexV = ccw ? cr > 0 : cr < 0;
+      if (isConvexV) continue;
+      const r = Math.max(reculs[iPrev] ?? 0, reculs[i] ?? 0);
+      if (r <= 0) continue;
+      const d1x = b.x - a.x, d1y = b.y - a.y, L1 = Math.hypot(d1x, d1y);
+      const d2x = c.x - b.x, d2y = c.y - b.y, L2 = Math.hypot(d2x, d2y);
+      if (L1 < 1e-6 || L2 < 1e-6) continue;
+      const n1x = cw * (-d1y / L1), n1y = cw * (d1x / L1);
+      const n2x = cw * (-d2y / L2), n2y = cw * (d2x / L2);
+      const a1 = Math.atan2(n1y, n1x);
+      const a2 = Math.atan2(n2y, n2x);
+      let da = a2 - a1;
+      while (da > Math.PI) da -= 2 * Math.PI;
+      while (da < -Math.PI) da += 2 * Math.PI;
+      const pts = [];
+      for (let k = 0; k <= nSegments; k++) {
+        const t = k / nSegments;
+        const ang = a1 + da * t;
+        pts.push({ x: b.x + Math.cos(ang) * r, y: b.y + Math.sin(ang) * r });
+      }
+      out.push({ center: { x: b.x, y: b.y }, radius: r, arc: pts, vertexIndex: i });
+    }
+    return out;
+  },
+
 };
 
 export { GeoUtils };

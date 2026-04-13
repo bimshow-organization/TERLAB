@@ -4,7 +4,10 @@
 import PPRService from '../services/ppr-service.js';
 import BRGMService from '../services/brgm-service.js';
 import GeoStatusBar from './geo-status-bar.js';
+import LidarHeightsPanel from './lidar-heights-panel.js';
 import { resilientJSON } from '../utils/resilient-fetch.js';
+
+let _lidarHeightsMounted = false;
 
 const MapViewer = {
 
@@ -87,6 +90,21 @@ const MapViewer = {
 
     // Auto-capture snapshot couche thématique après chargement des tuiles
     this._autoCaptureLayerSnap(mode);
+
+    // LiDAR Heights : mount panel (first time) ou rebind (changement de map)
+    try {
+      const root = document.getElementById('lidar-heights-root');
+      if (root) {
+        if (!_lidarHeightsMounted) {
+          LidarHeightsPanel.mount(root, this._map);
+          _lidarHeightsMounted = true;
+        } else {
+          LidarHeightsPanel.rebind(this._map);
+        }
+      }
+    } catch (err) {
+      console.warn('[Map] LidarHeightsPanel mount failed:', err);
+    }
 
     console.info(`[Map] Init mode="${mode}" pitch=${pitch} bearing=${bearing}`);
     return this._map;
@@ -1924,17 +1942,100 @@ const MapViewer = {
   },
 
   // Changer le mode d'affichage des points LiDAR (classification / rgb / altitude / height)
-  setLidarMode(mode) {
+  async setLidarMode(mode) {
     if (!this._map) return;
     const src = this._map.getSource('lidar-points');
     if (!src) return;
-    if (this._lidarRawPoints) {
-      this.showLidarPoints(this._lidarRawPoints, mode);
+    if (!this._lidarRawPoints) return;
+
+    // Mode 'rgb' (Ortho) : echantillonner l'orthophoto IGN si pas encore fait
+    if (mode === 'rgb' && !this._lidarRgbSampled) {
+      window.TerlabToast?.show('Echantillonnage ortho IGN en cours...', 'info', 2500);
+      try {
+        await this._sampleOrthoColors(this._lidarRawPoints);
+        this._lidarRgbSampled = true;
+      } catch (err) {
+        console.warn('[MapViewer] Ortho sampling echoue:', err.message);
+        window.TerlabToast?.show(`Ortho indisponible : ${err.message}`, 'warning');
+      }
     }
+
+    this.showLidarPoints(this._lidarRawPoints, mode);
+  },
+
+  // Echantillonne l'orthophoto IGN et ecrit les RGB dans chaque point (p[3], p[4], p[5])
+  // Points = [[lng, lat, alt, r, g, b, classification], ...]
+  async _sampleOrthoColors(points) {
+    if (!points?.length) return;
+
+    // Bbox englobant + petite marge
+    let lngMin = Infinity, lngMax = -Infinity, latMin = Infinity, latMax = -Infinity;
+    for (const p of points) {
+      if (p[0] < lngMin) lngMin = p[0];
+      if (p[0] > lngMax) lngMax = p[0];
+      if (p[1] < latMin) latMin = p[1];
+      if (p[1] > latMax) latMax = p[1];
+    }
+    const marginLng = (lngMax - lngMin) * 0.02 || 0.0005;
+    const marginLat = (latMax - latMin) * 0.02 || 0.0005;
+    lngMin -= marginLng; lngMax += marginLng;
+    latMin -= marginLat; latMax += marginLat;
+
+    // Taille raster adaptee a la densite des points (resolution ~ 1 pixel / 2m en moyenne a La Reunion)
+    const W = 1536, H = 1536;
+    const params = new URLSearchParams({
+      SERVICE: 'WMS', VERSION: '1.3.0', REQUEST: 'GetMap',
+      LAYERS: 'ORTHOIMAGERY.ORTHOPHOTOS', STYLES: '',
+      CRS: 'EPSG:4326',
+      BBOX: `${latMin},${lngMin},${latMax},${lngMax}`,
+      WIDTH: String(W), HEIGHT: String(H),
+      FORMAT: 'image/jpeg',
+    });
+    const url = `https://data.geopf.fr/wms-r?${params}`;
+
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.crossOrigin = 'anonymous';
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error('Fetch ortho WMS echec'));
+      i.src = url;
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, W, H);
+    let imgData;
+    try {
+      imgData = ctx.getImageData(0, 0, W, H).data;
+    } catch (err) {
+      throw new Error('Canvas taint (CORS) — verifier le token IGN');
+    }
+
+    const spanLng = lngMax - lngMin || 1e-9;
+    const spanLat = latMax - latMin || 1e-9;
+
+    // Format attendu : [lng, lat, z, r, g, b, cls] — on ecrase r,g,b
+    for (const p of points) {
+      const u = (p[0] - lngMin) / spanLng;
+      const v = 1 - (p[1] - latMin) / spanLat;
+      const x = Math.max(0, Math.min(W - 1, Math.round(u * (W - 1))));
+      const y = Math.max(0, Math.min(H - 1, Math.round(v * (H - 1))));
+      const idx = (y * W + x) * 4;
+      p[3] = imgData[idx];
+      p[4] = imgData[idx + 1];
+      p[5] = imgData[idx + 2];
+    }
+    console.info(`[MapViewer] Ortho echantillonnee sur ${points.length} points (${W}x${H})`);
+  },
+
+  clearLidarRgbCache() {
+    this._lidarRgbSampled = false;
   },
 
   setLidarRawPoints(points) {
     this._lidarRawPoints = points;
+    this._lidarRgbSampled = false; // nouveaux points → re-echantillonner l'ortho au prochain mode 'rgb'
   },
 
   // ── Injecter un mesh TIN terrain dans le viewer 3D ──────────────

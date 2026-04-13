@@ -277,7 +277,20 @@ const CapacityStudyRenderer = {
 
   renderCoupeGabarit(session, proposal, prog) {
     const r = FH.readProposal(proposal);
-    if (!r.blocs.length) return '<svg></svg>';
+    // Fallback rupture C : synthétiser un bloc minimal plutôt qu'un SVG vide
+    // (utilisé quand proposal arrive sans blocs/bat, ex. export PDF avant génération)
+    let _fallback = false;
+    if (!r.blocs.length) {
+      const wDef = proposal?.bat?.w ?? proposal?.w ?? 8;
+      const lDef = proposal?.bat?.l ?? proposal?.l ?? 10;
+      const nvDef = proposal?.niveaux ?? prog?.niveaux ?? 2;
+      const poly = FH.batToPolygon({ x: 0, y: 0, w: wDef, l: lDef });
+      r.blocs = [FH.makeBloc(poly, nvDef)];
+      r.bat = { x: 0, y: 0, w: wDef, l: lDef };
+      r.primaryPolygon = poly;
+      r.primaryBloc = r.blocs[0];
+      _fallback = true;
+    }
 
     // Pour la coupe, on prend le bloc le plus profond (max longueur)
     // et on utilise sa vraie profondeur (le long de son axe local).
@@ -412,6 +425,11 @@ const CapacityStudyRenderer = {
     // 8. Indicateur N-S
     svg += `<text x="0" y="${-totalH - 1}" font-size="1" fill="#333">↑ Nord</text>`;
     svg += `<text x="${totalW}" y="${-totalH - 1}" text-anchor="end" font-size="1" fill="#333">Sud ↓</text>`;
+
+    if (_fallback) {
+      svg += `<rect x="${totalW / 2 - 6}" y="${-totalH - 3}" width="12" height="2" fill="#FEF3C7" stroke="#F59E0B" stroke-width="0.15" rx="0.3"/>`;
+      svg += `<text x="${totalW / 2}" y="${-totalH - 1.6}" text-anchor="middle" font-size="0.9" fill="#92400E">⚠ coupe indicative — données partielles</text>`;
+    }
 
     svg += '</svg>';
     return svg;

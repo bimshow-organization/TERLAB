@@ -60,6 +60,8 @@ const Terrain3D = {
   _textures:     {},           // cache { ortho, elevation, slope, satellite }
   _bilMeta:      null,         // { heights, W, H, minAlt, maxAlt } pour coloration vertex
   _orthoLoaded:  false,
+  _vegetationGroup: null,      // THREE.Group contenant InstancedMesh par espece
+  _vegetationMats:  [],        // ShaderMaterial[] pour update uniform camera par frame
 
   // ─── INIT ─────────────────────────────────────────────────────
   async init(canvasId, sessionData) {
@@ -1213,6 +1215,12 @@ const Terrain3D = {
     const render = () => {
       this._animId = requestAnimationFrame(render);
       this._controls?.update();
+      // Update uniforms billboards vegetation
+      if (this._vegetationMats.length && this._cam) {
+        for (const m of this._vegetationMats) {
+          m.uniforms.uCameraPos.value.copy(this._cam.position);
+        }
+      }
       this._renderer.render(this._scene, this._cam);
     };
     render();
@@ -1347,6 +1355,161 @@ const Terrain3D = {
       else o.material?.dispose();
     });
     this._scene?.remove(g);
+  },
+
+  // ─── VEGETATION : IMPOSTORS OCTAHEDRAL ─────────────────────────
+  // Atlases webp 2048x1024 (4 colonnes x 2 lignes, 8 vues a 45 deg)
+  // Fournis par BPF via ImpostorLoader, mappes dans bpf-species-reunion.json
+
+  async setVegetation(plants) {
+    if (!this._scene) return;
+
+    // Nettoyage precedent
+    if (this._vegetationGroup) {
+      this._disposeGroup(this._vegetationGroup);
+      this._vegetationGroup = null;
+    }
+    this._vegetationMats = [];
+
+    if (!plants?.length) return;
+    if (!window.ImpostorLoader) { console.warn('[Terrain3D] ImpostorLoader indisponible'); return; }
+
+    const group = new THREE.Group();
+    group.name = 'vegetation';
+    this._vegetationGroup = group;
+    this._scene.add(group);
+
+    const sf = this._terrainSF ?? 1;
+
+    // Regrouper par speciesKey (1 InstancedMesh par espece)
+    const bySpecies = {};
+    for (const p of plants) (bySpecies[p.speciesKey] ??= []).push(p);
+
+    for (const [speciesKey, list] of Object.entries(bySpecies)) {
+      const tex = await window.ImpostorLoader.getTexture(speciesKey);
+      if (!tex) continue; // Espece sans impostor : on skip (fallback SVG 2D seulement)
+
+      const mat = this._buildImpostorMaterial(tex);
+      this._vegetationMats.push(mat);
+
+      const geo = new THREE.PlaneGeometry(1, 1);
+      geo.translate(0, 0.5, 0); // Origine en bas du quad (trunk base)
+
+      const inst = new THREE.InstancedMesh(geo, mat, list.length);
+      inst.name = `veg-${speciesKey}`;
+      inst.frustumCulled = false; // Billboard face toujours camera
+
+      const tmpMat = new THREE.Matrix4();
+      const tmpQuat = new THREE.Quaternion();
+      const tmpScale = new THREE.Vector3();
+      const tmpPos = new THREE.Vector3();
+
+      for (let i = 0; i < list.length; i++) {
+        const p = list[i];
+        // Conversion local parcelle (m) -> world scene (Three units)
+        // BpfBridge : x = east, y = south (Y inverted for SVG). Three: x = east, z = south.
+        const wx = p.x * sf;
+        const wz = p.y * sf;
+        const wy = this._sampleTerrainY(wx, wz);
+
+        // Taille : canopyRadius m * 2 = largeur, hauteur ~ 2.2 x canopyRadius pour l'aspect arbre
+        const radM = p.canopyRadius ?? 2;
+        const sw = radM * 2 * sf;
+        const sh = radM * 2.2 * sf;
+
+        tmpPos.set(wx, wy, wz);
+        tmpScale.set(sw, sh, 1);
+        tmpQuat.set(0, 0, 0, 1);
+        tmpMat.compose(tmpPos, tmpQuat, tmpScale);
+        inst.setMatrixAt(i, tmpMat);
+      }
+      inst.instanceMatrix.needsUpdate = true;
+      group.add(inst);
+    }
+
+    console.log(`[Terrain3D] Vegetation : ${plants.length} plantes, ${Object.keys(bySpecies).length} especes`);
+  },
+
+  _buildImpostorMaterial(atlasTex) {
+    atlasTex.minFilter = THREE.LinearFilter;
+    atlasTex.magFilter = THREE.LinearFilter;
+    atlasTex.generateMipmaps = false;
+    atlasTex.wrapS = atlasTex.wrapT = THREE.ClampToEdgeWrapping;
+
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        uAtlas: { value: atlasTex },
+        uCameraPos: { value: new THREE.Vector3() },
+        uAlphaTest: { value: 0.3 },
+      },
+      vertexShader: `
+        uniform vec3 uCameraPos;
+        varying vec2 vUv;
+
+        void main() {
+          // Position d'instance (origine billboard en 0,0,0 local avant scale)
+          vec4 instOrigin = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+          vec3 worldPos = (modelMatrix * instOrigin).xyz;
+
+          // Azimut camera -> slot atlas (8 vues)
+          vec2 toCam = uCameraPos.xz - worldPos.xz;
+          float angle = atan(toCam.x, toCam.y);
+          float slot = mod(floor((angle / 6.2831853) * 8.0 + 8.5), 8.0);
+          float col = mod(slot, 4.0);
+          float row = floor(slot / 4.0);
+
+          // Atlas 4 colonnes x 2 lignes, row 0 en haut de l'image
+          vUv = vec2((uv.x + col) / 4.0, (1.0 - uv.y + row) / 2.0);
+
+          // Billboard : right = cross(up, toCam), up = (0,1,0)
+          vec3 toCam3 = normalize(uCameraPos - worldPos);
+          vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), toCam3));
+
+          // Extraire scale de instanceMatrix
+          float sW = length(vec3(instanceMatrix[0].x, instanceMatrix[0].y, instanceMatrix[0].z));
+          float sH = length(vec3(instanceMatrix[1].x, instanceMatrix[1].y, instanceMatrix[1].z));
+
+          // position.xy dans [-0.5, 0.5] (PlaneGeometry), apres translate(0,0.5,0) : x in [-0.5,0.5], y in [0,1]
+          vec3 displaced = right * position.x * sW + vec3(0.0, 1.0, 0.0) * position.y * sH;
+
+          gl_Position = projectionMatrix * viewMatrix * vec4(worldPos + displaced, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D uAtlas;
+        uniform float uAlphaTest;
+        varying vec2 vUv;
+
+        void main() {
+          vec4 c = texture2D(uAtlas, vUv);
+          if (c.a < uAlphaTest) discard;
+          gl_FragColor = c;
+        }
+      `,
+      transparent: true,
+      depthWrite: true,
+      side: THREE.DoubleSide,
+    });
+  },
+
+  _sampleTerrainY(x, z) {
+    // Raycast vertical sur topMesh / terrainTIN pour trouver l'altitude du sol
+    const base = this.EXTRUDE_DEPTH + 0.5;
+    if (!this._scene) return base;
+    const meshes = [];
+    this._scene.traverse(o => {
+      if (o.isMesh && (o.name === 'TerrainTIN' || o === this._topMesh)) meshes.push(o);
+    });
+    if (!meshes.length) return base;
+    const ray = new THREE.Raycaster(new THREE.Vector3(x, 500, z), new THREE.Vector3(0, -1, 0));
+    const hits = ray.intersectObjects(meshes, false);
+    if (hits.length) return hits[0].point.y;
+    return base;
+  },
+
+  toggleVegetation(on) {
+    if (!this._vegetationGroup) return;
+    this._vegetationGroup.visible = on ?? !this._vegetationGroup.visible;
   },
 };
 
