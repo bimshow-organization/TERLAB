@@ -100,7 +100,8 @@ body {
 .terlab-app {
   display: grid;
   grid-template-rows: var(--topbar-h) 1fr;
-  grid-template-columns: var(--sidebar-w) 1fr;
+  /* Sidebar verticale supprimee : main occupe toute la largeur */
+  grid-template-columns: 1fr;
   height: 100vh;
   width: 100vw;
   overflow: hidden;
@@ -315,19 +316,25 @@ body {
 .tb-btn:hover { background: var(--raised); color: var(--text); border-color: var(--border3); }
 .btn-export { color: var(--accent); border-color: rgba(154,120,32,.25); }
 .btn-export:hover { background: var(--accent2); }
+/* Variante accentuee pour le bouton Export en topbar */
+.tb-btn-accent { color: var(--accent); border-color: rgba(154,120,32,.35); background: rgba(154,120,32,.08); }
+.tb-btn-accent:hover { background: var(--accent2); color: var(--accent); border-color: rgba(154,120,32,.55); }
 .btn-bimshow { color: var(--gold); border-color: rgba(245,158,11,.25); }
 .btn-bimshow:hover { background: var(--warning2); }
 
 /* ─────────────────────────────────────────────────────────────────
-   7 · SIDEBAR
+   7 · SIDEBAR (DESACTIVEE : actions deplacees dans la topbar)
 ───────────────────────────────────────────────────────────────── */
 .sidebar {
+  display: none;
+}
+.sidebar-legacy {
+  /* Conserve les styles d origine si on souhaite reactiver plus tard */
   grid-column: 1;
   grid-row: 2;
   width: var(--sidebar-w);
   background: var(--surface);
   border-right: 1px solid var(--border);
-  display: flex;
   flex-direction: column;
   align-items: center;
   padding: 8px 0;
@@ -360,7 +367,8 @@ body {
    8 · MAIN + PHASE CONTAINER
 ───────────────────────────────────────────────────────────────── */
 .terlab-main {
-  grid-column: 2;
+  /* grid-column 1 depuis suppression sidebar verticale */
+  grid-column: 1;
   grid-row: 2;
   overflow: hidden;
   position: relative;
