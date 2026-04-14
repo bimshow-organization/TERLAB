@@ -1307,6 +1307,92 @@ const ExportEngine = {
   //  VISUAL CAPTURE (from DOM — existing canvases, SVGs, charts)
   // ═══════════════════════════════════════════════════════════════
 
+  /**
+   * Si les DOM #section-viewer-A/B ne contiennent pas de SVG, calcule les
+   * coupes A/B via SectionProfileViewer + LiDAR et les rend dans des conteneurs
+   * caches. Utilise lors d'un export sans passage prealable par Phase 1.
+   */
+  async _ensureSectionsRendered() {
+    const existingA = document.querySelector('#section-viewer-A svg');
+    const existingB = document.querySelector('#section-viewer-B svg');
+    if (existingA && existingB) return;
+
+    const SV = window.SectionProfileViewer;
+    const SM = window.SessionManager;
+    const MV = window.MapViewer ?? window.TerlabMap;
+    if (!SV || !SM) return;
+
+    const terrain = SM.getTerrain?.() ?? {};
+    const geojson = terrain.parcelle_geojson;
+    const lat = parseFloat(terrain.lat), lng = parseFloat(terrain.lng);
+    if (!geojson || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    // Creer les conteneurs DOM caches si absents
+    const ensureDiv = (id) => {
+      let el = document.getElementById(id);
+      if (!el) {
+        el = document.createElement('div');
+        el.id = id;
+        el.style.cssText = 'position:absolute;left:-9999px;width:700px;height:220px;';
+        document.body.appendChild(el);
+      }
+      return el;
+    };
+    ensureDiv('section-viewer-A');
+    ensureDiv('section-viewer-B');
+
+    const center = [lng, lat];
+    const orientation = terrain.orientation_terrain || 'S';
+    let axes;
+    try {
+      axes = SV.computeSectionAxes(geojson, orientation, center);
+    } catch (e) { console.warn('[Export] computeSectionAxes failed:', e.message); return; }
+    if (!axes) return;
+
+    // Charger les points LiDAR si dispo (sinon fallback IGN/DEM interne)
+    const lidarPts = window.LidarService?.getRawPoints?.() ?? null;
+
+    try {
+      const [profileA, profileB] = await Promise.all([
+        SV.extractProfile(axes.A, lidarPts),
+        SV.extractProfile(axes.B, lidarPts),
+      ]);
+
+      const map = MV?.getMap?.();
+      const annoA = [
+        ...(SV.findParcelBoundaryIntersections?.(axes.A.start, axes.A.end, geojson) ?? []),
+        ...(map && SV.findRoadIntersections ? SV.findRoadIntersections(axes.A.start, axes.A.end, map) : []),
+      ];
+      const annoB = [
+        ...(SV.findParcelBoundaryIntersections?.(axes.B.start, axes.B.end, geojson) ?? []),
+        ...(map && SV.findRoadIntersections ? SV.findRoadIntersections(axes.B.start, axes.B.end, map) : []),
+      ];
+
+      let scatterA = null, scatterB = null;
+      if (lidarPts?.length && window.LidarService?.getScatterFromPoints) {
+        const rA = window.LidarService.getScatterFromPoints(lidarPts, axes.A.start, axes.A.end, 8);
+        const rB = window.LidarService.getScatterFromPoints(lidarPts, axes.B.start, axes.B.end, 8);
+        scatterA = rA?.scatter?.length ? rA.scatter : null;
+        scatterB = rB?.scatter?.length ? rB.scatter : null;
+      }
+
+      if (profileA?.data?.length) {
+        SV.render('A', 'section-viewer-A', profileA.data, annoA, { scatter: scatterA });
+        if (SV._viewers?.A) SV._viewers.A.source = profileA.source;
+        SV._renderSVG?.('A');
+      }
+      if (profileB?.data?.length) {
+        SV.render('B', 'section-viewer-B', profileB.data, annoB, { scatter: scatterB });
+        if (SV._viewers?.B) SV._viewers.B.source = profileB.source;
+        SV._renderSVG?.('B');
+      }
+      console.log('[Export] Coupes A/B generees a la volee (source:',
+        profileA?.source ?? '?', '/', profileB?.source ?? '?', ')');
+    } catch (e) {
+      console.warn('[Export] Generation coupes A/B failed:', e.message);
+    }
+  },
+
   async _captureVisuals() {
     const v = {};
 
@@ -1363,7 +1449,8 @@ const ExportEngine = {
     const aeroSvg = document.getElementById('p01-aero-overlay');
     if (aeroSvg) v.aeroOverlay = await this._svgToDataURL(aeroSvg, 600, 300);
 
-    // Coupes A/B SVG (phase 1)
+    // Coupes A/B SVG (phase 1) - genere a la volee si absentes du DOM
+    await this._ensureSectionsRendered();
     const sectionA = document.querySelector('#section-viewer-A svg');
     if (sectionA) v.sectionA = await this._svgToDataURL(sectionA, 700, 220);
     const sectionB = document.querySelector('#section-viewer-B svg');
