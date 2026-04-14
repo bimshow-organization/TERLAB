@@ -21,6 +21,15 @@ jobs:
       - name: cp runner staging
         run: cp -r $GITHUB_WORKSPACE /opt/node/terlab
 
+      # Inject the dev1 Firebase config so TERLAB authenticates against
+      # the same project as website + web-app (bimshow-dev1). This enables
+      # SSO across every dev1.bimshow.io app (shared IndexedDB session).
+      # The loader in accueil.html prefers config/firebase-config.js over
+      # firebase-config.public.js. The injected file MUST exist on the
+      # runner at: /opt/node_app_conf_file/terlab/firebase-config.js
+      - name: inject dev1 firebase config
+        run: cp /opt/node_app_conf_file/terlab/firebase-config.js /opt/node/terlab/config/firebase-config.js
+
       # Push to nginx at /terlab/
       # Nginx must have a location /terlab/ { alias /opt/nginx/terlab/; } block.
       - name: rm nginx target
