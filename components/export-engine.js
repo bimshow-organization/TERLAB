@@ -183,12 +183,7 @@ const ExportEngine = {
       const score = session?.audit?.globalScore ?? window.TerlabScoreService?.computeGlobalScore?.(session) ?? 0;
       if (score < 40) {
         const missing = this._getMissingCriticalPhases(session);
-        const proceed = confirm(
-          `Completude de l'analyse : ${score}%\n\n` +
-          `Le document PDF contiendra de nombreuses donnees manquantes.\n` +
-          `Phases critiques manquantes : ${missing.join(', ')}\n\n` +
-          `Continuer quand meme ?`
-        );
+        const proceed = await this._confirmLowScore(score, missing);
         if (!proceed) { this._hideProgress(); return; }
       }
 
@@ -1199,6 +1194,98 @@ const ExportEngine = {
 
   _getPlancheNum(base) {
     return base;
+  },
+
+  /**
+   * Modal "completude faible" — remplace le confirm() natif.
+   * Retourne une Promise<boolean> : true = proceder quand meme, false = annuler.
+   */
+  _confirmLowScore(score, missing) {
+    return new Promise((resolve) => {
+      const prev = document.getElementById('terlab-export-confirm');
+      if (prev) prev.remove();
+
+      const missingHtml = missing?.length
+        ? `<ul class="mlp-list">${missing.map(m => `<li>${m}</li>`).join('')}</ul>`
+        : '<p class="mlp-muted">Aucune phase critique detectee.</p>';
+
+      const el = document.createElement('div');
+      el.id = 'terlab-export-confirm';
+      el.innerHTML = `
+        <style>
+          #terlab-export-confirm {
+            position:fixed; inset:0; z-index:10000;
+            background:rgba(8,14,24,0.75); backdrop-filter:blur(4px);
+            display:flex; align-items:center; justify-content:center;
+            animation:mlpFade .18s ease;
+          }
+          @keyframes mlpFade { from { opacity:0 } to { opacity:1 } }
+          .mlp-box {
+            background:var(--surface, #1a1814);
+            border:1px solid var(--border, #2a2a2a);
+            border-radius:8px; box-shadow:0 20px 60px rgba(0,0,0,.6);
+            max-width:460px; width:90%; padding:20px 24px;
+            font-family:var(--font-body, system-ui);
+            color:var(--text, #e8e4dd);
+          }
+          .mlp-head { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+          .mlp-icon { font-size:22px; }
+          .mlp-title { font-size:14px; font-weight:600; color:var(--text); margin:0; }
+          .mlp-score {
+            font-family:var(--font-mono, monospace); font-size:11px;
+            padding:2px 8px; border-radius:3px; margin-left:auto;
+            background:rgba(232,100,50,.15); color:#e86432;
+          }
+          .mlp-body { font-size:12px; line-height:1.55; color:var(--text2, #ccc); }
+          .mlp-body p { margin:6px 0; }
+          .mlp-list { margin:6px 0 8px; padding-left:18px; font-size:11px; }
+          .mlp-list li { color:var(--accent, #9a7820); font-family:var(--font-mono); }
+          .mlp-muted { color:var(--muted, #888); font-size:11px; font-style:italic; }
+          .mlp-actions { display:flex; gap:8px; margin-top:16px; justify-content:flex-end; }
+          .mlp-btn {
+            padding:8px 16px; border-radius:4px; font-size:11px;
+            font-family:var(--font-mono, monospace); cursor:pointer;
+            border:1px solid var(--border, #2a2a2a); background:transparent;
+            color:var(--text2); transition:all .15s;
+          }
+          .mlp-btn:hover { border-color:var(--accent, #9a7820); color:var(--text); }
+          .mlp-btn-primary {
+            background:var(--accent, #9a7820); color:#000; border-color:var(--accent);
+            font-weight:600;
+          }
+          .mlp-btn-primary:hover { background:var(--accent, #9a7820); filter:brightness(1.1); }
+        </style>
+        <div class="mlp-box" role="dialog" aria-labelledby="mlp-title">
+          <div class="mlp-head">
+            <span class="mlp-icon">⚠</span>
+            <h3 id="mlp-title" class="mlp-title">Complétude de l'analyse</h3>
+            <span class="mlp-score">${score}%</span>
+          </div>
+          <div class="mlp-body">
+            <p>Le document PDF contiendra de nombreuses données manquantes.</p>
+            <p style="margin-top:10px;font-weight:600">Phases critiques à compléter :</p>
+            ${missingHtml}
+            <p class="mlp-muted">Vous pouvez continuer pour un export brut, ou revenir compléter les phases.</p>
+          </div>
+          <div class="mlp-actions">
+            <button class="mlp-btn" data-action="cancel">Revenir compléter</button>
+            <button class="mlp-btn mlp-btn-primary" data-action="proceed">Exporter quand même</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(el);
+
+      const close = (result) => {
+        el.remove();
+        resolve(result);
+      };
+      el.querySelector('[data-action="cancel"]').addEventListener('click', () => close(false));
+      el.querySelector('[data-action="proceed"]').addEventListener('click', () => close(true));
+      el.addEventListener('click', (e) => { if (e.target === el) close(false); });
+      document.addEventListener('keydown', function esc(e) {
+        if (e.key === 'Escape') { document.removeEventListener('keydown', esc); close(false); }
+      });
+    });
   },
 
   _getMissingCriticalPhases(session) {

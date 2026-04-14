@@ -334,7 +334,7 @@
     <!-- Section profile containers -->
     <div class="section-ab-grid">
       <!-- Coupe A -->
-      <div class="section-card" id="section-card-A" onclick="P01.selectSection('A')">
+      <div class="section-card" id="section-card-A" onclick="P01.selectSection('A'); P01.toggleSectionSplit('A')" title="Clic pour ouvrir en grand">
         <div class="section-card-head">
           <span class="section-badge section-badge-A">A</span>
           <span class="section-card-title">Longitudinale</span>
@@ -345,12 +345,11 @@
           <button class="section-zoom-btn" onclick="event.stopPropagation();P01.sectionZoom('A','in')" title="Zoom +">+</button>
           <button class="section-zoom-btn" onclick="event.stopPropagation();P01.sectionZoom('A','out')" title="Zoom -">−</button>
           <button class="section-zoom-btn" onclick="event.stopPropagation();P01.sectionZoom('A','reset')" title="Reset">1:1</button>
-          <button class="section-split-btn" data-section="A" onclick="event.stopPropagation();P01.toggleSectionSplit('A')" title="Split-screen">⇔</button>
         </div>
       </div>
 
       <!-- Coupe B -->
-      <div class="section-card" id="section-card-B" onclick="P01.selectSection('B')">
+      <div class="section-card" id="section-card-B" onclick="P01.selectSection('B'); P01.toggleSectionSplit('B')" title="Clic pour ouvrir en grand">
         <div class="section-card-head">
           <span class="section-badge section-badge-B">B</span>
           <span class="section-card-title">Perpendiculaire</span>
@@ -361,7 +360,6 @@
           <button class="section-zoom-btn" onclick="event.stopPropagation();P01.sectionZoom('B','in')" title="Zoom +">+</button>
           <button class="section-zoom-btn" onclick="event.stopPropagation();P01.sectionZoom('B','out')" title="Zoom -">−</button>
           <button class="section-zoom-btn" onclick="event.stopPropagation();P01.sectionZoom('B','reset')" title="Reset">1:1</button>
-          <button class="section-split-btn" data-section="B" onclick="event.stopPropagation();P01.toggleSectionSplit('B')" title="Split-screen">⇔</button>
         </div>
       </div>
     </div>
@@ -389,6 +387,17 @@
       </div>
     </div>
     <div id="section-split-profile" class="section-split-profile"></div>
+  </div>
+
+  <!-- Bioclim overlay : helio + rose des vents en grand -->
+  <div id="bioclim-split-wrap" class="bioclim-split-wrap">
+    <div class="section-split-header">
+      <span id="bioclim-split-title">Diagramme —</span>
+      <div class="section-split-controls">
+        <button class="section-zoom-btn" onclick="P01.closeBioclimSplit()" title="Fermer">✕</button>
+      </div>
+    </div>
+    <div id="bioclim-split-body" class="bioclim-split-body"></div>
   </div>
 
   <!-- Ravines -->
@@ -458,7 +467,7 @@
     <div class="fs-head">Station météo de référence</div>
     <div class="field-row">
       <label class="field-label" for="station-meteo">Station Météo-France</label>
-      <select id="station-meteo" class="field-select" data-session-key="station_meteo" onchange="P01.updateMeteoData()">
+      <select id="station-meteo" class="field-select" data-session-key="station_meteo" onchange="this.dataset.manual='1'; P01.updateMeteoData();">
         <option value="">-- Sélectionner (auto-détection au chargement) --</option>
         <option value="saint-denis-gillot">Saint-Denis — Gillot</option>
         <option value="saint-pierre">Saint-Pierre</option>
@@ -540,11 +549,11 @@
   <div class="form-section anim-slide-up" id="p01-bioclim-section">
     <div class="fs-head">Bioclimatique <span class="sg-badge">Météo-France</span></div>
     <div class="bioclim-row" id="p01-bioclim-row">
-      <div class="bioclim-col">
+      <div class="bioclim-col" onclick="P01.toggleBioclimSplit('helio')" title="Clic pour ouvrir en grand" style="cursor:pointer">
         <div class="bioclim-label" id="p01-helio-label">Héliodone — chargement…</div>
         <canvas id="p01-helio-canvas" class="bioclim-canvas" aria-label="Héliodone"></canvas>
       </div>
-      <div class="bioclim-col">
+      <div class="bioclim-col" onclick="P01.toggleBioclimSplit('wind')" title="Clic pour ouvrir en grand" style="cursor:pointer">
         <div class="bioclim-label" id="p01-wind-label">Rose des vents — chargement…</div>
         <canvas id="p01-wind-canvas" class="bioclim-canvas" aria-label="Rose des vents"></canvas>
       </div>
@@ -861,10 +870,26 @@
 /* ── Bioclimatique (héliodone + rose des vents MF) ───────────── */
 #p01-bioclim-section { padding:8px 13px; border-bottom:1px solid var(--border); }
 .bioclim-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:6px 0 4px; }
-.bioclim-col { display:flex; flex-direction:column; align-items:center; }
+.bioclim-col { display:flex; flex-direction:column; align-items:center; transition:transform var(--tx-fast); }
+.bioclim-col:hover { transform:scale(1.02); }
+.bioclim-col:hover .bioclim-canvas { box-shadow:0 0 8px rgba(232,129,26,.2); }
 .bioclim-label { font-family:var(--font-mono); font-size:9px; color:var(--faint); text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px; text-align:center; }
-.bioclim-canvas { width:100%; max-width:160px; aspect-ratio:1/1; border-radius:4px; background:var(--raised); }
+.bioclim-canvas { width:100%; max-width:160px; aspect-ratio:1/1; border-radius:4px; background:var(--raised); transition:box-shadow var(--tx-fast); }
 .bioclim-meta { font-family:var(--font-mono); font-size:9px; color:var(--muted); padding:4px 0 0; text-align:center; line-height:1.4; }
+
+/* Bioclim split overlay : meme pattern que les coupes, mais centre et plus haut */
+.bioclim-split-wrap {
+  display:none; position:fixed; bottom:0; left:0; right:0; z-index:201;
+  height:0; background:var(--surface, #1a1814); border-top:2px solid var(--accent);
+  transition:height .35s ease;
+  flex-direction:column;
+}
+.bioclim-split-wrap.split-active { display:flex; height:520px; }
+.bioclim-split-body {
+  flex:1; overflow:hidden; padding:12px;
+  display:flex; align-items:center; justify-content:center;
+}
+.bioclim-split-body canvas { max-width:100%; max-height:100%; object-fit:contain; }
 </style>
 
 <!-- ═══════════════════ SCRIPT PHASE 1 ══════════════════════════ -->
@@ -1913,12 +1938,69 @@ const P01 = {
     else SectionViewer.resetZoom(splitKey);
   },
 
+  // ─── Bioclim split overlay : heliodone / rose des vents en grand ─
+  async toggleBioclimSplit(which) {
+    const wrap = document.getElementById('bioclim-split-wrap');
+    if (!wrap) return;
+
+    // Deja ouvert sur le meme -> fermer
+    if (this._bioclimSplitId === which && wrap.classList.contains('split-active')) {
+      this.closeBioclimSplit();
+      return;
+    }
+
+    // (Re)generer a grande taille pour lisibilite
+    try {
+      const mod = await import('../components/diag-renderer.js');
+      const isDark = document.documentElement.dataset.theme === 'dark';
+      const r = await mod.renderDiagrams(SessionManager, { size: 720, isDark });
+      const body = document.getElementById('bioclim-split-body');
+      const title = document.getElementById('bioclim-split-title');
+      if (!body || !title) return;
+
+      body.innerHTML = '';
+      if (which === 'helio') {
+        title.textContent = `Héliodone · φ = ${(parseFloat(SessionManager?.getTerrain?.()?.lat ?? 0)).toFixed(2)}°`;
+        body.appendChild(r.heliCanvas);
+      } else {
+        title.textContent = `Rose des vents · ${r.windData.stationName} · ${r.windData.dominantDir ?? '—'} dominant`;
+        body.appendChild(r.windCanvas);
+      }
+      this._bioclimSplitId = which;
+      wrap.classList.add('split-active');
+    } catch (err) {
+      console.warn('[P01] Bioclim split erreur :', err);
+      window.TerlabToast?.show('Impossible d\'ouvrir le diagramme', 'warning');
+    }
+  },
+
+  closeBioclimSplit() {
+    const wrap = document.getElementById('bioclim-split-wrap');
+    if (wrap) wrap.classList.remove('split-active');
+    this._bioclimSplitId = null;
+  },
+
   // ─── Auto-détection station météo via MeteoService ─────────────
   _autoDetectMeteo(lat, lng) {
     const nearest = MeteoService.findNearest(lat, lng);
     if (!nearest) return;
     const select = document.getElementById('station-meteo');
-    if (select && !select.value) {
+    if (!select) return;
+
+    // Reset du flag manuel si la parcelle a change (lat/lng differents)
+    const key = `${lat.toFixed(4)}|${lng.toFixed(4)}`;
+    if (select.dataset.autoCoords !== key) {
+      select.dataset.manual = '';
+      select.dataset.autoCoords = key;
+    }
+
+    // Si choix manuel deja fait pour CETTE parcelle : on respecte
+    if (select.dataset.manual === '1') {
+      P01._autoDetectRavines(lat, lng);
+      return;
+    }
+
+    if (select.value !== nearest.key) {
       select.value = nearest.key;
       P01.updateMeteoData();
       window.TerlabToast?.show(`Station météo auto-détectée : ${nearest.label}`, 'info', 3000);

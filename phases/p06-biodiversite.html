@@ -15,12 +15,9 @@
     <span class="ts-item">Parc : <strong id="ts-parc">—</strong></span>
   </div>
 
-  <!-- Toggle fond de carte -->
-  <div style="display:flex;gap:6px;padding:4px 13px 8px">
-    <button class="map-ctl-btn active" id="btn-fond-nature" onclick="P06.setFond('nature')">🗺 Nature</button>
-    <button class="map-ctl-btn" id="btn-fond-satellite" onclick="P06.setFond('satellite')">🛰 Satellite</button>
-    <button class="map-ctl-btn" id="btn-fond-obia" onclick="P06.setFond('obia')" style="display:none">🎨 OBIA</button>
-  </div>
+  <!-- Fond Nature force pour cette phase (biodiversite) -->
+  <!-- Les boutons Nature/Satellite/OBIA ont ete retires : on reste en Nature -->
+
 
   <!-- Parc National -->
   <div class="form-section anim-slide-up">
@@ -320,33 +317,24 @@ const P06 = {
   _selectedSpecies: new Set(),
   _currentFond: 'nature',
 
-  // ── Basculer fond de carte ────────────────────────────────────
+  // ── Basculer fond de carte (interne, pas expose en UI) ──────────
+  // Phase 6 reste toujours en Nature. Le passage satellite est uniquement
+  // un intermediaire technique pour OBIA (capture de pixels) puis retour immediat.
   async setFond(mode) {
     const map = MapViewer?.getMap();
     if (!map) return;
     this._currentFond = mode;
-
-    // UI buttons
-    document.getElementById('btn-fond-nature')?.classList.toggle('active', mode === 'nature');
-    document.getElementById('btn-fond-satellite')?.classList.toggle('active', mode === 'satellite');
-    document.getElementById('btn-fond-obia')?.classList.toggle('active', mode === 'obia');
-
     if (mode === 'nature') {
-      this._hideObiaOverlay();
       await map.setStyle('mapbox://styles/mapbox/outdoors-v12');
       await new Promise(r => map.once('styledata', r));
       MapViewer._ensureParcelleLayer?.();
+      // Re-poser l overlay OBIA si deja calcule
+      if (this._obiaDataUrl && this._obiaBoundsCoords) this._addObiaOverlay(map);
     } else if (mode === 'satellite') {
       this._hideObiaOverlay();
       await map.setStyle('mapbox://styles/mapbox/satellite-streets-v12');
       await new Promise(r => map.once('styledata', r));
       MapViewer._ensureParcelleLayer?.();
-    } else if (mode === 'obia' && this._obiaDataUrl) {
-      // Satellite + image source OBIA
-      await map.setStyle('mapbox://styles/mapbox/satellite-streets-v12');
-      await new Promise(r => map.once('styledata', r));
-      MapViewer._ensureParcelleLayer?.();
-      this._addObiaOverlay(map);
     }
   },
 
@@ -431,48 +419,44 @@ const P06 = {
     SessionManager.saveTerrain({ especes_protegees: [...this._selectedSpecies] });
   },
 
-  // ── OBIA : Analyse végétation satellite ───────────────────────
+  // ── OBIA : Analyse vegetation automatique (overlay sur Nature) ──
+  // Sequence invisible pour l utilisateur :
+  //   1. Bascule satellite (pour capture pixels) — rapide, overlay OBIA masque
+  //   2. Analyse OBIA sur pixels satellite
+  //   3. Retour Nature + overlay classifie par dessus
   async analyzeVegetation() {
-    const btn = document.getElementById('btn-obia');
-    if (btn) btn.textContent = 'Analyse en cours…';
+    const map = MapViewer?.getMap();
+    const terrain = SessionManager.getTerrain();
+    const geojson = terrain?.parcelle_geojson;
+    if (!map || !geojson) return;
+
+    // Deja analyse : juste re-afficher overlay
+    if (this._obiaDataUrl && this._obiaBoundsCoords) {
+      this._addObiaOverlay(map);
+      return;
+    }
+
+    window.TerlabToast?.show('Analyse de la vegetation en cours...', 'info', 2000);
 
     try {
-      const map = MapViewer.getMap();
-      const terrain = SessionManager.getTerrain();
-      const geojson = terrain?.parcelle_geojson;
+      // 1. Bascule satellite (necessaire pour OBIA pixel classification)
+      await this.setFond('satellite');
+      await new Promise(r => setTimeout(r, 1500));
 
-      if (!map || !geojson) {
-        if (window.TerlabToast) window.TerlabToast.show('Sélectionnez d\'abord une parcelle (Phase 0)', 'warning');
-        if (btn) btn.textContent = 'Détecter la végétation depuis satellite';
-        return;
-      }
-
-      // Basculer en satellite si nécessaire (OBIA a besoin du satellite)
-      if (this._currentFond !== 'satellite') {
-        await this.setFond('satellite');
-        if (btn) btn.textContent = 'Chargement satellite…';
-        // Attendre le chargement des tuiles satellite
-        await new Promise(r => setTimeout(r, 2000));
-      }
-
+      // 2. Analyse
       const result = await OBIAService.analyzeParcel(map, { type: 'Feature', geometry: geojson });
-
       if (!result) {
-        if (window.TerlabToast) window.TerlabToast.show('Analyse OBIA échouée — zoom insuffisant ?', 'warning');
-        if (btn) btn.textContent = 'Détecter la végétation depuis satellite';
+        await this.setFond('nature');
         return;
       }
 
-      // Sauvegarder en session
       SessionManager.saveTerrain({ obia_surfaces: result.surfaces, obia_confidence: result.confidence });
 
-      // Générer l'image classifiée et l'ajouter comme source Mapbox image
+      // Construction overlay
       if (result.raster && result.rasterW > 0) {
         const dpr = window.devicePixelRatio || 1;
         const ox = result.origin.minX, oy = result.origin.minY;
         const w = result.rasterW, h = result.rasterH;
-
-        // Coordonnées géo des 4 coins de la bbox (pour Mapbox image source)
         const nw = map.unproject([ox, oy]);
         const ne = map.unproject([ox + w / dpr, oy]);
         const se = map.unproject([ox + w / dpr, oy + h / dpr]);
@@ -481,23 +465,15 @@ const P06 = {
           [nw.lng, nw.lat], [ne.lng, ne.lat],
           [se.lng, se.lat], [sw.lng, sw.lat],
         ];
-
-        // Construire l'image classifiée colorée + masque polygone
         const polyCoords = OBIAService._extractCoords(geojson);
         this._obiaDataUrl = OBIAService.buildClassifiedImage(
           result.raster, w, h, map, polyCoords, result.origin
         );
-
-        // Afficher l'overlay directement sur satellite
-        this._addObiaOverlay(map);
-        this._currentFond = 'obia';
-        document.getElementById('btn-fond-nature')?.classList.remove('active');
-        document.getElementById('btn-fond-satellite')?.classList.remove('active');
-        document.getElementById('btn-fond-obia')?.classList.add('active');
-        document.getElementById('btn-fond-obia').style.display = '';
       }
 
-      // Afficher le résultat
+      // 3. Retour Nature (qui re-applique automatiquement l overlay)
+      await this.setFond('nature');
+
       const resultEl = document.getElementById('obia-result');
       const gridEl   = document.getElementById('obia-grid');
       if (resultEl && gridEl) {
@@ -505,11 +481,11 @@ const P06 = {
         resultEl.style.display = 'block';
       }
 
-      if (btn) btn.textContent = 'Renouveler l\'analyse';
-      if (window.TerlabToast) window.TerlabToast.show('Végétation détectée — ' + result.pixelCount + ' pixels classifiés · Cliquer 🎨 OBIA pour visualiser', 'success');
+      window.TerlabToast?.show(`Vegetation detectee · ${result.pixelCount} pixels classifies`, 'success', 3000);
     } catch (err) {
       console.error('[P06] OBIA error:', err);
-      if (btn) btn.textContent = 'Détecter la végétation depuis satellite';
+      window.TerlabToast?.show('Analyse OBIA indisponible', 'warning');
+      await this.setFond('nature');
     }
   },
 };
@@ -518,6 +494,24 @@ const terrain = SessionManager.getTerrain();
 if (terrain?.commune) document.getElementById('ts-commune-p6').textContent = terrain.commune;
 
 window.P06 = P06;
+
+// ─── Auto-declenchement analyse OBIA vegetation ───
+(async () => {
+  if (!terrain?.parcelle_geojson) return;
+  // Attendre que Mapbox soit pret
+  const waitMap = async () => {
+    const m = MapViewer?.getMap?.();
+    if (m && m.loaded()) return m;
+    await new Promise(r => setTimeout(r, 600));
+    return waitMap();
+  };
+  try {
+    await waitMap();
+    // Laisser la carte charger les tuiles initiales
+    await new Promise(r => setTimeout(r, 800));
+    await P06.analyzeVegetation();
+  } catch (e) { console.warn('[P06] Auto-OBIA skip:', e.message); }
+})();
 
 // ─── Auto-détection ZNIEFF & Parc National via BiodiversiteService ───
 (async () => {

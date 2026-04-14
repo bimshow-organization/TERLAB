@@ -608,8 +608,8 @@ const MapViewer = {
         }
       });
     } else {
-      console.warn('[Map] PPRService désactivé:', PPRService.disabledReason);
-      this._showStubBanner('PPR PEIGEO indisponible (HTTPS) — saisie manuelle requise');
+      console.info('[Map] Overlay PPR WMS indisponible en HTTPS — risques via Georisques API');
+      this._showStubBanner('Zonage PPR non cartographique (HTTPS) — risques recupere via Georisques');
     }
 
     // Couche simulation inondation — bathtub DEM
