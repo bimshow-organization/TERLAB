@@ -1612,7 +1612,7 @@ const MapViewer = {
 
   // ── RECHERCHE PARCELLE PAR RÉFÉRENCE (section + numéro) ─────
   async searchParcelleByRef(commune, section, numero) {
-    const cql = `commune='${commune}' AND section='${section}' AND numero='${numero}'`;
+    const cql = `code_insee='${commune}' AND section='${section}' AND numero='${numero}'`;
     const url  = `${this._WFS_BASE}&CQL_FILTER=${encodeURIComponent(cql)}&COUNT=1`;
 
     try {

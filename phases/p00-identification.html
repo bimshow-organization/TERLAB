@@ -747,7 +747,7 @@ const P00 = {
       const wfsUrl = `https://data.geopf.fr/wfs/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature`
         + `&TYPENAMES=CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle`
         + `&OUTPUTFORMAT=application/json&SRSNAME=EPSG:4326`
-        + `&CQL_FILTER=commune='${insee}' AND section='${section}' AND numero='${numero}'`;
+        + `&CQL_FILTER=code_insee='${insee}' AND section='${section}' AND numero='${numero}'`;
 
       const data = await window.resilientJSON(wfsUrl, { timeoutMs: 10000, retries: 2 });
       if (!data.features?.length) {
