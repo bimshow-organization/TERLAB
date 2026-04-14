@@ -1,0 +1,30 @@
+name: Development-CD (dev1.bimshow.io/terlab)
+
+on:
+  push:
+    branches: [development]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: [self-hosted, light-build]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: development
+
+      # Stage on the runner
+      - name: rm runner staging
+        run: rm -rf /opt/node/terlab
+
+      - name: cp runner staging
+        run: cp -r $GITHUB_WORKSPACE /opt/node/terlab
+
+      # Push to nginx at /terlab/
+      # Nginx must have a location /terlab/ { alias /opt/nginx/terlab/; } block.
+      - name: rm nginx target
+        run: ssh gateway.dev1.bimshow.io 'rm -rf /opt/nginx/terlab;'
+
+      - name: scp to nginx
+        run: scp -r /opt/node/terlab gateway.dev1.bimshow.io:/opt/nginx/terlab
