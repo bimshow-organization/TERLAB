@@ -1,0 +1,150 @@
+{
+  "_meta": {
+    "source": "Sous-ensemble Reunion porte de houseg-speech/data/architecture-dict-v2.json",
+    "version": "1.0",
+    "date": "2026-04-13",
+    "scope": "TERLAB LOD2 - 5 types de toiture + 4 archetypes de facade pour ile de la Reunion"
+  },
+
+  "roof_systems": {
+    "_description": "Types de toiture parametriques. Convention pente : 100% = 45 degres, soit pente_pct = tan(angle_rad).",
+    "common_parameters": {
+      "pente_pct": "pente en pourcentage (= tan de l'angle)",
+      "debord": "depassement horizontal au-dela du mur (m), typique 0.3-0.6m",
+      "orientation_faitage": "EO (est-ouest) ou NS (nord-sud) - oriente le faitage des 2-versants/mono",
+      "couleur": "couleur hex de la couverture"
+    },
+
+    "types": {
+      "flat": {
+        "label": "Toit plat",
+        "label_long": "Toiture-terrasse avec acrotere",
+        "pente_typical_pct": 2,
+        "pente_range_pct": [1, 5],
+        "debord_typical": 0.30,
+        "acrotere_height": 0.30,
+        "couleur_default": "#888880",
+        "usage_reunion": "Immeubles R+3, batiments tertiaires, toitures-terrasses villas modernes"
+      },
+
+      "shed": {
+        "label": "Toit mono-pente",
+        "label_long": "Mono-pente (appentis, abri)",
+        "pente_typical_pct": 25,
+        "pente_range_pct": [10, 40],
+        "debord_typical": 0.40,
+        "couleur_default": "#a07060",
+        "usage_reunion": "Annexes, abris voiture, varangues couvertes, kiosques bois"
+      },
+
+      "gable": {
+        "label": "Toit 2 pans",
+        "label_long": "Toit a deux versants (pignon)",
+        "pente_typical_pct": 35,
+        "pente_range_pct": [25, 50],
+        "debord_typical": 0.60,
+        "couleur_default": "#8a4a2a",
+        "usage_reunion": "Case creole classique, R+1 individuel, archetype dominant les Hauts"
+      },
+
+      "hip": {
+        "label": "Toit 4 pans",
+        "label_long": "Toit a quatre versants (croupe complete)",
+        "pente_typical_pct": 30,
+        "pente_range_pct": [20, 40],
+        "debord_typical": 0.60,
+        "couleur_default": "#7a4530",
+        "usage_reunion": "Villa moderne, maison de maitre, batiment public"
+      },
+
+      "pyramid": {
+        "label": "Toit pyramidal",
+        "label_long": "Toit pyramidal (4 faces convergent au centre)",
+        "pente_typical_pct": 35,
+        "pente_range_pct": [25, 45],
+        "debord_typical": 0.50,
+        "couleur_default": "#6a4030",
+        "usage_reunion": "Kiosques carres, paillottes, gloriettes, abris jardin"
+      }
+    }
+  },
+
+  "facade_archetypes": {
+    "_description": "Archetypes de facade Reunion - inferes par footprint + hauteur + materiau toiture detecte.",
+
+    "case_creole": {
+      "label": "Case creole",
+      "trigger": {
+        "area_m2_max": 100,
+        "height_m_max": 8,
+        "couverture": ["tole", "bac_acier"]
+      },
+      "facade": {
+        "color_main": "#d4b896",
+        "color_accent": "#a07a50",
+        "roughness": 0.85,
+        "metalness": 0.0,
+        "description": "Bardage bois clair, varangue a clins, soubassement maconne"
+      },
+      "roof_default": "gable",
+      "roof_color": "#a85530"
+    },
+
+    "villa_moderne": {
+      "label": "Villa moderne",
+      "trigger": {
+        "area_m2_min": 100,
+        "area_m2_max": 300,
+        "height_m_min": 6,
+        "height_m_max": 12,
+        "couverture": ["tuile", "bac_acier"]
+      },
+      "facade": {
+        "color_main": "#f2ede0",
+        "color_accent": "#c4b8a0",
+        "roughness": 0.75,
+        "metalness": 0.05,
+        "description": "Enduit blanc casse, baies vitrees sombres, lignes horizontales"
+      },
+      "roof_default": "hip",
+      "roof_color": "#7a4530"
+    },
+
+    "r3_collectif": {
+      "label": "Immeuble R+3 collectif",
+      "trigger": {
+        "area_m2_min": 200,
+        "height_m_min": 10,
+        "height_m_max": 20,
+        "couverture": ["terrasse", "membrane"]
+      },
+      "facade": {
+        "color_main": "#b8b0a0",
+        "color_accent": "#9a9080",
+        "roughness": 0.80,
+        "metalness": 0.10,
+        "description": "Enduit gris-beige, balcons filants, allure barre"
+      },
+      "roof_default": "flat",
+      "roof_color": "#888880"
+    },
+
+    "annexe": {
+      "label": "Annexe / abri",
+      "trigger": {
+        "area_m2_max": 30,
+        "height_m_max": 4,
+        "couverture": ["tole", "bac_acier"]
+      },
+      "facade": {
+        "color_main": "#9a9a9a",
+        "color_accent": "#7a7a7a",
+        "roughness": 0.90,
+        "metalness": 0.15,
+        "description": "Bardage tole gris ou parpaing brut, sans ouvertures complexes"
+      },
+      "roof_default": "shed",
+      "roof_color": "#9a8070"
+    }
+  }
+}

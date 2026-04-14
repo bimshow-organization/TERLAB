@@ -6,6 +6,9 @@
  * périmètre parcelles, OrbitControls.
  */
 
+import RoofBuilder from '../services/roof-builder.js';
+import FootprintAnalyzer from '../services/footprint-analyzer.js';
+
 export class GabaritThree {
   constructor(canvasEl) {
     const THREE = window.THREE;
@@ -624,6 +627,35 @@ export class GabaritThree {
         const floorLine = new THREE.LineSegments(floorEdges, linesMat);
         floorLine.position.y = y;
         this.groups.solution.add(floorLine);
+      }
+
+      // ── Toiture LOD2 (RoofBuilder) ──
+      // bloc.roofSpec = { type: 'flat'|'shed'|'gable'|'hip'|'pyramid', pentePct?, debord?, color? }
+      // Si non defini : 'flat' par defaut (compat retro)
+      const roofSpec = bloc.roofSpec ?? { type: 'flat' };
+      if (roofSpec.type && roofSpec.type !== 'flat' && RoofBuilder && FootprintAnalyzer) {
+        const obb = FootprintAnalyzer.fitOBB(polyB);
+        if (obb) {
+          // Sce <-> poly : poly.x = scene.x, poly.y = scene.z (apres rotateX + scale)
+          const orientation = roofSpec.orientation
+            ?? (obb.size.long >= obb.size.span ? 'EO' : 'EO'); // long axis aligne avec roof X
+          const roof = RoofBuilder.buildRoof({
+            type: roofSpec.type,
+            W: obb.size.long,
+            D: obb.size.span,
+            pentePct: roofSpec.pentePct,
+            debord: roofSpec.debord ?? 0.5,
+            orientation,
+            baseY: 0, // groupe positionne ensuite
+            color: roofSpec.color,
+          });
+          // Position : centre OBB en scene + au sommet du bloc
+          roof.position.set(obb.center.x, Y_base + blocHe, obb.center.y);
+          // Aligner l'axe long du toit avec l'axe long de l'OBB
+          roof.rotation.y = -obb.angle;
+          roof.name = `building-roof-${bi}`;
+          this.groups.solution.add(roof);
+        }
       }
     });
 

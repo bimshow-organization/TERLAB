@@ -56,6 +56,8 @@ import SCOTService            from './services/scot-service.js';
 import ParcelAltitudes        from './services/parcel-altitudes.js';
 import BpfBridge              from './services/bpf-bridge.js';
 import ImpostorLoader         from './services/impostor-loader.js';
+import RoofBuilder            from './services/roof-builder.js';
+import FootprintAnalyzer      from './services/footprint-analyzer.js';
 import FootprintHelpers       from './services/footprint-helpers.js';
 import GeoUtils               from './services/geo-utils.js';
 import AutoPlanStrategies     from './services/auto-plan-strategies.js';
@@ -267,6 +269,8 @@ async function init() {
     window.SCOTService            = SCOTService;
     window.BpfBridge              = BpfBridge;
     window.ImpostorLoader         = ImpostorLoader;
+    window.RoofBuilder            = RoofBuilder;
+    window.FootprintAnalyzer      = FootprintAnalyzer;
     window.FootprintHelpers       = FootprintHelpers;
     window.GeoUtils               = GeoUtils;
     window.AutoPlanStrategies     = AutoPlanStrategies;
