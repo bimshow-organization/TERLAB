@@ -44,7 +44,7 @@ const MAPBOX_TOKEN = args.find((_, i, a) => a[i - 1] === '--token')
 // ── Timeouts (ms) ───────────────────────────────────────────────
 const T = {
   APP_INIT:       30_000,   // init TERLAB + Mapbox
-  RANDOM_PARCEL:  40_000,   // WFS cadastre (6 tentatives × 8s)
+  RANDOM_PARCEL:  90_000,   // WFS cadastre + apicarto PLU checks (8 tentatives)
   TERRAIN_CONFIRM: 5_000,   // validation P00
   PHASE_LOAD:     15_000,   // chargement HTML + scripts phase
   LIDAR_FETCH:    90_000,   // COPC browser (gros fichiers IGN)
@@ -289,8 +289,11 @@ async function processOneTerrain(browser, runIndex) {
             if (!valid.length) continue;
 
             // Vérifier zone PLU via API Carto IGN — préférer zone urbaine (U*)
+            // Limite a 5 checks par tentative pour eviter timeout global
+            const PLU_MAX_CHECKS = 5;
+            const candidates = valid.slice(0, PLU_MAX_CHECKS);
             let selectedFeature = null;
-            for (const feat of valid) {
+            for (const feat of candidates) {
               try {
                 const fCoords = feat.geometry.coordinates[0];
                 const flat = Array.isArray(fCoords[0][0]) ? fCoords[0] : fCoords;
@@ -298,7 +301,7 @@ async function processOneTerrain(browser, runIndex) {
                 const pluResp = await fetch(
                   `https://apicarto.ign.fr/api/gpu/zone-urba?geom=`
                   + encodeURIComponent(JSON.stringify({ type: 'Point', coordinates: [ctr[0], ctr[1]] })),
-                  { signal: AbortSignal.timeout(5000) }
+                  { signal: AbortSignal.timeout(4000) }
                 );
                 if (!pluResp.ok) continue;
                 const pluData = await pluResp.json();
