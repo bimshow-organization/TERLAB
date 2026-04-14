@@ -4,6 +4,8 @@
 > Durée estimée : 30–45 min la première fois
 > Droits nécessaires : SSH runner, SSH gateway, Firebase console admin sur `bimshow-dev1`
 
+> ℹ️ **État actuel** : le lien TERLAB dans la nav du site marketing pointe **temporairement** sur `bimshow-organization.github.io/TERLAB/` (github.io, déploiement historique via `pages.yml` sur `main`). Le but de ce guide est de basculer sur `dev1.bimshow.io/terlab/` pour gagner le SSO avec les autres apps. **Étape 6 ci-dessous** bascule le lien côté website une fois le dev1 validé.
+
 ---
 
 ## Pourquoi cette migration ?
@@ -181,7 +183,46 @@ Ouvrir **une session de navigation privée** (important pour partir d'un cache p
    - `window.TERLAB_AUTH.currentUser` doit retourner l'objet user (email, uid, etc.)
    - Application → IndexedDB → `firebaseLocalStorageDb` → contient bien une entrée pour `bimshow-dev1`
 
-Si tout est OK → la migration est **fonctionnelle**.
+Si tout est OK → la migration **côté TERLAB** est fonctionnelle. Passer à l'Étape 6 pour que les users soient redirigés depuis le site marketing.
+
+---
+
+## Étape 6 — Basculer le lien TERLAB dans la nav du site marketing
+
+Le site (`https://dev1.bimshow.io/`) a dans son menu utilisateur un lien "TerLab" qui pointe aujourd'hui sur `bimshow-organization.github.io/TERLAB/index.html` (fallback historique). Une fois TERLAB validé sur dev1 (Étape 5 ✓), on bascule ce lien sur `/terlab/` pour activer le SSO.
+
+```bash
+cd c:/GITHUB/website
+git checkout development
+git pull
+```
+
+Dans `template.html`, repérer le bloc :
+
+```html
+<!-- TERLAB: temporary fallback to github.io until dev1 deploy is live.
+     Once /opt/nginx/terlab is in place and location /terlab/ is
+     configured (see TERLAB/docs/DEPLOY-DEV1.md), flip back to "/terlab/"
+     for same-origin SSO. -->
+<a href="https://bimshow-organization.github.io/TERLAB/index.html" target="_blank" rel="noopener" role="menuitem">{{userMenu.terlab}} <span class="user-menu-ext">↗</span></a>
+```
+
+Le remplacer intégralement par :
+
+```html
+<a href="/terlab/" target="_blank" rel="noopener" role="menuitem">{{userMenu.terlab}} <span class="user-menu-ext">↗</span></a>
+```
+
+Puis :
+
+```bash
+node i18n/build.mjs
+git add -A
+git commit -m "fix(nav): flip TERLAB link to /terlab/ (dev1 deploy is live)"
+git push origin development
+```
+
+Le CI website `Development-CD` se déclenche (~30 sec). Après hard-refresh sur `https://dev1.bimshow.io/`, cliquer sur **TerLab** dans le menu user doit ouvrir un nouvel onglet sur `https://dev1.bimshow.io/terlab/` au lieu de github.io, avec la session user préservée.
 
 ---
 
@@ -252,6 +293,7 @@ Si tout casse et qu'on doit revenir au fonctionnement github.io :
 - [ ] Étape 3 : `dev1.bimshow.io` ajouté dans Firebase Authorized domains du projet `bimshow-dev1`
 - [ ] Étape 4 : workflow `Development-CD (dev1.bimshow.io/terlab)` exécuté avec succès
 - [ ] Étape 5 : test navigation privée, SSO fonctionnel depuis la landing vers `/terlab/accueil.html`
+- [ ] Étape 6 : lien TERLAB dans `template.html` du repo `website` basculé vers `/terlab/`, commit + push sur `development`, CI website OK
 - [ ] (Optionnel) Ticket créé pour P2 (extraction init Firebase en module partagé)
 
 Quand tout est coché : la migration est terminée. Prévenir le reste de l'équipe pour qu'ils utilisent désormais l'URL `https://dev1.bimshow.io/terlab/` et non plus github.io.
