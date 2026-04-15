@@ -134,6 +134,47 @@ const TerlabStorage = {
     });
   },
 
+  // ── CLOUD (user-scoped) ───────────────────────────────────
+  // Lit l'index /users/{uid}/terlabProjects et fusionne avec les sessions locales
+  // (cloud prioritaire sur id identique). Retourne [] si pas de Firebase/auth.
+  async listCloudSessions() {
+    const db  = window.TERLAB_DB;
+    const uid = window.TERLAB_UID;
+    const auth = window.TERLAB_AUTH;
+    const isBimshowUser = !!(uid && auth?.currentUser && !auth.currentUser.isAnonymous);
+    if (!db || !isBimshowUser) return [];
+    try {
+      const idxRef = window.TERLAB_FB_REF(db, `users/${uid}/terlabProjects`);
+      const snap   = await window.TERLAB_FB_GET(idxRef);
+      if (!snap.exists()) return [];
+      const obj = snap.val() || {};
+      return Object.values(obj)
+        .filter(s => s && s.id)
+        .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+    } catch (e) {
+      console.warn('[TerlabStorage] listCloudSessions failed:', e.message);
+      return [];
+    }
+  },
+
+  async loadCloudSession(id) {
+    if (!window.SessionManager) return null;
+    return window.SessionManager.restoreFromFirebase(id);
+  },
+
+  async deleteCloudSession(id) {
+    const db  = window.TERLAB_DB;
+    const uid = window.TERLAB_UID;
+    if (!db || !uid || !id) return;
+    try {
+      const { ref, remove } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
+      await remove(ref(db, `users/${uid}/terlabProjects/${id}`));
+      await remove(ref(db, `terlab/projects/${id}`));
+    } catch (e) {
+      console.warn('[TerlabStorage] deleteCloudSession failed:', e.message);
+    }
+  },
+
   // ── INTERNAL ──────────────────────────────────────────────
   _save(sess) {
     try {

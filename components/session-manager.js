@@ -8,10 +8,11 @@ const SYNC_INTERVAL  = 60_000; // 60s
 
 const SessionManager = {
 
-  _data:       null,
-  _sessionId:  null,
-  _syncTimer:  null,
-  _dirty:      false,
+  _data:         null,
+  _sessionId:    null,
+  _syncTimer:    null,
+  _dirty:        false,
+  _lastThumbAt:  0,
 
   // ── INIT ──────────────────────────────────────────────────────
   init() {
@@ -73,14 +74,33 @@ const SessionManager = {
     return {
       schemaVersion: SCHEMA_VERSION,
       sessionId:     this._sessionId,
+      name:          null,
       createdAt:     new Date().toISOString(),
       lastUpdated:   new Date().toISOString(),
       demo:          null,
       terrain:       { north_angle_deg: 0 },
       batiment:      { enveloppe: null, rtaa: null, programme: null },
       phases:        {},
-      exports:       { pdfUrl: null, dxfUrl: null, glbUrl: null, qrCode: null }
+      exports:       { pdfUrl: null, dxfUrl: null, glbUrl: null, qrCode: null, thumbnailUrl: null }
     };
+  },
+
+  // Titre effectif : name custom si defini, sinon commune + parcelle, sinon id court
+  getDisplayName() {
+    if (this._data?.name) return this._data.name;
+    const t = this._data?.terrain ?? {};
+    const ref = [t.section, t.parcelle].filter(Boolean).join('');
+    if (t.commune && ref) return `${t.commune} ${ref}`;
+    if (ref) return ref;
+    if (t.commune) return t.commune;
+    return `Projet ${(this._sessionId || '').slice(-6)}`;
+  },
+
+  setName(name) {
+    if (!this._data) this._data = this._defaultData();
+    this._data.name = (name && String(name).trim()) || null;
+    this._saveLocal();
+    this._notifyChange('name', { name: this._data.name });
   },
 
   // ── LOCAL STORAGE ─────────────────────────────────────────────
@@ -116,23 +136,74 @@ const SessionManager = {
   },
 
   // ── FIREBASE SYNC ─────────────────────────────────────────────
+  // Route selon l'etat d'auth :
+  //   - user BIMSHOW connecte (non anonyme) → /terlab/projects/{sid}
+  //     + index /users/{uid}/terlabProjects/{sid} = {name, updatedAt, thumbnailUrl, completion}
+  //   - sinon (anonyme ou non connecte)     → /sessions/{sid} (compat QR restore)
   async syncFirebase() {
     if (!this._dirty) return;
-    if (!window.TERLAB_DB) return; // Firebase non disponible (stub config)
+    if (!window.TERLAB_DB) return;
 
     try {
-      // Exclure les snapshots carte (trop lourds pour Firebase)
       const data = JSON.parse(JSON.stringify(this._data));
       if (data.terrain) {
         Object.keys(data.terrain).forEach(k => { if (k.startsWith('snap_')) delete data.terrain[k]; });
       }
-      const dbRef = window.TERLAB_FB_REF(window.TERLAB_DB, `sessions/${this._sessionId}`);
-      await window.TERLAB_FB_SET(dbRef, data);
+
+      const uid   = window.TERLAB_UID;
+      const auth  = window.TERLAB_AUTH;
+      const user  = auth?.currentUser;
+      const isBimshowUser = !!(uid && user && !user.isAnonymous);
+
+      if (isBimshowUser) {
+        data.ownerUid = uid;
+        const projRef = window.TERLAB_FB_REF(window.TERLAB_DB, `terlab/projects/${this._sessionId}`);
+        await window.TERLAB_FB_SET(projRef, data);
+
+        const idxRef = window.TERLAB_FB_REF(
+          window.TERLAB_DB,
+          `users/${uid}/terlabProjects/${this._sessionId}`
+        );
+        await window.TERLAB_FB_SET(idxRef, {
+          id:           this._sessionId,
+          name:         this.getDisplayName(),
+          updatedAt:    data.lastUpdated,
+          createdAt:    data.createdAt,
+          completion:   this.getCompletionPct(),
+          thumbnailUrl: data.exports?.thumbnailUrl ?? null,
+          demo:         data.demo ?? null
+        });
+      } else {
+        const dbRef = window.TERLAB_FB_REF(window.TERLAB_DB, `sessions/${this._sessionId}`);
+        await window.TERLAB_FB_SET(dbRef, data);
+      }
+
       this._dirty = false;
-      console.info('[Session] Synced Firebase');
+      console.info('[Session] Synced Firebase', isBimshowUser ? '(user-scoped)' : '(anonymous)');
+
+      // Thumbnail auto (throttle 5 min)
+      if (isBimshowUser && window.TerlabUploadService) {
+        const THUMB_TTL = 5 * 60_000;
+        const hasThumb  = !!data.exports?.thumbnailUrl;
+        const stale     = Date.now() - this._lastThumbAt > THUMB_TTL;
+        if (!hasThumb || stale) {
+          this._lastThumbAt = Date.now();
+          window.TerlabUploadService.captureAndUploadThumbnail().catch(() => {});
+        }
+      }
     } catch (e) {
       console.warn('[Session] Firebase sync failed (offline ?):', e.message);
     }
+  },
+
+  // Appele par le bootstrap auth (index.html) quand l'utilisateur se connecte.
+  // Force une sync cloud pour migrer la session anonyme en projet rattache au user.
+  async onUserLogin(uid) {
+    if (!uid || !this._data) return;
+    this._dirty = true;
+    await this.syncFirebase();
+    this._notifyChange('migrated', { uid, sessionId: this._sessionId });
+    console.info('[Session] Migree vers user', uid.slice(-8));
   },
 
   _startSyncLoop() {
@@ -197,6 +268,34 @@ const SessionManager = {
     if (validations && JSON.stringify(validations) !== JSON.stringify(prevValidations)) {
       this._notifyChange('validation', { id, validations, completed });
     }
+  },
+
+  // ── CHAINE DE BLOCAGE P00 -> P03 ──────────────────────────────
+  // Verifie qu'une phase cible est atteignable : toutes les phases bloquantes
+  // anterieures doivent avoir leurs validations `bloquant:true` cochees.
+  // Retourne { allowed, blockedBy, missing[] }.
+  canAdvance(targetPhaseId) {
+    const meta = window.TERLAB_META || window.PHASES_META;
+    const blocking = meta?.phases_bloquantes ?? [0, 1, 2, 3];
+    for (const pid of blocking) {
+      if (pid >= targetPhaseId) break;
+      const phaseMeta = meta?.phases?.find(p => p.id === pid);
+      const blockingVals = (phaseMeta?.validations ?? []).filter(v => v.bloquant);
+      if (!blockingVals.length) continue;
+      const sess = this.getPhase(pid);
+      const vals = sess?.validations ?? [];
+      const missingIds = blockingVals
+        .map((v, idx) => {
+          const phaseVals = phaseMeta.validations;
+          const absoluteIdx = phaseVals.indexOf(v);
+          return vals[absoluteIdx] ? null : v.id;
+        })
+        .filter(Boolean);
+      if (missingIds.length) {
+        return { allowed: false, blockedBy: pid, missing: missingIds, title: phaseMeta.title };
+      }
+    }
+    return { allowed: true };
   },
 
   getPhaseProgress() {
@@ -342,12 +441,17 @@ const SessionManager = {
     console.info(`[Session] Loaded from object: ${this._sessionId}`);
   },
 
-  // ── RESTORE DEPUIS QR ─────────────────────────────────────────
+  // ── RESTORE DEPUIS QR / CLOUD ──────────────────────────────────
+  // Essaye d'abord /terlab/projects/{id} (user-scoped), fallback /sessions/{id}.
   async restoreFromFirebase(sessionId) {
     if (!window.TERLAB_DB) return null;
     try {
-      const dbRef = window.TERLAB_FB_REF(window.TERLAB_DB, `sessions/${sessionId}`);
-      const snap  = await window.TERLAB_FB_GET(dbRef);
+      let dbRef = window.TERLAB_FB_REF(window.TERLAB_DB, `terlab/projects/${sessionId}`);
+      let snap  = await window.TERLAB_FB_GET(dbRef);
+      if (!snap.exists()) {
+        dbRef = window.TERLAB_FB_REF(window.TERLAB_DB, `sessions/${sessionId}`);
+        snap  = await window.TERLAB_FB_GET(dbRef);
+      }
       if (!snap.exists()) return null;
       const data = snap.val();
       this._data = data;
