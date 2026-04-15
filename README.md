@@ -22,7 +22,7 @@
 
 ---
 
-## 1 · Présentation
+## 1 · Présentation 
 
 **TERLAB** (TERrain LABoratoire) est une application web destinée aux étudiants en **Master 1 Semestre 8** de l'**ENSA La Réunion** (École Nationale Supérieure d'Architecture). Elle accompagne chaque étudiant à travers **14 phases d'analyse de site** sur l'île de La Réunion, depuis l'identification cadastrale jusqu'à la synthèse exportable.
 
