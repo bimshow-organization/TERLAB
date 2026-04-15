@@ -24,6 +24,10 @@ const GLBExporter = {
     a.click();
     URL.revokeObjectURL(a.href);
     window.TerlabToast?.show('GLB exporté', 'success', 2000);
+    // Upload cloud si user BIMSHOW connecte (non bloquant)
+    window.TerlabUploadService?.uploadExport?.('glb', blob, `${filename}.glb`)
+      .then(url => { if (url) console.info('[GLB] uploaded', url.slice(0, 80)); })
+      .catch(() => {});
     return blob;
   },
 

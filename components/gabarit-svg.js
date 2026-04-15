@@ -9,6 +9,14 @@
 
 const NS = 'http://www.w3.org/2000/svg';
 
+// Coin concave (angle intérieur > 180°) — cross-product sur polygone CW.
+// Port depuis atlas handlers v2 (L194-198).
+function isConcave(poly, i) {
+  const n = poly.length;
+  const pp = poly[(i - 1 + n) % n], cp = poly[i], np = poly[(i + 1) % n];
+  return (cp.x - pp.x) * (np.y - cp.y) - (cp.y - pp.y) * (np.x - cp.x) > 0;
+}
+
 export class GabaritSVG {
   constructor(containerEl, onNodesChange) {
     this.container = containerEl;
@@ -209,12 +217,42 @@ export class GabaritSVG {
 
   _renderConstructible(polygon) {
     if (!polygon || polygon.length < 3) return;
-    const path = this._polyToPath(polygon);
-    this._addPath(this.layers.constructible, path, {
-      fill: 'rgba(39,174,96,0.22)',
-      stroke: '#27ae60',
-      strokeWidth: 1.5
-    });
+
+    // clipPath = union parcelle. Garantit que la hachure constructible ne
+    // déborde jamais hors de la parcelle, même si insetPolygon produit un
+    // spike oblique ou une boucle auto-intersectée.
+    const union = this._parcelSet?.unionPolygon;
+    let clipAttr = '';
+    if (union && union.length >= 3) {
+      const defs = this.svg.querySelector('defs');
+      let clipEl = defs.querySelector('#gc-constructible-clip');
+      if (!clipEl) {
+        clipEl = document.createElementNS(NS, 'clipPath');
+        clipEl.setAttribute('id', 'gc-constructible-clip');
+        clipEl.setAttribute('clipPathUnits', 'userSpaceOnUse');
+        defs.appendChild(clipEl);
+      }
+      while (clipEl.firstChild) clipEl.removeChild(clipEl.firstChild);
+      const clipPoly = document.createElementNS(NS, 'polygon');
+      clipPoly.setAttribute('points', union.map(p => {
+        const s = this._toScreen(p);
+        return `${s.x},${s.y}`;
+      }).join(' '));
+      clipEl.appendChild(clipPoly);
+      clipAttr = 'url(#gc-constructible-clip)';
+    }
+
+    const g = document.createElementNS(NS, 'g');
+    if (clipAttr) g.setAttribute('clip-path', clipAttr);
+    this.layers.constructible.appendChild(g);
+
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', this._polyToPath(polygon));
+    path.setAttribute('fill', 'rgba(39,174,96,0.22)');
+    path.setAttribute('fill-rule', 'evenodd');
+    path.setAttribute('stroke', '#27ae60');
+    path.setAttribute('stroke-width', '1.5');
+    g.appendChild(path);
   }
 
   _renderMitoyenN(zones) {
@@ -477,14 +515,15 @@ export class GabaritSVG {
     const layer = this.layers.nodes;
     parcelSet.parcels.forEach((parcel, pIdx) => {
       parcel.polygon.forEach((pt, vIdx) => {
-        // Vertex node
+        // Vertex node — rouge si concave (coin rentrant 270°)
+        const conc = isConcave(parcel.polygon, vIdx);
         const s = this._toScreen(pt);
         const circle = document.createElementNS(NS, 'circle');
         circle.setAttribute('cx', s.x);
         circle.setAttribute('cy', s.y);
         circle.setAttribute('r', 6);
-        circle.setAttribute('fill', '#ffffff');
-        circle.setAttribute('stroke', '#f1c40f');
+        circle.setAttribute('fill', conc ? '#e05030' : '#ffffff');
+        circle.setAttribute('stroke', conc ? '#c03018' : '#f1c40f');
         circle.setAttribute('stroke-width', '2');
         circle.dataset.nodeType = 'vertex';
         circle.dataset.parcelIdx = pIdx;
@@ -492,24 +531,108 @@ export class GabaritSVG {
         circle.style.cursor = 'grab';
         layer.appendChild(circle);
 
-        // Edge midpoint (diamond)
+        // Edge midpoint (carré bleu, orange au hover)
         const next = parcel.polygon[(vIdx + 1) % parcel.polygon.length];
         const mid = { x: (pt.x + next.x) / 2, y: (pt.y + next.y) / 2 };
         const ms = this._toScreen(mid);
-        const r = 4;
-        const diamond = document.createElementNS(NS, 'polygon');
-        diamond.setAttribute('points',
-          `${ms.x},${ms.y - r} ${ms.x + r},${ms.y} ${ms.x},${ms.y + r} ${ms.x - r},${ms.y}`);
-        diamond.setAttribute('fill', 'rgba(255,255,255,0.2)');
-        diamond.setAttribute('stroke', '#f1c40f');
-        diamond.setAttribute('stroke-width', '1.5');
-        diamond.dataset.nodeType = 'edge-mid';
-        diamond.dataset.parcelIdx = pIdx;
-        diamond.dataset.edgeIdx = vIdx;
-        diamond.style.cursor = 'crosshair';
-        layer.appendChild(diamond);
+        const sq = document.createElementNS(NS, 'rect');
+        sq.setAttribute('x', ms.x - 4.5);
+        sq.setAttribute('y', ms.y - 4.5);
+        sq.setAttribute('width', 9);
+        sq.setAttribute('height', 9);
+        sq.setAttribute('rx', 1.5);
+        sq.setAttribute('fill', '#5090d8');
+        sq.setAttribute('stroke', '#0e0c08');
+        sq.setAttribute('stroke-width', '1');
+        sq.dataset.nodeType = 'edge-mid';
+        sq.dataset.parcelIdx = pIdx;
+        sq.dataset.edgeIdx = vIdx;
+        sq.style.cursor = 'crosshair';
+        sq.addEventListener('mouseenter', () => this._showEdgePill(pIdx, vIdx, sq));
+        sq.addEventListener('mouseleave', () => this._hideEdgePill(sq));
+        layer.appendChild(sq);
       });
     });
+  }
+
+  // Capsule pointillée au survol d'une arête — port de drawInfluenceZone
+  // (HOUSEG-SPEECH) / atlas handlers v2 L472-537. Indique que l'arête est
+  // draggable et dans quelle direction (flèches ⊥ + label "drag ⊥").
+  _showEdgePill(pIdx, edgeIdx, handleEl) {
+    if (this._dragActive) return;
+    handleEl.setAttribute('fill', '#f97316');
+    handleEl.setAttribute('stroke', '#ea580c');
+    handleEl.setAttribute('stroke-width', '1.5');
+
+    const poly = this._parcelSet.parcels[pIdx].polygon;
+    const n = poly.length;
+    const a = this._toScreen(poly[edgeIdx]);
+    const b = this._toScreen(poly[(edgeIdx + 1) % n]);
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 0.001) return;
+    const vx = dx / len, vy = dy / len;
+    const px = -vy, py = vx;
+    const r = 11;
+    const c1x = a.x + px * r, c1y = a.y + py * r;
+    const c2x = b.x + px * r, c2y = b.y + py * r;
+    const c3x = b.x - px * r, c3y = b.y - py * r;
+    const c4x = a.x - px * r, c4y = a.y - py * r;
+
+    const g = document.createElementNS(NS, 'g');
+    g.setAttribute('id', 'gc-edge-pill');
+    g.style.pointerEvents = 'none';
+
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d',
+      `M ${c1x},${c1y} L ${c2x},${c2y} A ${r} ${r} 0 0 1 ${c3x},${c3y} L ${c4x},${c4y} A ${r} ${r} 0 0 1 ${c1x},${c1y} Z`);
+    path.setAttribute('fill', 'rgba(249,115,22,0.09)');
+    path.setAttribute('stroke', 'rgba(249,115,22,0.55)');
+    path.setAttribute('stroke-width', '1.5');
+    path.setAttribute('stroke-dasharray', '5,4');
+    path.setAttribute('stroke-linejoin', 'round');
+    g.appendChild(path);
+
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const ARR = 9;
+    for (const sign of [1, -1]) {
+      const tx = mx + px * ARR * sign, ty = my + py * ARR * sign;
+      const line = document.createElementNS(NS, 'line');
+      line.setAttribute('x1', mx); line.setAttribute('y1', my);
+      line.setAttribute('x2', tx); line.setAttribute('y2', ty);
+      line.setAttribute('stroke', 'rgba(249,115,22,0.80)');
+      line.setAttribute('stroke-width', '1.2');
+      g.appendChild(line);
+      const hx = px * 3 * sign, hy = py * 3 * sign;
+      const head = document.createElementNS(NS, 'polygon');
+      head.setAttribute('points',
+        `${tx},${ty} ${tx - hx - hy * 0.5},${ty - hy + hx * 0.5} ${tx - hx + hy * 0.5},${ty - hy - hx * 0.5}`);
+      head.setAttribute('fill', 'rgba(249,115,22,0.80)');
+      g.appendChild(head);
+    }
+
+    const lt = document.createElementNS(NS, 'text');
+    lt.setAttribute('x', mx + px * 14);
+    lt.setAttribute('y', my + py * 14);
+    lt.setAttribute('text-anchor', 'middle');
+    lt.setAttribute('dominant-baseline', 'middle');
+    lt.setAttribute('font-size', '8');
+    lt.setAttribute('fill', 'rgba(249,115,22,0.90)');
+    lt.setAttribute('font-family', 'monospace');
+    lt.textContent = 'drag ⊥';
+    g.appendChild(lt);
+
+    this.layers.nodes.appendChild(g);
+  }
+
+  _hideEdgePill(handleEl) {
+    if (handleEl) {
+      handleEl.setAttribute('fill', '#5090d8');
+      handleEl.setAttribute('stroke', '#0e0c08');
+      handleEl.setAttribute('stroke-width', '1');
+    }
+    const existing = this.svg.querySelector('#gc-edge-pill');
+    if (existing) existing.remove();
   }
 
   // ──────────────────────────────────────────────────────────────────
@@ -534,15 +657,29 @@ export class GabaritSVG {
         e.stopPropagation();
         if (node.dataset.nodeType === 'vertex') {
           dragging = {
+            type: 'vertex',
             el: node,
             parcelIdx: +node.dataset.parcelIdx,
             vertexIdx: +node.dataset.vertexIdx,
           };
           node.style.cursor = 'grabbing';
           node.setAttribute('r', 8);
+          this._dragActive = true;
+          this._hideEdgePill(null);
         } else if (node.dataset.nodeType === 'edge-mid') {
-          this._insertVertex(+node.dataset.parcelIdx, +node.dataset.edgeIdx);
-          this.onNodesChange(this._parcelSet);
+          // Démarrer un drag arête ⊥ — au mouseup, si |delta|<3px → insertVertex.
+          const pt = svgPt(e);
+          dragging = {
+            type: 'edge',
+            el: node,
+            parcelIdx: +node.dataset.parcelIdx,
+            edgeIdx: +node.dataset.edgeIdx,
+            downX: pt.x, downY: pt.y,
+            prevX: pt.x, prevY: pt.y,
+            moved: false,
+          };
+          this._dragActive = true;
+          this._hideEdgePill(node);
         }
       } else {
         panning = {
@@ -555,14 +692,57 @@ export class GabaritSVG {
 
     // MOUSEMOVE
     this.svg.addEventListener('mousemove', e => {
-      if (dragging) {
+      if (dragging && dragging.type === 'vertex') {
         const pt = svgPt(e);
         const snap = this.snapGrid;
         const snapped = {
           x: Math.round(pt.x / snap) * snap,
           y: Math.round(pt.y / snap) * snap,
         };
-        this._parcelSet.parcels[dragging.parcelIdx].polygon[dragging.vertexIdx] = snapped;
+        const poly = this._parcelSet.parcels[dragging.parcelIdx].polygon;
+        const prev = poly[dragging.vertexIdx];
+        poly[dragging.vertexIdx] = snapped;
+
+        // Guard anti-auto-intersection — revert si le polygone se croise.
+        if (window.GeoGuards?.hasSelfIntersect(poly)) {
+          poly[dragging.vertexIdx] = prev;
+          return;
+        }
+
+        if (!rafPending) {
+          rafPending = true;
+          requestAnimationFrame(() => {
+            this._parcelSet._recomputeUnion();
+            this._quickUpdate();
+            rafPending = false;
+          });
+        }
+      } else if (dragging && dragging.type === 'edge') {
+        const pt = svgPt(e);
+        const poly = this._parcelSet.parcels[dragging.parcelIdx].polygon;
+        const n = poly.length;
+        const i = dragging.edgeIdx, j = (i + 1) % n;
+        const a = poly[i], b = poly[j];
+        const ex = b.x - a.x, ey = b.y - a.y;
+        const len = Math.hypot(ex, ey);
+        if (len < 1e-6) return;
+        const nx = -ey / len, ny = ex / len;
+        const ddx = pt.x - dragging.prevX, ddy = pt.y - dragging.prevY;
+        const proj = ddx * nx + ddy * ny;
+
+        const prevA = { ...a }, prevB = { ...b };
+        poly[i] = { x: a.x + proj * nx, y: a.y + proj * ny };
+        poly[j] = { x: b.x + proj * nx, y: b.y + proj * ny };
+
+        // Guard anti-auto-intersection
+        if (window.GeoGuards?.hasSelfIntersect(poly)) {
+          poly[i] = prevA; poly[j] = prevB;
+          return;
+        }
+
+        const totalDelta = Math.hypot(pt.x - dragging.downX, pt.y - dragging.downY);
+        if (totalDelta > 0.3) dragging.moved = true; // ~3px @ scale 10
+        dragging.prevX = pt.x; dragging.prevY = pt.y;
 
         if (!rafPending) {
           rafPending = true;
@@ -582,10 +762,19 @@ export class GabaritSVG {
 
     // MOUSEUP
     this.svg.addEventListener('mouseup', () => {
-      if (dragging) {
+      if (dragging && dragging.type === 'vertex') {
         dragging.el.style.cursor = 'grab';
         dragging.el.setAttribute('r', 6);
         dragging = null;
+        this._dragActive = false;
+        this.onNodesChange(this._parcelSet);
+      } else if (dragging && dragging.type === 'edge') {
+        if (!dragging.moved) {
+          // Click court sans drag → insertion d'un vertex (comportement initial)
+          this._insertVertex(dragging.parcelIdx, dragging.edgeIdx);
+        }
+        dragging = null;
+        this._dragActive = false;
         this.onNodesChange(this._parcelSet);
       }
       if (panning) {

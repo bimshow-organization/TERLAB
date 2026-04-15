@@ -2086,13 +2086,16 @@ const ExportEngine = {
 
     const blob     = new Blob([bytes], { type: 'model/gltf-binary' });
     const url      = URL.createObjectURL(blob);
+    const commune  = window.SessionManager?.getTerrain?.()?.commune ?? 'terrain';
+    const fname    = `TERLAB_gabarit_${commune}.glb`;
     const a        = document.createElement('a');
     a.href         = url;
-    a.download     = `TERLAB_gabarit_${window.SessionManager?.getTerrain?.()?.commune ?? 'terrain'}.glb`;
+    a.download     = fname;
     a.click();
     URL.revokeObjectURL(url);
 
     window.TerlabToast?.show('GLB exporte', 'success');
+    window.TerlabUploadService?.uploadExport?.('glb', blob, fname)?.catch(() => {});
   },
 
   // ═══════════════════════════════════════════════════════════════

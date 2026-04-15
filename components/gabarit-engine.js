@@ -70,6 +70,59 @@ function dist2(a, b) {
   return (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
 }
 
+// ─── GeoGuards : garde-fous géométriques réutilisables ──────────────
+// Exposés sur window.GeoGuards pour gabarit-svg.js et plan-masse-canvas.js.
+// Polygones attendus : array de {x, y}.
+
+function _segIntersect(a, b, c, d) {
+  const d1x = b.x - a.x, d1y = b.y - a.y;
+  const d2x = d.x - c.x, d2y = d.y - c.y;
+  const den = d1x * d2y - d1y * d2x;
+  if (Math.abs(den) < 1e-6) return false;
+  const t = ((c.x - a.x) * d2y - (c.y - a.y) * d2x) / den;
+  const u = ((c.x - a.x) * d1y - (c.y - a.y) * d1x) / den;
+  return t > 0.001 && t < 0.999 && u > 0.001 && u < 0.999;
+}
+
+function hasSelfIntersect(poly) {
+  const n = poly.length;
+  if (n < 4) return false;
+  for (let i = 0; i < n; i++) {
+    const a = poly[i], b = poly[(i + 1) % n];
+    for (let j = i + 2; j < n; j++) {
+      if (j === n - 1 && i === 0) continue;
+      if (_segIntersect(a, b, poly[j], poly[(j + 1) % n])) return true;
+    }
+  }
+  return false;
+}
+
+// Rabote les sommets à angle intérieur < minAngleDeg (spikes aigus).
+// Inline — plus de dépendance à window.GeoUtils.
+function removeAcuteSpikes(poly, minAngleDeg) {
+  if (!poly || poly.length < 3) return poly;
+  const minRad = minAngleDeg * Math.PI / 180;
+  const out = [];
+  const n = poly.length;
+  for (let i = 0; i < n; i++) {
+    const prev = poly[(i - 1 + n) % n];
+    const curr = poly[i];
+    const next = poly[(i + 1) % n];
+    const vx1 = prev.x - curr.x, vy1 = prev.y - curr.y;
+    const vx2 = next.x - curr.x, vy2 = next.y - curr.y;
+    const l1 = Math.hypot(vx1, vy1), l2 = Math.hypot(vx2, vy2);
+    if (l1 < 1e-6 || l2 < 1e-6) continue;
+    const cos = (vx1 * vx2 + vy1 * vy2) / (l1 * l2);
+    const angle = Math.acos(Math.max(-1, Math.min(1, cos)));
+    if (angle >= minRad) out.push(curr);
+  }
+  return out.length >= 3 ? out : poly;
+}
+
+if (typeof window !== 'undefined') {
+  window.GeoGuards = { hasSelfIntersect, removeAcuteSpikes };
+}
+
 /**
  * Inset (shrink) a convex polygon by distance d on each edge.
  * distances can be:
@@ -106,6 +159,10 @@ function insetPolygon(poly, distances) {
     edgeDistances.push(d);
   }
 
+  // Winding calculé une fois (CW → sign +1, CCW → sign -1)
+  const winding = polygonWinding(poly);
+  const sign = winding < 0 ? -1 : 1;
+
   // For each edge, compute offset line
   const offsetLines = [];
   for (let i = 0; i < n; i++) {
@@ -115,9 +172,6 @@ function insetPolygon(poly, distances) {
     if (len < 1e-9) continue;
     // Inward normal (for CCW polygon)
     const nx = -dy / len, ny = dx / len;
-    // Check winding — if polygon is CW, flip normal
-    const winding = polygonWinding(poly);
-    const sign = winding < 0 ? -1 : 1;
     const d = edgeDistances[i];
     offsetLines.push({
       px: a.x + sign * nx * d,
@@ -140,18 +194,14 @@ function insetPolygon(poly, distances) {
   // Check for degenerate (self-intersecting) result
   if (shoelaceArea(result) < 0.01) return null;
 
-  // Garde finale : éperons aigus (angle intérieur < 90°). insetPolygon ne
-  // possède aucun spike guard amont (extend & intersect pur), donc une
-  // limite oblique peut produire des sommets sub-90°. removeAcuteSpikes
-  // les rabote en conservant le polygone valide.
-  const GU = (typeof window !== 'undefined') ? window.GeoUtils : null;
-  if (GU?.removeAcuteSpikes) {
-    const cleaned = GU.removeAcuteSpikes(result, 90);
-    if (cleaned && cleaned.length >= 3 && shoelaceArea(cleaned) >= 0.01) {
-      return cleaned;
-    }
-  }
-  return result;
+  // Garde finale : éperons aigus (angle intérieur < 90°) + auto-intersection.
+  // removeAcuteSpikes inline (GeoGuards) — plus de dépendance window.GeoUtils.
+  const cleaned = removeAcuteSpikes(result, 90);
+  const final = (cleaned && cleaned.length >= 3 && shoelaceArea(cleaned) >= 0.01)
+    ? cleaned
+    : result;
+  if (hasSelfIntersect(final)) return null;
+  return final;
 }
 
 function polygonWinding(poly) {

@@ -19,6 +19,22 @@
  * @returns {object}    Session normalisée (terrain, plu, parcelle, esquisse)
  * @private
  */
+// ── Classes de pente v4h (atlas-topographie-coupes-reunion) ────────────────
+// profMax = profondeur bâtie max le long de la pente (m)
+// pilotis  = typologie préconisée en pente forte
+// mult     = coefficient coût indicatif
+const TOPO_CLASSES = [
+  { id: 'flat',   label: 'Plat',    maxPct: 5,   profMax: 15, pilotis: false, mult: 1.0, color: '#16a34a' },
+  { id: 'gentle', label: 'Douce',   maxPct: 15,  profMax: 13, pilotis: false, mult: 1.1, color: '#65a30d' },
+  { id: 'medium', label: 'Modérée', maxPct: 30,  profMax: 10, pilotis: true,  mult: 1.3, color: '#d97706' },
+  { id: 'steep',  label: 'Forte',   maxPct: 50,  profMax: 8,  pilotis: true,  mult: 1.6, color: '#ea580c' },
+  { id: 'xtrm',   label: 'Extrême', maxPct: 999, profMax: 6,  pilotis: true,  mult: 2.1, color: '#dc2626' },
+];
+function _topoClass(pct) {
+  for (const t of TOPO_CLASSES) if (pct <= t.maxPct) return t;
+  return TOPO_CLASSES[TOPO_CLASSES.length - 1];
+}
+
 function _normalize(raw) {
   if (!raw || typeof raw !== 'object') return {};
 
@@ -108,12 +124,17 @@ function _normalize(raw) {
     p7.gabarit_w_m ??
     p7.profondeur_m ??
     null;
+  const niveaux =
+    esqSrc.niveaux ??
+    p7.niveaux ??
+    p4.niveaux_max ??
+    2;
 
   return {
     terrain:  { pente_moy, orientation, altitude_ngr },
     plu:      { hauteur_max, pente_toiture_min, recul_voirie, recul_fond, recul_lateral, zone },
     parcelle: { reference, commune },
-    esquisse: { emprise_m2, profondeur_m },
+    esquisse: { emprise_m2, profondeur_m, niveaux },
   };
 }
 
@@ -144,6 +165,8 @@ export function buildCoupeSVGString(sessionRaw, opts = {}) {
   const ref        = session?.parcelle?.reference              ?? '—';
   const commune    = session?.parcelle?.commune                ?? '—';
   const altNGR     = session?.terrain?.altitude_ngr            ?? 0;
+  const nivMax     = Math.max(1, Math.min(6, parseInt(session?.esquisse?.niveaux ?? 2)));
+  const topoCls    = _topoClass(pente_pct);
 
   // Largeur bâtiment estimée depuis surface parcelle et emprise.
   // Fallback 9.3 m si données insuffisantes.
@@ -216,9 +239,11 @@ export function buildCoupeSVGString(sessionRaw, opts = {}) {
   const fondD_px = fondD_m * scH;
 
   // ── 7. COULEURS ─────────────────────────────────────────────────────────
-  // Physical scene → hex hardcodés (ne PAS utiliser CSS vars)
-  const isDark  = opts.isDark ?? false;
+  // Physical scene → hex hardcodés (ne PAS utiliser CSS vars — SVG injecté via string)
+  // Le theme 'earth' emprunte la branche dark (fond sombre terre).
   const forPDF  = opts.forPDF ?? false;
+  const theme   = opts.theme ?? (typeof document !== 'undefined' ? (document.documentElement.dataset.theme || 'dark') : 'dark');
+  const isDark  = opts.isDark ?? (theme === 'dark' || theme === 'earth');
   const bgFill  = forPDF ? '#f8f5ef' : (isDark ? '#1a1612' : '#f0ece0');
   const C = {
     sky:   forPDF ? '#f8f5ef' : (isDark ? '#1a1a22' : '#e8eef5'),
@@ -328,13 +353,13 @@ export function buildCoupeSVGString(sessionRaw, opts = {}) {
   s += `<line x1="${xC}" y1="${yEgout}" x2="${xC}" y2="${yAval}"
         stroke="${C.floor}" stroke-width=".8" opacity=".6"/>`;
 
-  // Planchers intérieurs (3 m/niveau, horizontaux)
-  for (let n = 1; n <= 2; n++) {
+  // Planchers intérieurs — niveaux dynamiques (R+1 .. R+nivMax-1)
+  for (let n = 1; n < nivMax; n++) {
     const yFloor = yAval - n * 3 * scH;
     if (yFloor > yEgout + 10 && yFloor < yAval - 6) {
       s += `<line x1="${xV}" y1="${yFloor}" x2="${xF}" y2="${yFloor}"
             stroke="${C.floor}" stroke-width=".9" stroke-dasharray="3,2"/>`;
-      const lvl = n === 1 ? 'R+1' : 'R+2';
+      const lvl = `R+${n}`;
       s += `<line x1="${xV - 14}" y1="${yFloor}" x2="${xV}" y2="${yFloor}"
             stroke="rgba(74,54,125,.3)" stroke-width=".7" stroke-dasharray="3,2"/>`;
       s += `<text x="${xV - 16}" y="${yFloor + 3}" text-anchor="end" ${FONT}
@@ -455,6 +480,23 @@ export function buildCoupeSVGString(sessionRaw, opts = {}) {
     s += `<text x="${mid}" y="${yCot + 13}" text-anchor="middle" ${FONT}
           font-size="${8.5*fs}" fill="${dash ? C.batS : C.ink}" font-weight="500">${lbl}</text>`;
   });
+
+  // ── BADGE CLASSE TOPO (profMax + pilotis + coût) ─────────────────────────
+  const badgeY = 24;
+  s += `<rect x="${xN}" y="${badgeY}" width="230" height="18" rx="2"
+        fill="${topoCls.color}22" stroke="${topoCls.color}66" stroke-width=".8"/>`;
+  s += `<text x="${xN + 6}" y="${badgeY + 13}" ${FONT} font-size="${8.5*fs}"
+        fill="${topoCls.color}" font-weight="600" letter-spacing=".04em">${topoCls.label} · ${pente_pct}% · profMax ${topoCls.profMax}m · ×${topoCls.mult.toFixed(1)} coût${topoCls.pilotis ? ' · PILOTIS' : ''}</text>`;
+
+  // ── LIGNE profMax (profondeur bâtie max le long de la pente) ─────────────
+  if (batM > topoCls.profMax + 0.5) {
+    const excedent = batM - topoCls.profMax;
+    const xLimit = xV + topoCls.profMax * scW;
+    s += `<line x1="${xLimit}" y1="${yEgout - 18}" x2="${xLimit}" y2="${yAval + 6}"
+          stroke="${C.he}" stroke-width="1.3" stroke-dasharray="4,3" opacity=".85"/>`;
+    s += `<text x="${xLimit}" y="${yEgout - 22}" text-anchor="middle" ${FONT}
+          font-size="${7.5*fs}" fill="${C.he}" font-weight="600">profMax ${topoCls.profMax}m · ⚠ +${excedent.toFixed(1)}m</text>`;
+  }
 
   // ── LABELS N / S ─────────────────────────────────────────────────────────
   const amontN = orient === 'N' ? '↑ N · amont' : '↑ N · aval';
