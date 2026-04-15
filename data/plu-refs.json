@@ -1,0 +1,171 @@
+{
+  "_meta": {
+    "description": "Règles PLU types par zone et commune La Réunion — à vérifier contre les PLU officiels en vigueur",
+    "source": "AGORAH + PLU communes + audit MGA Architecture 2026",
+    "warning": "Ces valeurs sont des moyennes indicatives. Toujours vérifier le PLU opposable de la commune.",
+    "updated": "2026-04-14"
+  },
+
+  "Saint-Denis_UA":  {
+    "zone": "UA", "commune": "Saint-Denis",
+    "recul_voie_m": 3, "recul_fond_m": 3, "recul_lat_m": 3,
+    "hauteur_egout_max_m": 7, "hauteur_faitage_max_m": 9,
+    "ces_max_pct": 60, "cos_max": null, "permea_min_pct": 25,
+    "rtaa_zone": 1, "alignement_voie": false,
+    "sep_lat_longueur_max_m": null,
+    "notes": "Zone centrale dense Saint-Denis, immeuble collectif courant"
+  },
+
+  "Saint-Denis_UB":  {
+    "zone": "UB", "commune": "Saint-Denis",
+    "recul_voie_m": 3, "recul_fond_m": 3, "recul_lat_m": 3,
+    "hauteur_egout_max_m": 6, "hauteur_faitage_max_m": 8,
+    "ces_max_pct": 50, "cos_max": null, "permea_min_pct": 30,
+    "rtaa_zone": 1, "alignement_voie": false,
+    "notes": "Tissu pavillonnaire semi-collectif"
+  },
+
+  "Saint-Denis_UC":  {
+    "zone": "UC", "commune": "Saint-Denis",
+    "recul_voie_m": 4, "recul_fond_m": 4, "recul_lat_m": 3,
+    "hauteur_egout_max_m": 5, "hauteur_faitage_max_m": 7,
+    "ces_max_pct": 40, "cos_max": null, "permea_min_pct": 40,
+    "rtaa_zone": 1, "alignement_voie": false,
+    "notes": "Tissu résidentiel peu dense"
+  },
+
+  "Saint-Paul_UA":   {
+    "zone": "UA", "commune": "Saint-Paul",
+    "recul_voie_m": 2, "recul_fond_m": 3, "recul_lat_m": 3,
+    "hauteur_egout_max_m": 7, "hauteur_faitage_max_m": 9,
+    "ces_max_pct": 65, "cos_max": null, "permea_min_pct": 20,
+    "rtaa_zone": 2, "alignement_voie": true,
+    "notes": "Centre Saint-Paul, alignement voie autorisé"
+  },
+
+  "Saint-Paul_UB":   {
+    "zone": "UB", "commune": "Saint-Paul",
+    "recul_voie_m": 3, "recul_fond_m": 3, "recul_lat_m": 3,
+    "hauteur_egout_max_m": 6, "hauteur_faitage_max_m": 8,
+    "ces_max_pct": 50, "cos_max": null, "permea_min_pct": 30,
+    "rtaa_zone": 2
+  },
+
+  "Saint-Paul_Ug":   {
+    "zone": "Ug", "commune": "Saint-Paul",
+    "recul_voie_m": 5, "recul_fond_m": 3, "recul_lat_m": 3,
+    "hauteur_egout_max_m": 7, "hauteur_faitage_max_m": 9,
+    "ces_max_pct": 45, "cos_max": null, "permea_min_pct": 35,
+    "rtaa_zone": 2,
+    "notes": "Zone à dominante d'habitat groupé (ex: ZAC)"
+  },
+
+  "Saint-Pierre_UA": {
+    "zone": "UA", "commune": "Saint-Pierre",
+    "recul_voie_m": 3, "recul_fond_m": 3, "recul_lat_m": 3,
+    "hauteur_egout_max_m": 7, "hauteur_faitage_max_m": 9,
+    "ces_max_pct": 60, "cos_max": null, "permea_min_pct": 25,
+    "rtaa_zone": 1
+  },
+
+  "Saint-Pierre_UB": {
+    "zone": "UB", "commune": "Saint-Pierre",
+    "recul_voie_m": 4, "recul_fond_m": 3, "recul_lat_m": 3,
+    "hauteur_egout_max_m": 6, "hauteur_faitage_max_m": 8,
+    "ces_max_pct": 45, "cos_max": null, "permea_min_pct": 35,
+    "rtaa_zone": 1
+  },
+
+  "Le-Tampon_UA":    {
+    "zone": "UA", "commune": "Le Tampon",
+    "recul_voie_m": 3, "recul_fond_m": 3, "recul_lat_m": 3,
+    "hauteur_egout_max_m": 6, "hauteur_faitage_max_m": 8,
+    "ces_max_pct": 50, "cos_max": null, "permea_min_pct": 30,
+    "rtaa_zone": 3,
+    "notes": "Altitude >200m, RTAA zone 3, He réduite"
+  },
+
+  "Le-Tampon_UB":    {
+    "zone": "UB", "commune": "Le Tampon",
+    "recul_voie_m": 4, "recul_fond_m": 3, "recul_lat_m": 3,
+    "hauteur_egout_max_m": 5, "hauteur_faitage_max_m": 7,
+    "ces_max_pct": 40, "cos_max": null, "permea_min_pct": 40,
+    "rtaa_zone": 3
+  },
+
+  "Sainte-Marie_UA": {
+    "zone": "UA", "commune": "Sainte-Marie",
+    "recul_voie_m": 3, "recul_fond_m": 3, "recul_lat_m": 3,
+    "hauteur_egout_max_m": 7, "hauteur_faitage_max_m": 9,
+    "ces_max_pct": 60, "cos_max": null, "permea_min_pct": 25,
+    "rtaa_zone": 1
+  },
+
+  "Sainte-Suzanne_UA": {
+    "zone": "UA", "commune": "Sainte-Suzanne",
+    "recul_voie_m": 3, "recul_fond_m": 3, "recul_lat_m": 3,
+    "hauteur_egout_max_m": 6, "hauteur_faitage_max_m": 8,
+    "ces_max_pct": 55, "cos_max": null, "permea_min_pct": 30,
+    "rtaa_zone": 1
+  },
+
+  "Saint-Andre_UA":  {
+    "zone": "UA", "commune": "Saint-André",
+    "recul_voie_m": 2, "recul_fond_m": 3, "recul_lat_m": 3,
+    "hauteur_egout_max_m": 7, "hauteur_faitage_max_m": 9,
+    "ces_max_pct": 65, "cos_max": null, "permea_min_pct": 20,
+    "rtaa_zone": 1, "alignement_voie": true
+  },
+
+  "Saint-Benoit_UA": {
+    "zone": "UA", "commune": "Saint-Benoît",
+    "recul_voie_m": 3, "recul_fond_m": 3, "recul_lat_m": 3,
+    "hauteur_egout_max_m": 6, "hauteur_faitage_max_m": 8,
+    "ces_max_pct": 55, "cos_max": null, "permea_min_pct": 30,
+    "rtaa_zone": 2
+  },
+
+  "Le-Port_UA":      {
+    "zone": "UA", "commune": "Le Port",
+    "recul_voie_m": 3, "recul_fond_m": 3, "recul_lat_m": 3,
+    "hauteur_egout_max_m": 7, "hauteur_faitage_max_m": 9,
+    "ces_max_pct": 60, "cos_max": null, "permea_min_pct": 25,
+    "rtaa_zone": 1
+  },
+
+  "Saint-Leu_UA":    {
+    "zone": "UA", "commune": "Saint-Leu",
+    "recul_voie_m": 3, "recul_fond_m": 3, "recul_lat_m": 3,
+    "hauteur_egout_max_m": 6, "hauteur_faitage_max_m": 8,
+    "ces_max_pct": 50, "cos_max": null, "permea_min_pct": 30,
+    "rtaa_zone": 2,
+    "notes": "Zone exposée alizés, RTAA zone 2"
+  },
+
+  "Trois-Bassins_UA":{
+    "zone": "UA", "commune": "Trois-Bassins",
+    "recul_voie_m": 3, "recul_fond_m": 3, "recul_lat_m": 3,
+    "hauteur_egout_max_m": 6, "hauteur_faitage_max_m": 8,
+    "ces_max_pct": 45, "cos_max": null, "permea_min_pct": 35,
+    "rtaa_zone": 2
+  },
+
+  "_ZAC_generic": {
+    "zone": "Ug", "commune": null,
+    "recul_voie_m": 0, "recul_fond_m": 3, "recul_lat_m": 3,
+    "hauteur_egout_max_m": 9, "hauteur_faitage_max_m": 12,
+    "ces_max_pct": 70, "cos_max": 2.5, "permea_min_pct": 15,
+    "rtaa_zone": 1, "alignement_voie": true,
+    "notes": "ZAC générique — règles plus permissives, COS autorisé"
+  },
+
+  "_LLTS_generic": {
+    "zone": "UB", "commune": null,
+    "recul_voie_m": 3, "recul_fond_m": 3, "recul_lat_m": 3,
+    "hauteur_egout_max_m": 6, "hauteur_faitage_max_m": 8,
+    "ces_max_pct": 60, "cos_max": null, "permea_min_pct": 25,
+    "rtaa_zone": 1,
+    "bonus_logement_social": true,
+    "notes": "LLTS/LLS — bonification hauteur ×1.5 selon PLU"
+  }
+}

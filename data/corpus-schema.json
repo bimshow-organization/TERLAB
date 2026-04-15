@@ -1,0 +1,242 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "terlab-corpus-case-v1",
+  "title": "TERLAB Corpus Case — Étude de faisabilité réelle",
+  "description": "Schéma d'un cas réel pour calibration AutoPlanEngine ENSA La Réunion",
+  "version": "1.0.0",
+
+  "type": "object",
+  "required": ["id", "meta", "parcelle", "plu", "bat_reel"],
+
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Identifiant unique ex: REUNION_UA_2022_0042",
+      "pattern": "^REUNION_[A-Z]+_[0-9]{4}_[0-9]{4}$"
+    },
+
+    "meta": {
+      "type": "object",
+      "required": ["commune", "annee_construction", "source", "statut"],
+      "properties": {
+        "commune":              { "type": "string", "description": "Nom commune INSEE" },
+        "code_insee":           { "type": "string", "pattern": "^974[0-9]{2}$" },
+        "annee_construction":   { "type": "integer", "minimum": 2010, "maximum": 2026 },
+        "source": {
+          "type": "string",
+          "enum": ["PC_delivre", "BDTopo_verifie", "photo_aerienne", "etude_terrain", "estimation"],
+          "description": "Fiabilité de la source du bâtiment réel"
+        },
+        "statut": {
+          "type": "string",
+          "enum": ["valide", "a_verifier", "exclure"],
+          "description": "Statut de validation du cas"
+        },
+        "annotateur":           { "type": "string" },
+        "date_annotation":      { "type": "string", "format": "date" },
+        "notes":                { "type": "string" },
+        "refs": {
+          "type": "object",
+          "properties": {
+            "pc_numero":        { "type": "string" },
+            "cadastre_id":      { "type": "string" },
+            "bdtopo_id":        { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "parcelle": {
+      "type": "object",
+      "required": ["geojson_local", "surface_m2", "perimetre_m", "shape_ratio"],
+      "properties": {
+        "geojson_wgs84": {
+          "type": "object",
+          "description": "GeoJSON WGS84 original depuis IGN WFS"
+        },
+        "geojson_local": {
+          "type": "array",
+          "description": "Polygone [{x,y}] en mètres, repère local UTM40S centré sur centroïde, Y↑ nord",
+          "items": {
+            "type": "object",
+            "properties": {
+              "x": { "type": "number" },
+              "y": { "type": "number" }
+            }
+          }
+        },
+        "centroid_utm40s":      { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+        "surface_m2":           { "type": "number", "minimum": 100 },
+        "perimetre_m":          { "type": "number" },
+        "shape_ratio":          { "type": "number", "description": "L/l OBB (longueur/largeur) — 1=carré, >3=très étroit" },
+        "obb_theta_deg":        { "type": "number", "description": "Orientation OBB en degrés math (0=est)" },
+        "bearing_voie_deg":     { "type": "number", "description": "Bearing arête voie (compass 0=N)" },
+        "edge_types":           {
+          "type": "array",
+          "items": { "type": "string", "enum": ["voie", "fond", "lat", "lateral", "mitoyenne"] },
+          "description": "Type de chaque arête dans l'ordre du polygone"
+        },
+        "topographie": {
+          "type": "object",
+          "properties": {
+            "pente_moy_pct":    { "type": "number" },
+            "azimut_pente_deg": { "type": "number" },
+            "topo_case_id":     { "type": "string", "enum": ["flat","gentle","medium","steep","extreme"] },
+            "altitude_ngr_m":   { "type": "number" }
+          }
+        }
+      }
+    },
+
+    "plu": {
+      "type": "object",
+      "required": ["zone", "recul_voie_m", "recul_fond_m", "recul_lat_m"],
+      "description": "Règles PLU applicables au moment de la construction",
+      "properties": {
+        "zone":                 { "type": "string", "description": "ex: UA, UB, Ug, UC, AUb, N" },
+        "sous_zone":            { "type": "string", "description": "ex: UAa, UBr" },
+        "commune_plu":          { "type": "string", "description": "Commune du PLU source" },
+        "version_plu":          { "type": "string", "description": "ex: PLU 2018, PLUi 2023" },
+        "recul_voie_m":         { "type": "number", "minimum": 0 },
+        "recul_fond_m":         { "type": "number", "minimum": 0 },
+        "recul_lat_m":          { "type": "number", "minimum": 0, "description": "Recul latéral min (règle binaire: 0 si mitoyen, sinon cette valeur)" },
+        "hauteur_egout_max_m":  { "type": "number", "description": "He max PLU" },
+        "hauteur_faitage_max_m":{ "type": "number", "description": "Hf max PLU" },
+        "ces_max_pct":          { "type": "number", "minimum": 0, "maximum": 100 },
+        "cos_max":              { "type": ["number", "null"] },
+        "permea_min_pct":       { "type": "number", "default": 25 },
+        "alignement_voie":      { "type": "boolean", "default": false },
+        "rtaa_zone":            { "type": "integer", "enum": [1, 2, 3] },
+        "mitoyen_lateral":      { "type": "boolean" },
+        "mitoyen_g":            { "type": "boolean" },
+        "mitoyen_d":            { "type": "boolean" },
+        "sep_lat_longueur_max_m":{ "type": ["number", "null"] },
+        "avap_proximite":       { "type": "boolean", "default": false },
+        "pprn_zone":            { "type": ["string", "null"], "enum": [null, "blanc", "bleu", "orange", "rouge"] }
+      }
+    },
+
+    "bat_reel": {
+      "type": "object",
+      "required": ["blocs", "type_programme", "niveaux", "surface_emprise_m2"],
+      "description": "Bâtiment(s) réellement construit(s)",
+      "properties": {
+        "blocs": {
+          "type": "array",
+          "description": "Liste des volumes construits (un ou plusieurs blocs)",
+          "items": {
+            "type": "object",
+            "required": ["polygon_local"],
+            "properties": {
+              "polygon_local":  { "type": "array", "description": "[{x,y}] mètres local" },
+              "niveaux":        { "type": "integer", "minimum": 1 },
+              "hauteur_egout_m":{ "type": "number" },
+              "hauteur_faitage_m":{ "type": "number" },
+              "obb_theta_deg":  { "type": "number" },
+              "surface_m2":     { "type": "number" },
+              "type_bloc":      { "type": "string", "enum": ["principal","annexe","parking","communs"] }
+            }
+          }
+        },
+        "type_programme": {
+          "type": "string",
+          "enum": ["maison_individuelle","bande","collectif_petit","collectif_moyen","collectif_grand","mixte"]
+        },
+        "niveaux":              { "type": "integer", "description": "Niveaux bloc principal" },
+        "surface_emprise_m2":   { "type": "number" },
+        "surface_plancher_m2":  { "type": "number" },
+        "n_logements":          { "type": "integer" },
+        "parking_ss":           { "type": "boolean" },
+        "has_pilotis":          { "type": "boolean" },
+        "shape_type": {
+          "type": "string",
+          "enum": ["rect","rect_biseaute","l_shape","t_shape","u_shape","barre","multi_barres","courtyard","irregular"],
+          "description": "Forme du plan identifiée"
+        },
+        "strategy_guess": {
+          "type": "string",
+          "enum": ["rect","oblique","zone","multi","lshape","isohypses","alize","tshape","cross","barre","inconnu"],
+          "description": "Stratégie probable devinée depuis la géométrie"
+        },
+        "orientation_deg":      { "type": "number", "description": "Bearing OBB bloc principal (compass)" },
+        "source_bdtopo":        { "type": "boolean", "description": "True si footprint from BDTopo verified" }
+      }
+    },
+
+    "metriques_reelles": {
+      "type": "object",
+      "description": "Métriques calculées depuis bat_reel + parcelle",
+      "properties": {
+        "ces_reel":             { "type": "number" },
+        "cos_reel":             { "type": ["number","null"] },
+        "permea_pct":           { "type": "number" },
+        "densite_lgts_ha":      { "type": "number" },
+        "ratio_recul_voie_m":   { "type": "number" },
+        "ratio_recul_fond_m":   { "type": "number" },
+        "dist_bat_lat_g_m":     { "type": "number" },
+        "dist_bat_lat_d_m":     { "type": "number" },
+        "profondeur_bat_m":     { "type": "number" },
+        "largeur_bat_m":        { "type": "number" },
+        "ratio_plu_ces_utilise":{ "type": "number", "description": "ces_reel / ces_max (0→1, idéalement 0.7–0.9)" },
+        "conforme_plu":         { "type": "boolean" }
+      }
+    },
+
+    "engine_results": {
+      "type": "object",
+      "description": "Résultats AutoPlanEngine sur ce cas (généré automatiquement)",
+      "properties": {
+        "timestamp":            { "type": "string", "format": "date-time" },
+        "engine_version":       { "type": "string" },
+        "solutions": {
+          "type": "array",
+          "description": "Variantes Pareto générées",
+          "items": {
+            "type": "object",
+            "properties": {
+              "family":         { "type": "string" },
+              "strategy":       { "type": "string" },
+              "score":          { "type": "number" },
+              "conformity": {
+                "type": "object",
+                "description": "Score de conformité vs bat_reel",
+                "properties": {
+                  "iou":        { "type": "number", "description": "Intersection over Union 0→1" },
+                  "iou_any":    { "type": "number", "description": "IoU meilleur bloc vs meilleur bloc réel" },
+                  "delta_orientation_deg": { "type": "number" },
+                  "delta_ces":  { "type": "number" },
+                  "delta_profondeur_m": { "type": "number" },
+                  "delta_largeur_m": { "type": "number" },
+                  "combined_score": { "type": "number", "description": "Score composite 0→1" }
+                }
+              }
+            }
+          }
+        },
+        "best_match": {
+          "type": "object",
+          "properties": {
+            "family":           { "type": "string" },
+            "strategy":         { "type": "string" },
+            "combined_score":   { "type": "number" },
+            "iou":              { "type": "number" }
+          }
+        }
+      }
+    },
+
+    "comparable_filters": {
+      "type": "object",
+      "description": "Critères de comparabilité (calculés, pour le matching inter-cas)",
+      "properties": {
+        "bucket_surface":       { "type": "string", "enum": ["XS_<300","S_300-600","M_600-1200","L_1200-3000","XL_>3000"] },
+        "bucket_pente":         { "type": "string", "enum": ["flat","gentle","medium","steep","extreme"] },
+        "bucket_shape":         { "type": "string", "enum": ["carre","allonge","etroit","complexe"] },
+        "bucket_ces":           { "type": "string", "enum": ["libre_<40","moyen_40-60","dense_>60"] },
+        "groupe_plu":           { "type": "string", "enum": ["UA","UB","UC_UC","AUb","Ug","mixte"] },
+        "has_mitoyen":          { "type": "boolean" },
+        "has_slope_constraint": { "type": "boolean" }
+      }
+    }
+  }
+}

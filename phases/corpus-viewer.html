@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TERLAB · Corpus Viewer</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f4f0e8;--bg2:#faf7f0;--border:#c8b880;--accent:#1848a0;
+  --ok:#16a34a;--warn:var(--c-danger);--mid:#d97706;--muted:#8a7050;
+  --font:'Inconsolata','Courier New',monospace
+}
+body{font-family:var(--font);font-size:13px;background:var(--bg);color:#1a1209}
+header{background:#1a1209;color:#c9a84c;padding:10px 18px;display:flex;align-items:center;gap:14px}
+header h1{font-size:14px;font-weight:700;letter-spacing:.08em}
+header span{font-size:10px;color:#8a7050}
+.layout{display:grid;grid-template-columns:300px 1fr;height:calc(100vh - 44px)}
+
+/* Sidebar */
+.sidebar{background:var(--bg2);border-right:1.5px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-hdr{padding:8px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.sidebar-hdr h2{font-size:10px;letter-spacing:.10em;text-transform:uppercase;color:var(--muted)}
+.filter-row{display:flex;flex-wrap:wrap;gap:4px;padding:6px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.chip{font-size:9px;padding:2px 7px;border:1px solid var(--border);border-radius:10px;background:#fff;cursor:pointer;color:var(--muted)}
+.chip.on{background:#dbeafe;border-color:var(--accent);color:var(--accent);font-weight:700}
+.case-list{flex:1;overflow-y:auto;padding:4px 0}
+.case-item{padding:6px 10px 5px;border-bottom:1px solid rgba(200,184,128,.25);cursor:pointer;transition:background .1s}
+.case-item:hover{background:rgba(200,184,128,.15)}
+.case-item.active{background:#dbeafe;border-left:3px solid var(--accent)}
+.ci-id{font-size:9px;color:var(--muted)}
+.ci-main{font-size:11px;font-weight:600;margin:1px 0}
+.ci-sub{font-size:9px;color:var(--muted);display:flex;gap:8px}
+.ci-score{float:right;font-size:10px;font-weight:700}
+.ci-score.ok{color:var(--ok)}.ci-score.mid{color:var(--mid)}.ci-score.bad{color:var(--warn)}
+
+/* Main panel */
+.main{display:flex;flex-direction:column;overflow:hidden}
+.main-hdr{padding:8px 16px;border-bottom:1.5px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;background:var(--bg2)}
+.main-hdr h2{font-size:12px;font-weight:700}
+.badge{font-size:9px;padding:2px 7px;border-radius:3px;font-weight:700}
+.badge.ok{background:#dcfce7;color:var(--ok)}.badge.mid{background:#fef9c3;color:#854d0e}.badge.bad{background:#fee2e2;color:var(--warn)}
+
+.panels{display:grid;grid-template-columns:1fr 1fr 340px;flex:1;overflow:hidden;gap:0}
+.panel{display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden}
+.panel:last-child{border-right:none}
+.panel-hdr{padding:5px 10px;background:#e0d8c4;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);flex-shrink:0}
+.panel-body{flex:1;overflow:hidden;position:relative}
+.svg-wrap{width:100%;height:100%;display:block}
+.metrics-body{overflow-y:auto;padding:10px;height:100%}
+
+/* SVG */
+.sv-parcel{fill:rgba(255,248,220,.35);stroke:#1a1209;stroke-width:2}
+.sv-zone{fill:rgba(37,99,235,.10);stroke:#2563eb;stroke-width:1;stroke-dasharray:5,3}
+.sv-real{fill:rgba(239,68,68,.25);stroke:var(--c-danger);stroke-width:2}
+.sv-engine{fill:rgba(22,163,74,.25);stroke:#16a34a;stroke-width:2;stroke-dasharray:8,4}
+.sv-portal{fill:var(--c-danger)}
+
+/* Metrics */
+.m-section{font-size:9px;text-transform:uppercase;letter-spacing:.10em;color:var(--muted);margin:10px 0 4px;font-weight:700}
+.m-row{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid rgba(200,184,128,.20);font-size:10.5px}
+.m-lbl{color:var(--muted)}.m-val{font-weight:600}
+.m-val.ok{color:var(--ok)}.m-val.mid{color:var(--mid)}.m-val.bad{color:var(--warn)}
+.bar{height:6px;border-radius:3px;background:#e5e7eb;margin:3px 0;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;background:var(--ok)}
+.bar-fill.mid{background:var(--mid)}.bar-fill.bad{background:var(--warn)}
+
+.strat-list{display:flex;flex-direction:column;gap:2px;margin-top:6px}
+.strat-row{padding:4px 7px;border-radius:3px;background:#fff;border:1px solid var(--border);font-size:9.5px;display:flex;justify-content:space-between;align-items:center}
+.strat-row.best{background:#f0fdf4;border-color:var(--ok)}
+.strat-iou{font-weight:700}
+
+.empty{text-align:center;padding:40px 20px;color:var(--muted);font-size:11px}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);margin-top:8px}
+.stats-cell{background:var(--bg2);padding:8px 10px}
+.stats-num{font-size:20px;font-weight:700;color:var(--accent)}
+.stats-lbl{font-size:8.5px;color:var(--muted)}
+
+@media(max-width:900px){.panels{grid-template-columns:1fr 1fr};.panels .panel:nth-child(3){grid-column:1/-1}}
+</style>
+</head>
+<body>
+<header>
+  <h1>TERLAB · Corpus Faisabilité</h1>
+  <span id="corpus-count">0 cas chargés</span>
+  <span style="flex:1"></span>
+  <button onclick="loadDemo()" style="font:700 10px var(--font);background:#c9a84c;color:#1a1209;border:none;padding:4px 12px;border-radius:2px;cursor:pointer">▶ Démo</button>
+  <button id="btn-run-engine" onclick="runEngineOnLoaded()" style="font:700 10px var(--font);background:#16a34a;color:#fff;border:none;padding:4px 12px;border-radius:2px;cursor:pointer" title="Lance AutoPlanEngine + ConformityScorer sur les cas chargés et télécharge corpus.json">▶ Lancer engine</button>
+  <label style="font-size:10px;color:#c9a84c;display:flex;align-items:center;gap:4px;cursor:pointer" title="Overlay segmentation COSIA IGN (bati, vegetation, sol, bitume)">
+    <input type="checkbox" id="toggle-cosia" onchange="toggleCosia()" style="cursor:pointer">
+    COSIA
+  </label>
+  <span id="run-status" style="font-size:10px;color:#c9a84c;min-width:140px"></span>
+  <label style="font-size:10px;color:#c9a84c;cursor:pointer">
+    📂 <input type="file" accept=".json,.jsonl" style="display:none" onchange="loadFile(event)">
+    Charger JSON
+  </label>
+</header>
+
+<div class="layout">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-hdr">
+      <h2>Cas corpus</h2>
+    </div>
+    <div class="filter-row" id="filter-row">
+      <span style="font-size:9px;color:var(--muted)">Filtrer : </span>
+    </div>
+    <div class="case-list" id="case-list">
+      <div class="empty">Chargez un corpus JSON<br>ou cliquez Démo</div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="main-hdr">
+      <h2 id="case-title">— Aucun cas sélectionné</h2>
+      <span class="badge" id="case-badge" style="display:none"></span>
+      <span style="flex:1"></span>
+      <span id="case-plu" style="font-size:10px;color:var(--muted)"></span>
+    </div>
+
+    <div class="panels">
+      <!-- Plan réel -->
+      <div class="panel">
+        <div class="panel-hdr">🏗 Bâtiment réel</div>
+        <div class="panel-body">
+          <svg class="svg-wrap" id="svg-real" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid meet">
+            <g id="g-real-bg"></g><g id="g-real-bat"></g><g id="g-real-lbl"></g>
+          </svg>
+        </div>
+      </div>
+      <!-- Plan engine -->
+      <div class="panel">
+        <div class="panel-hdr">🤖 Meilleure solution engine</div>
+        <div class="panel-body">
+          <svg class="svg-wrap" id="svg-engine" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid meet">
+            <g id="g-eng-bg"></g><g id="g-eng-bat"></g><g id="g-eng-lbl"></g>
+          </svg>
+        </div>
+      </div>
+      <!-- Métriques -->
+      <div class="panel">
+        <div class="panel-hdr">📊 Métriques & conformité</div>
+        <div class="metrics-body" id="metrics-body">
+          <div class="empty">Sélectionnez un cas</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+let corpus = [], activeCase = null, activeFilters = new Set();
+
+// Etat UI
+let cosiaEnabled = false;
+function toggleCosia() {
+  cosiaEnabled = document.getElementById('toggle-cosia').checked;
+  if (activeCase) renderCase(activeCase);
+}
+
+// Token Mapbox (mirror du token utilise par TERLAB main app)
+const MAPBOX_TOKEN = 'pk.eyJ1IjoiYXNoa2VuYXppb3IiLCJhIjoiY2pveHhvcmhkMjVvMDN3cGg4eGtneWhxMSJ9.3pFGOEZUl_n-xkVNkS1kFg';
+
+// ── SVG helpers ──────────────────────────────────────────────────────────────
+const NS = 'http://www.w3.org/2000/svg';
+const E  = (tag, attrs, parent) => {
+  const el = document.createElementNS(NS, tag);
+  for (const [k,v] of Object.entries(attrs)) el.setAttribute(k, String(v));
+  parent?.appendChild(el);
+  return el;
+};
+const T = (x, y, txt, attrs, parent) => {
+  const el = E('text', { x, y, ...attrs }, parent);
+  el.textContent = txt;
+  return el;
+};
+const ppts = pts => pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+
+function localToSVG(pts, W = 290, H = 290, pad = 15) {
+  if (!pts?.length) return { pts: [], scX: 1, scY: 1, ox: 0, oy: 0 };
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const dx = x1 - x0 || 1, dy = y1 - y0 || 1;
+  const sc = Math.min((W - 2*pad) / dx, (H - 2*pad) / dy);
+  const ox = pad + ((W - 2*pad) - dx * sc) / 2 - x0 * sc;
+  const oy = pad + ((H - 2*pad) - dy * sc) / 2 + y1 * sc;  // flip Y
+  return { pts: pts.map(p => ({ x: p.x*sc + ox, y: -p.y*sc + oy })), sc, ox, oy, x0, y0, dx, dy };
+};
+
+// Inset polygone (chaque arete decalee de reculs[i] vers l'interieur).
+// Sutherland-Hodgman style mais on se limite a un offset par arete + recoupe.
+function insetPoly(pts, reculs) {
+  if (!pts || pts.length < 3) return [];
+  const n = pts.length;
+  // Aire signee pour deduire l'orientation (inward normal)
+  let area = 0;
+  for (let i = 0; i < n; i++) {
+    const a = pts[i], b = pts[(i+1)%n];
+    area += a.x * b.y - b.x * a.y;
+  }
+  const sgn = area >= 0 ? 1 : -1;  // +1 = CCW, -1 = CW
+  // Calcul edges decales
+  const edges = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[i], b = pts[(i+1)%n];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const L = Math.hypot(dx, dy) || 1;
+    const r = reculs[i] ?? 0;
+    // Normale inward = perp gauche pour CCW (sgn=+1), perp droite pour CW
+    const nx = -dy/L * r * sgn, ny = dx/L * r * sgn;
+    edges.push({ a:{x:a.x+nx,y:a.y+ny}, b:{x:b.x+nx,y:b.y+ny} });
+  }
+  // Intersection successive des aretes decalees
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const e1 = edges[(i-1+n)%n], e2 = edges[i];
+    const x1=e1.a.x,y1=e1.a.y,x2=e1.b.x,y2=e1.b.y;
+    const x3=e2.a.x,y3=e2.a.y,x4=e2.b.x,y4=e2.b.y;
+    const den = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4);
+    if (Math.abs(den) < 1e-9) { out.push(e2.a); continue; }
+    const t = ((x1-x3)*(y3-y4) - (y1-y3)*(x3-x4))/den;
+    out.push({ x: x1 + t*(x2-x1), y: y1 + t*(y2-y1) });
+  }
+  return out;
+}
+
+const EDGE_COL = { voie: '#dc2626', lat: '#2563eb', lateral: '#2563eb',
+                   mitoyenne: '#2563eb', fond: '#16a34a' };
+const EDGE_LBL = { voie: 'voie', lat: 'lat', lateral: 'lat',
+                   mitoyenne: 'mit', fond: 'fond' };
+
+function drawSVGCase(svgId, cas, opts = {}) {
+  const svg  = document.getElementById(svgId);
+  if (!svg) return;
+  const gBg  = svg.querySelector('#g-' + opts.prefix + '-bg');
+  const gBat = svg.querySelector('#g-' + opts.prefix + '-bat');
+  const gLbl = svg.querySelector('#g-' + opts.prefix + '-lbl');
+  [gBg, gBat, gLbl].forEach(g => { if(g) g.innerHTML = ''; });
+
+  const W = 290, H = 290;
+  const parcel = cas.parcelle?.geojson_local ?? [];
+  if (!parcel.length) return;
+
+  const edgeTypes = cas.parcelle?.edge_types ?? [];
+  const plu       = cas.plu ?? {};
+  // Reculs par arete suivant son type
+  const reculs = parcel.map((_, i) => {
+    const t = edgeTypes[i] ?? 'lat';
+    if (t === 'voie') return plu.recul_voie_m ?? 3;
+    if (t === 'fond') return plu.recul_fond_m ?? 3;
+    return plu.recul_lat_m ?? 3;
+  });
+
+  // Zone constructible (inset) en coords locales
+  const zoneLocal = insetPoly(parcel, reculs);
+
+  const allPts = [...parcel, ...(opts.batBlocs ?? []).flatMap(b => b.polygon_local ?? b.polygon ?? [])];
+  const { sc, ox, oy } = localToSVG(allPts, W, H);
+  const toSVG = p => ({ x: p.x*sc + ox, y: -p.y*sc + oy });
+  const parSVG  = parcel.map(toSVG);
+  const zoneSVG = zoneLocal.map(toSVG);
+
+  // Background papier
+  E('rect', { x: 0, y: 0, width: W, height: H, fill: '#ece6d8' }, gBg);
+  // Overlay ortho IGN (WMS BD ORTHO, gratuit, DOM-TOM a jour)
+  // Fallback Mapbox satellite si IGN echoue (404, timeout, CORS).
+  const centroidWGS = cas.meta?.centroid_wgs84;
+  if (centroidWGS && Array.isArray(centroidWGS) && sc > 0) {
+    const [lngC, latC] = centroidWGS;
+    const xMinM = -ox / sc, xMaxM = (W - ox) / sc;
+    const yMinM = -(H - oy) / sc, yMaxM = oy / sc;
+    const cosL = Math.cos(latC * Math.PI / 180);
+    const lngMin = lngC + xMinM / (111000 * cosL);
+    const lngMax = lngC + xMaxM / (111000 * cosL);
+    const latMin = latC + yMinM / 111000;
+    const latMax = latC + yMaxM / 111000;
+    const ignUrl = `https://data.geopf.fr/wms-r/wms?SERVICE=WMS&VERSION=1.3.0`
+                 + `&REQUEST=GetMap&LAYERS=ORTHOIMAGERY.ORTHOPHOTOS`
+                 + `&CRS=EPSG:4326&FORMAT=image/jpeg&STYLES=`
+                 + `&BBOX=${latMin.toFixed(6)},${lngMin.toFixed(6)},`
+                 + `${latMax.toFixed(6)},${lngMax.toFixed(6)}`
+                 + `&WIDTH=${W * 2}&HEIGHT=${H * 2}`;
+    const mbxUrl = `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/`
+                 + `[${lngMin.toFixed(6)},${latMin.toFixed(6)},`
+                 + `${lngMax.toFixed(6)},${latMax.toFixed(6)}]/`
+                 + `${W}x${H}@2x?access_token=${MAPBOX_TOKEN}`;
+    const img = E('image', { x: 0, y: 0, width: W, height: H, href: ignUrl,
+                              opacity: 0.65, preserveAspectRatio: 'none' }, gBg);
+    img.addEventListener('error', () => {
+      if (img.dataset.fb !== '1') {
+        img.dataset.fb = '1';
+        img.setAttribute('href', mbxUrl);
+      }
+    }, { once: true });
+
+    // Overlay COSIA (segmentation auto IGN : bati / vegetation / sol / bitume)
+    // Meme bbox + viewport, semi-transparent par dessus l'ortho
+    if (cosiaEnabled) {
+      const cosiaUrl = `https://data.geopf.fr/wms-r/wms?SERVICE=WMS&VERSION=1.3.0`
+                    + `&REQUEST=GetMap&LAYERS=IGNF_COSIA_2021-2023`
+                    + `&CRS=EPSG:4326&FORMAT=image/png&TRANSPARENT=TRUE&STYLES=`
+                    + `&BBOX=${latMin.toFixed(6)},${lngMin.toFixed(6)},`
+                    + `${latMax.toFixed(6)},${lngMax.toFixed(6)}`
+                    + `&WIDTH=${W * 2}&HEIGHT=${H * 2}`;
+      E('image', { x: 0, y: 0, width: W, height: H, href: cosiaUrl,
+                   opacity: 0.50, preserveAspectRatio: 'none' }, gBg);
+    }
+  }
+  // Parcelles : differencier direct (intersect bati) vs neighbour (contexte)
+  const allParcels = cas.parcelle?.parcels ?? [];
+  const drawnIdx = new Set();
+  // 1. Voisines en premier (sous-couche : lignes pointillees fines, gris)
+  allParcels.forEach((p, i) => {
+    if (p.origin !== 'neighbour') return;
+    const polyPts = (p.polygon_local ?? []).map(toSVG);
+    if (polyPts.length < 3) return;
+    E('polygon', { points: ppts(polyPts), fill: 'rgba(180,160,120,.05)',
+                   stroke: '#6b5d44', 'stroke-width': 0.7,
+                   'stroke-dasharray': '2,2', opacity: .55 }, gBg);
+    drawnIdx.add(i);
+  });
+  // 2. Parcelles directes : fond seulement (pas de stroke noir).
+  // Les aretes colorees (voie/lat/fond) tracees plus bas font office de contour.
+  let mainDrawn = false;
+  allParcels.forEach((p, i) => {
+    if (p.origin === 'neighbour') return;
+    const polyPts = (p.polygon_local ?? []).map(toSVG);
+    if (polyPts.length < 3) return;
+    E('polygon', { points: ppts(polyPts), fill: 'rgba(255,248,220,.15)',
+                   stroke: 'none' }, gBg);
+    drawnIdx.add(i);
+    mainDrawn = true;
+  });
+  // 3. Fallback : geojson_local en pointille fin si aucune parcelle directe
+  if (!mainDrawn && parSVG.length >= 3) {
+    E('polygon', { points: ppts(parSVG), fill: 'rgba(255,248,220,.15)',
+                   stroke: '#1a1209', 'stroke-width': 1.2,
+                   'stroke-dasharray': '5,3' }, gBg);
+  }
+  // Zone constructible (inset reculs PLU) — pointilles bleus
+  if (zoneSVG.length >= 3) {
+    E('polygon', { points: ppts(zoneSVG),
+                   fill: 'rgba(37,99,235,.06)',
+                   stroke: '#2563eb', 'stroke-width': 1,
+                   'stroke-dasharray': '4,3', opacity: .8 }, gBg);
+  }
+
+  // Aretes parcelle colorees (toutes) + label recul UNIQUE par type d'arete
+  // (eviter le bruit visuel "3m 3m 3m..." quand toutes les latérales ont la même valeur)
+  const labeledTypes = new Set();
+  for (let i = 0; i < parSVG.length; i++) {
+    const t = edgeTypes[i] ?? 'lat';
+    const col = EDGE_COL[t] ?? '#444';
+    const a = parSVG[i], b = parSVG[(i+1) % parSVG.length];
+    const sw = t === 'voie' ? 3 : 1.5;
+    E('line', { x1:a.x, y1:a.y, x2:b.x, y2:b.y,
+                stroke:col, 'stroke-width':sw, 'stroke-linecap':'round' }, gLbl);
+    if (!labeledTypes.has(t)) {
+      labeledTypes.add(t);
+      const mx = (a.x+b.x)/2, my = (a.y+b.y)/2;
+      const dx = b.x-a.x, dy = b.y-a.y, L = Math.hypot(dx,dy) || 1;
+      const offX = -dy/L * 8, offY = dx/L * 8;
+      T(mx + offX, my + offY + 2.5,
+        `${EDGE_LBL[t] ?? t}: ${(reculs[i]||0).toFixed(0)}m`, {
+        'text-anchor':'middle','font-family':'Inconsolata,monospace',
+        'font-size':'8','fill':col,'font-weight':'700'
+      }, gLbl);
+    }
+  }
+
+  // Batis voisins sur les memes parcelles (annexes, autres corps)
+  // Dessines en sous-couche : remplissage gris pale + contour fin.
+  const voisins = cas.bat_reel?.blocs_voisins ?? [];
+  voisins.forEach(v => {
+    const poly = (v.polygon_local ?? []).map(toSVG);
+    if (poly.length < 3) return;
+    const isLeger = !!v.construction_legere;
+    E('polygon', { points: ppts(poly),
+                   fill: isLeger ? 'rgba(180,160,120,.20)' : 'rgba(120,120,120,.30)',
+                   stroke: isLeger ? '#a08054' : '#555',
+                   'stroke-width': 0.9,
+                   'stroke-dasharray': isLeger ? '3,2' : '0' }, gBat);
+    if (v.niveaux >= 2) {
+      const vcx = poly.reduce((s,p)=>s+p.x,0)/poly.length;
+      const vcy = poly.reduce((s,p)=>s+p.y,0)/poly.length;
+      T(vcx, vcy + 2.5, `R+${v.niveaux-1}`, {'text-anchor':'middle',
+        'font-family':'Inconsolata,monospace','font-size':'7',
+        'fill':'#444','font-weight':'500'}, gBat);
+    }
+  });
+
+  // Bâtiments (multi-blocs)
+  const blocs = opts.batBlocs ?? [];
+  const isStraddle = !!cas.bat_reel?.straddle;
+  blocs.forEach((b, bi) => {
+    const poly = (b.polygon_local ?? b.polygon ?? []).map(toSVG);
+    if (poly.length < 3) return;
+    E('polygon', { points: ppts(poly), class: opts.batClass ?? 'sv-real' }, gBat);
+    const cx = poly.reduce((s,p)=>s+p.x,0)/poly.length;
+    const cy = poly.reduce((s,p)=>s+p.y,0)/poly.length;
+    if (bi === 0) {
+      const lbl = b.niveaux ? `R+${b.niveaux-1}` : '';
+      if (lbl) T(cx, cy+3.5, lbl, {'text-anchor':'middle',
+        'font-family':'Inconsolata,monospace','font-size':'10',
+        'fill':opts.lblColor??'#1a1209','font-weight':'700'}, gLbl);
+      if (isStraddle) {
+        const np = cas.parcelle?.n_parcels_direct ?? cas.parcelle?.n_parcels ?? 2;
+        T(cx, cy + 14, `à cheval ${np}p`, {'text-anchor':'middle',
+          'font-family':'Inconsolata,monospace','font-size':'7',
+          'fill':'#dc2626','font-weight':'700'}, gLbl);
+      }
+    }
+  });
+
+  // Scale bar (10m) en bas a gauche
+  if (sc > 0) {
+    const scBarX0 = 8, scBarY = H - 18, scBarLen = sc * 10;
+    E('line', {x1:scBarX0, y1:scBarY, x2:scBarX0+scBarLen, y2:scBarY,
+               stroke:'#1a1209','stroke-width':2}, gLbl);
+    E('line', {x1:scBarX0, y1:scBarY-3, x2:scBarX0, y2:scBarY+3,
+               stroke:'#1a1209','stroke-width':2}, gLbl);
+    E('line', {x1:scBarX0+scBarLen, y1:scBarY-3, x2:scBarX0+scBarLen, y2:scBarY+3,
+               stroke:'#1a1209','stroke-width':2}, gLbl);
+    T(scBarX0+scBarLen/2, scBarY-5, '10m', {'text-anchor':'middle',
+      'font-family':'Inconsolata,monospace','font-size':'7','fill':'#1a1209'}, gLbl);
+  }
+
+  // Légende surface (parcelle + bati)
+  const areaTxt = opts.areaTxt ?? '';
+  if (areaTxt) T(6, H-4, areaTxt, {'font-family':'Inconsolata,monospace',
+    'font-size':'8','fill':opts.lblColor??'#6a5030'}, gLbl);
+}
+
+// ── Rendu du cas sélectionné ──────────────────────────────────────────────────
+function renderCase(cas) {
+  activeCase = cas;
+
+  // Header
+  document.getElementById('case-title').textContent = `${cas.meta?.commune ?? '?'} · ${cas.meta?.annee_construction ?? '?'}`;
+  document.getElementById('case-plu').textContent = `Zone ${cas.plu?.zone ?? '?'} · CES max ${cas.plu?.ces_max_pct ?? '?'}%`;
+  const bm = cas.engine_results?.best_match;
+  const badge = document.getElementById('case-badge');
+  if (bm) {
+    badge.style.display = '';
+    const iou = bm.iou ?? 0;
+    badge.textContent = `IoU ${(iou*100).toFixed(0)}% · ${bm.strategy ?? '?'}`;
+    badge.className   = 'badge ' + (iou >= 0.6 ? 'ok' : iou >= 0.4 ? 'mid' : 'bad');
+  } else badge.style.display = 'none';
+
+  // Plan réel
+  const realBlocs = cas.bat_reel?.blocs ?? [];
+  const realArea  = realBlocs.reduce((s,b) => s+(b.surface_m2||0), 0);
+  drawSVGCase('svg-real', cas, {
+    prefix: 'real',
+    batBlocs: realBlocs,
+    batClass: 'sv-real',
+    lblColor: '#991b1b',
+    areaTxt:  `Réel : ${realArea} m² · R+${(cas.bat_reel?.niveaux||1)-1} · ${cas.bat_reel?.strategy_guess??'?'}`,
+  });
+
+  // Plan engine — best match
+  const sols   = cas.engine_results?.solutions ?? [];
+  const bestSol = sols[0];
+  if (bestSol) {
+    const engBlocs = (bestSol.blocs ?? (bestSol.polygon ? [{ polygon: bestSol.polygon }] : []));
+    const engArea  = engBlocs.reduce((s,b)=>{const p=b.polygon??[];return s+(p.length>=3?polyArea(p):0)},0);
+    drawSVGCase('svg-engine', cas, {
+      prefix: 'eng',
+      batBlocs: engBlocs.map(b => ({ ...b, polygon_local: b.polygon })),
+      batClass: 'sv-engine',
+      lblColor: '#166534',
+      areaTxt:  `Engine : ${Math.round(engArea)} m² · ${bestSol.strategy??'?'} · IoU ${((bestSol.conformity?.iou??0)*100).toFixed(0)}%`,
+    });
+  } else {
+    const svg = document.getElementById('svg-engine');
+    const g = svg?.querySelector('#g-eng-bat');
+    if (g) { g.innerHTML = ''; T(150, 150, 'Engine non calculé', {'text-anchor':'middle','font-family':'Inconsolata,monospace','font-size':'10','fill':'#aaa'}, g); }
+  }
+
+  // Métriques
+  renderMetrics(cas, sols);
+}
+
+function polyArea(pts) {
+  let a = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const j = (i+1)%pts.length;
+    a += pts[i].x*pts[j].y - pts[j].x*pts[i].y;
+  }
+  return Math.abs(a)/2;
+}
+
+function renderMetrics(cas, sols) {
+  const mb   = document.getElementById('metrics-body');
+  const mr   = cas.metriques_reelles ?? {};
+  const plu  = cas.plu ?? {};
+  const bat  = cas.bat_reel ?? {};
+  const bm   = cas.engine_results?.best_match;
+  const sc   = (v, cls='') => `<span class="m-val ${cls}">${v}</span>`;
+  const row  = (l, v, cls='') => `<div class="m-row"><span class="m-lbl">${l}</span>${sc(v, cls)}</div>`;
+  const bar  = (v, cls='') => `<div class="bar"><div class="bar-fill ${cls}" style="width:${Math.min(100,Math.round(v*100))}%"></div></div>`;
+
+  const cesCls  = mr.ces_reel > (plu.ces_max_pct||60)/100 + 0.02 ? 'bad' : 'ok';
+  const iou     = bm?.iou ?? 0;
+  const ious    = iou >= 0.6 ? 'ok' : iou >= 0.4 ? 'mid' : 'bad';
+  const combi   = bm?.combined_score ?? 0;
+  const combis  = combi >= 0.6 ? 'ok' : combi >= 0.4 ? 'mid' : 'bad';
+
+  let html = `
+    <div class="m-section">Parcelle</div>
+    ${row('Surface', (cas.parcelle?.surface_m2??'?')+' m²')}
+    ${row('Shape ratio', cas.parcelle?.shape_ratio??'?')}
+    ${row('Bucket', cas.comparable_filters?.bucket_surface??'?')}
+    ${row('Pente', cas.parcelle?.topographie?.topo_case_id??'flat')}
+
+    <div class="m-section">PLU</div>
+    ${row('Zone', plu.zone??'?')}
+    ${row('CES max', (plu.ces_max_pct??'?')+'%')}
+    ${row('H faitage max', (plu.hauteur_faitage_max_m??'?')+'m')}
+    ${row('Recul voie / fond', (plu.recul_voie_m??'?')+'m / '+(plu.recul_fond_m??'?')+'m')}
+    ${row('Mitoyen', plu.mitoyen_g||plu.mitoyen_d ? 'Oui' : 'Non')}
+
+    <div class="m-section">Réel</div>
+    ${row('Emprise', (mr.surface_emprise_m2??'?')+' m²')}
+    ${row('CES réel', mr.ces_reel??'?', cesCls)}
+    ${bar(mr.ces_reel??0, cesCls)}
+    ${row('Niveaux', bat.niveaux??'?')}
+    ${row('Shape type', bat.shape_type??'?')}
+    ${row('Strategy guess', bat.strategy_guess??'inconnu')}
+    ${row('Conforme PLU', mr.conforme_plu ? '✅ Oui' : '❌ Non', mr.conforme_plu?'ok':'bad')}
+  `;
+
+  if (bm) {
+    html += `
+      <div class="m-section">Conformité engine</div>
+      ${row('Score composite', (combi*100).toFixed(1)+'%', combis)}
+      ${bar(combi, combis)}
+      ${row('IoU', (iou*100).toFixed(1)+'%', ious)}
+      ${bar(iou, ious)}
+      ${row('Δ orientation', (bm.delta_orientation_deg??'?')+'°')}
+      ${row('Δ CES', bm.delta_ces??'?')}
+      ${row('Stratégie best', bm.strategy??'?')}
+
+      <div class="m-section">Toutes variantes</div>
+      <div class="strat-list">
+    `;
+    for (const sol of sols.slice(0, 8)) {
+      const c  = sol.conformity ?? {};
+      const iu = c.iou ?? 0;
+      const cs = c.combined_score ?? 0;
+      const cls = iu >= 0.6 ? 'ok' : iu >= 0.4 ? 'mid' : '';
+      html += `<div class="strat-row ${sol===sols[0]?'best':''}">
+        <span>${sol.family??'?'} · ${sol.strategy??'?'}</span>
+        <span class="strat-iou" style="color:${cls==='ok'?'var(--ok)':cls==='mid'?'var(--mid)':'var(--warn)'}">
+          IoU ${(iu*100).toFixed(0)}% · ${(cs*100).toFixed(0)}
+        </span>
+      </div>`;
+    }
+    html += '</div>';
+  } else {
+    html += `<div class="m-section" style="color:var(--warn)">Engine non calculé</div>
+      <p style="font-size:10px;color:var(--muted);padding:6px 0">Lancez CorpusRunner sur ce cas pour obtenir les scores de conformité.</p>`;
+  }
+
+  mb.innerHTML = html;
+}
+
+// ── Liste des cas ─────────────────────────────────────────────────────────────
+function renderList() {
+  const list = document.getElementById('case-list');
+  const filtered = activeFilters.size === 0 ? corpus : corpus.filter(c => {
+    const f = c.comparable_filters ?? {};
+    return [...activeFilters].every(filt => {
+      const [key, val] = filt.split(':');
+      return String(f[key] ?? c.plu?.[key] ?? '') === val;
+    });
+  });
+
+  if (!filtered.length) { list.innerHTML = '<div class="empty">Aucun cas dans ce filtre</div>'; return; }
+
+  list.innerHTML = filtered.map((c, i) => {
+    const bm  = c.engine_results?.best_match;
+    const iou = bm?.iou ?? null;
+    const cls = iou === null ? '' : iou >= 0.6 ? 'ok' : iou >= 0.4 ? 'mid' : 'bad';
+    return `<div class="case-item${activeCase?.id===c.id?' active':''}" onclick="selectCase(${i})">
+      <div class="ci-id">${c.id}
+        ${iou !== null ? `<span class="ci-score ${cls}">${(iou*100).toFixed(0)}%</span>` : ''}
+      </div>
+      <div class="ci-main">${c.meta?.commune??'?'} · ${c.meta?.annee_construction??'?'}</div>
+      <div class="ci-sub">
+        <span>Zone ${c.plu?.zone??'?'}</span>
+        <span>${c.parcelle?.surface_m2??'?'} m²</span>
+        <span>${c.bat_reel?.type_programme??'?'}</span>
+        ${bm ? `<span>${bm.strategy??'?'}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectCase(idx) {
+  const filtered = activeFilters.size === 0 ? corpus : corpus.filter(c => {
+    const f = c.comparable_filters ?? {};
+    return [...activeFilters].every(filt => {
+      const [key, val] = filt.split(':');
+      return String(f[key] ?? c.plu?.[key] ?? '') === val;
+    });
+  });
+  if (filtered[idx]) renderCase(filtered[idx]);
+  renderList();
+}
+
+function buildFilters() {
+  const zones   = [...new Set(corpus.map(c => c.plu?.zone).filter(Boolean))];
+  const pentes  = [...new Set(corpus.map(c => c.comparable_filters?.bucket_pente).filter(Boolean))];
+  const surfaces = [...new Set(corpus.map(c => c.comparable_filters?.bucket_surface).filter(Boolean))];
+  const fr = document.getElementById('filter-row');
+  fr.innerHTML = '<span style="font-size:9px;color:var(--muted)">Zone:</span>';
+  zones.forEach(z => {
+    const b = document.createElement('button');
+    b.className = 'chip'; b.textContent = z;
+    b.onclick = () => { const k = `groupe_plu:${z}`; activeFilters.has(k)?activeFilters.delete(k):activeFilters.add(k); b.classList.toggle('on'); renderList(); };
+    fr.appendChild(b);
+  });
+  fr.innerHTML += '<span style="font-size:9px;color:var(--muted);margin-left:6px">Pente:</span>';
+  pentes.forEach(p => {
+    const b = document.createElement('button');
+    b.className = 'chip'; b.textContent = p;
+    b.onclick = () => { const k = `bucket_pente:${p}`; activeFilters.has(k)?activeFilters.delete(k):activeFilters.add(k); b.classList.toggle('on'); renderList(); };
+    fr.appendChild(b);
+  });
+}
+
+function loadCorpus(cases) {
+  corpus = Array.isArray(cases) ? cases : Object.values(cases);
+  document.getElementById('corpus-count').textContent = corpus.length + ' cas chargés';
+  buildFilters();
+  renderList();
+  if (corpus.length) renderCase(corpus[0]);
+}
+
+function loadFile(evt) {
+  const file = evt.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      loadCorpus(Array.isArray(data) ? data : data.cases ?? Object.values(data));
+    } catch(err) { alert('Erreur JSON: ' + err.message); }
+  };
+  reader.readAsText(file);
+}
+
+// ── Démo synthétique ─────────────────────────────────────────────────────────
+function loadDemo() {
+  // Génère un corpus de démo avec des cas synthétiques réalistes
+  const demo = [];
+  const communes = ['Saint-Denis','Saint-Paul','Le Tampon','Saint-Pierre','Sainte-Marie'];
+  const zones    = ['UA','UB','Ug','UA','UB'];
+  const rng = n => Math.random() * n;
+  for (let i = 0; i < 12; i++) {
+    const W = 18 + rng(15), D = 25 + rng(20), pct = 40 + rng(25);
+    const bW = W * 0.65, bD = D * 0.45;
+    const cx = W/2, cy = D * 0.38;
+    const iou = 0.3 + rng(0.55), orient = rng(40), strats = ['rect','oblique','multi','lshape','alize'];
+    demo.push({
+      id: `REUNION_DEMO_2023_${String(i).padStart(4,'0')}`,
+      meta: { commune: communes[i%5], annee_construction: 2020+Math.floor(rng(5)), source: 'estimation', statut: 'a_verifier', date_annotation: '2026-04-14' },
+      parcelle: {
+        geojson_local: [{x:0,y:0},{x:W,y:0},{x:W,y:D},{x:0,y:D}],
+        surface_m2: Math.round(W*D), perimetre_m: Math.round(2*(W+D)*10)/10,
+        shape_ratio: Math.round(Math.max(W,D)/Math.min(W,D)*100)/100,
+        obb_theta_deg: 0, bearing_voie_deg: 180, edge_types: ['voie','lat','fond','lat'],
+        topographie: { pente_moy_pct: Math.round(rng(25)), topo_case_id: rng(1)<0.6?'flat':'gentle', altitude_ngr_m: Math.round(50+rng(400)) },
+      },
+      plu: { zone: zones[i%5], recul_voie_m: 2+Math.floor(rng(2)), recul_fond_m: 2+Math.floor(rng(2)), recul_lat_m: 3, hauteur_faitage_max_m: 9, ces_max_pct: Math.round(pct), rtaa_zone: 1 },
+      bat_reel: {
+        blocs: [{ polygon_local: [{x:cx-bW/2,y:cy},{x:cx+bW/2,y:cy},{x:cx+bW/2,y:cy+bD},{x:cx-bW/2,y:cy+bD}], niveaux: 2+Math.floor(rng(3)), surface_m2: Math.round(bW*bD) }],
+        type_programme: 'collectif_moyen', niveaux: 2+Math.floor(rng(3)),
+        surface_emprise_m2: Math.round(bW*bD), shape_type: 'rect', strategy_guess: strats[Math.floor(rng(5))],
+      },
+      metriques_reelles: { ces_reel: Math.round(bW*bD/(W*D)*1000)/1000, conforme_plu: true },
+      comparable_filters: { bucket_surface: W*D<600?'S_300-600':'M_600-1200', bucket_pente: rng(1)<0.6?'flat':'gentle', groupe_plu: zones[i%5], has_mitoyen: false },
+      engine_results: {
+        solutions: strats.map(s => ({
+          family: 'A1', strategy: s, score: Math.round(rng(1000)), niveaux: 3,
+          conformity: {
+            combined_score: Math.round((s === strats[Math.floor(rng(5))] ? 0.6+rng(0.35) : rng(0.55))*1000)/1000,
+            iou: Math.round((s===strats[0]?iou:rng(iou+0.2))*1000)/1000,
+            delta_orientation_deg: Math.round(orient*10)/10,
+            delta_ces: Math.round(rng(0.15)*1000)/1000,
+          },
+          blocs: [{ polygon: [{x:cx-bW/2+1,y:cy+1},{x:cx+bW/2-1,y:cy+1},{x:cx+bW/2-1,y:cy+bD-1},{x:cx-bW/2+1,y:cy+bD-1}] }],
+        })).sort((a,b)=>b.conformity.combined_score-a.conformity.combined_score),
+        best_match: null,
+      },
+    });
+    const sol = demo[i].engine_results.solutions[0];
+    demo[i].engine_results.best_match = { family: sol.family, strategy: sol.strategy, combined_score: sol.conformity.combined_score, iou: sol.conformity.iou };
+  }
+  loadCorpus(demo);
+}
+
+// ── Lancer l'engine sur les cas chargés ──────────────────────────────────────
+// Importe dynamiquement TerrainP07Adapter, AutoPlanEngine, ConformityScorer,
+// CorpusRunner, FootprintHelpers, lance runCorpus(cases, {saveToFirebase:false}),
+// puis declenche le download de corpus.json (cases enrichis avec engine_results).
+async function runEngineOnLoaded() {
+  if (!corpus.length) { alert('Charge d\'abord un corpus (Démo ou JSON).'); return; }
+  const status = document.getElementById('run-status');
+  const btn    = document.getElementById('btn-run-engine');
+  btn.disabled = true; btn.style.opacity = '.5';
+  status.textContent = 'Chargement services…';
+  try {
+    // Imports dynamiques (chemin relatif depuis phases/corpus-viewer.html)
+    const [FH, TPA, APE, CS, CR] = await Promise.all([
+      import('../services/footprint-helpers.js').then(m => m.default),
+      import('../services/terrain-p07-adapter.js').then(m => m.default ?? m.TerrainP07Adapter),
+      import('../services/auto-plan-engine.js').then(m => m.default ?? m.AutoPlanEngine),
+      import('../services/conformity-scorer.js').then(m => m.default),
+      import('../services/corpus-runner.js').then(m => m.default),
+    ]);
+    window.FH = FH; window.TerrainP07Adapter = TPA;
+    window.AutoPlanEngine = APE; window.ConformityScorer = CS;
+    window.CorpusRunner = CR;
+    status.textContent = `Engine ${corpus.length} cas… 0/${corpus.length}`;
+
+    const t0 = performance.now();
+    const { results, stats } = await CR.runCorpus(corpus, {
+      saveToFirebase: false, delayMs: 50,
+      onProgress: d => {
+        if (d.status === 'done')
+          status.textContent = `${d.i + 1}/${d.total} · ${d.id} ${(d.combined_score ?? 0).toFixed(2)}`;
+      },
+      onError: e => console.error('[engine]', e.id, e.err),
+    });
+    const dt = ((performance.now() - t0) / 1000).toFixed(1);
+    const okN = results.filter(r => r.ok).length;
+    status.textContent = `Done · ${okN}/${corpus.length} en ${dt}s · IoU moy ${(stats?.iou_moyen ?? 0).toFixed(2)}`;
+
+    // Download corpus.json
+    const blob = new Blob([JSON.stringify(corpus, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'corpus.json'; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+    // Re-render avec engine_results
+    renderList();
+    if (activeCase) {
+      const refreshed = corpus.find(c => c.id === activeCase.id);
+      if (refreshed) renderCase(refreshed);
+    }
+  } catch (err) {
+    console.error('[engine] FATAL', err);
+    status.textContent = `Erreur: ${err.message}`;
+    alert('Erreur engine: ' + err.message + '\n(détails console)');
+  } finally {
+    btn.disabled = false; btn.style.opacity = '1';
+  }
+}
+
+// ── Auto-load au démarrage ───────────────────────────────────────────────────
+// Tente ../data/corpus.json (corpus enrichi, idéal), puis ../data/corpus-seed.json
+// (seed brut — pas de solutions engine, badge IoU masqué), sinon attend un click.
+async function autoLoad() {
+  for (const path of ['../data/corpus.json', '../data/corpus-seed.json']) {
+    try {
+      const r = await fetch(path, { cache: 'no-cache' });
+      if (!r.ok) continue;
+      const data = await r.json();
+      const cases = Array.isArray(data) ? data : (data.cases ?? Object.values(data));
+      if (!cases?.length) continue;
+      const enriched = cases.map((c, i) => {
+        if (c.id && c.parcelle) return c;
+        // Seed brut → wrap minimal pour le viewer
+        return {
+          id: `REUNION_SEED_${String(i).padStart(4, '0')}`,
+          meta: { ...c.meta, statut: c.meta?.statut ?? 'a_verifier' },
+          parcelle: { geojson_local: [], surface_m2: c.meta?.surface_emprise_m2 ?? 0, edge_types: [] },
+          plu: c.plu ?? {},
+          bat_reel: { blocs: [], type_programme: 'collectif_moyen',
+                      niveaux: c.meta?.niveaux_estime ?? 2,
+                      surface_emprise_m2: c.meta?.surface_emprise_m2 ?? 0 },
+          metriques_reelles: {}, comparable_filters: { groupe_plu: c.plu?.zone ?? 'UA' },
+          engine_results: null,
+          _seed: true, _address: c.address,
+        };
+      });
+      console.log(`[corpus-viewer] auto-load ${path} → ${enriched.length} cas`);
+      loadCorpus(enriched);
+      return;
+    } catch (err) { /* silent */ }
+  }
+  console.log('[corpus-viewer] aucun corpus local — utiliser ▶ Démo ou Charger JSON');
+}
+autoLoad();
+</script>
+</body>
+</html>
