@@ -102,7 +102,7 @@
 
   <!-- Alerte ambiguïtés PLU -->
   <div id="plu-ambig-alert" style="display:none" class="form-section" style="padding:0">
-    <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-left:3px solid #f59e0b;border-radius:var(--r-sm);padding:8px 11px;font-family:var(--font-mono);font-size:.72rem;line-height:1.6;color:#8a6d1b">
+    <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-left:3px solid var(--c-warn);border-radius:var(--r-sm);padding:8px 11px;font-family:var(--font-mono);font-size:.72rem;line-height:1.6;color:#8a6d1b">
       <div style="font-weight:600;margin-bottom:4px">Données PLU incomplètes — vérification requise</div>
       <div id="plu-ambig-list"></div>
       <div style="margin-top:6px;font-size:.65rem;color:var(--muted)">Corrigez les valeurs directement dans les champs ci-dessous. Les valeurs affichées sont des estimations par défaut.</div>
@@ -194,7 +194,7 @@
   </details>
 
   <!-- Bandeau âge données PLU -->
-  <div id="plu-age-warning" style="display:none;margin:8px 13px;padding:6px 10px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-left:3px solid #f59e0b;border-radius:var(--r-sm);font-size:10px;color:#8a6d1b">
+  <div id="plu-age-warning" style="display:none;margin:8px 13px;padding:6px 10px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-left:3px solid var(--c-warn);border-radius:var(--r-sm);font-size:10px;color:#8a6d1b">
     <strong>⏱ PLU ancien :</strong> <span id="plu-age-text">—</span>. Vérifier les modifications récentes sur le Géoportail de l'Urbanisme.
   </div>
 
@@ -580,6 +580,25 @@ const P04 = {
     document.querySelectorAll(`[name="${field}"]`).forEach(r => r.closest('.radio-option')?.classList.remove('selected'));
     label.classList.add('selected');
     SessionManager.saveTerrain({ [field]: val });
+
+    // Journal + notifications sur choix sensibles
+    window.DecisionJournal?.logChoix({ phase: 4, etape: field, valeur: val, auto: false });
+
+    if (field === 'acces_voie' && val === 'enclave') {
+      window.TerlabNotification?.notify({
+        severity: 'critique', phase: 4,
+        rule: 'Parcelle enclavee',
+        message: 'Sans servitude de passage enregistree, le PC peut etre refuse (Art. 682 Code civil). Verifiez aupres du notaire avant tout depot.',
+        docRef: { label: 'Code civil Art. 682', url: 'https://www.legifrance.gouv.fr' },
+      });
+    }
+    if (field === 'abf' && val === 'oui') {
+      window.TerlabNotification?.notify({
+        severity: 'critique', phase: 4,
+        rule: 'Avis conforme ABF requis',
+        message: 'Perimetre ABF : instruction rallongee de 2 mois. Projet soumis a avis conforme de l\'architecte des batiments de France.',
+      });
+    }
   },
 
   // ─── Affichage résultat SCOT ─────────────────────────────────

@@ -54,19 +54,19 @@
       <label class="field-label">Zone PPRN (manuelle ou auto-détectée)</label>
       <div class="pprn-zones">
         <button class="pprn-zone-btn" data-zone="R1" onclick="P03.selectZone(this,'R1')" title="Rouge fort — inconstructible">
-          <span class="pz-color" style="background:#ef4444"></span>R1
+          <span class="pz-color" style="background:var(--c-danger)"></span>R1
         </button>
         <button class="pprn-zone-btn" data-zone="R2" onclick="P03.selectZone(this,'R2')" title="Rouge modéré — inconstructible">
           <span class="pz-color" style="background:#f87171"></span>R2
         </button>
         <button class="pprn-zone-btn" data-zone="B1" onclick="P03.selectZone(this,'B1')" title="Bleu fort — conditions strictes">
-          <span class="pz-color" style="background:#3b82f6"></span>B1
+          <span class="pz-color" style="background:var(--c-info)"></span>B1
         </button>
         <button class="pprn-zone-btn" data-zone="B2" onclick="P03.selectZone(this,'B2')" title="Bleu modéré — conditions">
           <span class="pz-color" style="background:#60a5fa"></span>B2
         </button>
         <button class="pprn-zone-btn" data-zone="J" onclick="P03.selectZone(this,'J')" title="Jaune — vigilance">
-          <span class="pz-color" style="background:#fbbf24"></span>J
+          <span class="pz-color" style="background:var(--c-warn)"></span>J
         </button>
         <button class="pprn-zone-btn" data-zone="W" onclick="P03.selectZone(this,'W')" title="Blanc — hors zone">
           <span class="pz-color" style="background:#e2e8f0"></span>W
@@ -182,9 +182,9 @@
   <!-- Légende -->
   <div class="pprn-legend">
     <div class="legend-title">PPRN inondation</div>
-    <div class="legend-item"><span style="background:#ef4444"></span>R — Rouge (inconstructible)</div>
-    <div class="legend-item"><span style="background:#3b82f6"></span>B — Bleu (sous conditions)</div>
-    <div class="legend-item"><span style="background:#fbbf24"></span>J — Jaune (vigilance)</div>
+    <div class="legend-item"><span style="background:var(--c-danger)"></span>R — Rouge (inconstructible)</div>
+    <div class="legend-item"><span style="background:var(--c-info)"></span>B — Bleu (sous conditions)</div>
+    <div class="legend-item"><span style="background:var(--c-warn)"></span>J — Jaune (vigilance)</div>
     <div class="legend-item"><span style="background:rgba(14,165,233,.3)"></span>Eau &lt; 1m</div>
     <div class="legend-item"><span style="background:rgba(2,132,199,.6)"></span>Eau 1–3m</div>
     <div class="legend-item"><span style="background:rgba(3,105,161,.75)"></span>Eau &gt; 3m</div>
@@ -314,7 +314,7 @@
 .pprn-scan-zone .sz-bar { height:4px; border-radius:2px; min-width:20px; }
 .pprn-scan-alert { margin-top:6px; padding:6px 10px; border-radius:var(--r-sm); font-size:11px; font-weight:600; border-left:3px solid; }
 .pprn-scan-alert.danger { background:rgba(239,68,68,.1); border-left-color:var(--danger); color:var(--danger); }
-.pprn-scan-alert.info { background:rgba(59,130,246,.1); border-left-color:#3b82f6; color:#3b82f6; }
+.pprn-scan-alert.info { background:rgba(59,130,246,.1); border-left-color:var(--c-info); color:var(--c-info); }
 .pprn-scan-alert.success { background:rgba(34,197,94,.1); border-left-color:var(--success); color:var(--success); }
 </style>
 
@@ -393,7 +393,7 @@ const P03 = {
     results.innerHTML = risques.map(r => {
       const name = r.typeRisque ?? r.libelle ?? JSON.stringify(r);
       const color = name.toLowerCase().includes('rouge') || name.toLowerCase().includes('inconstr') ? 'var(--danger)' :
-                    name.toLowerCase().includes('bleu') ? '#3b82f6' :
+                    name.toLowerCase().includes('bleu') ? 'var(--c-info)' :
                     name.toLowerCase().includes('jaune') ? 'var(--warning)' : 'var(--muted)';
       return `<div class="gr-item" style="border-left-color:${color};color:var(--text2)">${name}</div>`;
     }).join('');
@@ -432,6 +432,36 @@ const P03 = {
 
     SessionManager.saveTerrain({ zone_pprn: zone });
     this._updateAlea('inondation', zone === 'W' ? 'Hors zone' : `Zone ${zone}`, ['R1','R2','B1'].includes(zone));
+
+    // Notifications hierarchisees selon la zone PPRN
+    if (window.TerlabNotification) {
+      if (['R1','R2'].includes(zone)) {
+        window.TerlabNotification.notify({
+          severity: 'bloquant',
+          phase: 3,
+          rule: `Zone PPRN ${zone} — inconstructible`,
+          message: 'Construction nouvelle interdite. Projet non viable dans ces conditions. Consultez la mairie pour toute demarche exceptionnelle.',
+          docRef: { label: 'PPR approuves La Reunion — DEAL', url: 'https://www.reunion.developpement-durable.gouv.fr' },
+        });
+      } else if (['B1','B2'].includes(zone)) {
+        window.TerlabNotification.notify({
+          severity: 'critique',
+          phase: 3,
+          rule: `Zone PPRN ${zone}`,
+          message: 'Construction autorisee avec prescriptions techniques (plancher surieleve, materiaux). Lisez le reglement PPR applicable.',
+          docRef: { label: 'Reglement PPR — DEAL 974', url: 'https://www.reunion.developpement-durable.gouv.fr' },
+        });
+      }
+    }
+    if (window.DecisionJournal) {
+      window.DecisionJournal.logChoix({
+        phase: 3,
+        etape: 'pprn_zone',
+        valeur: zone,
+        motif: `Zone PPRN ${zone} selectionnee`,
+        auto: false,
+      });
+    }
   },
 
   updateCoteDisplay() {

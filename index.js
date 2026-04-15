@@ -7,7 +7,10 @@
 //   ✅ Topbar redesignée : phase-cards avec numéro + icône + label
 
 import SessionManager    from './components/session-manager.js';
+import TerlabNotification from './components/terlab-notification.js';
+import DecisionJournal   from './services/decision-journal-service.js';
 import TerlabStorage     from './components/terlab-storage.js';
+import TerlabUploadService from './components/terlab-upload-service.js';
 import TerlabScoreService from './services/terlab-score-service.js';
 import CoherenceService  from './services/coherence-service.js';
 import MapViewer         from './components/map-viewer.js';
@@ -15,6 +18,7 @@ import BIMSHOWBridge  from './components/bimshow-bridge.js';
 import ExportEngine   from './components/export-engine.js';
 import SourceModal    from './components/source-modal.js';
 import DemoLoader     from './components/demo-loader.js';
+import { ThemeSwitcher } from './components/theme-switcher.js';
 
 // ─── Services utilisés par les phases (centralisés ici) ─────────
 import BRGMService          from './services/brgm-service.js';
@@ -73,6 +77,10 @@ import RTAAAnalyzer           from './services/rtaa-analyzer.js';
 import UrbanismeAutorisations from './services/urbanisme-autorisations.js';
 import CelluleGenerator       from './services/cellule-generator.js';
 import RTAAValidator          from './services/rtaa-validator.js';
+import CorpusCollector        from './services/corpus-collector.js';
+import ConformityScorer       from './services/conformity-scorer.js';
+import CorpusRunner           from './services/corpus-runner.js';
+import CorpusNormalizer       from './services/corpus-normalizer.js';
 
 // ─── Module aéraulique (Sprints 1-4) ────────────────────────
 import ParcelSelector     from './components/parcel-selector.js';
@@ -138,6 +146,8 @@ const AppState = {
 // INIT
 // ═════════════════════════════════════════════════════════════════
 async function init() {
+  ThemeSwitcher.init_from_storage();
+  ThemeSwitcher.init('theme-switcher');
   setSplash('Chargement des données…', 10);
   try {
     const [meta, acteurs, risques, refs] = await Promise.all([
@@ -197,12 +207,16 @@ async function init() {
     updateSessionBadge();
 
     setSplash('Token Mapbox…', 50);
-    // Token public Mapbox (pk.* = client-side, non secret)
-    const _pk = ['pk.eyJ1IjoiYmltc2hvdyIsImEiOi', 'JjbW5yYm55bmkwMGxqMnJxdjU5YXNwcTRrIn0', '.yyUHXQXrvsD2wfSzxP0P0A'];
-    const defaultToken = _pk.join('');
-    // Purger les anciens tokens invalides du localStorage
+    // Token public Mapbox (pk.* = client-side, non secret).
+    // Token de dev temporaire (ashkenazior) — sans restriction URL, marche sur localhost.
+    // A remplacer par le token bimshow une fois ses Allowed URLs configurees
+    // (cf config/MAPBOX_SETUP.md).
+    const defaultToken = 'pk.eyJ1IjoiYXNoa2VuYXppb3IiLCJhIjoiY2pveHhvcmhkMjVvMDN3cGg4eGtneWhxMSJ9.3pFGOEZUl_n-xkVNkS1kFg';
+    // Purger les anciens tokens invalides du localStorage (rotation token)
     const stored = localStorage.getItem('terlab_mapbox_token');
     if (stored && stored !== defaultToken) localStorage.removeItem('terlab_mapbox_token');
+    const storedCustom = localStorage.getItem('terlab_mapbox_custom');
+    if (storedCustom && storedCustom.includes('Ymltc2hvdy')) localStorage.removeItem('terlab_mapbox_custom');
     AppState.mapboxToken = localStorage.getItem('terlab_mapbox_custom') || defaultToken;
 
     // Namespace TERLAB — évite les collisions avec BIMSHOW globals
@@ -222,9 +236,13 @@ async function init() {
     window.CoherenceService = CoherenceService;
     window.SessionManager   = SessionManager;
     window.BimshowViewer    = BimshowViewer;
+    window.TerlabNotification = TerlabNotification;
+    window.DecisionJournal    = DecisionJournal;
 
     // Aliases namespace (nouveau standard — utiliser window.TERLAB.* dans le nouveau code)
-    window.TERLAB.Session = SessionManager;
+    window.TERLAB.Session         = SessionManager;
+    window.TERLAB.Notification    = TerlabNotification;
+    window.TERLAB.DecisionJournal = DecisionJournal;
     window.TERLAB.Map     = MapViewer;
     window.TERLAB.Toast   = Toast;
     window.TERLAB.Export  = ExportEngine;
@@ -286,6 +304,10 @@ async function init() {
     window.UrbanismeAutorisations = UrbanismeAutorisations;
     window.CelluleGenerator       = CelluleGenerator;
     window.RTAAValidator          = RTAAValidator;
+    window.CorpusCollector        = CorpusCollector;
+    window.ConformityScorer       = ConformityScorer;
+    window.CorpusRunner           = CorpusRunner;
+    window.CorpusNormalizer       = CorpusNormalizer;
 
     // Composants phases
     window.RiskPlayer    = RiskPlayer;
@@ -472,6 +494,19 @@ async function route() {
     if (!t.commune && !t.parcelle_geojson) {
       window.location.hash = '#phase/0';
       return;
+    }
+  }
+
+  // P00 → P03 : avertissement non-bloquant si phase precedente incomplete
+  if (phaseId > 0) {
+    const guard = SessionManager.canAdvance(phaseId);
+    if (!guard.allowed) {
+      TerlabNotification.notify({
+        severity: 'avertissement',
+        message: `Phase ${guard.blockedBy} "${guard.title}" incomplète (${guard.missing.join(', ')}).`,
+        phase: phaseId,
+        duration: 4000
+      });
     }
   }
 
@@ -1174,7 +1209,7 @@ function hydrate(phaseId) {
 
 function attachValidationEvents(phaseId) {
   // Checkboxes
-  document.querySelectorAll('.check-item').forEach((item) => {
+  document.querySelectorAll('.check-item').forEach((item, idx) => {
     item.addEventListener('click', () => {
       if (item.classList.contains('auto-checked')) return; // verrouillé par auto-validation
       const wasChecked = item.classList.contains('checked');
@@ -1184,6 +1219,17 @@ function attachValidationEvents(phaseId) {
       checkSvgs.forEach(svg => svg.style.display = !wasChecked ? 'block' : 'none');
       saveFieldsToSession(phaseId);
       updateValidationProgress(phaseId);
+      // Journal de decisions : validation manuelle d'une checkbox bloquante
+      if (!wasChecked) {
+        const meta = PHASES_META?.phases?.find(p => p.id === phaseId);
+        const vmeta = meta?.validations?.[idx];
+        DecisionJournal.logValidation({
+          phase: phaseId,
+          etape: vmeta?.id || `v${String(phaseId).padStart(2,'0')}_${idx}`,
+          valeur: (item.textContent || '').trim(),
+          auto: false,
+        });
+      }
     });
     item.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); item.click(); }
@@ -1393,13 +1439,11 @@ function updateTerrainStrips() {
   const terrain = SessionManager.getTerrain();
   if (!terrain.commune) return;
 
-  // Topbar — afficher le nom du terrain
+  // Topbar — name custom (edit via ProjectMenu) sinon commune + parcelle
   const tbName = document.getElementById('tb-terrain-name');
   if (tbName) {
-    const parts = [terrain.commune];
     const ref = [terrain.section, terrain.parcelle].filter(Boolean).join('');
-    if (ref) parts.push(ref);
-    tbName.textContent = parts.join(' · ');
+    tbName.textContent = SessionManager.getDisplayName();
     tbName.title = [terrain.commune, ref, terrain.contenance_m2 ? terrain.contenance_m2 + ' m²' : ''].filter(Boolean).join(' · ');
   }
 
@@ -1589,11 +1633,17 @@ const ProjectMenu = {
     this._open ? this.close() : this.open();
   },
 
-  open() {
+  async open() {
     this._open = true;
     this.render();
     this._dropdown.classList.add('open');
     document.getElementById('btn-login')?.classList.add('active');
+    // Charge les projets cloud en arriere-plan si connecte
+    const cloud = await TerlabStorage.listCloudSessions();
+    if (cloud.length && this._open) {
+      this._cachedCloud = cloud;
+      this.render();
+    }
   },
 
   close() {
@@ -1607,26 +1657,55 @@ const ProjectMenu = {
     const currentId = SessionManager._sessionId;
     const t = SessionManager.getTerrain();
     const pct = SessionManager.getCompletionPct();
-    const loc = t?.commune ? `${t.commune} ${t.parcelle ?? ''}`.trim() : 'Aucune parcelle';
+    const displayName = SessionManager.getDisplayName();
     const col = pct < 30 ? 'var(--danger)' : pct < 60 ? 'var(--warning)' : 'var(--success)';
+    const isConnected = !!(window.TERLAB_UID && window.TERLAB_AUTH?.currentUser && !window.TERLAB_AUTH.currentUser.isAnonymous);
 
     let html = '';
 
-    // Current session header
+    // Current session header (avec titre editable)
     html += `
       <div class="pm-current">
         <div class="pm-current-label">Session active</div>
-        <div class="pm-current-loc">${loc}</div>
+        <div class="pm-current-loc">
+          <input id="pm-title-input" class="pm-title-input" value="${displayName.replace(/"/g,'&quot;')}" placeholder="Titre du projet"/>
+        </div>
         <div class="pm-current-meta">
           <span>${pct}% completé</span>
           <div class="pm-current-bar"><div class="pm-current-bar-fill" style="width:${pct}%;background:${col}"></div></div>
         </div>
       </div>`;
 
-    // Other projects
-    const others = sessions.filter(s => s.id !== currentId);
+    // Projets cloud (connecte seulement)
+    const cloud = this._cachedCloud ?? [];
+    if (isConnected && cloud.length) {
+      const cloudOthers = cloud.filter(s => s.id !== currentId);
+      if (cloudOthers.length) {
+        html += `<div class="pm-section">Mes projets (cloud)</div>`;
+        for (const s of cloudOthers) {
+          const sAgo = this._timeAgo(s.updatedAt);
+          const sPct = s.completion ?? 0;
+          const thumb = s.thumbnailUrl
+            ? `<img class="pm-item-thumb" src="${s.thumbnailUrl}" alt="" loading="lazy"/>`
+            : `<div class="pm-item-thumb pm-item-thumb-empty"></div>`;
+          html += `
+            <div class="pm-item pm-item-cloud" data-cloud-id="${s.id}">
+              ${thumb}
+              <div class="pm-item-info">
+                <div class="pm-item-loc">${(s.name || 'Sans titre').replace(/</g,'&lt;')}</div>
+                <div class="pm-item-sub">${sAgo} · ${sPct}%</div>
+              </div>
+              <button class="pm-item-del" data-cloud-del="${s.id}" title="Supprimer (cloud)">✕</button>
+            </div>`;
+        }
+      }
+    }
+
+    // Sessions locales
+    const cloudIds = new Set(cloud.map(s => s.id));
+    const others = sessions.filter(s => s.id !== currentId && !cloudIds.has(s.id));
     if (others.length > 0) {
-      html += `<div class="pm-section">Autres projets</div>`;
+      html += `<div class="pm-section">${isConnected ? 'Projets locaux (non synchronises)' : 'Autres projets'}</div>`;
       for (const s of others) {
         const sLoc = s.terrain?.commune || 'Sans commune';
         const sParcelle = s.terrain?.parcelle || s.terrain?.section || '';
@@ -1658,8 +1737,12 @@ const ProjectMenu = {
     }
 
     // Action buttons
+    const saveBtn = isConnected
+      ? `<button class="pm-action-btn pm-btn-save" id="pm-btn-save">Sauvegarder (cloud)</button>`
+      : '';
     html += `
       <div class="pm-actions">
+        ${saveBtn}
         <button class="pm-action-btn pm-btn-new" id="pm-btn-new">+ Nouveau</button>
         <button class="pm-action-btn" id="pm-btn-export">Exporter</button>
         <button class="pm-action-btn" id="pm-btn-import">Importer</button>
@@ -1671,7 +1754,54 @@ const ProjectMenu = {
   },
 
   _attachEvents() {
-    // Switch to other project
+    // Titre editable
+    const titleInput = this._dropdown.querySelector('#pm-title-input');
+    if (titleInput) {
+      const commit = () => {
+        const v = titleInput.value.trim();
+        SessionManager.setName(v || null);
+        const tbName = document.getElementById('tb-terrain-name');
+        if (tbName) tbName.textContent = SessionManager.getDisplayName();
+      };
+      titleInput.addEventListener('blur', commit);
+      titleInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); titleInput.blur(); }
+      });
+      titleInput.addEventListener('click', e => e.stopPropagation());
+    }
+
+    // Switch cloud
+    this._dropdown.querySelectorAll('.pm-item[data-cloud-id]').forEach(el => {
+      el.addEventListener('click', async (e) => {
+        if (e.target.closest('.pm-item-del')) return;
+        const id = el.dataset.cloudId;
+        await SessionManager.syncFirebase();
+        const data = await SessionManager.restoreFromFirebase(id);
+        if (!data) { Toast.show('Projet cloud introuvable', 'warning'); return; }
+        AppState.sessionId = id;
+        updateSessionBadge();
+        updateToplevelScore();
+        Toast.show(`Projet chargé : ${SessionManager.getDisplayName()}`, 'success');
+        this.close();
+        route();
+      });
+    });
+
+    // Delete cloud
+    this._dropdown.querySelectorAll('.pm-item-del[data-cloud-del]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.cloudDel;
+        Toast.confirm('Supprimer ce projet du cloud ?', async () => {
+          await TerlabStorage.deleteCloudSession(id);
+          this._cachedCloud = (this._cachedCloud || []).filter(s => s.id !== id);
+          this.render();
+          Toast.show('Projet cloud supprimé', 'info');
+        });
+      });
+    });
+
+    // Switch local
     this._dropdown.querySelectorAll('.pm-item[data-id]').forEach(el => {
       el.addEventListener('click', (e) => {
         if (e.target.closest('.pm-item-del')) return;
@@ -1679,7 +1809,7 @@ const ProjectMenu = {
       });
     });
 
-    // Delete
+    // Delete local
     this._dropdown.querySelectorAll('.pm-item-del[data-del]').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -1709,6 +1839,18 @@ const ProjectMenu = {
     // Import
     this._dropdown.querySelector('#pm-btn-import')?.addEventListener('click', () => {
       document.getElementById('pm-file-import')?.click();
+    });
+
+    // Sauvegarder cloud (force sync + thumbnail)
+    this._dropdown.querySelector('#pm-btn-save')?.addEventListener('click', async () => {
+      SessionManager._dirty = true;
+      SessionManager._lastThumbAt = 0;
+      await SessionManager.syncFirebase();
+      await TerlabUploadService.captureAndUploadThumbnail();
+      Toast.show('Projet sauvegardé dans le cloud', 'success');
+      const cloud = await TerlabStorage.listCloudSessions();
+      this._cachedCloud = cloud;
+      this.render();
     });
 
     // Logout (Firebase signOut + clear localStorage)

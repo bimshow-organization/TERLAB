@@ -563,7 +563,7 @@ const P05 = {
     const classEl = document.getElementById('p05-rb-class');
     if (classEl) {
       const CLASSIF = {
-        degage:        { label: 'Dégagé (H/L < 0.5)', bg: '#163b2a', fg: '#4ade80', desc: 'Bonne ventilation naturelle' },
+        degage:        { label: 'Dégagé (H/L < 0.5)', bg: '#163b2a', fg: 'var(--c-ok)', desc: 'Bonne ventilation naturelle' },
         intermediaire: { label: 'Intermédiaire (0.5 ≤ H/L < 1.5)', bg: '#3b2e10', fg: '#f0c040', desc: 'Ventilation partielle' },
         canyon:        { label: 'Canyon (H/L ≥ 1.5)', bg: '#3b1010', fg: '#f07070', desc: 'Ventilation très réduite' },
       };
@@ -595,7 +595,7 @@ const P05 = {
     const bLeft  = cx - sW / 2 - bW;
     const bRight = cx + sW / 2;
 
-    const COLORS = { degage: '#4ade80', intermediaire: '#f0c040', canyon: '#f07070' };
+    const COLORS = { degage: 'var(--c-ok)', intermediaire: '#f0c040', canyon: '#f07070' };
     const streetColor = COLORS[classif] || '#888';
 
     // Fleches de vent (streamlines simplifiees)
@@ -784,7 +784,7 @@ const P05 = {
       if (btn) btn.style.background = 'none';
     } else {
       if (!map.getSource(srcId)) map.addSource(srcId, { type: 'geojson', data: feature });
-      const color = profile === 'pedestrian' ? '#3b82f6' : '#f59e0b';
+      const color = profile === 'pedestrian' ? 'var(--c-info)' : 'var(--c-warn)';
       map.addLayer({ id: fillId, type: 'fill', source: srcId, paint: { 'fill-color': color, 'fill-opacity': 0.18 } });
       map.addLayer({ id: lineId, type: 'line', source: srcId, paint: { 'line-color': color, 'line-width': 2 } });
       this._isoVisible[profile] = true;

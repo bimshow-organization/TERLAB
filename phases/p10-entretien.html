@@ -429,7 +429,7 @@ const P10 = {
     if (badge) {
       badge.style.display = 'block';
       badge.style.background = risk ? '#3b1010' : '#163b2a';
-      badge.style.color      = risk ? '#f07070' : '#4ade80';
+      badge.style.color      = risk ? '#f07070' : 'var(--c-ok)';
       badge.textContent = risk
         ? `⚠ CONDENSATION — T° paroi ${Tparoi.toFixed(1)}°C ≤ T° rosée ${Tdew.toFixed(1)}°C`
         : `✓ Pas de risque — T° paroi ${Tparoi.toFixed(1)}°C > T° rosée ${Tdew.toFixed(1)}°C`;
@@ -494,8 +494,8 @@ const P10 = {
       <!-- Zone condensation -->
       <rect x="${m.left}" y="${m.top}" width="${Math.max(0, ptDewX - m.left)}" height="${cH}" fill="rgba(239,68,68,0.06)"/>
       <!-- Ligne T paroi -->
-      <line x1="${ptParoiX}" y1="${m.top}" x2="${ptParoiX}" y2="${m.top + cH}" stroke="${risk ? '#f07070' : '#4ade80'}" stroke-width="1.5" stroke-dasharray="4,2"/>
-      <text x="${ptParoiX}" y="${m.top - 4}" fill="${risk ? '#f07070' : '#4ade80'}" font-size="6.5" text-anchor="middle" font-weight="bold" font-family="var(--font-mono)">T paroi</text>
+      <line x1="${ptParoiX}" y1="${m.top}" x2="${ptParoiX}" y2="${m.top + cH}" stroke="${risk ? '#f07070' : 'var(--c-ok)'}" stroke-width="1.5" stroke-dasharray="4,2"/>
+      <text x="${ptParoiX}" y="${m.top - 4}" fill="${risk ? '#f07070' : 'var(--c-ok)'}" font-size="6.5" text-anchor="middle" font-weight="bold" font-family="var(--font-mono)">T paroi</text>
       <!-- Ligne T rosée -->
       <line x1="${ptDewX}" y1="${m.top}" x2="${ptDewX}" y2="${m.top + cH}" stroke="#f0c040" stroke-width="1" stroke-dasharray="3,2"/>
       <text x="${ptDewX}" y="${m.top + cH + 12}" fill="#f0c040" font-size="6" text-anchor="middle" font-family="var(--font-mono)">T rosée ${Tdew.toFixed(1)}°</text>
@@ -518,9 +518,9 @@ const P10 = {
     const zone = alt < 400 ? 1 : alt < 800 ? 2 : 3;
 
     const TYPES = {
-      dalle_nue:      { label: 'Dalle béton nue', R: 0.05, risk: zone >= 2, color: '#ef4444', desc: 'Aucune isolation — flux thermique direct, condensation nocturne' },
-      dalle_isolee:   { label: 'Dalle + isolant', R: 2.5,  risk: false,     color: '#22c55e', desc: 'Isolation conforme RTAA — R ≥ 2.5 m²·K/W' },
-      tole_ventilee:  { label: 'Tôle ventilée',   R: 1.0,  risk: zone >= 3, color: '#f59e0b', desc: 'Standard Réunion — lame d\'air ventilée 4cm minimum' },
+      dalle_nue:      { label: 'Dalle béton nue', R: 0.05, risk: zone >= 2, color: 'var(--c-danger)', desc: 'Aucune isolation — flux thermique direct, condensation nocturne' },
+      dalle_isolee:   { label: 'Dalle + isolant', R: 2.5,  risk: false,     color: 'var(--c-ok)', desc: 'Isolation conforme RTAA — R ≥ 2.5 m²·K/W' },
+      tole_ventilee:  { label: 'Tôle ventilée',   R: 1.0,  risk: zone >= 3, color: 'var(--c-warn)', desc: 'Standard Réunion — lame d\'air ventilée 4cm minimum' },
     };
     const t = TYPES[type];
 
@@ -528,7 +528,7 @@ const P10 = {
     if (badge) {
       badge.style.display = 'block';
       badge.style.background = t.risk ? '#3b1010' : '#163b2a';
-      badge.style.color      = t.risk ? '#f07070' : '#4ade80';
+      badge.style.color      = t.risk ? '#f07070' : 'var(--c-ok)';
       badge.textContent = t.risk
         ? `⚠ ${t.label} en zone PERENE ${zone} — ${t.desc}`
         : `✓ ${t.label} — ${t.desc}`;
@@ -557,8 +557,8 @@ const P10 = {
                 <text x="${cx}" y="${roofY + slabH/2 + 3}" fill="var(--ink2)" font-size="6" text-anchor="middle" font-family="var(--font-mono)">Dalle béton 20cm</text>`;
     } else if (type === 'dalle_isolee') {
       isolantY = roofY - 6;
-      layers = `<rect x="60" y="${isolantY}" width="160" height="6" fill="#f59e0b" opacity="0.5" stroke="var(--ink2)" stroke-width="0.5"/>
-                <text x="${cx}" y="${isolantY + 4}" fill="#f59e0b" font-size="5" text-anchor="middle" font-family="var(--font-mono)">Isolant R=2.5</text>
+      layers = `<rect x="60" y="${isolantY}" width="160" height="6" fill="var(--c-warn)" opacity="0.5" stroke="var(--ink2)" stroke-width="0.5"/>
+                <text x="${cx}" y="${isolantY + 4}" fill="var(--c-warn)" font-size="5" text-anchor="middle" font-family="var(--font-mono)">Isolant R=2.5</text>
                 <rect x="60" y="${roofY}" width="160" height="${slabH}" fill="#778899" stroke="var(--ink2)" stroke-width="0.5"/>`;
     } else {
       // Tôle ventilée
@@ -570,7 +570,7 @@ const P10 = {
     }
 
     // Flèches flux thermique
-    const arrowColor = t.risk ? '#ef4444' : '#22c55e';
+    const arrowColor = t.risk ? 'var(--c-danger)' : 'var(--c-ok)';
     // Jour : soleil → toiture → intérieur (flèche descendante)
     const dayArrows = `
       <line x1="100" y1="8" x2="100" y2="${roofY - 2}" stroke="#f0c040" stroke-width="1.5" marker-end="url(#arrowDown)"/>

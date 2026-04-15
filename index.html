@@ -40,7 +40,7 @@
 
 <!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:ital,wght@0,400;0,500;0,600;1,400&family=Inconsolata:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:ital,wght@0,400;0,500;0,600;1,400&family=Inconsolata:wght@300;400;500;600;700;900&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet"/>
 
 <!-- Mapbox GL JS v3 -->
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.css" rel="stylesheet"/>
@@ -63,12 +63,22 @@
 <script src="https://unpkg.com/geotiff@2.1.3/dist-browser/geotiff.js"></script>
 <script src="https://unpkg.com/proj4@2.9.0/dist/proj4.js"></script>
 
+<!-- BPF TopViewSymbolService : window.TopViewSymbols + window.generateForDNA -->
+<script src="services/vegetation/topview-symbols.js"></script>
+
 <!-- jsPDF + html2canvas supprimés — PDF via print-template.html + window.print() -->
 
 <!-- Firebase (BIMSHOW) -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
   import { getDatabase, ref, set, get } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
+  import {
+    getStorage,
+    ref as storageRef,
+    uploadBytes,
+    getDownloadURL,
+    deleteObject
+  } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
   import {
     getAuth,
     onAuthStateChanged,
@@ -103,13 +113,19 @@
       // Persistance localStorage : la session BIMSHOW survit aux refresh
       await setPersistence(auth, browserLocalPersistence);
 
-      window.TERLAB_DB     = db;
-      window.TERLAB_AUTH   = auth;
-      window.TERLAB_FB_REF = ref;
-      window.TERLAB_FB_SET = set;
-      window.TERLAB_FB_GET = get;
+      window.TERLAB_DB      = db;
+      window.TERLAB_AUTH    = auth;
+      window.TERLAB_STORAGE = getStorage(app);
+      window.TERLAB_FB_REF  = ref;
+      window.TERLAB_FB_SET  = set;
+      window.TERLAB_FB_GET  = get;
+      window.TERLAB_FB_STORAGE_REF = storageRef;
+      window.TERLAB_FB_UPLOAD      = uploadBytes;
+      window.TERLAB_FB_GET_URL     = getDownloadURL;
+      window.TERLAB_FB_DELETE_OBJ  = deleteObject;
 
       // Synchroniser l'état d'auth depuis Firebase (login fait sur accueil.html)
+      let _prevUid = null;
       onAuthStateChanged(auth, async (user) => {
         if (user && !user.isAnonymous) {
           // Utilisateur BIMSHOW connecté
@@ -118,8 +134,18 @@
           localStorage.setItem('terlab_user_email', user.email || '');
           localStorage.setItem('terlab_auth', '1');
           console.info('TERLAB: BIMSHOW user', user.email);
+          // Migration auto : pousser la session locale en cloud user-scoped
+          if (_prevUid !== user.uid) {
+            _prevUid = user.uid;
+            window.dispatchEvent(new CustomEvent('terlab:user-login', { detail: { uid: user.uid, email: user.email } }));
+            try { await window.SessionManager?.onUserLogin?.(user.uid); } catch (e) { console.warn(e); }
+          }
         } else if (user && user.isAnonymous) {
           window.TERLAB_UID = user.uid;
+          if (_prevUid !== null) {
+            _prevUid = null;
+            window.dispatchEvent(new CustomEvent('terlab:user-logout'));
+          }
           console.info('TERLAB: anonymous uid', user.uid.slice(-8));
         } else {
           // Pas de user → fallback anonyme pour permettre les writes RTDB côté démo
@@ -133,9 +159,23 @@
   }
 </script>
 
+<!-- Theme hydration précoce : lit localStorage avant le premier paint -->
+<script>
+(function(){
+  try {
+    var t = localStorage.getItem('terlab-theme');
+    if (t === 'dark' || t === 'ivory' || t === 'earth') {
+      document.documentElement.dataset.theme = t;
+    }
+  } catch(_) {}
+})();
+</script>
+
 <!-- TERLAB CSS — ordre strict : tokens → shell → phase-base → map → composants → mobile -->
-<!-- 1. Tokens (variables, en premier TOUJOURS) -->
+<!-- 1. Tokens legacy (compat ancienne palette) -->
 <link rel="stylesheet" href="assets/tokens.css"/>
+<!-- 1b. Design System v1.0 (thèmes dark/ivory/earth + composants canoniques) -->
+<link rel="stylesheet" href="assets/terlab-design-system.css"/>
 <!-- 2. Shell (layout desktop) -->
 <link rel="stylesheet" href="assets/terlab-shell.css"/>
 <!-- 3. Styles communs phases -->
@@ -208,6 +248,9 @@
 
     <!-- Actions droite -->
     <div class="tb-right" role="toolbar" aria-label="Actions">
+
+      <!-- Theme switcher (dark / ivory / earth) -->
+      <div id="theme-switcher" class="theme-switcher" aria-label="Changer de thème"></div>
 
       <!-- Sources & References (deplace depuis la sidebar) -->
       <button class="tb-btn" id="tb-sources" onclick="TerlabSources.open(TerlabRouter.currentPhase)" title="Sources & Références" aria-label="Sources et références bibliographiques">
@@ -685,6 +728,8 @@ TerlabLogin.restore();
 <!-- ═══════════════════════════════════════════════════════
      SCRIPTS
 ═══════════════════════════════════════════════════════ -->
+<script type="module" src="components/theme-switcher.js"></script>
+<script type="module" src="utils/icons.js"></script>
 <script type="module" src="components/session-manager.js"></script>
 <script type="module" src="components/terlab-storage.js"></script>
 <script type="module" src="components/map-viewer.js"></script>

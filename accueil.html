@@ -1017,11 +1017,11 @@ function createNew() {
 
   const prefs = savePrefs();
   if (!prefs.etudiant) {
-    document.getElementById('input-prenom').focus();
-    document.getElementById('input-prenom').style.borderColor = 'var(--warning)';
-    setTimeout(() => {
-      document.getElementById('input-prenom').style.borderColor = '';
-    }, 2000);
+    const input = document.getElementById('input-prenom');
+    input.focus();
+    input.style.borderColor = 'var(--warning)';
+    setTimeout(() => { input.style.borderColor = ''; }, 2000);
+    window.TerlabToast?.show('Saisissez votre prénom avant de créer un projet', 'warning', 3500);
     return;
   }
   const sess = TerlabStorage.createSession(prefs);
