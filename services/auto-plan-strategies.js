@@ -311,6 +311,170 @@ const AutoPlanStrategies = {
     return blocs.map(b => ({ ...b, strategy: 'alize' }));
   },
 
+  // ═══════════════════════════════════════════════════════════════════
+  // Stratégies v4h portées depuis terlab_parcelles_v4h.html
+  // Utilisent maxInscribedAABB / maxInscribedRotAABB / clipPolygon
+  // ═══════════════════════════════════════════════════════════════════
+
+  // ── Stratégie : Aligné voirie (rectangle // edge voie) ────────────
+  // v4h 'voie' : utilise l'angle de l'edge voie comme axe principal,
+  // puis cherche le plus grand rectangle inscrit orienté selon cet axe.
+  roadAligned(env, parcelPoly, edgeTypes, wTarget, lTarget) {
+    if (!env || env.length < 3 || !parcelPoly || parcelPoly.length < 3) return [];
+    const envXY = env.map(p => FH.toXY(p));
+    const parcelXY = parcelPoly.map(p => FH.toXY(p));
+    const voieIdx = (edgeTypes ?? []).indexOf('voie');
+    if (voieIdx < 0) return [];
+    const j = (voieIdx + 1) % parcelXY.length;
+    const dx = parcelXY[j].x - parcelXY[voieIdx].x;
+    const dy = parcelXY[j].y - parcelXY[voieIdx].y;
+    const thetaRad = Math.atan2(dy, dx);
+    const thetaDeg = thetaRad * 180 / Math.PI;
+
+    // Max inscribed AABB orienté sur thetaRad (v4h maxRot)
+    const inscribed = FH.maxInscribedRotAABB(envXY, thetaRad);
+    if (!inscribed || inscribed.length < 3) return [];
+    const a = FH.area(inscribed);
+    if (a < MIN_W * MIN_L) return [];
+
+    // Dims du rect inscrit
+    const c = FH.centroid(inscribed);
+    const rot = FH.rotatePoly(inscribed, c.x, c.y, -thetaDeg);
+    const bb = FH.aabb(rot);
+    return [{
+      polygon: inscribed,
+      theta: thetaDeg,
+      w: Math.min(bb.w, bb.l),
+      l: Math.max(bb.w, bb.l),
+      strategy: 'roadAligned',
+      areaM2: a,
+    }];
+  },
+
+  // ── Stratégie : Long. lat. max (rectangle // plus long edge lateral) ──
+  latMax(env, parcelPoly, edgeTypes) {
+    if (!env || env.length < 3 || !parcelPoly || parcelPoly.length < 3) return [];
+    const envXY = env.map(p => FH.toXY(p));
+    const parcelXY = parcelPoly.map(p => FH.toXY(p));
+    const n = parcelXY.length;
+    let bestI = -1, bestLen = 0;
+    for (let i = 0; i < n; i++) {
+      if ((edgeTypes?.[i] ?? 'lat') !== 'lat' && (edgeTypes?.[i] ?? 'lateral') !== 'lateral') continue;
+      const j = (i + 1) % n;
+      const len = Math.hypot(parcelXY[j].x - parcelXY[i].x, parcelXY[j].y - parcelXY[i].y);
+      if (len > bestLen) { bestLen = len; bestI = i; }
+    }
+    if (bestI < 0) return [];
+    const j = (bestI + 1) % n;
+    const thetaRad = Math.atan2(parcelXY[j].y - parcelXY[bestI].y, parcelXY[j].x - parcelXY[bestI].x);
+    const inscribed = FH.maxInscribedRotAABB(envXY, thetaRad);
+    if (!inscribed || FH.area(inscribed) < MIN_W * MIN_L) return [];
+    const thetaDeg = thetaRad * 180 / Math.PI;
+    const c = FH.centroid(inscribed);
+    const rot = FH.rotatePoly(inscribed, c.x, c.y, -thetaDeg);
+    const bb = FH.aabb(rot);
+    return [{
+      polygon: inscribed,
+      theta: thetaDeg,
+      w: Math.min(bb.w, bb.l),
+      l: Math.max(bb.w, bb.l),
+      strategy: 'latMax',
+      areaM2: FH.area(inscribed),
+    }];
+  },
+
+  // ── Stratégie : T-Shape (intersection 2 rect orthogonaux) ────────
+  // Bar horizontal (traversant) + bar vertical (central court)
+  tShape(env, bearing = null, lRatio = 0.55, wRatio = 0.45) {
+    if (!env || env.length < 3) return [];
+    const envXY = env.map(p => FH.toXY(p));
+    const theta = bearing != null ? bearing : FH.obb(envXY).theta;
+
+    // Bar principal aligné sur theta — emprise du rect inscrit orienté
+    const primary = FH.maxInscribedRotAABB(envXY, theta * Math.PI / 180);
+    if (!primary || primary.length < 3) return [];
+    const c = FH.centroid(primary);
+    const rot = FH.rotatePoly(primary, c.x, c.y, -theta);
+    const bb = FH.aabb(rot);
+    const Wp = bb.w, Lp = bb.l;
+    const wBar = Wp * wRatio, lBar = Lp;                 // bar horizontal (fin, long)
+    const wStem = Wp, lStem = Lp * lRatio;                // bar vertical (large, court)
+
+    const bar = FH.rectCentered(c.x, c.y, wBar, lBar, theta);
+    const stem = FH.rectCentered(c.x, c.y, wStem, lStem, theta);
+    const barClip = FH.clipPolygon(bar, envXY);
+    const stemClip = FH.clipPolygon(stem, envXY);
+    const out = [];
+    if (barClip.length >= 3 && FH.area(barClip) >= MIN_W * MIN_L * 0.5) {
+      out.push({ polygon: barClip, theta, w: wBar, l: lBar, strategy: 'tShape', shapeType: 'tShape', part: 'bar', areaM2: FH.area(barClip) });
+    }
+    if (stemClip.length >= 3 && FH.area(stemClip) >= MIN_W * MIN_L * 0.5) {
+      out.push({ polygon: stemClip, theta, w: wStem, l: lStem, strategy: 'tShape', shapeType: 'tShape', part: 'stem', areaM2: FH.area(stemClip) });
+    }
+    return out.length ? out : [];
+  },
+
+  // ── Stratégie : Cross (+ intersection 2 rect orthogonaux centrés) ──
+  cross(env, bearing = null, armRatio = 0.35) {
+    if (!env || env.length < 3) return [];
+    const envXY = env.map(p => FH.toXY(p));
+    const theta = bearing != null ? bearing : FH.obb(envXY).theta;
+    const primary = FH.maxInscribedRotAABB(envXY, theta * Math.PI / 180);
+    if (!primary || primary.length < 3) return [];
+    const c = FH.centroid(primary);
+    const rot = FH.rotatePoly(primary, c.x, c.y, -theta);
+    const bb = FH.aabb(rot);
+    const Wp = bb.w, Lp = bb.l;
+    const wH = Wp * armRatio, lH = Lp;         // bras horizontal fin
+    const wV = Wp, lV = Lp * armRatio;          // bras vertical fin
+
+    const horiz = FH.rectCentered(c.x, c.y, wH, lH, theta);
+    const vert = FH.rectCentered(c.x, c.y, wV, lV, theta);
+    const hClip = FH.clipPolygon(horiz, envXY);
+    const vClip = FH.clipPolygon(vert, envXY);
+    const out = [];
+    if (hClip.length >= 3 && FH.area(hClip) >= MIN_W * MIN_L * 0.5) {
+      out.push({ polygon: hClip, theta, w: wH, l: lH, strategy: 'cross', shapeType: 'cross', part: 'horiz', areaM2: FH.area(hClip) });
+    }
+    if (vClip.length >= 3 && FH.area(vClip) >= MIN_W * MIN_L * 0.5) {
+      out.push({ polygon: vClip, theta, w: wV, l: lV, strategy: 'cross', shapeType: 'cross', part: 'vert', areaM2: FH.area(vClip) });
+    }
+    return out.length ? out : [];
+  },
+
+  // ── Stratégie : Bi-barre reliée (2 bars + noyau central) ─────────
+  // 2 barres parallèles + 1 petit noyau central reliant les deux.
+  biBarre(env, bearing = null, noyauM = 3) {
+    if (!env || env.length < 3) return [];
+    const envXY = env.map(p => FH.toXY(p));
+    const theta = bearing != null ? bearing : FH.obb(envXY).theta;
+    const primary = FH.maxInscribedRotAABB(envXY, theta * Math.PI / 180);
+    if (!primary || primary.length < 3) return [];
+    const c = FH.centroid(primary);
+    const rot = FH.rotatePoly(primary, c.x, c.y, -theta);
+    const bb = FH.aabb(rot);
+    const Lp = bb.l, Wp = bb.w;
+    const barL = (Lp - noyauM) / 2;
+    const barW = Wp;
+    if (barL < MIN_L) return [];
+
+    // Positions (dans le repère local de primary)
+    const u = { x: Math.cos(theta * Math.PI / 180), y: Math.sin(theta * Math.PI / 180) };
+    const offset = (noyauM + barL) / 2;
+    const c1 = { x: c.x - u.x * offset, y: c.y - u.y * offset };
+    const c2 = { x: c.x + u.x * offset, y: c.y + u.y * offset };
+
+    const bar1 = FH.clipPolygon(FH.rectCentered(c1.x, c1.y, barW, barL, theta), envXY);
+    const bar2 = FH.clipPolygon(FH.rectCentered(c2.x, c2.y, barW, barL, theta), envXY);
+    const noyau = FH.clipPolygon(FH.rectCentered(c.x, c.y, noyauM, noyauM, theta), envXY);
+
+    const out = [];
+    if (bar1.length >= 3 && FH.area(bar1) >= MIN_W * MIN_L * 0.5) out.push({ polygon: bar1, theta, w: barW, l: barL, strategy: 'biBarre', shapeType: 'biBarre', part: 'bar1', areaM2: FH.area(bar1) });
+    if (bar2.length >= 3 && FH.area(bar2) >= MIN_W * MIN_L * 0.5) out.push({ polygon: bar2, theta, w: barW, l: barL, strategy: 'biBarre', shapeType: 'biBarre', part: 'bar2', areaM2: FH.area(bar2) });
+    if (noyau.length >= 3 && FH.area(noyau) >= 4) out.push({ polygon: noyau, theta, w: noyauM, l: noyauM, strategy: 'biBarre', shapeType: 'biBarre', part: 'noyau', areaM2: FH.area(noyau) });
+    return out.length >= 2 ? out : [];
+  },
+
   // ── Tagger niveaux + hauteur sur une liste de blocs ──────────────
   applyLevels(blocs, niveaux, hNiv = H_NIV) {
     return blocs.map(b => ({

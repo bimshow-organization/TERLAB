@@ -4,7 +4,7 @@
 <div class="left-panel" id="left-panel-p07">
 
   <div class="lp-head anim-slide-up">
-    <div class="phase-label" style="color:#f59e0b">Phase 7 · Esquisse</div>
+    <div class="phase-label" style="color:var(--c-warn)">Phase 7 · Esquisse</div>
     <h1 class="phase-title">🏗 <em>Esquisse</em> & Simulation</h1>
     <p class="phase-desc">Poser le gabarit du projet et vérifier sa conformité avec les phases précédentes. Le modèle est exportable vers BIMSHOW pour rendu haute qualité et vers DXF/IFC pour production.</p>
   </div>
@@ -80,9 +80,10 @@
       <div class="field-row">
         <label class="field-label">Niv. max</label>
         <input type="range" id="pm-nvmax" min="1" max="3" value="2" step="1"
-               oninput="window.P07?.setProg('nvMax',+this.value);window.PlanMasseCanvas?.setProg('nvMax',+this.value);document.getElementById('pm-nvmax-lbl').textContent=['','R+0','R+1','R+2','R+3'][+this.value]"/>
+               oninput="window.P07?.setProg('nvMax',+this.value);window.PlanMasseCanvas?.setProg('nvMax',+this.value);document.getElementById('pm-nvmax-lbl').textContent=['','R+0','R+1','R+2','R+3'][+this.value];window._p07RefreshPluLimits?.()"/>
         <span id="pm-nvmax-lbl" style="font-size:10px;color:var(--accent);min-width:30px">R+1</span>
       </div>
+      <div id="pm-nvmax-hint" style="font:8.5px var(--font-mono);color:var(--faint);margin-top:-4px;margin-left:78px"></div>
       <!-- TOPO CASE PANEL (alimenté par EsquisseCanvas._applyTopoConstraints) -->
       <div id="topo-case-panel" class="topo-panel" style="display:none">
         <div class="topo-label">
@@ -102,9 +103,10 @@
       <div class="field-row">
         <label class="field-label">Prof. max N-S</label>
         <input type="range" id="pm-profmax" min="5" max="25" value="15" step="0.5"
-               oninput="window.P07?.setProg('profMax',+this.value);window.PlanMasseCanvas?.setProg('profMax',+this.value);document.getElementById('pm-profmax-lbl').textContent=this.value+'m'"/>
+               oninput="window.P07?.setProg('profMax',+this.value);window.PlanMasseCanvas?.setProg('profMax',+this.value);document.getElementById('pm-profmax-lbl').textContent=this.value+'m';window._p07RefreshPluLimits?.()"/>
         <span id="pm-profmax-lbl" style="font-size:10px;color:var(--accent);min-width:30px">15m</span>
       </div>
+      <div id="pm-profmax-hint" style="font:8.5px var(--font-mono);color:var(--faint);margin-top:-4px;margin-left:78px"></div>
       <div class="field-row" id="pm-maxunits-row" style="display:none">
         <label class="field-label">Max lgts/bloc</label>
         <input type="range" id="pm-maxunits" min="0" max="40" value="20" step="1"
@@ -580,15 +582,79 @@
 
   <!-- ═══ TOOLBAR PLAN MASSE (ivoire) ═══ -->
   <div id="pmc-toolbar" style="position:absolute;top:52px;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:4px;align-items:center;font-family:var(--font-mono);font-size:9px">
-    <div style="display:flex;gap:2px;background:rgba(237,232,220,.92);border:1px solid var(--border);border-radius:4px;padding:2px;backdrop-filter:blur(6px);box-shadow:var(--sh)">
-      <button class="pmc-sc-btn active" data-sc="B1" style="padding:3px 8px;border:1px solid var(--border2);border-radius:3px;background:var(--accent2);color:var(--accent);font:600 9px var(--font-mono);cursor:pointer">B1</button>
-      <button class="pmc-sc-btn" data-sc="A1" style="padding:3px 8px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 9px var(--font-mono);cursor:pointer">A1</button>
-      <button class="pmc-sc-btn" data-sc="B2" style="padding:3px 8px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 9px var(--font-mono);cursor:pointer">B2</button>
-      <button class="pmc-sc-btn" data-sc="C1" style="padding:3px 8px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 9px var(--font-mono);cursor:pointer">C1</button>
+    <div id="pmc-sc-wrap" style="display:flex;gap:2px;background:rgba(237,232,220,.92);border:1px solid var(--border);border-radius:4px;padding:2px;backdrop-filter:blur(6px);box-shadow:var(--sh);flex-wrap:wrap;max-width:680px;justify-content:center">
+      <!-- boutons scénarios générés dynamiquement par P07._renderScenarioToolbar() -->
+    </div>
+    <div id="pmc-shape-wrap" style="display:flex;gap:2px;background:rgba(237,232,220,.92);border:1px solid var(--border);border-radius:4px;padding:2px;backdrop-filter:blur(6px);box-shadow:var(--sh);margin-left:4px">
+      <span style="padding:3px 4px;font:600 8px var(--font-mono);color:var(--faint);align-self:center">FORME</span>
+      <button class="pmc-shape-btn" data-shape="I" title="Mono-bloc rectangulaire"    style="padding:3px 7px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 10px var(--font-mono);cursor:pointer">I</button>
+      <button class="pmc-shape-btn" data-shape="L" title="Forme en L"                  style="padding:3px 7px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 10px var(--font-mono);cursor:pointer">L</button>
+      <button class="pmc-shape-btn" data-shape="T" title="Forme en T"                  style="padding:3px 7px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 10px var(--font-mono);cursor:pointer">T</button>
+      <button class="pmc-shape-btn" data-shape="X" title="Croix / X"                   style="padding:3px 7px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 10px var(--font-mono);cursor:pointer">X</button>
+      <button class="pmc-shape-btn" data-shape="Y" title="Trois branches à 120°"       style="padding:3px 7px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 10px var(--font-mono);cursor:pointer">Y</button>
+    </div>
+    <div id="pmc-mit-wrap" style="display:flex;gap:2px;background:rgba(237,232,220,.92);border:1px solid var(--border);border-radius:4px;padding:2px;backdrop-filter:blur(6px);box-shadow:var(--sh);margin-left:4px">
+      <span style="padding:3px 4px;font:600 8px var(--font-mono);color:var(--faint);align-self:center">LIMITES</span>
+      <button class="pmc-mit-btn" data-role="G"    title="Latérale gauche : bascule mitoyen 0m ↔ recul normal"  style="padding:3px 7px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 9px var(--font-mono);cursor:pointer">Mit. G</button>
+      <button class="pmc-mit-btn" data-role="D"    title="Latérale droite : bascule mitoyen 0m ↔ recul normal"  style="padding:3px 7px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 9px var(--font-mono);cursor:pointer">Mit. D</button>
+      <button class="pmc-mit-btn" data-role="fond" title="Fond de parcelle : bascule mitoyen 0m ↔ recul normal" style="padding:3px 7px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 9px var(--font-mono);cursor:pointer">Fond</button>
     </div>
     <button id="pmc-btn-auto" style="padding:3px 10px;border:1px solid var(--success);border-radius:4px;background:rgba(61,107,46,.12);color:var(--success);font:600 9px var(--font-mono);cursor:pointer" title="Placement automatique PIR">◎ Auto</button>
     <button id="pmc-btn-reset" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--card);color:var(--muted);font:600 9px var(--font-mono);cursor:pointer" title="Recentrer">⌂</button>
     <button id="pmc-btn-svg" style="padding:3px 10px;border:1px solid var(--border2);border-radius:4px;background:var(--accent2);color:var(--accent);font:600 9px var(--font-mono);cursor:pointer">↓ SVG</button>
+  </div>
+
+  <!-- ═══ AIDE RACCOURCIS (toggle) ═══ -->
+  <button id="pmc-help-btn" title="Raccourcis et astuces (touche ? ou H)"
+    style="position:absolute;bottom:42px;right:12px;z-index:60;width:30px;height:30px;border-radius:50%;background:rgba(237,232,220,.96);border:1px solid var(--border);color:var(--accent);font:700 14px var(--font-mono);cursor:pointer;box-shadow:var(--sh);backdrop-filter:blur(6px)">?</button>
+  <div id="pmc-help-panel" style="position:absolute;bottom:80px;right:12px;z-index:61;background:rgba(237,232,220,.98);border:1px solid var(--border);border-radius:var(--r-sm,4px);padding:12px 14px;backdrop-filter:blur(6px);box-shadow:var(--sh);font-family:var(--font-mono);font-size:10px;max-width:280px;line-height:1.55;display:none">
+    <div style="font:600 9px var(--font-mono);color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">
+      <span>Raccourcis &amp; astuces</span>
+      <button id="pmc-help-close" style="padding:0 5px;font:700 10px var(--font-mono);background:none;border:none;color:var(--muted);cursor:pointer">×</button>
+    </div>
+
+    <div style="font:600 8.5px var(--font-mono);color:var(--accent);margin-top:4px">Bâtiments</div>
+    <div><kbd>Drag</kbd> bloc &rarr; déplacer</div>
+    <div><kbd>Drag</kbd> poignée &rarr; redimensionner (axe du bloc, même tourné)</div>
+    <div><kbd>Drag</kbd> ↻ &rarr; rotation &middot; <kbd>Shift</kbd> = snap 15°</div>
+    <div><kbd>Clic</kbd> bloc &rarr; sélection active</div>
+
+    <div style="font:600 8.5px var(--font-mono);color:var(--accent);margin-top:8px">Blocs</div>
+    <div><kbd>+</kbd> nouveau &middot; <kbd>⧉</kbd> dupliquer &middot; <kbd>×</kbd> supprimer</div>
+    <div><kbd>Tous</kbd> applique le bloc actif à tous</div>
+    <div>Ligne panel = clic pour activer, double select = R+N &amp; usage</div>
+
+    <div style="font:600 8.5px var(--font-mono);color:var(--accent);margin-top:8px">Historique</div>
+    <div><kbd>Ctrl+Z</kbd> annuler &middot; <kbd>Ctrl+Shift+Z</kbd> ou <kbd>Ctrl+Y</kbd> rétablir</div>
+
+    <div style="font:600 8.5px var(--font-mono);color:var(--accent);margin-top:8px">Toolbar</div>
+    <div><kbd>A1..D1</kbd> stratégies (rect/oblique/multi/L/trapèze/isohypses…)</div>
+    <div><kbd>I L T X Y</kbd> formes préconfigurées</div>
+    <div><kbd>Mit. G/D/Fond</kbd> mitoyen 0m ↔ recul (toggle)</div>
+
+    <div style="font:600 8.5px var(--font-mono);color:var(--accent);margin-top:8px">Parcelle</div>
+    <div><kbd>Clic</kbd> arête &rarr; cycle voie → lat → mitoyen → fond</div>
+    <div><kbd>Molette</kbd> zoom &middot; <kbd>Drag vide</kbd> pan</div>
+
+    <div style="font:600 8.5px var(--font-mono);color:var(--accent);margin-top:8px">Navigation</div>
+    <div><kbd>?</kbd> ou <kbd>H</kbd> ouvrir/fermer cette aide</div>
+
+    <div style="margin-top:10px;padding-top:6px;border-top:1px solid var(--border);font-size:8.5px;color:var(--faint);font-style:italic">
+      Couleurs usage : <span style="color:#3B82F6">●</span> logement · <span style="color:#F97316">●</span> commerce · <span style="color:#0891B2">●</span> bureau · <span style="color:#6b7280">●</span> parking · <span style="color:#8B5CF6">●</span> mixte
+    </div>
+  </div>
+
+  <!-- ═══ PANEL ÉDITION BLOCS (multi-blocs uniquement) ═══ -->
+  <div id="pmc-blocs-panel" style="position:absolute;top:100px;right:12px;z-index:60;background:rgba(237,232,220,.96);border:1px solid var(--border);border-radius:var(--r-sm,4px);padding:8px 10px;backdrop-filter:blur(6px);box-shadow:var(--sh);font-family:var(--font-mono);font-size:10px;max-width:250px;display:none">
+    <div style="font:600 9px var(--font-mono);color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:4px">
+      <span style="flex:1">Blocs · étages</span>
+      <button id="pmc-bloc-add-btn" title="Ajouter un nouveau bloc" style="padding:2px 5px;font:700 10px var(--font-mono);background:var(--card);color:var(--success,#3d6b2e);border:1px solid var(--border);border-radius:2px;cursor:pointer">+</button>
+      <button id="pmc-bloc-dup-btn" title="Dupliquer le bloc actif" style="padding:2px 5px;font:700 10px var(--font-mono);background:var(--card);color:var(--muted);border:1px solid var(--border);border-radius:2px;cursor:pointer">⧉</button>
+      <button id="pmc-bloc-del-btn" title="Supprimer le bloc actif" style="padding:2px 5px;font:700 10px var(--font-mono);background:var(--card);color:var(--danger,#b33);border:1px solid var(--border);border-radius:2px;cursor:pointer">×</button>
+      <button id="pmc-blocs-sync-btn" title="Appliquer le réglage du bloc actif à tous les blocs" style="padding:2px 6px;font:700 8px var(--font-mono);background:var(--card);color:var(--muted);border:1px solid var(--border);border-radius:2px;cursor:pointer">Tous</button>
+    </div>
+    <div id="pmc-blocs-list" style="display:flex;flex-direction:column;gap:5px;max-height:360px;overflow:auto"></div>
+    <div id="pmc-blocs-totals" style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border);font-size:9px;color:var(--muted);line-height:1.5"></div>
   </div>
 
   <!-- ═══ PLAN MASSE CANVAS (visible par défaut — fond ivoire) ═══ -->
@@ -659,11 +725,11 @@
     <!-- Légende pentes -->
     <div class="t3d-legend">
       <div class="t3d-legend-title">Pentes GIEP</div>
-      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:#dc2626"></div>&lt; 0.5 % &mdash; Stagnation EP</div>
-      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:#f59e0b"></div>0.5&ndash;2 % &mdash; Faible</div>
-      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:#22c55e"></div>2&ndash;5 % &mdash; Optimale</div>
-      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:#f59e0b"></div>5&ndash;15 % &mdash; Forte</div>
-      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:#ef4444"></div>&gt; 15 % &mdash; G1 requis</div>
+      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:var(--c-danger)"></div>&lt; 0.5 % &mdash; Stagnation EP</div>
+      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:var(--c-warn)"></div>0.5&ndash;2 % &mdash; Faible</div>
+      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:var(--c-ok)"></div>2&ndash;5 % &mdash; Optimale</div>
+      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:var(--c-warn)"></div>5&ndash;15 % &mdash; Forte</div>
+      <div class="t3d-legend-item"><div class="t3d-legend-dot" style="background:var(--c-danger)"></div>&gt; 15 % &mdash; G1 requis</div>
     </div>
 
     <!-- Contrôles soleil (synchro SunState) -->
@@ -729,7 +795,7 @@
           <div style="margin-bottom:4px;font-weight:600;color:#a0aec0">Terrassement</div>
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="p07-ew-tn"       checked style="width:11px;height:11px;margin:0">TN naturel</label>
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="p07-ew-platform" checked style="width:11px;height:11px;margin:0">Plateforme</label>
-          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="p07-ew-cut"      checked style="width:11px;height:11px;margin:0"><span style="color:#dc2626">Déblai</span></label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="p07-ew-cut"      checked style="width:11px;height:11px;margin:0"><span style="color:var(--c-danger)">Déblai</span></label>
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="p07-ew-fill"     checked style="width:11px;height:11px;margin:0"><span style="color:#2563eb">Remblai</span></label>
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="p07-ew-talus"    checked style="width:11px;height:11px;margin:0">Talus</label>
           <label style="display:flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="p07-ew-pilotis"  checked style="width:11px;height:11px;margin:0">Pilotis</label>
@@ -955,6 +1021,41 @@
 
 .pareto-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); padding:6px 8px; cursor:pointer; transition:all var(--tx-fast); }
 .pareto-card:hover { border-color:var(--accent); background:var(--accent3); }
+
+/* Aide : raccourcis kbd */
+#pmc-help-panel kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  font: 600 9px var(--font-mono, 'Inconsolata', monospace);
+  color: var(--accent);
+  margin-right: 3px;
+  line-height: 1.3;
+  vertical-align: baseline;
+}
+#pmc-help-panel div { margin-bottom: 2px; color: var(--muted); }
+#pmc-help-btn:hover { background: var(--accent2, rgba(160,120,40,.18)); border-color: var(--accent); }
+
+/* Toggle buttons (programme : Type, Parking, Côté PK) */
+.tg-btn {
+  padding: 4px 9px;
+  font: 600 10px var(--font-mono, 'Inconsolata', monospace);
+  background: var(--card);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm, 3px);
+  cursor: pointer;
+  transition: all var(--tx-fast, .12s);
+  letter-spacing: .03em;
+  line-height: 1.2;
+}
+.tg-btn:hover:not(.active) { border-color: var(--accent); color: var(--accent); background: var(--accent3, rgba(200,160,80,.08)); }
+.tg-btn.active { background: var(--accent2, rgba(160,120,40,.18)); color: var(--accent); border-color: var(--border2, var(--accent)); font-weight: 700; }
+.tg-btn:active { transform: translateY(1px); }
+.tg-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .pareto-card.selected { border-color:var(--accent); background:var(--accent2); }
 .pareto-card.pareto-front { box-shadow:inset 0 0 0 1px rgba(241,196,15,.15); }
 .pareto-card-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:3px; }
@@ -986,8 +1087,8 @@
 .terrain-banner { display:flex; align-items:center; gap:6px; padding:5px 13px; background:var(--accent3, rgba(154,120,32,.06)); border-bottom:1px solid var(--border, #30363D); font-family:var(--font-mono, monospace); font-size:9.5px; color:var(--muted, #6b5c3e); flex-wrap:wrap; }
 .plu-badge { padding:2px 8px; border-radius:10px; font-size:8.5px; font-weight:600; margin-left:auto; }
 .plu-badge.plu-ok { background:rgba(74,222,128,.1); border:1px solid rgba(74,222,128,.3); color:#4ADE80; }
-.plu-badge.plu-warn { background:rgba(245,158,11,.1); border:1px solid rgba(245,158,11,.3); color:#FBBF24; }
-.plu-badge.plu-err { background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.3); color:#EF4444; }
+.plu-badge.plu-warn { background:rgba(245,158,11,.1); border:1px solid rgba(245,158,11,.3); color:var(--c-warn); }
+.plu-badge.plu-err { background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.3); color:var(--c-danger); }
 </style>
 
 <script type="module">
@@ -1156,7 +1257,7 @@ document.querySelectorAll('.em-btn').forEach(btn => {
       b.style.background = 'var(--card)';
     });
     btn.classList.add('active');
-    btn.style.background = 'var(--accent,#f59e0b)';
+    btn.style.background = 'var(--accent,var(--c-warn))';
     btn.style.color = '#000';
     window.EsquisseCanvas?.setExistingMode(btn.dataset.mode);
   });
@@ -1188,7 +1289,7 @@ window.addEventListener('terlab:sdis-update', (e) => {
     const hPE = result.famille?.h_PE ?? result.h_PE ?? 0;
     famEl.textContent = `${result.famille?.nom ?? '—'} · h plancher ${hPE.toFixed(0)}m`;
     const code = result.famille?.code ?? '';
-    famEl.style.color = ['F3A','F3B','F4','IGH'].includes(code) ? '#EF4444' : 'var(--accent)';
+    famEl.style.color = ['F3A','F3B','F4','IGH'].includes(code) ? 'var(--c-danger)' : 'var(--accent)';
   }
 
   // Tableau checks via texteHtml()
@@ -1204,11 +1305,11 @@ window.addEventListener('terlab:sdis-update', (e) => {
     conseilEl.style.display = '';
     if (result.hasWarnings) {
       conseilEl.style.background = 'rgba(239,68,68,0.08)';
-      conseilEl.style.color = '#EF4444';
+      conseilEl.style.color = 'var(--c-danger)';
       conseilEl.style.borderColor = 'rgba(239,68,68,0.2)';
     } else {
       conseilEl.style.background = 'rgba(34,197,94,0.08)';
-      conseilEl.style.color = '#22C55E';
+      conseilEl.style.color = 'var(--c-ok)';
       conseilEl.style.borderColor = 'rgba(34,197,94,0.2)';
     }
   }
@@ -1226,7 +1327,7 @@ document.querySelectorAll('.mtab').forEach(tab => {
       t.style.color = 'var(--text,#ccc)';
     });
     tab.classList.add('active');
-    tab.style.background = 'var(--accent,#f59e0b)';
+    tab.style.background = 'var(--accent,var(--c-warn))';
     tab.style.color = '#000';
     document.querySelectorAll('.cap-panel').forEach(p => p.style.display = 'none');
     const panel = document.getElementById('panel-' + tab.dataset.panel);
@@ -1402,6 +1503,46 @@ const P07 = {
   },
 
   // ─── Envoi BIMSHOW ─────────────────────────────────────────────
+  _confirmBIMSHOWTransfer() {
+    return new Promise(resolve => {
+      const root = document.body;
+      const wrap = document.createElement('div');
+      wrap.className = 'terlab-modal';
+      wrap.innerHTML = `
+        <div class="terlab-modal-backdrop"></div>
+        <div class="terlab-modal-card" style="width:min(520px,92vw)">
+          <div class="terlab-modal-header" style="color:var(--accent);border-top:4px solid var(--accent)">
+            Rite de passage — Transfert vers BIMSHOW
+          </div>
+          <div class="terlab-modal-body">
+            <p style="margin:0 0 10px 0">Vous allez transmettre cette emprise a BIMSHOW pour modelisation 3D. Cette etape marque la fin de l'analyse 2D. Avant de confirmer :</p>
+            <label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-size:11.5px"><input type="checkbox" class="rite-chk"><span>CES conforme au PLU</span></label>
+            <label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-size:11.5px"><input type="checkbox" class="rite-chk"><span>Reculs respectes (voie / lateraux / fond)</span></label>
+            <label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-size:11.5px"><input type="checkbox" class="rite-chk"><span>Orientation justifiee (alizes, soleil)</span></label>
+            <label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-size:11.5px"><input type="checkbox" class="rite-chk"><span>Acces PMR pense</span></label>
+            <label style="display:flex;gap:8px;align-items:flex-start;margin:6px 0;font-size:11.5px"><input type="checkbox" class="rite-chk"><span>Circulation portail -> entrees tracee</span></label>
+          </div>
+          <div class="terlab-modal-actions">
+            <button class="terlab-modal-ack" style="background:var(--raised);color:var(--fg);border:1px solid var(--border)" id="rite-cancel">Annuler</button>
+            <button class="terlab-modal-ack" id="rite-ok" disabled style="opacity:.5;pointer-events:none">Transmettre a BIMSHOW</button>
+          </div>
+        </div>`;
+      root.appendChild(wrap);
+      const chks = wrap.querySelectorAll('.rite-chk');
+      const btnOk = wrap.querySelector('#rite-ok');
+      chks.forEach(c => c.addEventListener('change', () => {
+        const all = [...chks].every(x => x.checked);
+        btnOk.disabled = !all;
+        btnOk.style.opacity = all ? '1' : '.5';
+        btnOk.style.pointerEvents = all ? 'auto' : 'none';
+      }));
+      const close = v => { wrap.remove(); resolve(v); };
+      btnOk.addEventListener('click', () => close(true));
+      wrap.querySelector('#rite-cancel').addEventListener('click', () => close(false));
+      wrap.querySelector('.terlab-modal-backdrop').addEventListener('click', () => close(false));
+    });
+  },
+
   async generateGabarit() {
     const L = parseFloat(document.getElementById('sp-l')?.value ?? 10);
     const W = parseFloat(document.getElementById('sp-w')?.value ?? 8);
@@ -1410,6 +1551,17 @@ const P07 = {
     if (!L || !W || !H) {
       window.TerlabToast?.show('Remplissez L, l et H avant de générer', 'warning');
       return;
+    }
+
+    // Rite de passage : checklist pre-transfert BIMSHOW (une seule fois par session)
+    if (!this._bimshowAcknowledged) {
+      const ok = await this._confirmBIMSHOWTransfer();
+      if (!ok) return;
+      this._bimshowAcknowledged = true;
+      window.DecisionJournal?.logValidation({
+        phase: 7, etape: 'rite_passage_bimshow',
+        valeur: { L, W, H }, motif: 'Checklist pre-transfert validee',
+      });
     }
 
     // Si pas connecté → ouvrir BIMSHOW d'abord
@@ -1563,7 +1715,7 @@ const P07 = {
     if (badge) {
       badge.style.display = 'block';
       badge.style.background = ok ? '#163b2a' : '#3b1010';
-      badge.style.color      = ok ? '#4ade80' : '#f07070';
+      badge.style.color      = ok ? 'var(--c-ok)' : '#f07070';
       badge.textContent = ok
         ? `✓ Angle ${angleDeg.toFixed(0)}° ≥ ${required}° requis — Protection suffisante`
         : `✗ Angle ${angleDeg.toFixed(0)}° < ${required}° requis — Augmenter le débord`;
@@ -1605,7 +1757,7 @@ const P07 = {
     const shadowEndX = wallX + debordW;
     const shadowEndY = fenBot;
 
-    const accentColor = ok ? '#4ade80' : '#f07070';
+    const accentColor = ok ? 'var(--c-ok)' : '#f07070';
 
     svg.innerHTML = `
       <defs>
@@ -1697,7 +1849,7 @@ const P07 = {
     if (badge) {
       badge.style.display = 'block';
       badge.style.background = ok ? '#163b2a' : '#3b1010';
-      badge.style.color      = ok ? '#4ade80' : '#f07070';
+      badge.style.color      = ok ? 'var(--c-ok)' : '#f07070';
       badge.textContent = ok
         ? `✓ Couverture ${coverage.toFixed(0)}% ≥ 75% — Ombrage suffisant (${type === 'encastree' ? 'encastrée' : 'accolée'})`
         : `✗ Couverture ${coverage.toFixed(0)}% < 75% — ${type === 'accolee' ? 'Préférer encastrée ou augmenter profondeur' : 'Augmenter la profondeur'}`;
@@ -1724,7 +1876,7 @@ const P07 = {
 
     // Ombre projetée (vers le sud = vers le bas en plan)
     const shadowD = Math.min(shadowDepth, prof) * scale;
-    const accentColor = ok ? '#4ade80' : '#f07070';
+    const accentColor = ok ? 'var(--c-ok)' : '#f07070';
 
     // Murs latéraux (encastrée seulement)
     let walls = '';
@@ -2407,7 +2559,7 @@ window.addEventListener('terlab:metrics-updated', (e) => {
     badge.textContent = m.allOk ? '✓ Conforme' : '⚠ Non conforme';
     badge.style.cssText = `font-size:11px;font-weight:700;padding:2px 8px;border-radius:4px;${
       m.allOk
-        ? 'background:rgba(34,197,94,0.15);color:#4ade80'
+        ? 'background:rgba(34,197,94,0.15);color:var(--c-ok)'
         : 'background:rgba(239,68,68,0.15);color:#f87171'
     }`;
   }
@@ -2422,7 +2574,7 @@ window.addEventListener('terlab:metrics-updated', (e) => {
     tbody.innerHTML = m.checks.map(c => `
       <tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
         <td style="padding:3px 4px;color:var(--text-dim)">${c.lbl}</td>
-        <td style="text-align:right;padding:3px 4px;font-weight:600;color:${c.ok ? '#4ade80' : '#f87171'}">${c.proj} ${c.unit}</td>
+        <td style="text-align:right;padding:3px 4px;font-weight:600;color:${c.ok ? 'var(--c-ok)' : '#f87171'}">${c.proj} ${c.unit}</td>
         <td style="text-align:right;padding:3px 4px;color:var(--faint)">${c.rule} ${c.unit}</td>
         <td style="text-align:center;font-size:12px">${c.ok ? '✓' : '✗'}</td>
       </tr>
@@ -2784,7 +2936,7 @@ const GabaritUI = {
       bat: { x: cx - w / 2, y: cy - h / 2, w, l: h },
       niveaux: solution.nb_niveaux ?? 2,
       hauteur: solution.hauteur_m ?? 6,
-      color: solution.color ?? '#3B82F6',
+      color: solution.color ?? 'var(--c-info)',
       family: solution.family ?? 'P07',
     };
 
@@ -2803,16 +2955,16 @@ const GabaritUI = {
     if (!el || !ew) return;
 
     const fmt = (v, unit = '', dec = 1) => v != null && isFinite(v) ? v.toFixed(dec) + unit : '—';
-    const ratioColor = ew.ratio_balance > 0.85 ? '#22c55e' : ew.ratio_balance > 0.7 ? '#f59e0b' : '#ef4444';
-    const stratColor = { A1: '#3b82f6', A3: '#a855f7', A4: '#f59e0b' }[ew.strategy.type] ?? '#6b7280';
+    const ratioColor = ew.ratio_balance > 0.85 ? 'var(--c-ok)' : ew.ratio_balance > 0.7 ? 'var(--c-warn)' : 'var(--c-danger)';
+    const stratColor = { A1: 'var(--c-info)', A3: '#a855f7', A4: 'var(--c-warn)' }[ew.strategy.type] ?? '#6b7280';
     const wallWarn = ew.needsRetainingWall
-      ? `<div style="color:#ef4444;margin-top:4px">⚠ Mur de soutènement requis (talus ${ew.hMaxTalus_m.toFixed(1)}m)</div>`
+      ? `<div style="color:var(--c-danger);margin-top:4px">⚠ Mur de soutènement requis (talus ${ew.hMaxTalus_m.toFixed(1)}m)</div>`
       : '';
     const csgNote = (V_cut_csg && Math.abs(V_cut_csg - ew.V_cut_m3) / Math.max(0.1, ew.V_cut_m3) > 0.15)
       ? `<div style="color:#94a3b8;font-size:8px;margin-top:2px">Vérif CSG : déb. ${V_cut_csg.toFixed(0)} / rem. ${V_fill_csg.toFixed(0)} m³</div>`
       : '';
     const warnings = ew.warnings?.length
-      ? `<div style="color:#fbbf24;font-size:8px;margin-top:4px">${ew.warnings.map(w => '• ' + w).join('<br>')}</div>`
+      ? `<div style="color:var(--c-warn);font-size:8px;margin-top:4px">${ew.warnings.map(w => '• ' + w).join('<br>')}</div>`
       : '';
 
     el.innerHTML = `
@@ -2823,7 +2975,7 @@ const GabaritUI = {
       <div style="color:#94a3b8;font-size:8px;margin-bottom:6px">${ew.strategy.reason}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 8px">
         <div><span style="color:#718096">Cote :</span> <strong>${fmt(ew.H_platform_m, ' m', 2)}</strong></div>
-        <div><span style="color:#dc2626">Déblai :</span> <strong>${fmt(ew.V_cut_m3, ' m³')}</strong></div>
+        <div><span style="color:var(--c-danger)">Déblai :</span> <strong>${fmt(ew.V_cut_m3, ' m³')}</strong></div>
         <div><span style="color:#2563eb">Remblai :</span> <strong>${fmt(ew.V_fill_m3, ' m³')}</strong></div>
         <div><span style="color:#718096">Pente moy :</span> <strong>${fmt(ew.slopeMean_pct, '%')}</strong></div>
         <div><span style="color:#718096">Talus amont :</span> <strong>${fmt(ew.hMaxCutAmont_m, ' m', 2)}</strong></div>
@@ -2977,16 +3129,365 @@ P07.setView = async function(mode) {
 // Auto-init plan masse (vue par défaut) — doit être APRÈS Object.assign + gabarit wrap
 P07.setView('planmasse');
 
-// ── Bind Plan Masse Canvas toolbar ────────────────────────────────
-document.querySelectorAll('.pmc-sc-btn[data-sc]').forEach(btn => {
+// ── Bind Plan Masse Canvas toolbar — rendu dynamique scénarios ────
+function _renderScenarioToolbar() {
+  const wrap = document.getElementById('pmc-sc-wrap');
+  if (!wrap || !window.PlanMasseCanvas?.listScenarios) return;
+  const scenarios = window.PlanMasseCanvas.listScenarios();
+  const activeId = window.PlanMasseCanvas._scId;
+  wrap.innerHTML = scenarios.map(sc => {
+    const active = sc.id === activeId;
+    const dis = !sc.applicable;
+    const tip = [
+      `${sc.id} · ${sc.label}`,
+      sc.desc,
+      `Stratégie : ${sc.strategy}`,
+      sc.hint ? `→ ${sc.hint}` : '',
+      dis ? `\u26a0 ${sc.disabledReason}` : sc.disabledReason ? `\u26a0 ${sc.disabledReason}` : '',
+    ].filter(Boolean).join('\n');
+    const bg = active ? 'var(--accent2)' : (dis ? 'rgba(200,190,170,.3)' : 'var(--card)');
+    const col = active ? 'var(--accent)' : (dis ? 'var(--faint)' : 'var(--muted)');
+    const bdr = active ? 'var(--border2)' : 'var(--border)';
+    const op = dis ? '.45' : '1';
+    const star = sc.hint ? '<span style="font-size:7px;color:var(--success);margin-left:2px">\u25c6</span>' : '';
+    const badge = `<span style="font-size:7.5px;opacity:.55;margin-right:3px">${sc.id}</span>`;
+    return `<button class="pmc-sc-btn${active ? ' active' : ''}" data-sc="${sc.id}" ${dis ? 'data-disabled="1"' : ''}
+      title="${tip.replace(/"/g, '&quot;')}"
+      style="padding:3px 7px;border:1px solid ${bdr};border-radius:3px;background:${bg};color:${col};font:600 9px var(--font-mono);cursor:${dis ? 'not-allowed' : 'pointer'};opacity:${op};position:relative;white-space:nowrap">${badge}${sc.short || sc.label}${star}</button>`;
+  }).join('');
+  wrap.querySelectorAll('.pmc-sc-btn[data-sc]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (!window.PlanMasseCanvas?._ready) return;
+      if (btn.dataset.disabled === '1') {
+        // Feedback : toast indiquant pourquoi la stratégie est indispo
+        const sc = scenarios.find(s => s.id === btn.dataset.sc);
+        window.TerlabNotification?.notify({
+          severity: 'avertissement',
+          message: `${sc.id} indisponible : ${sc.disabledReason}`,
+          duration: 3500,
+        });
+        return;
+      }
+      window.PlanMasseCanvas.setScenario(btn.dataset.sc);
+      _renderScenarioToolbar();
+    });
+  });
+}
+// Signature pour ne re-rendre que si l'applicabilité/activeId a changé
+let _scToolbarSig = '';
+function _refreshScenarioToolbar() {
+  if (!window.PlanMasseCanvas?.listScenarios) return;
+  const list = window.PlanMasseCanvas.listScenarios();
+  const sig = window.PlanMasseCanvas._scId + '|' + list.map(s => `${s.id}${s.applicable ? '1' : '0'}${s.hint ? 'h' : ''}`).join(',');
+  if (sig === _scToolbarSig) return;
+  _scToolbarSig = sig;
+  _renderScenarioToolbar();
+}
+_refreshScenarioToolbar();
+window.addEventListener('pmc:metrics', _refreshScenarioToolbar);
+window.P07._renderScenarioToolbar = _refreshScenarioToolbar;
+
+// ── Shape presets (I / L / T / X / Y) ─────────────────────────────
+function _refreshShapeToolbar() {
+  const active = window.PlanMasseCanvas?.S?.shapePreset ?? 'I';
+  document.querySelectorAll('.pmc-shape-btn[data-shape]').forEach(btn => {
+    const on = btn.dataset.shape === active;
+    btn.style.background   = on ? 'var(--accent2)' : 'var(--card)';
+    btn.style.color        = on ? 'var(--accent)'  : 'var(--muted)';
+    btn.style.borderColor  = on ? 'var(--border2)' : 'var(--border)';
+  });
+}
+document.querySelectorAll('.pmc-shape-btn[data-shape]').forEach(btn => {
   btn.addEventListener('click', () => {
     if (!window.PlanMasseCanvas?._ready) return;
-    document.querySelectorAll('.pmc-sc-btn').forEach(b => {
-      b.style.background = 'var(--card)'; b.style.color = 'var(--muted)'; b.style.borderColor = 'var(--border)';
-    });
-    btn.style.background = 'var(--accent2)'; btn.style.color = 'var(--accent)'; btn.style.borderColor = 'var(--border2)';
-    window.PlanMasseCanvas.setScenario(btn.dataset.sc);
+    const shape = btn.dataset.shape;
+    if (shape === 'I') window.PlanMasseCanvas.clearBlocs();
+    else window.PlanMasseCanvas.setShape(shape);
+    _refreshShapeToolbar();
   });
+});
+_refreshShapeToolbar();
+window.addEventListener('pmc:metrics', _refreshShapeToolbar);
+
+// ── Limites mitoyennes (G / D / Fond) ─────────────────────────────
+function _refreshMitoyenToolbar() {
+  const pmc = window.PlanMasseCanvas;
+  if (!pmc?.edgeStateByRole) return;
+  document.querySelectorAll('.pmc-mit-btn[data-role]').forEach(btn => {
+    const state = pmc.edgeStateByRole(btn.dataset.role); // 'mitoyen' | 'recul' | null
+    const active = state === 'mitoyen';
+    const missing = state === null;
+    btn.style.background   = active ? 'var(--danger,#b33)' : 'var(--card)';
+    btn.style.color        = active ? '#fff' : (missing ? 'var(--faint)' : 'var(--muted)');
+    btn.style.borderColor  = active ? 'var(--danger,#b33)' : 'var(--border)';
+    btn.style.opacity      = missing ? '.4' : '1';
+    btn.title = missing ? 'Arête non identifiée pour ce rôle' :
+      (active ? `${btn.dataset.role} : en mitoyenneté (0 m) — clique pour annuler` :
+                `${btn.dataset.role} : recul normal — clique pour passer en mitoyen 0 m`);
+  });
+}
+document.querySelectorAll('.pmc-mit-btn[data-role]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (!window.PlanMasseCanvas?._ready) return;
+    const ok = window.PlanMasseCanvas.toggleMitoyen(btn.dataset.role);
+    if (ok === false) {
+      window.TerlabNotification?.notify({
+        severity: 'avertissement',
+        message: `Arête ${btn.dataset.role} non identifiée sur cette parcelle`,
+        duration: 3000,
+      });
+      return;
+    }
+    _refreshMitoyenToolbar();
+  });
+});
+_refreshMitoyenToolbar();
+window.addEventListener('pmc:metrics', _refreshMitoyenToolbar);
+
+// ── PLU live feedback sur sliders nvMax / profMax ─────────────────
+function _p07RefreshPluLimits() {
+  const pmc = window.PlanMasseCanvas;
+  const plu = pmc?._terrain?.plu;
+  if (!plu) return;
+  const H_NIV = 3.0;
+  const nvMaxPLU = Math.max(1, Math.floor((plu.heMax ?? 9) / H_NIV));
+  const nvLabel = ['','R+0','R+1','R+2','R+3','R+4'][nvMaxPLU] ?? `R+${nvMaxPLU - 1}`;
+
+  // nvMax : borne haute = floor(heMax / 3.0)
+  const slNv = document.getElementById('pm-nvmax');
+  const hintNv = document.getElementById('pm-nvmax-hint');
+  if (slNv && hintNv) {
+    slNv.max = String(Math.min(4, nvMaxPLU));
+    const cur = +slNv.value;
+    if (cur > nvMaxPLU) {
+      slNv.value = String(nvMaxPLU);
+      document.getElementById('pm-nvmax-lbl').textContent = ['','R+0','R+1','R+2','R+3','R+4'][nvMaxPLU];
+      pmc?.setProg('nvMax', nvMaxPLU);
+    }
+    const overrule = plu._source ? ` · ${plu._source}` : '';
+    hintNv.textContent = `\u26a1 PLU : h\u2264${plu.heMax ?? '?'}m \u2192 ${nvLabel} max${overrule}`;
+    hintNv.style.color = cur === nvMaxPLU ? 'var(--warning,#b58c00)' : 'var(--faint)';
+  }
+
+  // Sidebar sp-niveaux : désactive les options > nvMaxPLU et clamp la valeur
+  const selSide = document.getElementById('sp-niveaux');
+  if (selSide) {
+    Array.from(selSide.options).forEach(opt => {
+      const v = +opt.value;
+      opt.disabled = v > nvMaxPLU;
+      if (v > nvMaxPLU && !opt.textContent.includes('⚠')) opt.textContent = opt.textContent.replace(/\s*⚠.*$/,'') + ' ⚠';
+      else if (v <= nvMaxPLU) opt.textContent = opt.textContent.replace(/\s*⚠.*$/,'');
+    });
+    if (+selSide.value > nvMaxPLU) selSide.value = String(nvMaxPLU);
+  }
+
+  // profMax : borne = moins contraignante entre PLU et ambition projet
+  const slProf = document.getElementById('pm-profmax');
+  const hintProf = document.getElementById('pm-profmax-hint');
+  if (slProf && hintProf) {
+    const pluProf = plu.profMax ?? plu.sep_lat_longueur_max_m ?? null;
+    const cur = +slProf.value;
+    if (pluProf && cur > pluProf) {
+      hintProf.textContent = `\u26a0 PLU : profondeur \u2264 ${pluProf}m (actuel ${cur}m)`;
+      hintProf.style.color = 'var(--danger,#b33)';
+    } else if (pluProf) {
+      hintProf.textContent = `\u26a1 PLU : profondeur \u2264 ${pluProf}m`;
+      hintProf.style.color = 'var(--faint)';
+    } else {
+      hintProf.textContent = '';
+    }
+  }
+}
+window._p07RefreshPluLimits = _p07RefreshPluLimits;
+window.addEventListener('pmc:metrics', _p07RefreshPluLimits);
+// Tente un premier refresh quand PLU se charge (le pmc:metrics sera émis au prochain render)
+setTimeout(_p07RefreshPluLimits, 300);
+
+// ── Panel édition blocs (niveaux + usage par bloc) ────────────────
+const USAGES = [
+  { key: 'logement', label: 'Logement',   h: 2.80 },
+  { key: 'commerce', label: 'Commerce',   h: 4.00 },
+  { key: 'bureau',   label: 'Bureau',     h: 3.30 },
+  { key: 'parking',  label: 'Parking',    h: 2.60 },
+  { key: 'mixte',    label: 'Mixte',      h: 3.00 },
+];
+function _p07RefreshBlocsPanel() {
+  const pmc = window.PlanMasseCanvas;
+  const panel = document.getElementById('pmc-blocs-panel');
+  if (!panel || !pmc) return;
+  const blocs = pmc.S?.blocs ?? [];
+  if (blocs.length < 1) { panel.style.display = 'none'; return; }
+  panel.style.display = 'block';
+  const nvMaxPLU = pmc.nvMaxPLU?.() ?? 3;
+  const list = document.getElementById('pmc-blocs-list');
+  const activeIdx = pmc.S.activeBlocIdx ?? 0;
+
+  const USAGE_COL = { logement: '#3B82F6', commerce: '#F97316', bureau: '#0891B2', parking: '#6b7280', mixte: '#8B5CF6' };
+
+  list.innerHTML = blocs.map((bl, i) => {
+    const nv = bl.niveaux ?? 1;
+    const usg = bl.usage ?? 'logement';
+    const rdcU = bl.rdcUsage ?? '';
+    const col = USAGE_COL[usg] ?? 'var(--accent)';
+    const hBloc = pmc._blocHeight?.(bl) ?? (nv * 3.0);
+    const isActive = i === activeIdx;
+    const border = isActive ? `1.5px solid ${col}` : '1px solid var(--border)';
+    const bg = isActive ? 'rgba(255,255,255,.55)' : 'transparent';
+    const nvOpts = [];
+    for (let k = 1; k <= Math.min(4, nvMaxPLU); k++) nvOpts.push(`<option value="${k}"${k === nv ? ' selected' : ''}>R+${k - 1}</option>`);
+    const usgOpts = USAGES.map(u => `<option value="${u.key}"${u.key === usg ? ' selected' : ''}>${u.label}</option>`).join('');
+    const rdcOpts = '<option value="">\u2014 RdC = bloc</option>' +
+      USAGES.map(u => `<option value="${u.key}"${u.key === rdcU ? ' selected' : ''}>RdC ${u.label}</option>`).join('');
+    return `<div data-bloc-row="${i}" style="padding:5px 6px;border:${border};border-left:4px solid ${col};border-radius:3px;background:${bg};cursor:pointer">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+        <strong style="font-size:10px;color:${col}">B${i + 1}</strong>
+        <span style="font-size:8px;color:var(--faint)">h\u2248${hBloc.toFixed(1)}m</span>
+      </div>
+      <div style="display:flex;gap:3px;margin-bottom:3px">
+        <select data-bloc-nv="${i}" style="flex:1;padding:2px 3px;font:9px var(--font-mono);border:1px solid var(--border);border-radius:2px;background:var(--card);color:var(--muted)">${nvOpts.join('')}</select>
+        <select data-bloc-usg="${i}" style="flex:1.3;padding:2px 3px;font:9px var(--font-mono);border:1px solid var(--border);border-radius:2px;background:var(--card);color:var(--muted)">${usgOpts}</select>
+      </div>
+      <select data-bloc-rdc="${i}" style="width:100%;padding:2px 3px;font:8.5px var(--font-mono);border:1px solid var(--border);border-radius:2px;background:var(--card);color:${rdcU ? col : 'var(--faint)'};font-weight:${rdcU ? '600' : '400'}">${rdcOpts}</select>
+    </div>`;
+  }).join('');
+
+  // Bind selects
+  list.querySelectorAll('select[data-bloc-nv]').forEach(sel => {
+    sel.addEventListener('change', e => {
+      const i = +sel.dataset.blocNv;
+      pmc.setBlocProperty(i, 'niveaux', +sel.value);
+    });
+  });
+  list.querySelectorAll('select[data-bloc-usg]').forEach(sel => {
+    sel.addEventListener('change', e => {
+      const i = +sel.dataset.blocUsg;
+      pmc.setBlocProperty(i, 'usage', sel.value);
+      _p07RefreshBlocsPanel();
+    });
+  });
+  list.querySelectorAll('select[data-bloc-rdc]').forEach(sel => {
+    sel.addEventListener('change', e => {
+      const i = +sel.dataset.blocRdc;
+      pmc.setBlocProperty(i, 'rdcUsage', sel.value || null);
+      _p07RefreshBlocsPanel();
+    });
+  });
+  // Click row → select bloc
+  list.querySelectorAll('[data-bloc-row]').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.tagName === 'SELECT') return;
+      pmc.S.activeBlocIdx = +row.dataset.blocRow;
+      pmc.render();
+    });
+  });
+
+  // Totaux
+  let totalSDP = 0, totalArea = 0, maxH = 0;
+  for (const bl of blocs) {
+    const a = pmc._blocSDP?.(bl) / (bl.niveaux ?? 1) || 0;  // area × eff
+    totalSDP += pmc._blocSDP?.(bl) ?? 0;
+    const poly = bl.polygon ?? [];
+    if (poly.length >= 3) {
+      let sa = 0;
+      for (let k = 0, n = poly.length; k < n; k++) {
+        const p = poly[k], q = poly[(k + 1) % n];
+        sa += (p.x ?? p[0]) * (q.y ?? q[1]) - (q.x ?? q[0]) * (p.y ?? p[1]);
+      }
+      totalArea += Math.abs(sa) / 2;
+    }
+    const hh = pmc._blocHeight?.(bl) ?? 0;
+    if (hh > maxH) maxH = hh;
+  }
+  document.getElementById('pmc-blocs-totals').innerHTML =
+    `Emprise : <strong>${totalArea.toFixed(0)} m\u00b2</strong><br>
+     SDP \u2248 <strong>${totalSDP.toFixed(0)} m\u00b2</strong><br>
+     H max : <strong>${maxH.toFixed(1)} m</strong>`;
+}
+window._p07RefreshBlocsPanel = _p07RefreshBlocsPanel;
+window.addEventListener('pmc:metrics', _p07RefreshBlocsPanel);
+setTimeout(_p07RefreshBlocsPanel, 400);
+
+// Boutons add / duplicate / delete bloc
+document.getElementById('pmc-bloc-add-btn')?.addEventListener('click', () => {
+  window.PlanMasseCanvas?.addBloc();
+  _p07RefreshBlocsPanel();
+});
+document.getElementById('pmc-bloc-dup-btn')?.addEventListener('click', () => {
+  window.PlanMasseCanvas?.duplicateBloc();
+  _p07RefreshBlocsPanel();
+});
+document.getElementById('pmc-bloc-del-btn')?.addEventListener('click', () => {
+  const pmc = window.PlanMasseCanvas;
+  if (!pmc?.S?.blocs?.length || pmc.S.blocs.length <= 1) {
+    window.TerlabNotification?.notify({ severity: 'avertissement', message: 'Impossible de supprimer : au moins 1 bloc requis', duration: 2500 });
+    return;
+  }
+  pmc.deleteBloc();
+  _p07RefreshBlocsPanel();
+});
+
+// Bouton "Tous" : propage niveaux/usage/rdcUsage du bloc actif à tous les blocs
+document.getElementById('pmc-blocs-sync-btn')?.addEventListener('click', () => {
+  const pmc = window.PlanMasseCanvas;
+  const bl = pmc?.S?.blocs?.[pmc.S.activeBlocIdx ?? 0];
+  if (!bl) return;
+  const nChanged = pmc.syncAllBlocsNiveaux(bl.niveaux) + pmc.syncAllBlocsUsage(bl.usage);
+  // rdcUsage propagation (à la main)
+  for (const b of pmc.S.blocs) b.rdcUsage = bl.rdcUsage ?? null;
+  pmc.render();
+  window.TerlabNotification?.notify({
+    severity: 'info',
+    message: `R\u00e9glages du bloc B${(pmc.S.activeBlocIdx ?? 0) + 1} appliqu\u00e9s \u00e0 ${pmc.S.blocs.length} blocs`,
+    duration: 2500,
+  });
+  _p07RefreshBlocsPanel();
+});
+
+// Sync slider sidebar "Niveaux" (sp-niveaux) → met à jour tous les blocs
+document.getElementById('sp-niveaux')?.addEventListener('change', e => {
+  const pmc = window.PlanMasseCanvas;
+  if (!pmc?.S?.blocs?.length) return;
+  pmc.syncAllBlocsNiveaux(+e.target.value);
+  _p07RefreshBlocsPanel();
+});
+
+// ── Aide raccourcis (bouton ? / touches ?/H) ──────────────────────
+function _p07ToggleHelp(force) {
+  const panel = document.getElementById('pmc-help-panel');
+  const btn = document.getElementById('pmc-help-btn');
+  if (!panel) return;
+  const show = (force !== undefined) ? force : panel.style.display === 'none';
+  panel.style.display = show ? 'block' : 'none';
+  if (btn) {
+    btn.style.background = show ? 'var(--accent2,rgba(160,120,40,.18))' : 'rgba(237,232,220,.96)';
+    btn.style.borderColor = show ? 'var(--accent)' : 'var(--border)';
+  }
+}
+document.getElementById('pmc-help-btn')?.addEventListener('click', () => _p07ToggleHelp());
+document.getElementById('pmc-help-close')?.addEventListener('click', () => _p07ToggleHelp(false));
+
+// ── Undo/Redo : Ctrl+Z / Ctrl+Shift+Z ─────────────────────────────
+window.addEventListener('keydown', e => {
+  const pmc = window.PlanMasseCanvas;
+  if (!pmc?._ready) return;
+  // Ne pas intercepter dans les champs de saisie
+  const tag = (e.target.tagName || '').toUpperCase();
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  const isUndo = (e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z';
+  const isRedo = (e.ctrlKey || e.metaKey) && (e.shiftKey && e.key.toLowerCase() === 'z' || e.key.toLowerCase() === 'y');
+  const isHelp = !e.ctrlKey && !e.metaKey && (e.key === '?' || e.key.toLowerCase() === 'h');
+  if (isHelp) { e.preventDefault(); _p07ToggleHelp(); return; }
+  if (!isUndo && !isRedo) return;
+  e.preventDefault();
+  const ok = isUndo ? pmc.undo() : pmc.redo();
+  if (ok) {
+    _p07RefreshBlocsPanel?.();
+    window.TerlabNotification?.notify({
+      severity: 'info',
+      message: isUndo ? 'Annuler' : 'Rétablir',
+      duration: 1200,
+    });
+  }
 });
 document.getElementById('pmc-btn-auto')?.addEventListener('click', () => {
   if (!window.PlanMasseCanvas?._ready) return;

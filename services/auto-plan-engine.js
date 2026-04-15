@@ -15,6 +15,7 @@ import TopoCaseService    from './topo-case-service.js';
 import FH                 from './footprint-helpers.js';
 import AutoPlanStrategies from './auto-plan-strategies.js';
 import ExistingBuildings  from './existing-buildings.js';
+import FallbackHouse      from './fallback-house-generator.js';
 
 const H_NIV  = 3.0;   // hauteur par niveau (m)
 const MIN_W  = 4;     // largeur min bâtiment (m)
@@ -134,7 +135,7 @@ const AutoPlanEngine = {
     const [px, py] = TA.poleOfInaccessibility(envEff, 1.5);
 
     // 9. Générer variantes Pareto (prog surchargé par contraintes topo)
-    const solutions = this._generatePareto(
+    let solutions = this._generatePareto(
       envEff, progTopo, plu, bearing, px, py, area, existing, poly, edgeTypes,
     );
 
@@ -172,7 +173,53 @@ const AutoPlanEngine = {
       sol.topoConstraints = topoConstraints;
     }
 
-    // 12. Trier par score Pareto
+    // 12. Filet de sécurité : injecter une maison standard si tout a échoué
+    // (zone vide, parcelle dégénérée, contraintes incompatibles avec toutes les
+    // stratégies). Garantit une emprise non-vide pour démo et étude pédagogique.
+    if (FallbackHouse.shouldInject(solutions)) {
+      const fallback = FallbackHouse.generate({
+        env: envEff,
+        edgeTypes,
+        parcelPoly: poly,
+        plu,
+        prog: progTopo,
+        pir: { x: px, y: py },
+        parcelArea: area,
+        bearing,
+      });
+      if (fallback) {
+        // Topo metadata + SDIS si dispo (mêmes traitements que solutions Pareto)
+        fallback.topoCase = topoConstraints.topoCase;
+        fallback.topoConstraints = topoConstraints;
+        const Sdis = window.SdisChecker;
+        if (Sdis) {
+          const sMetrics = {
+            nvEff: fallback.niveaux,
+            type: progTopo.type ?? 'collectif',
+            nbLgts: fallback.nLgts,
+            emprise: fallback.surface,
+            nbBlocs: 1,
+            gapMin: null,
+          };
+          const distFacadeVoie = this._computeDistFacadeVoie(fallback, edgeTypes, poly);
+          let facadeLong = null;
+          for (const b of (fallback.blocs ?? [])) {
+            const lens = FH.edgeLengths(b.polygon ?? []);
+            const maxLen = lens.length ? Math.max(...lens) : 0;
+            if (maxLen > (facadeLong ?? 0)) facadeLong = maxLen;
+          }
+          fallback.sdis = Sdis.run(session, sMetrics, {
+            distFacadeVoie, distInterBat: null, facadeLong,
+          });
+        }
+        // Conserver les éventuels messages X0 + ajouter le fallback
+        const keep = solutions.filter(s => s.family === 'X0');
+        solutions = [...keep, fallback];
+        console.info('[AutoPlan] Aucune stratégie Pareto valide → fallback maison standard injecté');
+      }
+    }
+
+    // 13. Trier par score Pareto (fallback reste en bas grâce à score=0.1)
     solutions.sort((a, b) => b.score - a.score);
 
     return solutions;

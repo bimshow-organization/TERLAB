@@ -172,6 +172,13 @@ const EsquisseCanvas = {
     this._boundDrag    = this._onDrag.bind(this);
     this._boundDragEnd = this._onDragEnd.bind(this);
 
+    // ── 6b. Re-render on theme change (dark/ivory/earth) ─────────
+    if (!this._themeListenerBound) {
+      this._themeListener = () => { if (this._svg) this._fullRedraw(); };
+      window.addEventListener('terlab-theme-change', this._themeListener);
+      this._themeListenerBound = true;
+    }
+
     // ── 7. Generer enveloppes + render (APRES map idle si Mapbox) ─
     const _generateAndRender = async () => {
       // Auto-plan si pas de bat sauvegardé et AutoPlanEngine disponible
@@ -952,7 +959,7 @@ const EsquisseCanvas = {
       // Clipper visuellement à la parcelle
       const isR = zone.startsWith('R');
       const isB = zone.startsWith('B');
-      const color = data.color ?? (isR ? '#ef4444' : isB ? '#3b82f6' : '#fbbf24');
+      const color = data.color ?? (isR ? 'var(--svg-voie)' : isB ? '#3b82f6' : '#fbbf24');
       const hatchId = isR ? 'hatch-pprn-r' : isB ? 'hatch-pprn-b' : 'hatch-pprn-j';
 
       // Fond semi-transparent
@@ -1387,7 +1394,7 @@ const EsquisseCanvas = {
     this._el('polygon', {
       points: this._polyPoints(pts),
       fill: 'rgba(220, 240, 228, 0.55)',
-      stroke: '#22c55e', 'stroke-width': 1.5, 'stroke-dasharray': '6 4',
+      stroke: 'var(--svg-fond)', 'stroke-width': 1.5, 'stroke-dasharray': '6 4',
     }, 'zone-constructible', g);
 
     // Label surface constructible
@@ -1704,7 +1711,7 @@ const EsquisseCanvas = {
 
     const bat = this._buildingAABB;
     const m = this._engineMetrics;
-    const batCol = (m?.inEnv !== false) ? '#c0943a' : '#EF4444'; // rouge si hors enveloppe
+    const batCol = (m?.inEnv !== false) ? '#c0943a' : 'var(--svg-voie)'; // rouge si hors enveloppe
 
     if (this._editMode === 'aabb' && bat) {
       // ══ MODE AABB — Rectangle + 8 handles (style v5) ══════════
@@ -1993,7 +2000,7 @@ const EsquisseCanvas = {
       if (fPts.length >= 4) {
         this._el('polygon', {
           points: fPts.map(p => `${p.x},${p.y}`).join(' '),
-          fill: 'rgba(107,114,128,0.55)', stroke: '#374151', 'stroke-width': 1.5,
+          fill: 'rgba(107,114,128,0.55)', stroke: 'var(--svg-dim)', 'stroke-width': 1.5,
         }, null, g);
         const fc = this._localToSvg([{ x: pl.fosse.cx, y: pl.fosse.cy }]);
         if (fc.length) {
@@ -2686,7 +2693,7 @@ const EsquisseCanvas = {
     if (plant.status === 'protege' && r > 10) {
       this._el('circle', {
         cx: cx + r * 0.7, cy: cy - r * 0.7, r: 4,
-        fill: '#22c55e', stroke: '#fff', 'stroke-width': '1',
+        fill: 'var(--svg-fond)', stroke: '#fff', 'stroke-width': '1',
       }, null, g);
       this._label(cx + r * 0.7, cy - r * 0.7 + 3, 'P', { size: 6, color: '#fff', bold: true, anchor: 'middle' }, null, g);
     }
@@ -2734,10 +2741,10 @@ const EsquisseCanvas = {
 
     for (const f of facades) {
       const facadeBaies = baies.filter(b => b.orientation === f.cardinal);
-      let color = '#22c55e';
+      let color = 'var(--svg-fond)';
       if (facadeBaies.length > 0) {
         const nonConformes = facadeBaies.filter(b => b.conforme === false);
-        if (nonConformes.length > 0) color = '#ef4444';
+        if (nonConformes.length > 0) color = 'var(--svg-voie)';
         else if (facadeBaies.some(b => b.conforme === null)) color = '#f59e0b';
       }
 
@@ -2781,7 +2788,7 @@ const EsquisseCanvas = {
     const x = bbox.maxX + 4;
     const y = bbox.minY;
     const s = prop.score;
-    const col = s > 0.75 ? '#22c55e' : s > 0.5 ? '#f59e0b' : '#ef4444';
+    const col = s > 0.75 ? 'var(--svg-fond)' : s > 0.5 ? '#f59e0b' : 'var(--svg-voie)';
 
     this._el('rect', { x, y, width: 32, height: 18, rx: 3, fill: col, opacity: 0.9 }, null, g);
     this._el('text', {
@@ -2825,11 +2832,11 @@ const EsquisseCanvas = {
     const bboxPx = this._bboxPx(pts);
     this._label(
       (bboxPx.minX + bboxPx.maxX) / 2, bboxPx.maxY + 14,
-      `${L.toFixed(1)}m`, { size: 11, color: '#374151', bold: true }, null, g
+      `${L.toFixed(1)}m`, { size: 11, color: 'var(--svg-dim)', bold: true }, null, g
     );
     this._label(
       bboxPx.maxX + 16, (bboxPx.minY + bboxPx.maxY) / 2,
-      `${l.toFixed(1)}m`, { size: 11, color: '#374151', bold: true }, null, g
+      `${l.toFixed(1)}m`, { size: 11, color: 'var(--svg-dim)', bold: true }, null, g
     );
   },
 
@@ -3096,9 +3103,9 @@ const EsquisseCanvas = {
     const env = this._engineTerrain ? engine?.computeEnv(this._engineTerrain) : null;
 
     // Largeur bâtiment (bas)
-    this._dimLine(bat.x, bat.y, bat.x + bat.w, bat.y, `${bat.w.toFixed(1)} m`, -2.2, 'h', '#374151', g);
+    this._dimLine(bat.x, bat.y, bat.x + bat.w, bat.y, `${bat.w.toFixed(1)} m`, -2.2, 'h', 'var(--svg-dim)', g);
     // Profondeur bâtiment (droite)
-    this._dimLine(bat.x + bat.w, bat.y, bat.x + bat.w, bat.y + bat.l, `${bat.l.toFixed(1)} m`, 2.8, 'v', '#374151', g);
+    this._dimLine(bat.x + bat.w, bat.y, bat.x + bat.w, bat.y + bat.l, `${bat.l.toFixed(1)} m`, 2.8, 'v', 'var(--svg-dim)', g);
 
     // Distance au bord enveloppe (si connue)
     if (env) {
@@ -3203,7 +3210,7 @@ const EsquisseCanvas = {
     parts.push(`<rect x="0" y="${groundY}" width="${W}" height="${H - groundY}" fill="#E8E4DC"/>`);
 
     // Titre
-    parts.push(`<text x="${W / 2}" y="22" text-anchor="middle" font-size="12" font-weight="700" fill="#374151">COUPE N-S</text>`);
+    parts.push(`<text x="${W / 2}" y="22" text-anchor="middle" font-size="12" font-weight="700" fill="var(--svg-dim)">COUPE N-S</text>`);
     parts.push(`<text x="${W / 2}" y="34" text-anchor="middle" font-size="9" fill="#9CA3AF">${plu.zone ?? 'U'} | RTAA Z${plu.rtaaZone ?? 1} | heMax ${heMax}m</text>`);
 
     // Sol
@@ -3215,7 +3222,7 @@ const EsquisseCanvas = {
 
     // Recul voie
     parts.push(`<rect x="${xVoie}" y="${MT}" width="${(r.voie ?? 3) * SC}" height="${groundY - MT}" fill="rgba(239,68,68,.05)" stroke="rgba(239,68,68,.2)" stroke-width="0.5"/>`);
-    parts.push(`<text x="${xVoie + (r.voie ?? 3) * SC / 2}" y="${groundY - 5}" text-anchor="middle" font-size="8" fill="#EF4444">← ${r.voie ?? 3}m →</text>`);
+    parts.push(`<text x="${xVoie + (r.voie ?? 3) * SC / 2}" y="${groundY - 5}" text-anchor="middle" font-size="8" fill="var(--svg-voie)">← ${r.voie ?? 3}m →</text>`);
 
     // Recul fond
     parts.push(`<rect x="${xBatN}" y="${MT}" width="${(r.fond ?? 3) * SC}" height="${groundY - MT}" fill="rgba(34,197,94,.05)" stroke="rgba(34,197,94,.2)" stroke-width="0.5"/>`);
@@ -3223,8 +3230,8 @@ const EsquisseCanvas = {
 
     // heMax PLU
     const heMaxY = groundY - heMax * SC;
-    parts.push(`<line x1="${xVoie - 10}" y1="${heMaxY}" x2="${xFond + 15}" y2="${heMaxY}" stroke="#EF4444" stroke-width="1.5" stroke-dasharray="8,4"/>`);
-    parts.push(`<text x="${xFond + 18}" y="${heMaxY + 4}" font-size="9" fill="#EF4444" font-weight="600">h max ${heMax}m</text>`);
+    parts.push(`<line x1="${xVoie - 10}" y1="${heMaxY}" x2="${xFond + 15}" y2="${heMaxY}" stroke="var(--svg-voie)" stroke-width="1.5" stroke-dasharray="8,4"/>`);
+    parts.push(`<text x="${xFond + 18}" y="${heMaxY + 4}" font-size="9" fill="var(--svg-voie)" font-weight="600">h max ${heMax}m</text>`);
 
     // Grille niveaux
     for (let f = 0; f <= Math.ceil(heMax / 3); f++) {
@@ -3267,17 +3274,17 @@ const EsquisseCanvas = {
 
     // Dim hauteur (droite)
     const dimX = xBatS + batW2 + 25;
-    parts.push(`<line x1="${dimX}" y1="${batTopY}" x2="${dimX}" y2="${groundY}" stroke="#374151" stroke-width="1"/>`);
-    parts.push(`<line x1="${dimX - 5}" y1="${batTopY}" x2="${dimX + 5}" y2="${batTopY}" stroke="#374151" stroke-width="1.5"/>`);
-    parts.push(`<line x1="${dimX - 5}" y1="${groundY}" x2="${dimX + 5}" y2="${groundY}" stroke="#374151" stroke-width="1.5"/>`);
-    parts.push(`<text x="${dimX + 8}" y="${(batTopY + groundY) / 2 + 4}" font-size="10" fill="#374151" font-weight="600">${hBat}m</text>`);
+    parts.push(`<line x1="${dimX}" y1="${batTopY}" x2="${dimX}" y2="${groundY}" stroke="var(--svg-dim)" stroke-width="1"/>`);
+    parts.push(`<line x1="${dimX - 5}" y1="${batTopY}" x2="${dimX + 5}" y2="${batTopY}" stroke="var(--svg-dim)" stroke-width="1.5"/>`);
+    parts.push(`<line x1="${dimX - 5}" y1="${groundY}" x2="${dimX + 5}" y2="${groundY}" stroke="var(--svg-dim)" stroke-width="1.5"/>`);
+    parts.push(`<text x="${dimX + 8}" y="${(batTopY + groundY) / 2 + 4}" font-size="10" fill="var(--svg-dim)" font-weight="600">${hBat}m</text>`);
 
     // Dim profondeur (bas)
     const dimY = groundY + 25;
-    parts.push(`<line x1="${xBatS}" y1="${dimY}" x2="${xBatN}" y2="${dimY}" stroke="#374151" stroke-width="1"/>`);
-    parts.push(`<line x1="${xBatS}" y1="${dimY - 5}" x2="${xBatS}" y2="${dimY + 5}" stroke="#374151" stroke-width="1.5"/>`);
-    parts.push(`<line x1="${xBatN}" y1="${dimY - 5}" x2="${xBatN}" y2="${dimY + 5}" stroke="#374151" stroke-width="1.5"/>`);
-    parts.push(`<text x="${(xBatS + xBatN) / 2}" y="${dimY + 12}" text-anchor="middle" font-size="10" fill="#374151" font-weight="600">${bat.l.toFixed(1)} m (N-S)</text>`);
+    parts.push(`<line x1="${xBatS}" y1="${dimY}" x2="${xBatN}" y2="${dimY}" stroke="var(--svg-dim)" stroke-width="1"/>`);
+    parts.push(`<line x1="${xBatS}" y1="${dimY - 5}" x2="${xBatS}" y2="${dimY + 5}" stroke="var(--svg-dim)" stroke-width="1.5"/>`);
+    parts.push(`<line x1="${xBatN}" y1="${dimY - 5}" x2="${xBatN}" y2="${dimY + 5}" stroke="var(--svg-dim)" stroke-width="1.5"/>`);
+    parts.push(`<text x="${(xBatS + xBatN) / 2}" y="${dimY + 12}" text-anchor="middle" font-size="10" fill="var(--svg-dim)" font-weight="600">${bat.l.toFixed(1)} m (N-S)</text>`);
 
     const svg = parts.join('');
     svgEl.innerHTML = svg;
@@ -3453,7 +3460,7 @@ const EsquisseCanvas = {
     if (!panel) return;
 
     panel.innerHTML = this._proposals.map((p, i) => {
-      const col = p.score > 0.75 ? '#22c55e' : p.score > 0.5 ? '#f59e0b' : '#ef4444';
+      const col = p.score > 0.75 ? 'var(--svg-fond)' : p.score > 0.5 ? '#f59e0b' : 'var(--svg-voie)';
       const isSelected = i === this._selected;
       return `
         <div class="p11-proposal-card ${isSelected ? 'selected' : ''}"
@@ -3478,9 +3485,9 @@ const EsquisseCanvas = {
     const items = [
       { label: 'Orientation', val: sd.orientationScore, color: '#f59e0b' },
       { label: 'Vue',         val: sd.vueScore,         color: '#6366f1' },
-      { label: 'PLU',         val: sd.pluScore,         color: '#22c55e' },
+      { label: 'PLU',         val: sd.pluScore,         color: 'var(--svg-fond)' },
       { label: 'Jardin',      val: sd.gardenScore,      color: '#2dc89a' },
-      { label: 'RTAA',        val: sd.rtaaScore ?? 0,   color: '#ef4444' },
+      { label: 'RTAA',        val: sd.rtaaScore ?? 0,   color: 'var(--svg-voie)' },
     ];
     if (sd.scotDensMin > 0) {
       items.push({ label: `SCoT ≥${sd.lgtsMinScot}lgts`, val: sd.densiteScotScore, color: '#a855f7' });
@@ -3854,7 +3861,7 @@ const EsquisseCanvas = {
     return el;
   },
 
-  _label(x, y, text, { size = 10, color = '#374151', bold = false, anchor = 'middle' } = {}, id = null, parent = null) {
+  _label(x, y, text, { size = 10, color = 'var(--svg-dim)', bold = false, anchor = 'middle' } = {}, id = null, parent = null) {
     const el = this._el('text', {
       x, y, 'text-anchor': anchor, 'font-size': size, fill: color,
       'font-family': 'var(--font-mono, monospace)',
@@ -3909,7 +3916,7 @@ const EsquisseCanvas = {
     this._el('line', { x1: 0, y1: 8, x2: 8, y2: 0, stroke: '#f59e0b', 'stroke-width': 0.8, opacity: 0.5 }, null, p1);
     // Hachure zone constructible vert
     const p2 = this._el('pattern', { id: 'hatch-constructible', patternUnits: 'userSpaceOnUse', width: 8, height: 8 }, null, defs);
-    this._el('line', { x1: 0, y1: 8, x2: 8, y2: 0, stroke: '#22c55e', 'stroke-width': 0.6, opacity: 0.4 }, null, p2);
+    this._el('line', { x1: 0, y1: 8, x2: 8, y2: 0, stroke: 'var(--svg-fond)', 'stroke-width': 0.6, opacity: 0.4 }, null, p2);
     // Hachure batiments voisins
     const p3 = this._el('pattern', { id: 'hatch-batiment', patternUnits: 'userSpaceOnUse', width: 6, height: 6 }, null, defs);
     this._el('line', { x1: 0, y1: 6, x2: 6, y2: 0, stroke: '#8a9aaa', 'stroke-width': 0.5, opacity: 0.6 }, null, p3);
@@ -3918,8 +3925,8 @@ const EsquisseCanvas = {
     this._el('line', { x1: 0, y1: 6, x2: 6, y2: 0, stroke: '#e87c3e', 'stroke-width': 0.6, opacity: 0.5 }, null, p4);
     // Hachure PPRN inconstructible (rouge croisé)
     const p5 = this._el('pattern', { id: 'hatch-pprn-r', patternUnits: 'userSpaceOnUse', width: 8, height: 8 }, null, defs);
-    this._el('line', { x1: 0, y1: 8, x2: 8, y2: 0, stroke: '#ef4444', 'stroke-width': 1.2, opacity: 0.7 }, null, p5);
-    this._el('line', { x1: 0, y1: 0, x2: 8, y2: 8, stroke: '#ef4444', 'stroke-width': 1.2, opacity: 0.7 }, null, p5);
+    this._el('line', { x1: 0, y1: 8, x2: 8, y2: 0, stroke: 'var(--svg-voie)', 'stroke-width': 1.2, opacity: 0.7 }, null, p5);
+    this._el('line', { x1: 0, y1: 0, x2: 8, y2: 8, stroke: 'var(--svg-voie)', 'stroke-width': 1.2, opacity: 0.7 }, null, p5);
     // Hachure PPRN bleu (conditions)
     const p6 = this._el('pattern', { id: 'hatch-pprn-b', patternUnits: 'userSpaceOnUse', width: 10, height: 10 }, null, defs);
     this._el('line', { x1: 0, y1: 10, x2: 10, y2: 0, stroke: '#3b82f6', 'stroke-width': 0.8, opacity: 0.5 }, null, p6);

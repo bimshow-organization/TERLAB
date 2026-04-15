@@ -36,6 +36,17 @@ const FootprintHelpers = {
 
   area(poly) { return Math.abs(this.signedArea(poly)); },
 
+  perimeter(poly) {
+    if (!poly || poly.length < 2) return 0;
+    let p = 0;
+    const n = poly.length;
+    for (let i = 0; i < n; i++) {
+      const a = this.toXY(poly[i]), b = this.toXY(poly[(i + 1) % n]);
+      p += Math.hypot(b.x - a.x, b.y - a.y);
+    }
+    return p;
+  },
+
   // ── AABB ─────────────────────────────────────────────────────────
   aabb(poly) {
     const xs = poly.map(p => this.toXY(p).x);
@@ -606,6 +617,544 @@ const FootprintHelpers = {
     }
 
     return clipped.length >= 3 ? clipped : [];
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // ── v4h geometry — portage depuis terlab_parcelles_v4h.html ────────
+  // Primitives additionnelles pour zone constructible fidèle au PLU,
+  // largest inscribed rectangle, partition bi-volume L, et arcs concaves.
+  // API additive : les méthodes existantes ne sont pas modifiées.
+  // ═══════════════════════════════════════════════════════════════════
+
+  // Test de convexité (signe constant du produit vectoriel successif)
+  isConvex(poly) {
+    const n = poly.length;
+    if (n < 4) return true;
+    let sign = 0;
+    for (let i = 0; i < n; i++) {
+      const a = this.toXY(poly[i]);
+      const b = this.toXY(poly[(i + 1) % n]);
+      const c = this.toXY(poly[(i + 2) % n]);
+      const cr = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+      if (Math.abs(cr) < 1e-6) continue;
+      const s = cr > 0 ? 1 : -1;
+      if (!sign) sign = s;
+      else if (s !== sign) return false;
+    }
+    return true;
+  },
+
+  // Normale entrante sur l'arête i (unitaire). Gère CCW ou CW.
+  edgeNormalIn(poly, i) {
+    const n = poly.length;
+    const a = this.toXY(poly[i]);
+    const b = this.toXY(poly[(i + 1) % n]);
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 0.1) return { nx: 0, ny: 0 };
+    const cw = this.signedArea(poly) > 0 ? 1 : -1;
+    return { nx: cw * (-dy / len), ny: cw * (dx / len) };
+  },
+
+  // Bande de recul sur l'arête i à distance r (mètres) — quad 4 sommets
+  // orientée vers l'intérieur. Retourne null si recul nul ou arête dégénérée.
+  bandPoly(poly, i, r) {
+    if (!r || r <= 0) return null;
+    const n = poly.length;
+    const p1 = this.toXY(poly[i]);
+    const p2 = this.toXY(poly[(i + 1) % n]);
+    const dx = p2.x - p1.x, dy = p2.y - p1.y;
+    if (Math.hypot(dx, dy) < 0.1) return null;
+    const { nx, ny } = this.edgeNormalIn(poly, i);
+    return [
+      { x: p1.x,           y: p1.y           },
+      { x: p2.x,           y: p2.y           },
+      { x: p2.x + nx * r,  y: p2.y + ny * r  },
+      { x: p1.x + nx * r,  y: p1.y + ny * r  },
+    ];
+  },
+
+  // Zone constructible — voie polygonale (convex rapide / concave raster)
+  // reculs : tableau de longueur poly.length, valeurs en mètres (0 = mitoyen)
+  // opts   : { cellSize: 0.42 } pour raster
+  buildZone(poly, reculs, opts = {}) {
+    if (!poly || poly.length < 3) return [];
+    if (this.isConvex(poly)) return this._buildZoneConvex(poly, reculs);
+    return this._buildZoneRaster(poly, reculs, opts.cellSize ?? 0.42);
+  },
+
+  // Zone constructible convexe — clipping successif par demi-plan entrant
+  // à distance r de chaque arête. Réutilise _clipHalfPlane existant.
+  _buildZoneConvex(poly, reculs) {
+    const n = poly.length;
+    let zone = poly.map(p => this.toXY(p));
+    for (let i = 0; i < n; i++) {
+      const r = reculs[i];
+      if (!r || r <= 0) continue;
+      const p1 = this.toXY(poly[i]);
+      const { nx, ny } = this.edgeNormalIn(poly, i);
+      // Demi-plan : côté intérieur à distance r → point ancre = p1 + n*r
+      const anchor = { x: p1.x + nx * r, y: p1.y + ny * r };
+      zone = this._clipHalfPlane(zone, anchor, nx, ny);
+      if (zone.length < 3) return [];
+    }
+    return zone;
+  },
+
+  // Zone constructible concave — rasterisation + composante connexe max
+  // Retourne le contour du plus grand blob de cellules "dedans ET hors bandes".
+  _buildZoneRaster(poly, reculs, cellSize = 0.42) {
+    const n = poly.length;
+    const bands = reculs.map((r, i) => this.bandPoly(poly, i, r));
+    const xs = poly.map(p => this.toXY(p).x);
+    const ys = poly.map(p => this.toXY(p).y);
+    const x0 = Math.min(...xs) - 2, x1 = Math.max(...xs) + 2;
+    const y0 = Math.min(...ys) - 2, y1 = Math.max(...ys) + 2;
+    const W = Math.max(20, Math.ceil((x1 - x0) / cellSize));
+    const H = Math.max(20, Math.ceil((y1 - y0) / cellSize));
+    const ddx = (x1 - x0) / W, ddy = (y1 - y0) / H;
+    const grid = new Uint8Array(W * H);
+    for (let j = 0; j < H; j++) {
+      for (let i = 0; i < W; i++) {
+        const px = x0 + (i + 0.5) * ddx;
+        const py = y0 + (j + 0.5) * ddy;
+        if (!this.pointInPoly(px, py, poly)) continue;
+        let inBand = false;
+        for (const b of bands) {
+          if (b && this.pointInPoly(px, py, b)) { inBand = true; break; }
+        }
+        if (!inBand) grid[j * W + i] = 1;
+      }
+    }
+    // Composante connexe max (BFS 4-voisins)
+    const lbl = new Int32Array(W * H);
+    const sizes = [0];
+    let nL = 0;
+    for (let j = 0; j < H; j++) {
+      for (let i = 0; i < W; i++) {
+        if (!grid[j * W + i] || lbl[j * W + i]) continue;
+        nL++; sizes.push(0);
+        const stk = [[i, j]];
+        while (stk.length) {
+          const [ci, cj] = stk.pop();
+          if (ci < 0 || ci >= W || cj < 0 || cj >= H) continue;
+          if (!grid[cj * W + ci] || lbl[cj * W + ci]) continue;
+          lbl[cj * W + ci] = nL;
+          sizes[nL]++;
+          stk.push([ci + 1, cj], [ci - 1, cj], [ci, cj + 1], [ci, cj - 1]);
+        }
+      }
+    }
+    if (!nL) return [];
+    let best = 1;
+    for (let k = 2; k <= nL; k++) if (sizes[k] > sizes[best]) best = k;
+    const mask = new Uint8Array(W * H);
+    for (let k = 0; k < W * H; k++) mask[k] = lbl[k] === best ? 1 : 0;
+    return this._gridToPoly(mask, W, H, x0, y0, ddx, ddy);
+  },
+
+  // Contour d'une grille binaire par traçage des arêtes frontières,
+  // puis chaînage en polygone unique (simple boundary walk).
+  _gridToPoly(mask, W, H, x0, y0, ddx, ddy) {
+    const edges = new Map();
+    const key = (x, y) => `${x.toFixed(3)}|${y.toFixed(3)}`;
+    const addEdge = (ax, ay, bx, by) => {
+      const k = key(ax, ay);
+      if (!edges.has(k)) edges.set(k, []);
+      edges.get(k).push({ x: bx, y: by });
+    };
+    for (let j = 0; j < H; j++) {
+      for (let i = 0; i < W; i++) {
+        if (!mask[j * W + i]) continue;
+        const xL = x0 + i * ddx,       xR = x0 + (i + 1) * ddx;
+        const yB = y0 + j * ddy,       yT = y0 + (j + 1) * ddy;
+        // Arête bas : voisin (i, j-1) hors
+        if (j === 0 || !mask[(j - 1) * W + i]) addEdge(xR, yB, xL, yB);
+        // Arête haut : voisin (i, j+1) hors
+        if (j === H - 1 || !mask[(j + 1) * W + i]) addEdge(xL, yT, xR, yT);
+        // Arête gauche : voisin (i-1, j) hors
+        if (i === 0 || !mask[j * W + (i - 1)]) addEdge(xL, yB, xL, yT);
+        // Arête droite : voisin (i+1, j) hors
+        if (i === W - 1 || !mask[j * W + (i + 1)]) addEdge(xR, yT, xR, yB);
+      }
+    }
+    if (!edges.size) return [];
+    // Chaîner : partir du premier sommet, suivre les arêtes
+    const firstKey = edges.keys().next().value;
+    const [fx, fy] = firstKey.split('|').map(Number);
+    const poly = [{ x: fx, y: fy }];
+    let curKey = firstKey;
+    const maxSteps = edges.size * 4;
+    for (let step = 0; step < maxSteps; step++) {
+      const nexts = edges.get(curKey);
+      if (!nexts || !nexts.length) break;
+      const next = nexts.shift();
+      if (!nexts.length) edges.delete(curKey);
+      const nk = key(next.x, next.y);
+      if (nk === key(fx, fy)) break;
+      poly.push({ x: next.x, y: next.y });
+      curKey = nk;
+    }
+    // Simplification colinéaire
+    return this._simplifyCollinear(poly, 1e-4);
+  },
+
+  // Retire les sommets colinéaires (tolérance en mètres²)
+  _simplifyCollinear(poly, tol = 1e-4) {
+    if (poly.length < 4) return poly;
+    const out = [];
+    const n = poly.length;
+    for (let i = 0; i < n; i++) {
+      const a = poly[(i - 1 + n) % n];
+      const b = poly[i];
+      const c = poly[(i + 1) % n];
+      const cr = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+      if (Math.abs(cr) > tol) out.push(b);
+    }
+    return out.length >= 3 ? out : poly;
+  },
+
+  // Plus grand rectangle axis-aligned inscrit dans un polygone (grille + histogramme).
+  // gridW/H : résolution (défaut 48 = compromis vitesse/précision).
+  maxInscribedAABB(zone, gridW = 48, gridH = 48) {
+    if (!zone || zone.length < 3) return null;
+    const xs = zone.map(p => this.toXY(p).x);
+    const ys = zone.map(p => this.toXY(p).y);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs);
+    const y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const W = gridW, H = gridH;
+    const ddx = (x1 - x0) / W, ddy = (y1 - y0) / H;
+    const grid = [];
+    for (let j = 0; j < H; j++) {
+      const row = new Uint8Array(W);
+      for (let i = 0; i < W; i++) {
+        const px = x0 + (i + 0.5) * ddx;
+        const py = y0 + (j + 0.5) * ddy;
+        row[i] = this.pointInPoly(px, py, zone) ? 1 : 0;
+      }
+      grid.push(row);
+    }
+    // Largest rectangle in histogram, ligne par ligne
+    const hist = new Array(W).fill(0);
+    let best = { area: 0, x: 0, y: 0, w: 0, h: 0 };
+    for (let j = 0; j < H; j++) {
+      for (let i = 0; i < W; i++) hist[i] = grid[j][i] ? hist[i] + 1 : 0;
+      const stk = [];
+      for (let i = 0; i <= W; i++) {
+        const cur = i < W ? hist[i] : 0;
+        while (stk.length && hist[stk[stk.length - 1]] > cur) {
+          const top = stk.pop();
+          const width = stk.length ? i - stk[stk.length - 1] - 1 : i;
+          const area = width * hist[top];
+          if (area > best.area) {
+            best = {
+              area,
+              x: stk.length ? stk[stk.length - 1] + 1 : 0,
+              y: j - hist[top] + 1,
+              w: width,
+              h: hist[top],
+            };
+          }
+        }
+        stk.push(i);
+      }
+    }
+    if (!best.area) return null;
+    const rx0 = x0 + best.x * ddx, ry0 = y0 + best.y * ddy;
+    return [
+      { x: rx0,                 y: ry0                 },
+      { x: rx0 + best.w * ddx,  y: ry0                 },
+      { x: rx0 + best.w * ddx,  y: ry0 + best.h * ddy  },
+      { x: rx0,                 y: ry0 + best.h * ddy  },
+    ];
+  },
+
+  // Plus grand rectangle inscrit orienté selon theta (radians).
+  maxInscribedRotAABB(zone, thetaRad, gridW = 48, gridH = 48) {
+    if (!zone || zone.length < 3) return null;
+    const c = this.centroid(zone);
+    const rotated = this.rotatePoly(zone, c.x, c.y, -thetaRad * 180 / Math.PI);
+    const r = this.maxInscribedAABB(rotated, gridW, gridH);
+    if (!r) return null;
+    return this.rotatePoly(r, c.x, c.y, thetaRad * 180 / Math.PI);
+  },
+
+  // Bi-volume L : partitionne la zone en deux rectangles (top/bot ou lf/rt)
+  // selon la coupe axiale qui maximise la somme des aires.
+  // minDimM : dimension minimale d'un rectangle (défaut 5 m)
+  // gapM    : entrefer mini entre blocs (défaut 3 m)
+  maxLShape(zone, minDimM = 5, gapM = 3) {
+    if (!zone || zone.length < 3) return null;
+    const xs = zone.map(p => this.toXY(p).x);
+    const ys = zone.map(p => this.toXY(p).y);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs);
+    const y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const HG = gapM / 2, PAD = 1000;
+    const minDim = (r) => {
+      if (!r || r.length < 3) return 0;
+      const xx = r.map(p => p.x), yy = r.map(p => p.y);
+      return Math.min(Math.max(...xx) - Math.min(...xx), Math.max(...yy) - Math.min(...yy));
+    };
+    const valid = (r) => r && r.length >= 3 && minDim(r) >= minDimM;
+    const base = this.maxInscribedAABB(zone);
+    let best = { rects: valid(base) ? [base] : null, area: valid(base) ? this.area(base) : 0 };
+    const tryPair = (r1, r2) => {
+      const v1 = valid(r1), v2 = valid(r2);
+      if (!v1 && !v2) return;
+      if (v1 && !v2) { const a = this.area(r1); if (a > best.area * 1.02) best = { rects: [r1], area: a }; return; }
+      if (!v1 && v2) { const a = this.area(r2); if (a > best.area * 1.02) best = { rects: [r2], area: a }; return; }
+      const a = this.area(r1) + this.area(r2);
+      if (a > best.area * 1.02) best = { rects: [r1, r2], area: a };
+    };
+    // Coupes horizontales (candidats = sommets Y + milieu)
+    const ySet = new Set(ys.map(y => +y.toFixed(1))); ySet.add((y0 + y1) / 2);
+    for (const ysp of ySet) {
+      if (ysp <= y0 + minDimM + HG || ysp >= y1 - minDimM - HG) continue;
+      const top = this.clipPolygon(zone, [
+        { x: x0 - PAD, y: y0 - PAD }, { x: x1 + PAD, y: y0 - PAD },
+        { x: x1 + PAD, y: ysp - HG }, { x: x0 - PAD, y: ysp - HG },
+      ]);
+      const bot = this.clipPolygon(zone, [
+        { x: x0 - PAD, y: ysp + HG }, { x: x1 + PAD, y: ysp + HG },
+        { x: x1 + PAD, y: y1 + PAD }, { x: x0 - PAD, y: y1 + PAD },
+      ]);
+      tryPair(
+        top && top.length >= 3 ? this.maxInscribedAABB(top) : null,
+        bot && bot.length >= 3 ? this.maxInscribedAABB(bot) : null,
+      );
+    }
+    // Coupes verticales
+    const xSet = new Set(xs.map(x => +x.toFixed(1))); xSet.add((x0 + x1) / 2);
+    for (const xsp of xSet) {
+      if (xsp <= x0 + minDimM + HG || xsp >= x1 - minDimM - HG) continue;
+      const lf = this.clipPolygon(zone, [
+        { x: x0 - PAD, y: y0 - PAD }, { x: xsp - HG, y: y0 - PAD },
+        { x: xsp - HG, y: y1 + PAD }, { x: x0 - PAD, y: y1 + PAD },
+      ]);
+      const rt = this.clipPolygon(zone, [
+        { x: xsp + HG, y: y0 - PAD }, { x: x1 + PAD, y: y0 - PAD },
+        { x: x1 + PAD, y: y1 + PAD }, { x: xsp + HG, y: y1 + PAD },
+      ]);
+      tryPair(
+        lf && lf.length >= 3 ? this.maxInscribedAABB(lf) : null,
+        rt && rt.length >= 3 ? this.maxInscribedAABB(rt) : null,
+      );
+    }
+    return best.rects;
+  },
+
+  // Règle de prospect H/2 : distance min du bâti à chaque arête non mitoyenne
+  // et non-voie du polygone parcelle doit être ≥ hauteur / 2.
+  // Retourne { ok, violations: [{ edgeIndex, need, got, excess }] }.
+  // parcPoly   : polygone parcelle (mètres)
+  // edgeTypes  : tableau 'voie'|'fond'|'lat' par arête
+  // mitoyenFlags : tableau bool par arête (true = mitoyen = exempt du H/2)
+  // bldgPoly   : polygone bâti (footprint unique ou union)
+  // hauteurM   : hauteur du bâtiment en m
+  checkProspectH2(parcPoly, edgeTypes, mitoyenFlags, bldgPoly, hauteurM) {
+    if (!parcPoly || parcPoly.length < 3 || !bldgPoly || bldgPoly.length < 3) {
+      return { ok: true, violations: [] };
+    }
+    const need = hauteurM / 2;
+    const n = parcPoly.length;
+    const violations = [];
+    for (let i = 0; i < n; i++) {
+      const type = edgeTypes?.[i] ?? 'lat';
+      if (type === 'voie' || type === 'fond') continue; // exemptés (règle voie/fond propre)
+      if (mitoyenFlags?.[i]) continue; // mitoyen exempt
+      const a = this.toXY(parcPoly[i]);
+      const b = this.toXY(parcPoly[(i + 1) % n]);
+      let dMin = Infinity;
+      for (const p of bldgPoly) {
+        const q = this.toXY(p);
+        const d = this.distPointSeg(q.x, q.y, a.x, a.y, b.x, b.y);
+        if (d < dMin) dMin = d;
+      }
+      if (dMin < need - 1e-3) {
+        violations.push({
+          edgeIndex: i,
+          edgeType: type,
+          need: +need.toFixed(2),
+          got: +dMin.toFixed(2),
+          excess: +(need - dMin).toFixed(2),
+        });
+      }
+    }
+    return { ok: violations.length === 0, violations };
+  },
+
+  // Arcs de transition concaves — rendu PLU des coins rentrants.
+  // Retourne une liste d'objets { arcPts, secPts, am } pour chaque coin concave.
+  // nSeg = nombre de segments d'approximation de l'arc (défaut 18).
+  concaveArcs(poly, reculs, nSeg = 18) {
+    const n = poly.length;
+    const sa = this.signedArea(poly);
+    const res = [];
+    const norms = poly.map((_, i) => this.edgeNormalIn(poly, i));
+    for (let k = 0; k < n; k++) {
+      const ip = (k - 1 + n) % n;
+      const rP = reculs[ip] || 0, rN = reculs[k] || 0;
+      if (!rP || !rN) continue;
+      const pp = this.toXY(poly[(k - 1 + n) % n]);
+      const pc = this.toXY(poly[k]);
+      const pn = this.toXY(poly[(k + 1) % n]);
+      const ex1 = pc.x - pp.x, ey1 = pc.y - pp.y;
+      const ex2 = pn.x - pc.x, ey2 = pn.y - pc.y;
+      const cr = ex1 * ey2 - ey1 * ex2;
+      // Coin concave : signe opposé à l'orientation globale
+      if (!(sa < 0 ? cr > 0 : cr < 0)) continue;
+      const nP = norms[ip], nN = norms[k];
+      if (!nP || (!nP.nx && !nP.ny)) continue;
+      const R = Math.min(rP, rN);
+      const angS = Math.atan2(nP.ny, nP.nx);
+      const angE = Math.atan2(nN.ny, nN.nx);
+      let delta = angE - angS;
+      while (delta > Math.PI) delta -= 2 * Math.PI;
+      while (delta <= -Math.PI) delta += 2 * Math.PI;
+      if (sa < 0 && delta < 0) delta += 2 * Math.PI;
+      if (sa > 0 && delta > 0) delta -= 2 * Math.PI;
+      if (Math.abs(delta) > Math.PI * 1.9 || Math.abs(delta) < 0.01) continue;
+      const arcPts = [];
+      const secPts = [{ ...pc }];
+      for (let s = 0; s <= nSeg; s++) {
+        const a = angS + delta * s / nSeg;
+        const p = { x: pc.x + R * Math.cos(a), y: pc.y + R * Math.sin(a) };
+        arcPts.push(p);
+        secPts.push(p);
+      }
+      const am = Math.abs(delta) / 2 * R * R;
+      res.push({
+        arcPts, secPts, am,
+        cx: secPts.reduce((s, p) => s + p.x, 0) / secPts.length,
+        cy: secPts.reduce((s, p) => s + p.y, 0) / secPts.length,
+      });
+    }
+    return res;
+  },
+
+  // ── Axe de profondeur voie → fond ─────────────────────────────────
+  // Retourne un vecteur unitaire {x,y} dirigé depuis la façade voie
+  // vers la façade fond. Sans connaissance explicite de la voie, on
+  // prend l'arête de plus grande moyenne Y comme voie (convention
+  // SVG Y↓) par défaut. En repère métrique Y↑ (par ex. TERLAB engine),
+  // passer { voieIsMinY: true }.
+  polyDepthAxis(poly, opts = {}) {
+    if (!poly || poly.length < 3) return { x: 0, y: -1 };
+    const voieIsMinY = !!opts.voieIsMinY;
+    const n = poly.length;
+    let vMid = null, fMid = null, bestV = -Infinity, bestF = Infinity;
+    for (let i = 0; i < n; i++) {
+      const a = this.toXY(poly[i]), b = this.toXY(poly[(i + 1) % n]);
+      const my = (a.y + b.y) / 2, mx = (a.x + b.x) / 2;
+      const vKey = voieIsMinY ? -my : my;
+      if (vKey > bestV) { bestV = vKey; vMid = { x: mx, y: my }; }
+      if (vKey < bestF) { bestF = vKey; fMid = { x: mx, y: my }; }
+    }
+    if (!vMid || !fMid) return { x: 0, y: -1 };
+    const dx = fMid.x - vMid.x, dy = fMid.y - vMid.y, len = Math.hypot(dx, dy);
+    if (len < 0.5) return { x: 0, y: -1 };
+    return { x: dx / len, y: dy / len };
+  },
+
+  // ── Intersection ligne de coupe / polygone ────────────────────────
+  // Pour un axis unitaire et une fraction t∈[0,1] le long de l'axe,
+  // retourne le segment [pIn, pOut] de la ligne de coupe perpendiculaire
+  // à axis, restreinte au polygone. Null si <2 intersections.
+  cutLineInPoly(poly, axis, t) {
+    if (!poly || poly.length < 3) return null;
+    const xy = poly.map(p => this.toXY(p));
+    const projs = xy.map(p => p.x * axis.x + p.y * axis.y);
+    const pMin = Math.min(...projs), pMax = Math.max(...projs), total = pMax - pMin;
+    if (total < 0.5) return null;
+    const cut = pMin + total * t, pts = [];
+    for (let i = 0; i < xy.length; i++) {
+      const j = (i + 1) % xy.length, pi = projs[i], pj = projs[j];
+      if (Math.abs(pj - pi) < 1e-8) continue;
+      if ((pi - cut) * (pj - cut) <= 0) {
+        const tE = (cut - pi) / (pj - pi);
+        pts.push({
+          x: xy[i].x + (xy[j].x - xy[i].x) * tE,
+          y: xy[i].y + (xy[j].y - xy[i].y) * tE,
+        });
+      }
+    }
+    const uniq = pts.filter((p, k) => k === 0 || Math.hypot(p.x - pts[k - 1].x, p.y - pts[k - 1].y) > 0.01);
+    return uniq.length >= 2 ? [uniq[0], uniq[uniq.length - 1]] : null;
+  },
+
+  // ── Clip d'une bande (profondeur t0..t1) ──────────────────────────
+  // Extrait la tranche du polygone entre les fractions t0 et t1 le long
+  // de l'axe. Polygone convexe → double half-plane (SH, rapide et exact).
+  // Polygone non-convexe → fallback raster (coupure peut séparer en
+  // composantes disjointes, SH les souderait artificiellement).
+  clipToBand(poly, axis, t0, t1, opts = {}) {
+    if (!poly || poly.length < 3 || t1 <= t0) return null;
+    const xy = poly.map(p => this.toXY(p));
+    const projs = xy.map(p => p.x * axis.x + p.y * axis.y);
+    const pMin = Math.min(...projs), pMax = Math.max(...projs), total = pMax - pMin;
+    if (total < 0.5) return null;
+    const cut0 = pMin + total * t0, cut1 = pMin + total * t1;
+    if (!this.isConvex(xy)) return this._clipToBandRaster(xy, axis, cut0, cut1, opts.cellSize ?? 0.30);
+    const perp = { x: -axis.y, y: axis.x }, BIG = 1500;
+    const cx = xy.reduce((s, p) => s + p.x, 0) / xy.length;
+    const cy = xy.reduce((s, p) => s + p.y, 0) / xy.length;
+    const pC = cx * axis.x + cy * axis.y;
+    let out = xy.slice();
+    const halfPlane = (cut, keepPositive) => {
+      const d = cut - pC;
+      const c0x = cx + axis.x * d, c0y = cy + axis.y * d;
+      const a = { x: c0x - perp.x * BIG, y: c0y - perp.y * BIG };
+      const b = { x: c0x + perp.x * BIG, y: c0y + perp.y * BIG };
+      const sign = keepPositive ? 1 : -1;
+      return [
+        a, b,
+        { x: b.x + axis.x * BIG * sign, y: b.y + axis.y * BIG * sign },
+        { x: a.x + axis.x * BIG * sign, y: a.y + axis.y * BIG * sign },
+      ];
+    };
+    out = this.clipPolygon(out, halfPlane(cut0, true));
+    if (!out || out.length < 3) return null;
+    out = this.clipPolygon(out, halfPlane(cut1, false));
+    return out && out.length >= 3 ? out : null;
+  },
+
+  _clipToBandRaster(xy, axis, cut0, cut1, cellSize = 0.30) {
+    const xs = xy.map(p => p.x), ys = xy.map(p => p.y);
+    const x0 = Math.min(...xs) - 2, x1 = Math.max(...xs) + 2;
+    const y0 = Math.min(...ys) - 2, y1 = Math.max(...ys) + 2;
+    const W = Math.max(12, Math.ceil((x1 - x0) / cellSize));
+    const H = Math.max(12, Math.ceil((y1 - y0) / cellSize));
+    const ddx = (x1 - x0) / W, ddy = (y1 - y0) / H;
+    const grid = new Uint8Array(W * H);
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+      const px = x0 + (i + 0.5) * ddx, py = y0 + (j + 0.5) * ddy;
+      const pr = px * axis.x + py * axis.y;
+      if (pr < cut0 || pr > cut1) continue;
+      if (!this.pointInPoly(px, py, xy)) continue;
+      grid[j * W + i] = 1;
+    }
+    // Plus grande composante connexe (4-conn)
+    const lbl = new Int32Array(W * H), sizes = [0];
+    let nL = 0;
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+      if (!grid[j * W + i] || lbl[j * W + i]) continue;
+      nL++; sizes.push(0);
+      const stk = [[i, j]];
+      while (stk.length) {
+        const [ci, cj] = stk.pop();
+        if (ci < 0 || ci >= W || cj < 0 || cj >= H) continue;
+        if (!grid[cj * W + ci] || lbl[cj * W + ci]) continue;
+        lbl[cj * W + ci] = nL; sizes[nL]++;
+        stk.push([ci + 1, cj], [ci - 1, cj], [ci, cj + 1], [ci, cj - 1]);
+      }
+    }
+    if (!nL) return null;
+    let best = 1;
+    for (let k = 2; k <= nL; k++) if (sizes[k] > sizes[best]) best = k;
+    const mask = new Uint8Array(W * H);
+    for (let k = 0; k < W * H; k++) mask[k] = lbl[k] === best ? 1 : 0;
+    const out = this._gridToPoly(mask, W, H, x0, y0, ddx, ddy);
+    return out && out.length >= 3 ? out : null;
   },
 };
 

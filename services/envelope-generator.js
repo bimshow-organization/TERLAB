@@ -651,19 +651,38 @@ const EnvelopeGenerator = {
   // qui sera traduit en interne par _offsetPolygon.
   _setback(parcelLocal, edgeTypes, plu) {
     const splitMit = !!plu.mitoyen_g !== !!plu.mitoyen_d;
-    if (splitMit) {
-      const sides = this._classifyLateralSides(parcelLocal, edgeTypes);
-      const reculsArr = edgeTypes.map((t, i) => {
-        if (t === 'voie') return plu.recul_voie;
-        if (t === 'fond') return plu.recul_fond;
-        // lateral : règle binaire par côté
+    // Toujours construire le tableau reculs par arête (mitoyen G/D + voie/fond/lat)
+    let sides = null;
+    if (splitMit) sides = this._classifyLateralSides(parcelLocal, edgeTypes);
+    const reculsArr = edgeTypes.map((t, i) => {
+      if (t === 'voie') return plu.recul_voie;
+      if (t === 'fond') return plu.recul_fond;
+      if (splitMit && sides) {
         const side = sides[i];
         if (side === 'g' && plu.mitoyen_g) return 0;
         if (side === 'd' && plu.mitoyen_d) return 0;
         return plu.lat_lmin ?? plu.recul_lat;
-      });
-      return this._offsetPolygon(parcelLocal, edgeTypes, reculsArr);
+      }
+      return plu.recul_lat;
+    });
+
+    // ── Branche v4h (FootprintHelpers.buildZone) derrière flag ────
+    // Active via window.TERLAB_USE_V4_GEOM = true ou plu.useV4Geom
+    // Robuste aux parcelles concaves (bec, drapeau, irrégulier).
+    const useV4 = (typeof window !== 'undefined' && window.TERLAB_USE_V4_GEOM === true)
+               || plu.useV4Geom === true;
+    const FH = (typeof window !== 'undefined') ? window.FootprintHelpers : null;
+    if (useV4 && FH && typeof FH.buildZone === 'function') {
+      try {
+        const zoneV4 = FH.buildZone(parcelLocal, reculsArr);
+        if (zoneV4 && zoneV4.length >= 3) return zoneV4;
+        console.warn('[EnvelopeGenerator] buildZone v4h retour vide, fallback _offsetPolygon');
+      } catch (e) {
+        console.warn('[EnvelopeGenerator] buildZone v4h erreur, fallback:', e.message);
+      }
     }
+
+    if (splitMit) return this._offsetPolygon(parcelLocal, edgeTypes, reculsArr);
     const reculs = { voie: plu.recul_voie, fond: plu.recul_fond, lateral: plu.recul_lat };
     return this._offsetPolygon(parcelLocal, edgeTypes, reculs);
   },
