@@ -561,6 +561,69 @@
         "type": "données",
         "url": "https://meteofrance.re/cyclone",
         "note": "Centre régional spécialisé en météorologie. Bilan cyclonique 2023–2024. Saison : novembre–avril. Données trajectoires, intensités et impacts disponibles."
+      },
+      {
+        "id": "rex-belal-2024",
+        "titre": "REX Cyclone Belal (15 janvier 2024) — Enseignements pour l'aménagement",
+        "auteur": "Préfecture de La Réunion / DEAL / BRGM",
+        "annee": 2024,
+        "type": "retour-experience",
+        "url": "https://www.reunion.gouv.fr/contenu/telechargement/33874/283017/file/REX%20BELAL.pdf",
+        "note": "Bilan : 800 mm en 24h au volcan, 40% réseau électrique coupé, 100 000 foyers sans eau. Cartographie des débordements ravines, submersion marine, coulées boue. Utile pour scénarios zone U en aléa fort."
+      },
+      {
+        "id": "ogf-observatoire-fournaise",
+        "titre": "OVPF-IPGP — Observatoire Volcanologique du Piton de la Fournaise",
+        "auteur": "Institut de Physique du Globe de Paris",
+        "annee": 2024,
+        "type": "portail",
+        "url": "https://www.ipgp.fr/fr/ovpf/actualites-ovpf",
+        "note": "Bulletins mensuels activité volcanique, cartes coulées historiques 1640-aujourd'hui. Zonage ZAG (Zone d'Aléa Grave) hors Enclos Fouqué à intégrer dans P03."
+      },
+      {
+        "id": "plan-orsec-reunion-2023",
+        "titre": "Plan ORSEC La Réunion — Volets cyclone / volcan / tsunami",
+        "auteur": "Préfecture de La Réunion · SIDPC",
+        "annee": 2023,
+        "type": "réglementaire",
+        "url": "https://www.reunion.gouv.fr/Actions-de-l-Etat/Securite-protection-des-personnes-et-des-biens/Protection-civile/Plans-de-secours-ORSEC",
+        "note": "Dispositions spécifiques cyclone (pré-alerte orange, rouge, violet), éruption volcanique, tsunami. Références points de regroupement et zones de mise à l'abri par commune."
+      },
+      {
+        "id": "bd-mvt-brgm",
+        "titre": "BD MVT — Mouvements de terrain (inventaire national)",
+        "auteur": "BRGM / Géorisques",
+        "annee": 2024,
+        "type": "données",
+        "url": "https://www.georisques.gouv.fr/donnees/bases-de-donnees/mouvements-de-terrain",
+        "note": "Inventaire géoréférencé : glissements, éboulements, effondrements, coulées, affaissements. Téléchargement shape + WMS. Critique pour les terrains de mi-pentes Réunion (cirques, remparts)."
+      },
+      {
+        "id": "zonage-sismique-974",
+        "titre": "Zonage sismique réglementaire — La Réunion (zone 2 faible)",
+        "auteur": "Ministère Transition Écologique · Décret 2010-1254",
+        "annee": 2011,
+        "type": "réglementaire",
+        "url": "https://www.legifrance.gouv.fr/loda/id/JORFTEXT000022941706/",
+        "note": "Classement : Réunion = zone 2 (aléa faible). Application Eurocode 8 NF EN 1998-1 pour bâtiments catégorie d'importance III/IV (ERP, logements collectifs R+3 et plus)."
+      },
+      {
+        "id": "pprl-reunion",
+        "titre": "PPRL — Plans de Prévention des Risques Littoraux Réunion",
+        "auteur": "DEAL Réunion · Préfecture",
+        "annee": 2023,
+        "type": "réglementaire",
+        "url": "https://www.reunion.gouv.fr/Actions-de-l-Etat/Securite-protection-des-personnes-et-des-biens/Protection-civile/Prevention-des-risques-naturels-et-technologiques/Les-risques-naturels-a-La-Reunion/Plans-de-prevention-des-risques-naturels-PPRN-et-PAC",
+        "note": "Submersion marine + recul trait de côte. PPRL prescrit ou approuvé par commune littorale (Saint-Paul, Saint-Leu, Saint-Pierre, Saint-Benoît…). Cote altimétrique de référence NGR à respecter pour plancher bas."
+      },
+      {
+        "id": "radon-974",
+        "titre": "Cartographie potentiel radon — Communes de La Réunion",
+        "auteur": "IRSN · ASN",
+        "annee": 2023,
+        "type": "données",
+        "url": "https://www.georisques.gouv.fr/risques/radon",
+        "note": "Réunion majoritairement catégorie 1 (faible potentiel). Exception : quelques secteurs volcaniques récents cat. 2-3. Mesure obligatoire ERP dans communes classées (arrêté 27/06/2018)."
       }
     ],
     "p04": [
