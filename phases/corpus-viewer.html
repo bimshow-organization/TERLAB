@@ -4,6 +4,26 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TERLAB · Corpus Viewer</title>
+<script type="importmap">
+{
+  "imports": {
+    "copc": "https://cdn.jsdelivr.net/npm/copc@0.0.8/+esm"
+  }
+}
+</script>
+<script>
+(function() {
+  var CDN_WASM = 'https://cdn.jsdelivr.net/npm/laz-perf@0.0.7/lib/laz-perf.wasm';
+  var _fetch = window.fetch;
+  window.fetch = function(input) {
+    var url = typeof input === 'string' ? input : (input && input.url) || '';
+    if (url.endsWith('laz-perf.wasm') && !url.startsWith('http')) {
+      return _fetch.call(this, CDN_WASM);
+    }
+    return _fetch.apply(this, arguments);
+  };
+})();
+</script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -87,7 +107,7 @@ header span{font-size:10px;color:#8a7050}
   <button onclick="loadDemo()" style="font:700 10px var(--font);background:#c9a84c;color:#1a1209;border:none;padding:4px 12px;border-radius:2px;cursor:pointer">▶ Démo</button>
   <button id="btn-run-engine" onclick="runEngineOnLoaded()" style="font:700 10px var(--font);background:#16a34a;color:#fff;border:none;padding:4px 12px;border-radius:2px;cursor:pointer" title="Lance AutoPlanEngine + ConformityScorer sur les cas chargés et télécharge corpus.json">▶ Lancer engine</button>
   <label style="font-size:10px;color:#c9a84c;display:flex;align-items:center;gap:4px;cursor:pointer" title="Overlay segmentation COSIA IGN (bati, vegetation, sol, bitume)">
-    <input type="checkbox" id="toggle-cosia" onchange="toggleCosia()" style="cursor:pointer">
+    <input type="checkbox" id="toggle-cosia" onchange="toggleCosia()" style="cursor:pointer" checked>
     COSIA
   </label>
   <span id="run-status" style="font-size:10px;color:#c9a84c;min-width:140px"></span>
@@ -121,12 +141,21 @@ header span{font-size:10px;color:#8a7050}
     </div>
 
     <div class="panels">
-      <!-- Plan réel -->
+      <!-- Plan réel : reconstitution 2D de l'existant (BDTopo + Alti + LiDAR + COSIA) -->
       <div class="panel">
-        <div class="panel-hdr">🏗 Bâtiment réel</div>
+        <div class="panel-hdr" style="display:flex;align-items:center;gap:6px">
+          <span>🏗 État des lieux — 2D</span>
+          <button id="btn-analyse-existant" onclick="analyseExistant()" style="margin-left:auto;font:700 9px var(--font);background:#c9a84c;color:#1a1209;border:none;padding:2px 8px;border-radius:2px;cursor:pointer" title="Fetch LiDAR COPC (arbres) + COSIA (zones) pour ce cas">▶ LiDAR+COSIA</button>
+          <span id="analyse-status" style="font-size:9px;color:var(--muted)"></span>
+        </div>
         <div class="panel-body">
           <svg class="svg-wrap" id="svg-real" viewBox="0 0 300 300" preserveAspectRatio="xMidYMid meet">
-            <g id="g-real-bg"></g><g id="g-real-bat"></g><g id="g-real-lbl"></g>
+            <g id="g-real-bg"></g>
+            <g id="g-real-contour"></g>
+            <g id="g-real-zones"></g>
+            <g id="g-real-trees"></g>
+            <g id="g-real-bat"></g>
+            <g id="g-real-lbl"></g>
           </svg>
         </div>
       </div>
@@ -154,8 +183,449 @@ header span{font-size:10px;color:#8a7050}
 'use strict';
 let corpus = [], activeCase = null, activeFilters = new Set();
 
+// Lazy-load les services TERLAB lourds à la demande (premiere renderCase)
+let _pmc = null, _giep = null, _cbs = null;
+async function ensureTerlabServices() {
+  if (_pmc && _giep && _cbs) return { PMC: _pmc, GIEP: _giep, CBS: _cbs };
+  const [pmcMod, giepMod, cbsMod] = await Promise.all([
+    import('../services/plan-masse-canvas.js'),
+    import('../services/giep-calculator-service.js'),
+    import('../services/cbs-calculator-service.js'),
+  ]);
+  _pmc  = pmcMod.default ?? pmcMod.PlanMasseCanvas;
+  _giep = giepMod.default ?? giepMod.GIEPCalculator;
+  _cbs  = cbsMod.default  ?? cbsMod.CBSCalculator;
+  // Les services attendent ces globals :
+  if (typeof window !== 'undefined') {
+    window.PlanMasseCanvas = _pmc;
+    window.GIEPCalculator  = _giep;
+    window.CBSCalculator   = _cbs;
+  }
+  return { PMC: _pmc, GIEP: _giep, CBS: _cbs };
+}
+
+// Mapping : seed corpus cas -> session TERLAB standard (consommee par PMC + GIEP)
+function buildSessionFromCas(cas) {
+  const plu = cas.plu ?? {};
+  const parc = cas.parcelle ?? {};
+  const bat = cas.bat_reel ?? {};
+  const principal = (bat.blocs ?? []).find(b => b.type_bloc?.startsWith('principal')) ?? bat.blocs?.[0];
+  // AABB du principal en coords locales
+  const p = principal?.polygon_local ?? [];
+  const xs = p.map(q => q.x), ys = p.map(q => q.y);
+  const bx = xs.length ? Math.min(...xs) : 0;
+  const by = ys.length ? Math.min(...ys) : 0;
+  const bw = xs.length ? (Math.max(...xs) - bx) : 8;
+  const bh = ys.length ? (Math.max(...ys) - by) : 10;
+
+  return {
+    terrain: {
+      parcelle_geojson: parc.geojson_wgs84 ?? null,
+      contenance_m2:    parc.surface_m2 ?? 0,
+      commune:          cas.meta?.commune ?? '',
+      reference:        cas.meta?.cadastre_id ?? cas.id,
+      zone_rtaa:        plu.rtaa_zone ?? 2,
+      bearing_voie_deg: parc.bearing_voie_deg ?? 0,
+      pente_moy_pct:    parc.topographie?.pente_moy_pct ?? 0,
+    },
+    _parcelLocal: parc.geojson_local ?? [],
+    _edgeTypes:   parc.edge_types ?? [],
+    phases: {
+      4: { data: {
+        zone_plu:        plu.zone,
+        recul_voie_m:    plu.recul_voie_m,
+        recul_fond_m:    plu.recul_fond_m,
+        recul_lat_m:     plu.recul_lat_m,
+        hauteur_egout_m: plu.hauteur_faitage_max_m,
+        ces_max:         plu.ces_max_pct,
+        permeabilite_min_pct: plu.permea_min_pct ?? 25,
+      }},
+      7: { data: {
+        niveaux:   bat.niveaux ?? 2,
+        type_prog: bat.type_programme ?? 'collectif_moyen',
+      }},
+    },
+    pluConfig: {
+      plu: { emprMax: plu.ces_max_pct ?? 60, heMax: plu.hauteur_faitage_max_m ?? 9,
+             permMin: plu.permea_min_pct ?? 25 },
+      meta: { zone: plu.zone ?? 'UA' },
+    },
+    // Pre-set bati AABB si PMC expose un setter, sinon PMC mettra son defaut
+    _initialBat: { x: bx, y: by, w: bw, l: bh },
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rich SVG plan masse
+// "Beau" plan masse du site : parcelles + blocs colorés par type_bloc + lignes
+// de faîtage inférées depuis l'OBB de chaque bloc + ortho IGN en fond.
+// Objectif : voir d'un coup d'œil comment le bâti réel occupe la parcelle
+// (principal vs annexe vs parking/léger), qualité de remplissage, orientations.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Couleurs + hatchs par type de bloc
+const BLOC_STYLE = {
+  principal: { fill: 'rgba(30, 58, 138, 0.72)',    stroke: '#0b2763', roof: '#1e3a8a',        label: 'principal' },
+  annexe:    { fill: 'rgba(217, 119, 6, 0.55)',    stroke: '#92400e', roof: '#b45309',        label: 'annexe' },
+  parking:   { fill: 'url(#hatch-parking)',        stroke: '#4b5563', roof: null,             label: 'parking' },
+  communs:   { fill: 'rgba(99, 102, 241, 0.45)',   stroke: '#4338ca', roof: '#6366f1',        label: 'communs' },
+  leger:     { fill: 'url(#hatch-leger)',          stroke: '#a08054', roof: null,             label: 'léger' },
+  inconnu:   { fill: 'rgba(120, 120, 120, 0.45)',  stroke: '#444',    roof: '#555',           label: 'bâti' },
+};
+
+// OBB + centroid + axe long pour une liste de points XY (mètres)
+function polyOBB(pts) {
+  if (!pts || pts.length < 3) return null;
+  // Edge iteration : l'axe OBB est aligné sur une des arêtes (rotating calipers lite)
+  let best = null;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i+1)%pts.length];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy); if (len < 0.1) continue;
+    const ux = dx/len, uy = dy/len;      // unit along this edge
+    const vx = -uy,     vy = ux;         // perp
+    let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+    for (const p of pts) {
+      const du = p.x*ux + p.y*uy, dv = p.x*vx + p.y*vy;
+      if (du < minU) minU = du; if (du > maxU) maxU = du;
+      if (dv < minV) minV = dv; if (dv > maxV) maxV = dv;
+    }
+    const w = maxU - minU, h = maxV - minV;
+    const area = w * h;
+    if (!best || area < best.area) {
+      // Centre de la boîte en local → repasser en XY monde
+      const cu = (minU + maxU)/2, cv = (minV + maxV)/2;
+      const cx = cu*ux + cv*vx, cy = cu*uy + cv*vy;
+      best = { area, w, h, cx, cy, ux, uy, vx, vy };
+    }
+  }
+  if (!best) return null;
+  // Axe long = celui dont l'extent est le plus grand
+  if (best.h > best.w) {
+    return { cx: best.cx, cy: best.cy, longAxis: { x: best.vx, y: best.vy },
+             shortAxis: { x: best.ux, y: best.uy },
+             longLen: best.h, shortLen: best.w };
+  }
+  return { cx: best.cx, cy: best.cy, longAxis: { x: best.ux, y: best.uy },
+           shortAxis: { x: best.vx, y: best.vy },
+           longLen: best.w, shortLen: best.h };
+}
+
+// Rend un bloc + son toit inféré (ridge line + hip lines) dans le groupe SVG
+function drawBlocRich(bloc, toSVG, svgDefs, gBat, gRoof, gLbl, idx) {
+  const poly = (bloc.polygon_local ?? bloc.polygon ?? []);
+  if (poly.length < 3) return;
+  const type = (bloc.type_bloc ?? 'inconnu').toLowerCase();
+  const st = BLOC_STYLE[type] ?? BLOC_STYLE.inconnu;
+  const svgPoly = poly.map(toSVG);
+
+  // Corps du bloc
+  E('polygon', {
+    points: ppts(svgPoly),
+    fill: st.fill,
+    stroke: st.stroke,
+    'stroke-width': 1.3,
+    'stroke-linejoin': 'round',
+    opacity: 0.95,
+  }, gBat);
+
+  // Faîtage + hip lines (sauf parking/léger — toits plats ou ouverts)
+  if (st.roof && poly.length >= 4) {
+    const obb = polyOBB(poly);
+    if (obb && obb.longLen > 2) {
+      // Ridge = centerline le long de l'axe long, raccourci de 15% aux extrémités
+      const k = 0.42 * obb.longLen;
+      const a = { x: obb.cx - obb.longAxis.x * k, y: obb.cy - obb.longAxis.y * k };
+      const b = { x: obb.cx + obb.longAxis.x * k, y: obb.cy + obb.longAxis.y * k };
+      const aS = toSVG(a), bS = toSVG(b);
+      E('line', { x1: aS.x, y1: aS.y, x2: bS.x, y2: bS.y,
+                  stroke: st.roof, 'stroke-width': 1.8,
+                  'stroke-linecap': 'round', opacity: 0.85 }, gRoof);
+      // Hip lines : du ridge-end vers les 2 coins proches du polygon, simulant un 4-pans
+      const endL = a, endR = b;
+      const cornersNear = (end) => {
+        const dists = poly.map(p => ({ p, d: Math.hypot(p.x-end.x, p.y-end.y) }))
+          .sort((u, v) => u.d - v.d).slice(0, 2);
+        return dists.map(({ p }) => p);
+      };
+      [...cornersNear(endL).map(p => ({ from: endL, to: p })),
+       ...cornersNear(endR).map(p => ({ from: endR, to: p }))].forEach(seg => {
+        const s = toSVG(seg.from), t = toSVG(seg.to);
+        E('line', { x1: s.x, y1: s.y, x2: t.x, y2: t.y,
+                    stroke: st.roof, 'stroke-width': 0.9,
+                    'stroke-dasharray': '3,2', opacity: 0.7 }, gRoof);
+      });
+    }
+  }
+
+  // Parking : lignes de stationnement visibles
+  if (type === 'parking') {
+    const obb = polyOBB(poly);
+    if (obb) {
+      // 4-6 lignes perpendiculaires à l'axe long
+      const n = Math.max(3, Math.min(7, Math.round(obb.longLen / 2.5)));
+      for (let i = 1; i < n; i++) {
+        const t = i / n;
+        const c = {
+          x: obb.cx + obb.longAxis.x * (t - 0.5) * obb.longLen,
+          y: obb.cy + obb.longAxis.y * (t - 0.5) * obb.longLen,
+        };
+        const s = {
+          x: c.x - obb.shortAxis.x * obb.shortLen * 0.45,
+          y: c.y - obb.shortAxis.y * obb.shortLen * 0.45,
+        };
+        const e = {
+          x: c.x + obb.shortAxis.x * obb.shortLen * 0.45,
+          y: c.y + obb.shortAxis.y * obb.shortLen * 0.45,
+        };
+        const sS = toSVG(s), eS = toSVG(e);
+        E('line', { x1: sS.x, y1: sS.y, x2: eS.x, y2: eS.y,
+                    stroke: '#fafafa', 'stroke-width': 0.7, opacity: 0.85 }, gRoof);
+      }
+    }
+  }
+
+  // Label centré (niveaux + surface) — principal uniquement
+  if (type === 'principal' || idx === 0) {
+    const cxS = svgPoly.reduce((s,p)=>s+p.x,0) / svgPoly.length;
+    const cyS = svgPoly.reduce((s,p)=>s+p.y,0) / svgPoly.length;
+    const niv = bloc.niveaux ? `R+${bloc.niveaux - 1}` : '';
+    const m2  = bloc.surface_m2 ? `${Math.round(bloc.surface_m2)}m²` : '';
+    if (niv) T(cxS, cyS - 2, niv, {
+      'text-anchor': 'middle', 'font-family': 'Inconsolata,monospace',
+      'font-size': '11', 'font-weight': '700', fill: '#fff',
+      stroke: '#000', 'stroke-width': '0.4', 'paint-order': 'stroke',
+    }, gLbl);
+    if (m2) T(cxS, cyS + 9, m2, {
+      'text-anchor': 'middle', 'font-family': 'Inconsolata,monospace',
+      'font-size': '8', 'font-weight': '500', fill: '#fff',
+      stroke: '#000', 'stroke-width': '0.3', 'paint-order': 'stroke',
+    }, gLbl);
+  }
+}
+
+// Définit les motifs SVG (hatches parking, léger) une seule fois
+function ensureSvgDefs(svg) {
+  if (svg.querySelector('#plan-defs')) return;
+  const defs = E('defs', { id: 'plan-defs' }, svg);
+  // Parking : diagonales grises
+  const p1 = E('pattern', { id: 'hatch-parking', patternUnits: 'userSpaceOnUse',
+                             width: 5, height: 5, patternTransform: 'rotate(45)' }, defs);
+  E('rect', { width: 5, height: 5, fill: 'rgba(180,185,195,0.85)' }, p1);
+  E('line', { x1: 0, y1: 0, x2: 0, y2: 5, stroke: '#4b5563', 'stroke-width': 0.8 }, p1);
+  // Léger : diagonales tan
+  const p2 = E('pattern', { id: 'hatch-leger', patternUnits: 'userSpaceOnUse',
+                             width: 4, height: 4, patternTransform: 'rotate(-45)' }, defs);
+  E('rect', { width: 4, height: 4, fill: 'rgba(200,170,130,0.35)' }, p2);
+  E('line', { x1: 0, y1: 0, x2: 0, y2: 4, stroke: '#a08054', 'stroke-width': 0.5 }, p2);
+}
+
+// Rendu principal du plan masse riche dans #pmc-host
+async function mountPlanMasseCanvas(cas) {
+  const host = document.getElementById('pmc-host');
+  if (!host) return;
+
+  host.innerHTML = '';
+  host.style.position = 'relative';
+  host.style.background = '#ece6d8';
+
+  // Taille dynamique (carré max, basé sur le min w/h disponible)
+  const rect = host.getBoundingClientRect();
+  const S = Math.max(280, Math.min(rect.width, rect.height) - 4);
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('class', 'svg-wrap');
+  svg.setAttribute('viewBox', `0 0 ${S} ${S}`);
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  svg.style.cssText = 'width:100%;height:100%;display:block';
+  host.appendChild(svg);
+  ensureSvgDefs(svg);
+
+  const gBg   = E('g', { id: 'rich-bg' }, svg);
+  const gBat  = E('g', { id: 'rich-bat' }, svg);
+  const gRoof = E('g', { id: 'rich-roof' }, svg);
+  const gLbl  = E('g', { id: 'rich-lbl' }, svg);
+
+  const parcel = cas.parcelle?.geojson_local ?? [];
+  if (!parcel.length) {
+    T(S/2, S/2, 'Pas de géométrie parcelle', {
+      'text-anchor': 'middle', 'font-family': 'Inconsolata,monospace',
+      'font-size': '11', fill: '#8a7050',
+    }, gLbl);
+    return;
+  }
+
+  const edgeTypes = cas.parcelle?.edge_types ?? [];
+  const plu = cas.plu ?? {};
+  const reculs = parcel.map((_, i) => {
+    const t = edgeTypes[i] ?? 'lat';
+    if (t === 'voie') return plu.recul_voie_m ?? 3;
+    if (t === 'fond') return plu.recul_fond_m ?? 3;
+    return plu.recul_lat_m ?? 3;
+  });
+  const zoneLocal = insetPoly(parcel, reculs);
+
+  const blocs = cas.bat_reel?.blocs ?? [];
+  const voisins = cas.bat_reel?.blocs_voisins ?? [];
+  const allPts = [...parcel, ...blocs.flatMap(b => b.polygon_local ?? []),
+                  ...voisins.flatMap(v => v.polygon_local ?? [])];
+  const pad = 24;
+  const { sc, ox, oy } = localToSVG(allPts, S, S, pad);
+  const toSVG = p => ({ x: p.x*sc + ox, y: -p.y*sc + oy });
+
+  // Fond + ortho IGN
+  E('rect', { x: 0, y: 0, width: S, height: S, fill: '#ece6d8' }, gBg);
+  const centroidWGS = cas.meta?.centroid_wgs84;
+  if (centroidWGS && Array.isArray(centroidWGS) && sc > 0) {
+    const [lngC, latC] = centroidWGS;
+    const xMinM = -ox / sc, xMaxM = (S - ox) / sc;
+    const yMinM = -(S - oy) / sc, yMaxM = oy / sc;
+    const cosL = Math.cos(latC * Math.PI / 180);
+    const lngMin = lngC + xMinM / (111000 * cosL);
+    const lngMax = lngC + xMaxM / (111000 * cosL);
+    const latMin = latC + yMinM / 111000;
+    const latMax = latC + yMaxM / 111000;
+    const ignUrl = `https://data.geopf.fr/wms-r/wms?SERVICE=WMS&VERSION=1.3.0`
+                 + `&REQUEST=GetMap&LAYERS=ORTHOIMAGERY.ORTHOPHOTOS`
+                 + `&CRS=EPSG:4326&FORMAT=image/jpeg&STYLES=`
+                 + `&BBOX=${latMin.toFixed(6)},${lngMin.toFixed(6)},`
+                 + `${latMax.toFixed(6)},${lngMax.toFixed(6)}`
+                 + `&WIDTH=${S * 2}&HEIGHT=${S * 2}`;
+    const mbxUrl = `https://api.mapbox.com/styles/v1/mapbox/satellite-v9/static/`
+                 + `[${lngMin.toFixed(6)},${latMin.toFixed(6)},`
+                 + `${lngMax.toFixed(6)},${latMax.toFixed(6)}]/`
+                 + `${S}x${S}@2x?access_token=${MAPBOX_TOKEN}`;
+    const img = E('image', { x: 0, y: 0, width: S, height: S, href: ignUrl,
+                              opacity: 0.55, preserveAspectRatio: 'none' }, gBg);
+    img.addEventListener('error', () => {
+      if (img.dataset.fb !== '1') { img.dataset.fb = '1'; img.setAttribute('href', mbxUrl); }
+    }, { once: true });
+    if (cosiaEnabled) {
+      const cosiaUrl = `https://data.geopf.fr/wms-r/wms?SERVICE=WMS&VERSION=1.3.0`
+                    + `&REQUEST=GetMap&LAYERS=IGNF_COSIA_2021-2023`
+                    + `&CRS=EPSG:4326&FORMAT=image/png&TRANSPARENT=TRUE&STYLES=`
+                    + `&BBOX=${latMin.toFixed(6)},${lngMin.toFixed(6)},`
+                    + `${latMax.toFixed(6)},${lngMax.toFixed(6)}`
+                    + `&WIDTH=${S * 2}&HEIGHT=${S * 2}`;
+      E('image', { x: 0, y: 0, width: S, height: S, href: cosiaUrl,
+                   opacity: 0.45, preserveAspectRatio: 'none' }, gBg);
+    }
+  }
+
+  // Voisines (sous-couche grise)
+  const allParcels = cas.parcelle?.parcels ?? [];
+  allParcels.forEach((p) => {
+    if (p.origin !== 'neighbour') return;
+    const polyPts = (p.polygon_local ?? []).map(toSVG);
+    if (polyPts.length < 3) return;
+    E('polygon', { points: ppts(polyPts), fill: 'rgba(180,160,120,.06)',
+                   stroke: '#6b5d44', 'stroke-width': 0.6,
+                   'stroke-dasharray': '2,2', opacity: 0.55 }, gBg);
+  });
+
+  // Parcelle directe : fond léger teinté "terrain"
+  const parSVG = parcel.map(toSVG);
+  E('polygon', { points: ppts(parSVG), fill: 'rgba(230,220,180,0.20)',
+                 stroke: 'none' }, gBg);
+  // Zone constructible (inset PLU)
+  const zoneSVG = zoneLocal.map(toSVG);
+  if (zoneSVG.length >= 3) {
+    E('polygon', { points: ppts(zoneSVG), fill: 'rgba(37,99,235,.06)',
+                   stroke: '#2563eb', 'stroke-width': 0.9,
+                   'stroke-dasharray': '4,3', opacity: 0.85 }, gBg);
+  }
+
+  // Arêtes parcelle colorées + label unique par type
+  const labeledTypes = new Set();
+  for (let i = 0; i < parSVG.length; i++) {
+    const t = edgeTypes[i] ?? 'lat';
+    const col = EDGE_COL[t] ?? '#444';
+    const a = parSVG[i], b = parSVG[(i+1) % parSVG.length];
+    const sw = t === 'voie' ? 3 : 1.5;
+    E('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+                stroke: col, 'stroke-width': sw, 'stroke-linecap': 'round' }, gLbl);
+    if (!labeledTypes.has(t)) {
+      labeledTypes.add(t);
+      const mx = (a.x+b.x)/2, my = (a.y+b.y)/2;
+      const dx = b.x-a.x, dy = b.y-a.y, L = Math.hypot(dx,dy) || 1;
+      const offX = -dy/L * 9, offY = dx/L * 9;
+      T(mx + offX, my + offY + 2.5,
+        `${EDGE_LBL[t] ?? t}: ${(reculs[i]||0).toFixed(0)}m`, {
+        'text-anchor': 'middle', 'font-family': 'Inconsolata,monospace',
+        'font-size': '9', fill: col, 'font-weight': '700',
+        stroke: '#fff', 'stroke-width': '0.5', 'paint-order': 'stroke',
+      }, gLbl);
+    }
+  }
+
+  // Blocs voisins (sur parcelles voisines ou en sous-couche)
+  voisins.forEach(v => {
+    const polyPts = (v.polygon_local ?? []).map(toSVG);
+    if (polyPts.length < 3) return;
+    const isLeger = !!v.construction_legere || v.type_bloc === 'leger';
+    E('polygon', { points: ppts(polyPts),
+                   fill: isLeger ? 'rgba(200,170,130,.30)' : 'rgba(120,120,120,.35)',
+                   stroke: isLeger ? '#a08054' : '#555',
+                   'stroke-width': 0.9, opacity: 0.85,
+                   'stroke-dasharray': isLeger ? '3,2' : '0' }, gBat);
+  });
+
+  // Blocs réels — avec toits inférés + couleur par type
+  blocs.forEach((b, i) => drawBlocRich(b, toSVG, null, gBat, gRoof, gLbl, i));
+
+  // Légende (en haut à droite)
+  const types = [...new Set([...blocs, ...voisins].map(b => (b.type_bloc ?? 'inconnu').toLowerCase())
+                                                    .filter(t => BLOC_STYLE[t]))];
+  if (types.length) {
+    const lx = S - 98, ly = 12, lw = 92, lh = types.length * 12 + 8;
+    E('rect', { x: lx, y: ly, width: lw, height: lh, rx: 3,
+                fill: 'rgba(255,255,255,0.88)', stroke: '#c8b880', 'stroke-width': 0.6 }, gLbl);
+    types.forEach((t, i) => {
+      const st = BLOC_STYLE[t];
+      E('rect', { x: lx + 4, y: ly + 4 + i*12, width: 10, height: 8,
+                  fill: st.fill, stroke: st.stroke, 'stroke-width': 0.7 }, gLbl);
+      T(lx + 18, ly + 11 + i*12, st.label, {
+        'font-family': 'Inconsolata,monospace', 'font-size': '8', fill: '#1a1209',
+      }, gLbl);
+    });
+  }
+
+  // Scale bar (10m)
+  if (sc > 0) {
+    const sx = 8, sy = S - 18, slen = sc * 10;
+    E('rect', { x: sx - 2, y: sy - 8, width: slen + 14, height: 14, rx: 2,
+                fill: 'rgba(255,255,255,0.75)' }, gLbl);
+    E('line', { x1: sx, y1: sy, x2: sx + slen, y2: sy,
+                stroke: '#1a1209', 'stroke-width': 2 }, gLbl);
+    E('line', { x1: sx, y1: sy-3, x2: sx, y2: sy+3, stroke: '#1a1209', 'stroke-width': 2 }, gLbl);
+    E('line', { x1: sx+slen, y1: sy-3, x2: sx+slen, y2: sy+3, stroke: '#1a1209', 'stroke-width': 2 }, gLbl);
+    T(sx + slen/2, sy - 4, '10m', {
+      'text-anchor': 'middle', 'font-family': 'Inconsolata,monospace',
+      'font-size': '8', fill: '#1a1209', 'font-weight': '700',
+    }, gLbl);
+  }
+
+  // GIEP / CBS info box (en haut à gauche)
+  try {
+    const { GIEP, CBS } = await ensureTerlabServices();
+    const session = buildSessionFromCas(cas);
+    const giep = GIEP.computeFromSession(session);
+    const cbs  = CBS.computeFromSession?.(session) ?? null;
+    const perm = giep?.permeabilite_pct ?? giep?.surfaces?.permeable_pct ?? null;
+    const coeff = giep?.coeff_initial ?? giep?.coeff ?? null;
+    const info = document.createElement('div');
+    info.style.cssText = 'position:absolute;left:6px;top:6px;background:rgba(255,255,255,0.88);padding:5px 8px;border-radius:3px;font:10px var(--font);line-height:1.45;pointer-events:none;max-width:180px;border:1px solid #c8b880';
+    info.innerHTML = `<b>GIEP / CBS</b><br>`
+      + `Perméab : <b>${perm != null ? perm.toFixed(0) + '%' : '—'}</b> (min ${plu.permea_min_pct ?? 25}%)<br>`
+      + `Coeff ruiss : ${coeff != null ? coeff.toFixed(2) : '—'}<br>`
+      + `CBS : ${cbs?.coefficient ? cbs.coefficient.toFixed(2) : '—'}`;
+    host.appendChild(info);
+  } catch (e) {
+    // silent — rendu plan masse OK même sans GIEP/CBS
+  }
+}
+
 // Etat UI
-let cosiaEnabled = false;
+let cosiaEnabled = true;
 function toggleCosia() {
   cosiaEnabled = document.getElementById('toggle-cosia').checked;
   if (activeCase) renderCase(activeCase);
@@ -224,6 +694,42 @@ function insetPoly(pts, reculs) {
     if (Math.abs(den) < 1e-9) { out.push(e2.a); continue; }
     const t = ((x1-x3)*(y3-y4) - (y1-y3)*(x3-x4))/den;
     out.push({ x: x1 + t*(x2-x1), y: y1 + t*(y2-y1) });
+  }
+  return out;
+}
+
+// Sutherland-Hodgman : clip subject (convexe ou pas) par CLIP convexe.
+// Renvoie [] si tout est hors. Coords locales (m) ou SVG (px) — peu importe.
+function clipPolyBy(subject, clip) {
+  if (!subject?.length || clip?.length < 3) return subject || [];
+  // Forcer CCW pour le clip (convention "intérieur = à gauche")
+  let area = 0;
+  for (let i = 0; i < clip.length; i++) {
+    const a = clip[i], b = clip[(i+1)%clip.length];
+    area += a.x * b.y - b.x * a.y;
+  }
+  const cw = (area < 0) ? clip.slice().reverse() : clip;
+  const inside = (p, a, b) => (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x) >= -1e-9;
+  const inter = (p1, p2, a, b) => {
+    const x1=p1.x,y1=p1.y,x2=p2.x,y2=p2.y,x3=a.x,y3=a.y,x4=b.x,y4=b.y;
+    const den = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4);
+    if (Math.abs(den) < 1e-12) return p2;
+    const t = ((x1-x3)*(y3-y4) - (y1-y3)*(x3-x4)) / den;
+    return { x: x1 + t*(x2-x1), y: y1 + t*(y2-y1) };
+  };
+  let out = subject.slice();
+  for (let i = 0; i < cw.length; i++) {
+    if (!out.length) break;
+    const a = cw[i], b = cw[(i+1)%cw.length];
+    const next = [];
+    for (let j = 0; j < out.length; j++) {
+      const p1 = out[j], p2 = out[(j+1)%out.length];
+      const in1 = inside(p1, a, b), in2 = inside(p2, a, b);
+      if (in1 && in2) next.push(p2);
+      else if (in1 && !in2) next.push(inter(p1, p2, a, b));
+      else if (!in1 && in2) { next.push(inter(p1, p2, a, b)); next.push(p2); }
+    }
+    out = next;
   }
   return out;
 }
@@ -341,12 +847,111 @@ function drawSVGCase(svgId, cas, opts = {}) {
                    stroke: '#1a1209', 'stroke-width': 1.2,
                    'stroke-dasharray': '5,3' }, gBg);
   }
+  // Courbes de niveau (cas.parcelle.contours_local[] enrichi par corpus_alti_enrich.py)
+  // Rendues en dessous de tout (sous bati, zones, arbres) pour lire la topo
+  const contoursSvg = opts.prefix === 'real' ? 'g-real-contour' : null;
+  const gContour = contoursSvg ? svg.querySelector('#' + contoursSvg) : null;
+  if (gContour) gContour.innerHTML = '';
+  const contours = cas.parcelle?.contours_local ?? [];
+  if (contours.length && gContour) {
+    const alts = contours.map(c => c.level_m);
+    const aMin = Math.min(...alts), aMax = Math.max(...alts);
+    const majorStep = (aMax - aMin) > 5 ? 5 : 1;
+    for (const c of contours) {
+      const isMajor = (c.level_m % majorStep === 0);
+      for (const seg of c.segments ?? []) {
+        if (seg.length < 2) continue;
+        const a = toSVG(seg[0]), b = toSVG(seg[1]);
+        E('line', { x1:a.x.toFixed(1), y1:a.y.toFixed(1),
+                    x2:b.x.toFixed(1), y2:b.y.toFixed(1),
+                    stroke: isMajor ? '#8a5818' : '#b08050',
+                    'stroke-width': isMajor ? 0.7 : 0.4,
+                    opacity: isMajor ? 0.55 : 0.3 }, gContour);
+      }
+    }
+    // Label alt min/max en coin
+    const tt = cas.parcelle?.topographie;
+    if (tt) {
+      T(6, 12, `${tt.alt_min_m?.toFixed(0)}→${tt.alt_max_m?.toFixed(0)}m · ${tt.pente_moy_pct?.toFixed(0)}%`,
+        {'font-family':'Inconsolata,monospace','font-size':'7.5',
+         'fill':'#8a5818','font-weight':'600'}, gLbl);
+    }
+  }
+
   // Zone constructible (inset reculs PLU) — pointilles bleus
   if (zoneSVG.length >= 3) {
     E('polygon', { points: ppts(zoneSVG),
                    fill: 'rgba(37,99,235,.06)',
                    stroke: '#2563eb', 'stroke-width': 1,
                    'stroke-dasharray': '4,3', opacity: .8 }, gBg);
+  }
+
+  // ── Zones COSIA (cas._cosia projeté sur viewport) ─────────────────────
+  const gZones = svg.querySelector('#g-' + opts.prefix + '-zones');
+  if (gZones) gZones.innerHTML = '';
+  if (gZones && cas._cosia && cas._cosia_bbox && centroidWGS && sc > 0) {
+    const COSIA_FILL = {
+      1: 'rgba(229,34,48,.0)',        // bati : ne pas colorier (deja en rouge plus tard)
+      2: 'rgba(100,100,100,.22)',     // imperm gris
+      3: 'rgba(159,209,92,.25)',      // veget basse
+      4: 'rgba(61,126,47,.28)',       // veget haute
+      5: 'rgba(181,156,115,.22)',     // sol nu
+      6: 'rgba(21,114,184,.38)',      // eau
+      7: 'rgba(0,0,0,0)',             // autre : transparent
+    };
+    const { grid, W: gw, H: gh } = cas._cosia;
+    const [blng, blat, tlng, tlat] = cas._cosia_bbox;
+    // Chaque pixel de la grille COSIA -> un petit rect en SVG coords
+    // Conversion grid(i,j) (bbox COSIA) -> SVG via lng/lat -> local -> SVG
+    const [lngC, latC] = centroidWGS;
+    const cosL = Math.cos(latC * Math.PI / 180);
+    // cell size en degrés
+    const cw = (tlng - blng) / gw;
+    const ch = (tlat - blat) / gh;
+    // Regroupage : dessiner un rect par pixel agrégé 2x2 (moins de noeuds SVG)
+    const AGG = 2;
+    for (let j = 0; j < gh; j += AGG) for (let i = 0; i < gw; i += AGG) {
+      // Classe majoritaire du bloc AGG × AGG
+      const votes = {};
+      for (let dj = 0; dj < AGG && j+dj < gh; dj++)
+      for (let di = 0; di < AGG && i+di < gw; di++) {
+        const c = grid[(j+dj) * gw + (i+di)];
+        votes[c] = (votes[c] || 0) + 1;
+      }
+      let cls = 7, maxV = 0;
+      for (const [c, v] of Object.entries(votes)) if (v > maxV) { maxV = v; cls = +c; }
+      const fill = COSIA_FILL[cls];
+      if (!fill || fill === 'rgba(0,0,0,0)') continue;
+      // Centre du bloc en WGS84
+      const lngMid = blng + (i + AGG/2) * cw;
+      const latMid = blat + (j + AGG/2) * ch;  // COSIA grid: j=0 = lat_min (WMS image orientation = haut vers bas)
+      // Conversion -> local UTM40S approx (meme approx que le bg satellite)
+      const xM = (lngMid - lngC) * 111000 * cosL;
+      const yM = (latMid - latC) * 111000;
+      const a = toSVG({ x: xM, y: yM });
+      // Taille du pixel agrégé en SVG
+      const pxW = cw * 111000 * cosL * sc * AGG;
+      const pxH = ch * 111000 * sc * AGG;
+      E('rect', {
+        x: (a.x - pxW/2).toFixed(1), y: (a.y - pxH/2).toFixed(1),
+        width: Math.max(1, pxW).toFixed(1), height: Math.max(1, pxH).toFixed(1),
+        fill, stroke: 'none',
+      }, gZones);
+    }
+  }
+
+  // ── Arbres LiDAR (cas._trees) ─────────────────────────────────────────
+  const gTrees = svg.querySelector('#g-' + opts.prefix + '-trees');
+  if (gTrees) gTrees.innerHTML = '';
+  if (gTrees && cas._trees?.length) {
+    for (const t of cas._trees) {
+      const c = toSVG({ x: t.x, y: t.y });
+      const rPx = Math.max(2, t.radius * sc);
+      // Hauteur -> couleur (vert foncé si > 6m, vert clair sinon)
+      const col = t.h > 10 ? 'rgba(24,88,32,.82)' : t.h > 6 ? 'rgba(46,125,50,.72)' : 'rgba(92,155,64,.62)';
+      E('circle', { cx: c.x.toFixed(1), cy: c.y.toFixed(1), r: rPx.toFixed(1),
+                    fill: col, stroke: 'rgba(12,52,18,.6)', 'stroke-width': 0.5 }, gTrees);
+    }
   }
 
   // Aretes parcelle colorees (toutes) + label recul UNIQUE par type d'arete
@@ -374,9 +979,14 @@ function drawSVGCase(svgId, cas, opts = {}) {
 
   // Batis voisins sur les memes parcelles (annexes, autres corps)
   // Dessines en sous-couche : remplissage gris pale + contour fin.
+  // Polygone parcelle (m) pour clipper bati hors-parcelle
+  const clipMeters = parcel;
   const voisins = cas.bat_reel?.blocs_voisins ?? [];
   voisins.forEach(v => {
-    const poly = (v.polygon_local ?? []).map(toSVG);
+    const rawM = v.polygon_local ?? [];
+    const clippedM = clipPolyBy(rawM, clipMeters);
+    if (clippedM.length < 3) return;
+    const poly = clippedM.map(toSVG);
     if (poly.length < 3) return;
     const isLeger = !!v.construction_legere;
     E('polygon', { points: ppts(poly),
@@ -397,7 +1007,10 @@ function drawSVGCase(svgId, cas, opts = {}) {
   const blocs = opts.batBlocs ?? [];
   const isStraddle = !!cas.bat_reel?.straddle;
   blocs.forEach((b, bi) => {
-    const poly = (b.polygon_local ?? b.polygon ?? []).map(toSVG);
+    const rawM = b.polygon_local ?? b.polygon ?? [];
+    const clippedM = clipPolyBy(rawM, clipMeters);
+    if (clippedM.length < 3) return;
+    const poly = clippedM.map(toSVG);
     if (poly.length < 3) return;
     E('polygon', { points: ppts(poly), class: opts.batClass ?? 'sv-real' }, gBat);
     const cx = poly.reduce((s,p)=>s+p.x,0)/poly.length;
@@ -451,7 +1064,8 @@ function renderCase(cas) {
     badge.className   = 'badge ' + (iou >= 0.6 ? 'ok' : iou >= 0.4 ? 'mid' : 'bad');
   } else badge.style.display = 'none';
 
-  // Plan réel
+  // Plan réel : reconstitution 2D etat-des-lieux
+  // (courbes de niveau + zones COSIA + arbres LiDAR + batis + voisins)
   const realBlocs = cas.bat_reel?.blocs ?? [];
   const realArea  = realBlocs.reduce((s,b) => s+(b.surface_m2||0), 0);
   drawSVGCase('svg-real', cas, {
@@ -461,6 +1075,9 @@ function renderCase(cas) {
     lblColor: '#991b1b',
     areaTxt:  `Réel : ${realArea} m² · R+${(cas.bat_reel?.niveaux||1)-1} · ${cas.bat_reel?.strategy_guess??'?'}`,
   });
+  // Réactive le bouton analyse
+  const btn = document.getElementById('btn-analyse-existant');
+  if (btn) btn.disabled = false;
 
   // Plan engine — best match
   const sols   = cas.engine_results?.solutions ?? [];
@@ -761,6 +1378,163 @@ async function runEngineOnLoaded() {
     alert('Erreur engine: ' + err.message + '\n(détails console)');
   } finally {
     btn.disabled = false; btn.style.opacity = '1';
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// ANALYSE ÉTAT DES LIEUX : LiDAR COPC (arbres) + COSIA (zones occupation sol)
+// ═════════════════════════════════════════════════════════════════════════
+let _lidarSvc = null;
+async function getLidarService() {
+  if (_lidarSvc) return _lidarSvc;
+  const mod = await import('../services/lidar-service.js');
+  _lidarSvc = mod.default ?? mod.LidarService;
+  return _lidarSvc;
+}
+
+// Clustering simple (grille 2m + 4-conn) des points LiDAR classes veget
+// pour extraire arbres individuels : position + rayon + hauteur.
+function clusterTrees(points, minHeight = 2.5) {
+  const veg = points.filter(p => {
+    const cls = p.length >= 7 ? p[6] : 0;
+    return cls === 4 || cls === 5;  // veget moyenne + haute
+  });
+  if (!veg.length) return [];
+  const CELL = 2.0;
+  const grid = new Map();
+  for (const p of veg) {
+    const k = Math.floor(p[0]/CELL) + ',' + Math.floor(p[1]/CELL);
+    if (!grid.has(k)) grid.set(k, []);
+    grid.get(k).push(p);
+  }
+  const visited = new Set();
+  const trees = [];
+  for (const key of grid.keys()) {
+    if (visited.has(key)) continue;
+    const stack = [key], clusterPts = [];
+    while (stack.length) {
+      const k = stack.pop();
+      if (visited.has(k)) continue;
+      visited.add(k);
+      const cell = grid.get(k);
+      if (!cell) continue;
+      clusterPts.push(...cell);
+      const [cx, cy] = k.split(',').map(Number);
+      for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+        const nk = (cx+dx) + ',' + (cy+dy);
+        if (grid.has(nk) && !visited.has(nk)) stack.push(nk);
+      }
+    }
+    if (clusterPts.length < 3) continue;
+    const xs = clusterPts.map(p => p[0]);
+    const ys = clusterPts.map(p => p[1]);
+    const zs = clusterPts.map(p => p[2]);
+    const cxT = xs.reduce((s, x) => s + x, 0) / xs.length;
+    const cyT = ys.reduce((s, y) => s + y, 0) / ys.length;
+    const h = Math.max(...zs) - Math.min(...zs);
+    const dists = clusterPts.map(p => Math.hypot(p[0]-cxT, p[1]-cyT)).sort((a,b)=>a-b);
+    const radius = Math.max(dists[Math.floor(dists.length*0.9)] || 1.5, 1.2);
+    if (h < minHeight) continue;
+    trees.push({ x: cxT, y: cyT, h, radius, n: clusterPts.length });
+  }
+  return trees;
+}
+
+// COSIA palette couleurs → classe occupation sol
+const COSIA_PALETTE = [
+  [229, 34,  48,  1, 'bati'],
+  [204, 191, 87,  2, 'impervious'],
+  [159, 209, 92,  3, 'veget_basse'],
+  [61,  126, 47,  4, 'veget_haute'],
+  [181, 156, 115, 5, 'sol'],
+  [21,  114, 184, 6, 'eau'],
+  [160, 160, 160, 7, 'autre'],
+];
+function classifyPixel(r, g, b) {
+  let best = 7, bestD = 1e9;
+  for (const [cr, cg, cb, cls] of COSIA_PALETTE) {
+    const d = (r-cr)**2 + (g-cg)**2 + (b-cb)**2;
+    if (d < bestD) { bestD = d; best = cls; }
+  }
+  return best;
+}
+
+async function fetchCosiaGrid(bbox, W = 128, H = 128) {
+  const [lngMin, latMin, lngMax, latMax] = bbox;
+  const url = `https://data.geopf.fr/wms-r/wms?SERVICE=WMS&VERSION=1.3.0`
+            + `&REQUEST=GetMap&LAYERS=IGNF_COSIA_2021-2023`
+            + `&CRS=EPSG:4326&FORMAT=image/png&TRANSPARENT=FALSE&STYLES=`
+            + `&BBOX=${latMin.toFixed(6)},${lngMin.toFixed(6)},${latMax.toFixed(6)},${lngMax.toFixed(6)}`
+            + `&WIDTH=${W}&HEIGHT=${H}`;
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      try {
+        const data = ctx.getImageData(0, 0, W, H).data;
+        const grid = new Uint8Array(W * H);
+        for (let i = 0, j = 0; i < data.length; i += 4, j++) {
+          grid[j] = classifyPixel(data[i], data[i+1], data[i+2]);
+        }
+        resolve({ grid, W, H });
+      } catch (e) { reject(new Error('CORS canvas tainted: ' + e.message)); }
+    };
+    img.onerror = () => reject(new Error('COSIA tile load error'));
+    img.src = url;
+  });
+}
+
+async function analyseExistant() {
+  if (!activeCase) { alert("Sélectionne d'abord un cas"); return; }
+  const btn = document.getElementById('btn-analyse-existant');
+  const status = document.getElementById('analyse-status');
+  btn.disabled = true;
+  try {
+    const pg = activeCase.parcelle?.geojson_wgs84;
+    if (!pg || !pg.coordinates?.length) throw new Error('geojson_wgs84 absent');
+    const ring = pg.coordinates[0];
+    const lngs = ring.map(c => c[0]), lats = ring.map(c => c[1]);
+    const bbox = [Math.min(...lngs), Math.min(...lats), Math.max(...lngs), Math.max(...lats)];
+
+    // LiDAR arbres (classes veget)
+    status.textContent = 'LiDAR…';
+    let trees = [];
+    try {
+      const LidarService = await getLidarService();
+      const result = await LidarService.getPointsForParcel(pg, 15, {
+        classes: '3,4,5', maxPoints: 80000,
+      });
+      const [cxU, cyU] = activeCase.parcelle?.centroid_utm40s ?? [0, 0];
+      const local = (result.points ?? []).map(p => [
+        p[0] - cxU, p[1] - cyU, p[2], p[3], p[4], p[5], p[6],
+      ]);
+      trees = clusterTrees(local);
+    } catch (e) {
+      console.warn('[LiDAR] indispo:', e.message);
+    }
+    activeCase._trees = trees;
+
+    // COSIA zones
+    status.textContent = 'COSIA…';
+    try {
+      const cosia = await fetchCosiaGrid(bbox, 128, 128);
+      activeCase._cosia = cosia;
+      activeCase._cosia_bbox = bbox;
+    } catch (e) {
+      console.warn('[COSIA] indispo:', e.message);
+    }
+
+    status.textContent = `✓ ${trees.length} arbres · COSIA ${activeCase._cosia ? '✓' : '✗'}`;
+    renderCase(activeCase);
+  } catch (err) {
+    console.error('[analyseExistant]', err);
+    status.textContent = 'ERR: ' + err.message;
+  } finally {
+    btn.disabled = false;
   }
 }
 

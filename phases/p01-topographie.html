@@ -1296,6 +1296,15 @@ const P01 = {
       this._lidarPoints = result.points;
       LidarService.setRawPoints(result.points, '2,3,4,5,6,9');
 
+      // Persister en IndexedDB pour survivre au reload/changement de projet
+      window.LidarCache?.putPoints({
+        sessionId: SessionManager._sessionId,
+        geojson: terrain.parcelle_geojson,
+        classes: '2,3,4,5,6,9',
+        points: result.points,
+        meta: { source: result.source, tile_count: result.tile_count },
+      });
+
       // Analyser pente / exposition / altitudes
       const analysis = LidarService.analyzeTerrain(result.points, terrain.parcelle_geojson);
       if (analysis.error) {
@@ -1582,6 +1591,14 @@ const P01 = {
       if (window.MapViewer?.addTerrainMesh) {
         MapViewer.addTerrainMesh(result.mesh);
       }
+
+      // Persister le mesh en IndexedDB
+      window.LidarCache?.putMesh({
+        sessionId: SessionManager._sessionId,
+        geojson: terrain.parcelle_geojson,
+        mesh: result.mesh,
+        metadata: result.metadata,
+      });
 
       // Sauvegarder en session
       SessionManager.savePhase(1, {
@@ -2482,6 +2499,57 @@ if (p1data.lidar_source === 'lidar_hd') {
     infoText.textContent = `${(p1data.lidar_point_count ?? 0).toLocaleString('fr')} pts · source: LiDAR HD`;
   }
 }
+
+// ─── LiDAR : rehydrater points + mesh depuis IndexedDB ────────
+(async () => {
+  try {
+    const cache = window.LidarCache;
+    const t = SessionManager.getTerrain();
+    if (!cache || !t?.parcelle_geojson) return;
+
+    const cached = await cache.getPoints({
+      sessionId: SessionManager._sessionId,
+      geojson: t.parcelle_geojson,
+      classes: '2,3,4,5,6,9',
+    });
+    if (cached?.points?.length) {
+      P01._lidarPoints = cached.points;
+      LidarService.setRawPoints(cached.points, cached.classes || '2,3,4,5,6,9');
+      console.info(`[P01] LiDAR rehydrate depuis cache : ${cached.count} pts`);
+      // Bouton "Make Mesh" dispo + afficher section viz
+      document.getElementById('btn-lidar-mesh')?.removeAttribute('disabled');
+      const vizSection = document.getElementById('lidar-viz-section');
+      if (vizSection) vizSection.style.display = 'block';
+    }
+
+    if (p1data.terrain_mesh_built) {
+      const meshRec = await cache.getMesh({
+        sessionId: SessionManager._sessionId,
+        geojson: t.parcelle_geojson,
+      });
+      if (meshRec) {
+        const mesh = cache.rebuildMesh(meshRec);
+        if (mesh) {
+          P01._terrainMesh = mesh;
+          if (window.MapViewer?.addTerrainMesh) MapViewer.addTerrainMesh(mesh);
+          console.info(`[P01] Mesh TIN rehydrate depuis cache : ${meshRec.metadata?.nTriangles ?? '?'} triangles`);
+          // Afficher stats mesh
+          const statsEl = document.getElementById('mesh-stats');
+          if (statsEl && meshRec.metadata) {
+            statsEl.style.display = 'block';
+            const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+            set('mesh-vertices',   meshRec.metadata.nVertices?.toLocaleString('fr')   ?? '—');
+            set('mesh-triangles',  meshRec.metadata.nTriangles?.toLocaleString('fr')  ?? '—');
+            set('mesh-breaklines', meshRec.metadata.nBreaklinePoints?.toLocaleString('fr') ?? '—');
+          }
+          document.getElementById('mesh-layer-selector')?.style && (document.getElementById('mesh-layer-selector').style.display = 'block');
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[P01] Rehydratation LiDAR cache failed:', err);
+  }
+})();
 
 // ── Sun overlay methods ──────────────────────────────────────
 P01._onSunScrub = function(val) {

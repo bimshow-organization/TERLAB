@@ -234,28 +234,45 @@ const ExportEngine = {
     iframe.style.cssText = 'position:fixed;width:0;height:0;border:0;opacity:0;pointer-events:none';
     document.body.appendChild(iframe);
 
-    const res = await fetch('./print-template.html');
-    const shell = await res.text();
+    // URL absolue pour print.css — un iframe about:blank cree par doc.write()
+    // a un baseURI instable selon Chrome : la feuille relative echoue
+    // silencieusement et les planches rendent en texte brut.
+    const baseDir = location.origin + location.pathname.replace(/[^/]+$/, '');
+    const cssHref = baseDir + 'assets/print.css';
+    const shell = `<!DOCTYPE html>
+<html lang="fr"><head>
+<meta charset="UTF-8"><title>TERLAB</title>
+<link href="https://cdn.jsdelivr.net/npm/@fontsource/cormorant-garamond@5/400.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@fontsource/cormorant-garamond@5/600.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@fontsource/ibm-plex-mono@6/400.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@fontsource/jost@5/300.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@fontsource/jost@5/400.min.css" rel="stylesheet">
+<link rel="stylesheet" href="${cssHref}">
+</head><body><div id="terlab-print-root"></div></body></html>`;
 
     const doc = iframe.contentDocument;
     doc.open();
     doc.write(shell);
     doc.close();
 
-    // Attendre fonts CDN
-    await new Promise(resolve => {
-      iframe.contentWindow.document.fonts.ready.then(resolve);
-      setTimeout(resolve, 3000);
-    });
-
-    // Injecter le contenu
+    // Injecter le contenu avant d'attendre les ressources
     doc.getElementById('terlab-print-root').innerHTML = htmlContent;
 
-    // Imprimer
+    // Attendre fonts + toutes les <img> chargees (captures base64 + externes)
+    await new Promise(resolve => {
+      const timeout = setTimeout(resolve, 8000);
+      Promise.all([
+        iframe.contentWindow.document.fonts.ready,
+        ...Array.from(doc.querySelectorAll('img')).map(img =>
+          img.complete ? Promise.resolve() :
+            new Promise(r => { img.onload = r; img.onerror = r; setTimeout(r, 5000); })
+        ),
+      ]).then(() => { clearTimeout(timeout); resolve(); });
+    });
+
     iframe.contentWindow.focus();
     iframe.contentWindow.print();
 
-    // Cleanup
     setTimeout(() => {
       try { document.body.removeChild(iframe); } catch { /* already removed */ }
     }, 2000);

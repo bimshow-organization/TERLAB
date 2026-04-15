@@ -285,6 +285,7 @@ const PlanMasseCanvas = {
     this._initBatFromPIR();
 
     // Restaurer les blocs sauvegardés (écrase l'init PIR si présents)
+    let restoredFromSession = false;
     if (Array.isArray(p7.pmc_blocs) && p7.pmc_blocs.length) {
       try {
         this.S.blocs = p7.pmc_blocs.map((bl, i) => ({
@@ -302,10 +303,19 @@ const PlanMasseCanvas = {
           this.S.shapePreset = p7.pmc_shapePreset || (this.S.blocs.length > 1 ? 'multi' : 'I');
           this._syncBatFromBlocs();
           this._clampBat();
+          restoredFromSession = true;
         }
       } catch (e) {
         console.warn('[PMC] Failed to restore blocs from session', e);
       }
+    }
+
+    // Sans blocs session : matérialiser la stratégie par défaut (B1 Équilibre)
+    // via AutoPlanStrategies — sinon le rect PIR peut échouer le clip batSafe
+    // et le bâtiment reste invisible jusqu'au 1er clic sur une stratégie.
+    if (!restoredFromSession && this._terrain?.plu?.constructible) {
+      try { this._applyScenarioGeometry(this.curSc()); }
+      catch (e) { console.warn('[PMC] default scenario failed:', e.message); }
     }
     this._resetView();
 
@@ -1870,6 +1880,10 @@ const PlanMasseCanvas = {
       this.S.prog.type = val;
       if (val === 'maison') this.S.prog.profMax = Math.min(this.S.prog.profMax, 12);
       this._initBatFromPIR();
+      // Matérialiser la stratégie courante — évite que la bascule maison↔collectif
+      // laisse un rect PIR trop étroit pour passer le clip batSafe.
+      try { this._applyScenarioGeometry(this.curSc()); }
+      catch (e) { console.warn('[PMC] scenario re-apply failed:', e.message); }
     } else if (key === 'nvMax') {
       const capped = Math.min(val, this.nvMaxPLU());
       this.S.prog.nvMax = capped;
@@ -2505,6 +2519,10 @@ const PlanMasseCanvas = {
     this.S.edgeTypes = [...this._terrain.edgeTypes];
     this.S.mitoyen = new Array(this._terrain.poly.length).fill(false);
     this._initBatFromPIR();
+    if (this._terrain?.plu?.constructible) {
+      try { this._applyScenarioGeometry(this.curSc()); }
+      catch (e) { console.warn('[PMC] rebuild scenario failed:', e.message); }
+    }
     this._resetView();
     this.render();
     console.log(`[PMC] Rebuild — terrain ${Math.round(this._terrain.area)} m²`);

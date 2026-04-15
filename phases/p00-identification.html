@@ -1107,6 +1107,14 @@ const P00 = {
       else                        riskAlerts.push(`⚠️ Zone PPR : ${pprLabel}`);
     }
 
+    // Zone PLU agricole (A, pas AU) ou naturelle (N) → rejet pédagogique
+    const zoneCode = (pluZone ?? '').toString().trim().split(/[\s—-]/)[0].toUpperCase();
+    const isAgri = /^A(?!U)/.test(zoneCode);
+    const isNat  = /^N/.test(zoneCode);
+    this._nonConstructible = isAgri || isNat;
+    if (isAgri) riskAlerts.push(`🔴 Zone PLU AGRICOLE (${pluZone}) — habitation non autorisée, choisissez une parcelle en zone U ou AU`);
+    else if (isNat) riskAlerts.push(`🔴 Zone PLU NATURELLE (${pluZone}) — construction interdite, choisissez une parcelle en zone U ou AU`);
+
     // Afficher alerte ou succès
     if (riskAlerts.length) {
       const alertEl = document.getElementById('risk-alert-banner');
@@ -1114,7 +1122,8 @@ const P00 = {
         alertEl.innerHTML = riskAlerts.join('<br>');
         alertEl.style.display = '';
       }
-      window.TerlabToast?.show(riskAlerts[0], pprZone?.toUpperCase().startsWith('R') ? 'error' : 'warning', 8000);
+      const isBlocking = pprZone?.toUpperCase().startsWith('R') || isAgri || isNat;
+      window.TerlabToast?.show(riskAlerts[0], isBlocking ? 'error' : 'warning', 8000);
     } else {
       const alertEl = document.getElementById('risk-alert-banner');
       if (alertEl) alertEl.style.display = 'none';
@@ -1124,6 +1133,7 @@ const P00 = {
   },
 
   _enrichedData: null,
+  _nonConstructible: false,
 
   _setEnrichField(inputId, value, badgeId, source) {
     const el = document.getElementById(inputId);
@@ -1154,6 +1164,12 @@ const P00 = {
     const terrain = SessionManager?.getTerrain?.() ?? {};
     if (!terrain.parcelle && !terrain.section) {
       window.TerlabToast?.show('Aucune parcelle détectée — sélectionnez d\'abord un terrain', 'warning');
+      return;
+    }
+    if (this._nonConstructible) {
+      window.TerlabToast?.show(
+        'Parcelle en zone A ou N — non constructible. Sélectionnez une parcelle en zone U ou AU pour poursuivre l\'étude.',
+        'error', 7000);
       return;
     }
 

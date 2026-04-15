@@ -45,6 +45,7 @@ import SunCalcService    from './services/sun-calc-service.js';
 import SunState          from './services/sun-state.js';
 import TerrainSVG        from './services/terrain-svg-service.js';
 import LidarService        from './services/lidar-service.js';
+import LidarCache          from './services/lidar-cache.js';
 import LidarContextService from './services/lidar-context-service.js';
 import EnvelopeGenerator   from './services/envelope-generator.js';
 import PlanMasseEngine   from './services/plan-masse-engine.js';
@@ -272,6 +273,7 @@ async function init() {
     window.SunState          = SunState;
     window.TerrainSVG        = TerrainSVG;
     window.LidarService        = LidarService;
+    window.LidarCache          = LidarCache;
     window.LidarContextService = LidarContextService;
     window.EnvelopeGenerator   = EnvelopeGenerator;
     window.PlanMasseEngine   = PlanMasseEngine;

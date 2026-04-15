@@ -34,6 +34,10 @@ const COUNT     = parseInt(args.find((_, i, a) => a[i - 1] === '--count') ?? '1'
 const HEADED    = args.includes('--headed');
 const NO_LIDAR  = args.includes('--no-lidar');
 const PORT      = parseInt(args.find((_, i, a) => a[i - 1] === '--port') ?? String(8787 + Math.floor(Math.random() * 100)));
+const TARGET_INSEE    = args.find((_, i, a) => a[i - 1] === '--insee') ?? null;
+const TARGET_SECTION  = args.find((_, i, a) => a[i - 1] === '--section') ?? null;
+const TARGET_PARCELLE = args.find((_, i, a) => a[i - 1] === '--parcelle') ?? null;
+const TARGETED = !!(TARGET_INSEE && TARGET_SECTION && TARGET_PARCELLE);
 const OUT_DIR   = path.resolve(__dirname, '..', 'docs', 'random-pdf');
 
 // Token Mapbox — depuis .env, CLI, ou fallback embarqué
@@ -235,7 +239,72 @@ async function processOneTerrain(browser, runIndex) {
     // Pas besoin d'attendre P00 (module script instable en headless)
     // On exécute la logique de random parcelle directement via les APIs window.*
 
-    // ── 2. Parcelle aléatoire (logique inline) ─────────────────
+    // ── 2. Parcelle aléatoire OU ciblée ─────────────────────────
+    if (TARGETED) {
+      log(`2. Parcelle ciblée INSEE=${TARGET_INSEE} section=${TARGET_SECTION} parcelle=${TARGET_PARCELLE}…`);
+      await page.evaluate(async ({ insee, section, parcelle }) => {
+        window.__randomDone = false;
+        window.__randomError = null;
+        const INTERCO = {
+          '97411':'CINOR','97418':'CINOR','97420':'CINOR',
+          '97409':'CIREST','97402':'CIREST','97410':'CIREST','97419':'CIREST','97421':'CIREST','97406':'CIREST',
+          '97407':'TCO','97408':'TCO','97415':'TCO','97423':'TCO','97413':'TCO',
+          '97416':'CIVIS','97414':'CIVIS','97404':'CIVIS','97405':'CIVIS','97424':'CIVIS','97401':'CIVIS',
+          '97422':'CASUD','97412':'CASUD','97417':'CASUD','97403':'CASUD',
+        };
+        try {
+          const numPadded = String(parcelle).padStart(4, '0');
+          const cqlFilter = `code_insee='${insee}' AND section='${section}' AND numero='${numPadded}'`;
+          const wfsUrl = `https://data.geopf.fr/wfs/ows?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature`
+            + `&TYPENAMES=CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle`
+            + `&OUTPUTFORMAT=application/json&SRSNAME=EPSG:4326`
+            + `&CQL_FILTER=${encodeURIComponent(cqlFilter)}`;
+          const resp = await fetch(wfsUrl, { signal: AbortSignal.timeout(15000) });
+          const data = await resp.json();
+          if (!data?.features?.length) throw new Error(`Parcelle introuvable WFS: ${cqlFilter}`);
+          const feature = data.features[0];
+          const props = feature.properties;
+          const c = props.contenance ?? props.contenanc;
+          const coords = feature.geometry.coordinates[0];
+          const flat = Array.isArray(coords[0][0]) ? coords[0] : coords;
+          let cLng = 0, cLat = 0;
+          for (const pt of flat) { cLng += pt[0]; cLat += pt[1]; }
+          cLng /= flat.length; cLat /= flat.length;
+          let commune = props.nom_com ?? props.commune ?? '';
+          if (!commune) {
+            try {
+              const geoResp = await fetch(`https://geo.api.gouv.fr/communes/${insee}?fields=nom`, { signal: AbortSignal.timeout(5000) });
+              const geoData = await geoResp.json();
+              commune = geoData.nom ?? '';
+            } catch {}
+          }
+          let adresse = '';
+          try {
+            const banResp = await fetch(`https://data.geopf.fr/geocodage/reverse?lon=${cLng}&lat=${cLat}&limit=1&index=address`, { signal: AbortSignal.timeout(6000) });
+            const banData = await banResp.json();
+            adresse = banData?.features?.[0]?.properties?.label ?? '';
+          } catch {}
+          const terrain = {
+            commune, code_insee: insee,
+            section: props.section ?? section,
+            parcelle: props.numero ?? numPadded,
+            contenance_m2: c,
+            lat: cLat, lng: cLng,
+            parcelle_geojson: feature.geometry,
+            intercommunalite: INTERCO[insee] ?? '',
+            adresse: adresse || undefined,
+            terrain_confirmed: true,
+          };
+          window.SessionManager.saveTerrain(terrain);
+          window.SessionManager.savePhase(0, terrain, { terrain_confirmed: true }, true);
+          window.dispatchEvent(new CustomEvent('terlab:terrain-confirmed'));
+          window.__randomDone = true;
+        } catch (e) {
+          window.__randomError = e.message;
+          window.__randomDone = true;
+        }
+      }, { insee: TARGET_INSEE, section: TARGET_SECTION, parcelle: TARGET_PARCELLE });
+    } else {
     log('2. Recherche parcelle aléatoire…');
 
     await page.evaluate(() => {
@@ -385,6 +454,7 @@ async function processOneTerrain(browser, runIndex) {
         window.__randomDone = true;
       })();
     });
+    }
 
     const randomOk = await waitFor(page, () => window.__randomDone === true, T.RANDOM_PARCEL, 'Parcelle random');
     if (!randomOk) throw new Error('Random parcelle timeout');
