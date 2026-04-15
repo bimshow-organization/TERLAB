@@ -163,10 +163,10 @@
     <!-- Légende -->
     <div class="p11-legend">
       <div class="p11-legend-item"><span style="background:var(--accent, #9a7820);opacity:.5"></span>Zone constructible</div>
-      <div class="p11-legend-item"><span style="background:#f59e0b;opacity:.5"></span>Reculs PLU</div>
+      <div class="p11-legend-item"><span style="background:var(--c-warn);opacity:.5"></span>Reculs PLU</div>
       <div class="p11-legend-item"><span style="background:#6366f1;opacity:.5"></span>Vue mer/montagne</div>
-      <div class="p11-legend-item"><span style="background:#22c55e;opacity:.5"></span>Facade conforme RTAA</div>
-      <div class="p11-legend-item"><span style="background:#ef4444;opacity:.5"></span>Facade non conforme</div>
+      <div class="p11-legend-item"><span style="background:var(--c-ok);opacity:.5"></span>Facade conforme RTAA</div>
+      <div class="p11-legend-item"><span style="background:var(--c-danger);opacity:.5"></span>Facade non conforme</div>
       <div class="p11-legend-item"><span style="background:#0ea5e9;opacity:.5"></span>Accroche limite (0m)</div>
       <div class="p11-legend-item"><span style="background:#475569;opacity:.4"></span>Bâti existant</div>
       <div class="p11-legend-item"><span style="background:#1e3a5f;opacity:.3"></span>Cadastre IGN</div>
@@ -241,6 +241,15 @@ const P11 = {
 
     // Initialiser le canvas
     await EsquisseCanvas.init('p11-svg', session);
+
+    // TERLAB × BPF Vegetation · calque différentiel + toolbar
+    try {
+      const { default: VegetationP11Toolbar } = await import('../components/vegetation/vegetation-p11-toolbar.js');
+      const sessionId = (SessionManager && (SessionManager.sessionId
+        || (SessionManager._data && SessionManager._data.sessionId)))
+        || (window.TERLAB_UID ? `u_${window.TERLAB_UID}` : `local_${Date.now()}`);
+      await VegetationP11Toolbar.init(sessionId, EsquisseCanvas);
+    } catch (e) { console.warn('[P11 Veg] init skip:', e); }
 
     // Initialiser le viewer 3D earthworks
     await this._init3D();
@@ -404,16 +413,16 @@ const P11 = {
     if (!el || !ew) return;
 
     const fmt = (v, unit = '', dec = 1) => v != null && isFinite(v) ? v.toFixed(dec) + unit : '—';
-    const ratioColor = ew.ratio_balance > 0.85 ? '#22c55e' : ew.ratio_balance > 0.7 ? '#f59e0b' : '#ef4444';
-    const stratColor = { A1: '#3b82f6', A3: '#a855f7', A4: '#f59e0b' }[ew.strategy.type] ?? '#6b7280';
+    const ratioColor = ew.ratio_balance > 0.85 ? 'var(--c-ok)' : ew.ratio_balance > 0.7 ? 'var(--c-warn)' : 'var(--c-danger)';
+    const stratColor = { A1: 'var(--c-info)', A3: '#a855f7', A4: 'var(--c-warn)' }[ew.strategy.type] ?? '#6b7280';
     const wallWarn = ew.needsRetainingWall
-      ? `<div style="color:#ef4444;margin-top:4px">⚠ Mur de soutènement requis (talus ${ew.hMaxTalus_m.toFixed(1)}m)</div>`
+      ? `<div style="color:var(--c-danger);margin-top:4px">⚠ Mur de soutènement requis (talus ${ew.hMaxTalus_m.toFixed(1)}m)</div>`
       : '';
     const csgNote = (V_cut_csg && Math.abs(V_cut_csg - ew.V_cut_m3) / Math.max(0.1, ew.V_cut_m3) > 0.15)
       ? `<div style="color:#94a3b8;font-size:8px;margin-top:2px">CSG : déb. ${V_cut_csg.toFixed(0)} / rem. ${V_fill_csg.toFixed(0)} m³</div>`
       : '';
     const warnings = ew.warnings?.length
-      ? `<div style="color:#fbbf24;font-size:8px;margin-top:4px">${ew.warnings.map(w => '• ' + w).join('<br>')}</div>`
+      ? `<div style="color:var(--c-warn);font-size:8px;margin-top:4px">${ew.warnings.map(w => '• ' + w).join('<br>')}</div>`
       : '';
 
     el.innerHTML = `
@@ -425,7 +434,7 @@ const P11 = {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px">
         <div><span style="color:#718096">Cote projet :</span> <strong>${fmt(ew.H_platform_m, ' m', 2)}</strong></div>
         <div><span style="color:#718096">Pente moy. :</span> <strong>${fmt(ew.slopeMean_pct, '%', 1)}</strong></div>
-        <div><span style="color:#dc2626">Déblai :</span> <strong>${fmt(ew.V_cut_m3, ' m³', 1)}</strong></div>
+        <div><span style="color:var(--c-danger)">Déblai :</span> <strong>${fmt(ew.V_cut_m3, ' m³', 1)}</strong></div>
         <div><span style="color:#2563eb">Remblai :</span> <strong>${fmt(ew.V_fill_m3, ' m³', 1)}</strong></div>
         <div><span style="color:#718096">Talus amont :</span> <strong>${fmt(ew.hMaxCutAmont_m, ' m', 2)}</strong></div>
         <div><span style="color:#718096">Talus aval :</span> <strong>${fmt(ew.hMaxFillAval_m, ' m', 2)}</strong></div>
@@ -495,9 +504,9 @@ const P11 = {
         ZONE_MISSING:    `Zone "${zoneKey}" introuvable pour ${cfg?.commune ?? codeInsee}`,
         RULES_NOT_LOADED:'Référentiel PLU non chargé',
       }[reason] ?? 'Données PLU partielles — valeurs par défaut RTAA';
-      statusBanner = `<div class="plu-fallback-warn" style="background:rgba(245,158,11,.08);border-left:3px solid #f59e0b;padding:6px 10px;font-size:10px;color:#8a6d1b;border-radius:3px;margin-bottom:6px">⚠ ${reasonLabel}</div>`;
+      statusBanner = `<div class="plu-fallback-warn" style="background:rgba(245,158,11,.08);border-left:3px solid var(--c-warn);padding:6px 10px;font-size:10px;color:#8a6d1b;border-radius:3px;margin-bottom:6px">⚠ ${reasonLabel}</div>`;
     } else if (isExact && cfg?._meta?.warnings?.length) {
-      statusBanner = `<div class="plu-warn-list" style="background:rgba(59,130,246,.06);border-left:3px solid #3b82f6;padding:6px 10px;font-size:10px;color:#1e40af;border-radius:3px;margin-bottom:6px">${cfg._meta.warnings.length} avertissement(s) PLU — voir P04</div>`;
+      statusBanner = `<div class="plu-warn-list" style="background:rgba(59,130,246,.06);border-left:3px solid var(--c-info);padding:6px 10px;font-size:10px;color:#1e40af;border-radius:3px;margin-bottom:6px">${cfg._meta.warnings.length} avertissement(s) PLU — voir P04</div>`;
     }
 
     const labelZone = isExact && cfg?.label

@@ -495,6 +495,24 @@ if (terrain?.commune) document.getElementById('ts-commune-p6').textContent = ter
 
 window.P06 = P06;
 
+// ─── TERLAB × BPF Vegetation · panneau détection+validation ────
+(async () => {
+  try {
+    const { default: VegetationP06Panel } = await import('../components/vegetation/vegetation-p06-panel.js');
+    const waitMap = async () => {
+      const m = MapViewer?.getMap?.();
+      if (m && m.loaded()) return m;
+      await new Promise(r => setTimeout(r, 400));
+      return waitMap();
+    };
+    const map = await waitMap();
+    const sessionId = (SessionManager && (SessionManager.sessionId
+      || (SessionManager._data && SessionManager._data.sessionId)))
+      || (window.TERLAB_UID ? `u_${window.TERLAB_UID}` : `local_${Date.now()}`);
+    await VegetationP06Panel.init(sessionId, map);
+  } catch (e) { console.warn('[P06 Veg] init skip:', e); }
+})();
+
 // ─── Auto-declenchement analyse OBIA vegetation ───
 (async () => {
   if (!terrain?.parcelle_geojson) return;

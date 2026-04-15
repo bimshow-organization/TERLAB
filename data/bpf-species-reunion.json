@@ -1,9 +1,9 @@
 {
   "_meta": {
     "source": "BIMSHOW Plant Factory — presets.ts + reunion-protected-species.ts",
-    "version": "1.0",
-    "date": "2026-04-08",
-    "note": "Espèces tropicales pertinentes La Réunion — extraction statique BPF DNA"
+    "version": "1.1",
+    "date": "2026-04-15",
+    "note": "Espèces tropicales La Réunion — DNA BPF. Champs matureHeight_m / canopyRadius_m / distanceFoundation_m / origin dérivés par vegetation-species.js (normalize). trunkH/canopyRadius en m."
   },
 
   "species": {
