@@ -799,6 +799,132 @@ const FootprintHelpers = {
     return this._simplifyCollinear(poly, 1e-4);
   },
 
+  // ── v4h constructive patterns ────────────────────────────────────
+  // Porté depuis terlab_parcelles_v4h.html (MGA 2026). Unités : mètres.
+  // Les fonctions opèrent sur des listes de polygones (bat) pour gérer
+  // uniformément blocs simples et multi-blocs.
+
+  // Supprime itérativement les sommets créant des angles aigus (< minDeg°).
+  // Nettoie les pointes parasites produites par les offsets inset sur des
+  // arêtes courtes avec reculs hétérogènes. Boucle max poly.length × 4.
+  // Retourne le polygone original si la réduction dégénère en < 3 sommets.
+  rmSpikes(poly, minDeg = 90) {
+    if (!poly || poly.length < 3) return poly;
+    const th = Math.cos(minDeg * Math.PI / 180);
+    let pts = poly.map(p => this.toXY(p));
+    let changed = true, safety = pts.length * 4;
+    while (changed && safety-- > 0 && pts.length >= 4) {
+      changed = false;
+      const ccw = this.signedArea(pts) > 0;
+      const kept = [];
+      for (let i = 0; i < pts.length; i++) {
+        const pp = pts[(i - 1 + pts.length) % pts.length];
+        const p  = pts[i];
+        const pn = pts[(i + 1) % pts.length];
+        const v1x = pp.x - p.x, v1y = pp.y - p.y;
+        const v2x = pn.x - p.x, v2y = pn.y - p.y;
+        const l1 = Math.hypot(v1x, v1y), l2 = Math.hypot(v2x, v2y);
+        if (l1 < 0.05 || l2 < 0.05) { kept.push(p); continue; }
+        const dot = (v1x * v2x + v1y * v2y) / (l1 * l2);
+        const cr  = v1x * v2y - v1y * v2x;
+        if ((ccw ? cr > 0 : cr < 0) && dot > th + 1e-4) changed = true;
+        else kept.push(p);
+      }
+      if (changed) pts = kept;
+    }
+    return pts.length >= 3 ? pts : poly;
+  },
+
+  // Longueur cumulée (mètres) des façades bâtiment alignées sur les arêtes
+  // de la parcelle marquées mitoyennes (recul = 0 ET edgeType = 'lat').
+  // Critères d'alignement : distance perpendiculaire des 2 sommets de façade
+  // à l'arête parcelle < 0.5m, ET projections dans [0, L_arête].
+  // bat : Array<Polygon>, chaque polygone = Array<{x,y}>.
+  lMitFacade(bat, parc, reculs, edgeTypes) {
+    if (!bat || !reculs || !edgeTypes) return 0;
+    const n = parc.length, EPS = 0.5;
+    let total = 0;
+    for (let i = 0; i < n; i++) {
+      if (reculs[i] !== 0 || edgeTypes[i] !== 'lat') continue;
+      const a = this.toXY(parc[i]);
+      const b = this.toXY(parc[(i + 1) % n]);
+      const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+      if (len < 0.1) continue;
+      const tx = dx / len, ty = dy / len;
+      const nx = -ty, ny = tx;
+      for (const poly of bat) {
+        if (!poly || poly.length < 3) continue;
+        for (let k = 0; k < poly.length; k++) {
+          const p1 = this.toXY(poly[k]);
+          const p2 = this.toXY(poly[(k + 1) % poly.length]);
+          const d1 = Math.abs((p1.x - a.x) * nx + (p1.y - a.y) * ny);
+          const d2 = Math.abs((p2.x - a.x) * nx + (p2.y - a.y) * ny);
+          if (d1 > EPS || d2 > EPS) continue;
+          const t1 = (p1.x - a.x) * tx + (p1.y - a.y) * ty;
+          const t2 = (p2.x - a.x) * tx + (p2.y - a.y) * ty;
+          const tmin = Math.min(t1, t2), tmax = Math.max(t1, t2);
+          if (tmax < 0 || tmin > len) continue;
+          total += Math.max(0, Math.min(len, tmax) - Math.max(0, tmin));
+        }
+      }
+    }
+    return total;
+  },
+
+  // Pousse les sommets "proches" d'une arête mitoyenne recul=0 vers l'extérieur
+  // selon la normale sortante, puis re-clippe contre l'enveloppe (côté appelant).
+  // Effet net : le bâtiment vient se coller à la limite mitoyenne.
+  // bat : Array<Polygon>, renvoie Array<Polygon> (peut filtrer les dégénérés).
+  // envZone : (optionnel) enveloppe constructible pour re-clip automatique.
+  expandToMit(bat, parc, reculs, edgeTypes, envZone = null) {
+    if (!bat || !bat.length) return bat;
+    if (!reculs.some((r, i) => r === 0 && edgeTypes[i] === 'lat')) return bat;
+    const n = parc.length;
+    const EXP = 50;       // mètres ; grande distance, clip ramènera à la limite
+    const THRESH = 0.5;   // mètres : seuil de proximité au bord mitoyen
+    let res = bat.map(poly => poly ? poly.map(p => ({ ...this.toXY(p) })) : null);
+
+    for (let i = 0; i < n; i++) {
+      if (reculs[i] !== 0 || edgeTypes[i] !== 'lat') continue;
+      const { nx, ny } = this.edgeNormalIn(parc, i);
+      const oX = -nx, oY = -ny;   // sortante = opposée de la normale intérieure
+      const p1 = this.toXY(parc[i]);
+      res = res.map(poly => {
+        if (!poly || poly.length < 3) return poly;
+        const dists = poly.map(p => (p.x - p1.x) * nx + (p.y - p1.y) * ny);
+        const mn = Math.min(...dists);
+        return poly.map((p, k) => dists[k] <= mn + THRESH
+          ? { x: p.x + oX * EXP, y: p.y + oY * EXP }
+          : p);
+      }).filter(Boolean);
+    }
+
+    // Clip contre l'enveloppe constructible si fournie — sinon à la parcelle
+    const clipper = envZone && envZone.length >= 3 ? envZone : parc;
+    res = res
+      .map(poly => this.clipPolygon(poly, clipper.map(p => this.toXY(p))))
+      .filter(p => p && p.length >= 3 && this.area(p) > 1);
+    return res;
+  },
+
+  // Clampe la profondeur d'un rect orienté selon l'azimut de pente.
+  // Projette chaque sommet sur l'axe de pente (dx, dy) ; si l'étalement excède
+  // profMax, décale les sommets au-delà de (pMin + profMax) vers l'amont.
+  // Utile pour la stratégie isohypses : limite la profondeur bâtiment par
+  // rapport au terrain (contrainte topographique RTAA DOM).
+  clampProf(rect, azimut_deg, profMax) {
+    if (!rect || rect.length < 3) return rect;
+    const azR = azimut_deg * Math.PI / 180;
+    const dx = Math.sin(azR), dy = -Math.cos(azR);
+    const proj = rect.map(p => p.x * dx + p.y * dy);
+    const pMin = Math.min(...proj), pMax2 = Math.max(...proj);
+    if (pMax2 - pMin <= profMax) return rect;
+    const tgt = pMin + profMax;
+    return rect.map((p, i) => proj[i] > tgt
+      ? { x: p.x + (tgt - proj[i]) * dx, y: p.y + (tgt - proj[i]) * dy }
+      : p);
+  },
+
   // Retire les sommets colinéaires (tolérance en mètres²)
   _simplifyCollinear(poly, tol = 1e-4) {
     if (poly.length < 4) return poly;

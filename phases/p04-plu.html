@@ -32,6 +32,11 @@
   <!-- Plan état des lieux SVG (remplace canvas Mapbox) -->
   <div style="display:flex;gap:6px;padding:4px 13px 8px;align-items:center;flex-wrap:wrap">
     <button class="map-ctl-btn" id="btn-export-etat" onclick="P04.exportEtatPDF()">📄 Plan d'état des lieux PDF</button>
+    <button class="map-ctl-btn" id="btn-satghost" onclick="P04.toggleSatelliteGhost()" style="background:transparent">🛰 Ortho 30 %</button>
+    <span id="satghost-slider-wrap" style="display:none;align-items:center;gap:6px;font-family:var(--font-mono);font-size:10px;color:var(--muted)">
+      <input type="range" id="satghost-slider" min="0" max="100" value="30" style="width:110px" oninput="P04.setSatelliteGhost(this.value)">
+      <span id="satghost-val">30 %</span>
+    </span>
     <span id="site-plan-meta-p4" style="font-family:var(--font-mono);font-size:9px;color:var(--muted)"></span>
   </div>
 
@@ -495,6 +500,8 @@ const GpuService = window.GpuService;
 
 const P04 = {
   _sitePlan: null,    // résultat SitePlanRenderer.build (cache pour export)
+  _satGhost: 0,       // opacité 0..1 de l'ortho satellite (0 = off)
+  _satDataUrl: null,  // cache dataURL pour éviter un refetch à chaque slide
 
   // ─── Plan d'état des lieux SVG (remplace l'ancien canvas Mapbox) ───
   async renderEtatDesLieux() {
@@ -505,7 +512,12 @@ const P04 = {
       const mod = await import('../utils/site-plan-renderer.js');
       const SitePlanRenderer = mod.default;
       const session = SessionManager.getSession?.() ?? { terrain: SessionManager.getTerrain() };
-      const result  = await SitePlanRenderer.build(session, { withProject: false });
+      const result  = await SitePlanRenderer.build(session, {
+        withProject: false,
+        satelliteGhost: this._satGhost,
+        cache: this._satDataUrl ? { satelliteDataUrl: this._satDataUrl } : undefined,
+      });
+      if (result.meta?.satelliteDataUrl) this._satDataUrl = result.meta.satelliteDataUrl;
       this._sitePlan = result;
       container.innerHTML = result.svg;
       if (meta) {
@@ -515,6 +527,30 @@ const P04 = {
       console.warn('[P04] renderEtatDesLieux failed:', e);
       container.innerHTML = `<div style="font-family:monospace;font-size:11px;color:#a78bfa;padding:14px">Erreur rendu plan : ${e.message}</div>`;
     }
+  },
+
+  async toggleSatelliteGhost() {
+    const wrap = document.getElementById('satghost-slider-wrap');
+    const btn  = document.getElementById('btn-satghost');
+    if (this._satGhost > 0) {
+      this._satGhost = 0;
+      wrap.style.display = 'none';
+      btn.style.background = 'transparent';
+      btn.textContent = '🛰 Ortho 30 %';
+    } else {
+      this._satGhost = 0.3;
+      wrap.style.display = 'inline-flex';
+      btn.style.background = 'var(--card)';
+      btn.textContent = '🛰 Ortho actif';
+    }
+    await this.renderEtatDesLieux();
+  },
+
+  setSatelliteGhost(pct) {
+    this._satGhost = Math.max(0, Math.min(1, Number(pct) / 100));
+    document.getElementById('satghost-val').textContent = `${Math.round(pct)} %`;
+    clearTimeout(this._satDebounce);
+    this._satDebounce = setTimeout(() => this.renderEtatDesLieux(), 120);
   },
 
   async exportEtatPDF() {

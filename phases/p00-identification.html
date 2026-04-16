@@ -20,6 +20,18 @@
     </div>
   </div>
 
+  <!-- Nom du projet (optionnel) -->
+  <div class="form-section anim-slide-up">
+    <div class="fs-head">Nom du projet (optionnel)</div>
+    <input type="text" id="input-project-name" class="field-input field-input-sm"
+           placeholder="Ex : Villa Filaos, Extension Dupont…"
+           maxlength="80"
+           aria-label="Nom du projet"
+           onblur="P00.saveProjectName(this.value)"
+           onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"/>
+    <p class="field-note">Apparaîtra dans les exports PDF, DXF, GLB et le tableau de plantation.</p>
+  </div>
+
   <!-- Modes de recherche -->
   <div class="form-section anim-slide-up">
     <div class="fs-head">Mode de localisation</div>
@@ -466,6 +478,15 @@ const DemoLoader = window.DemoLoader ?? { load: async () => null };
 
 const P00 = {
   _cadastreOn: true,
+
+  // ─── Nom du projet (saisie optionnelle, save on blur) ───────────
+  saveProjectName(raw) {
+    const v = (raw ?? '').trim().slice(0, 80);
+    const cur = SessionManager.getTerrain()?.projectName ?? '';
+    if (v === cur) return;
+    SessionManager.saveTerrain({ projectName: v || null });
+    if (v) window.TerlabToast?.show(`Projet nommé : ${v}`, 'success', 2500);
+  },
 
   // ─── Démos ──────────────────────────────────────────────────────
   async loadDemo(id) {
@@ -1285,6 +1306,9 @@ if (rpcContainer && risksForPhase.length) {
 
 // ─── Hydratation initiale depuis session ──────────────────────────
 const terrain = SessionManager.getTerrain();
+// Nom de projet : hydratation indépendante (peut exister sans commune)
+const projectInput = document.getElementById('input-project-name');
+if (projectInput && terrain?.projectName) projectInput.value = terrain.projectName;
 if (terrain?.commune) {
   document.getElementById('result-section').style.display = 'block';
   // Pré-remplir les détectés

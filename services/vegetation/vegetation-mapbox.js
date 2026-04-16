@@ -27,6 +27,9 @@ const VegetationMapbox = {
   _clickHandler: null,
 
   async init(map, state) {
+    if (!map) return;
+    state = state || { features: [] };
+    if (!Array.isArray(state.features)) state.features = [];
     this._map = map;
     this._vegState = state;
 
@@ -46,6 +49,8 @@ const VegetationMapbox = {
 
   async update(state) {
     if (!this._map) return;
+    state = state || { features: [] };
+    if (!Array.isArray(state.features)) state.features = [];
     this._vegState = state;
 
     const newKeys = state.features
@@ -58,11 +63,17 @@ const VegetationMapbox = {
   },
 
   remove() {
-    if (!this._map) return;
-    [LAYER_ID_NEW, LAYER_ID_CUT, LAYER_ID_RADII, LAYER_ID_SYMBOLS, LAYER_ID_LABELS].forEach(id => {
-      if (this._map.getLayer(id)) this._map.removeLayer(id);
-    });
-    if (this._map.getSource(SOURCE_ID)) this._map.removeSource(SOURCE_ID);
+    const map = this._map;
+    this._map = null;
+    this._vegState = null;
+    this._loadedImages.clear();
+    if (!map) return;
+    try {
+      [LAYER_ID_NEW, LAYER_ID_CUT, LAYER_ID_RADII, LAYER_ID_SYMBOLS, LAYER_ID_LABELS].forEach(id => {
+        if (map.getLayer && map.getLayer(id)) map.removeLayer(id);
+      });
+      if (map.getSource && map.getSource(SOURCE_ID)) map.removeSource(SOURCE_ID);
+    } catch {}
   },
 
   _stateToCOF(state) {
@@ -160,8 +171,8 @@ const VegetationMapbox = {
         paint: {
           'circle-radius': [
             'interpolate', ['exponential', 2], ['zoom'],
-            14, ['/', ['*', ['get', 'canopyRadius'], 111320], 40000],
-            18, ['/', ['*', ['get', 'canopyRadius'], 111320], 2500],
+            14, ['max', 6, ['*', ['get', 'canopyRadius'], 0.22]],
+            18, ['max', 6, ['*', ['get', 'canopyRadius'], 3.6]],
           ],
           'circle-color': [
             'case',
@@ -197,8 +208,8 @@ const VegetationMapbox = {
           'icon-image': ['concat', 'bpf_', ['get', 'speciesKey']],
           'icon-size': [
             'interpolate', ['exponential', 2], ['zoom'],
-            14, ['/', ['*', ['get', 'canopyRadius'], 111320 * 2], 40000 * SYMBOL_SIZE],
-            19, ['/', ['*', ['get', 'canopyRadius'], 111320 * 2], 1200 * SYMBOL_SIZE],
+            14, ['max', 0.12, ['*', ['get', 'canopyRadius'], 0.0039]],
+            19, ['max', 0.12, ['*', ['get', 'canopyRadius'], 0.125]],
           ],
           'icon-allow-overlap': true,
           'icon-anchor': 'center',
@@ -239,8 +250,8 @@ const VegetationMapbox = {
         paint: {
           'circle-radius': [
             'interpolate', ['exponential', 2], ['zoom'],
-            14, ['/', ['*', ['get', 'canopyRadius'], 111320], 40000],
-            18, ['/', ['*', ['get', 'canopyRadius'], 111320], 2500],
+            14, ['max', 6, ['*', ['get', 'canopyRadius'], 0.22]],
+            18, ['max', 6, ['*', ['get', 'canopyRadius'], 3.6]],
           ],
           'circle-color': 'transparent',
           'circle-stroke-color': 'rgba(76,168,112,0.9)',
@@ -252,7 +263,8 @@ const VegetationMapbox = {
 
     if (!map.getLayer(LAYER_ID_LABELS)) {
       map.addLayer({
-        id: LAYER_ID_LABELS, type: 'symbol', source: SOURCE_ID, minzoom: 16,
+        id: LAYER_ID_LABELS, type: 'symbol', source: SOURCE_ID, minzoom: 18,
+        filter: ['in', ['get', 'status'], ['literal', ['existing_cut', 'new_proposed', 'new_validated']]],
         layout: {
           'text-field': [
             'concat',

@@ -553,7 +553,7 @@ const P03 = {
     try {
       if (map?.getLayer('ppr-layer')) {
         map.setLayoutProperty('ppr-layer', 'visibility', 'visible');
-        map.setPaintProperty('ppr-layer', 'raster-opacity', 0.8);
+        map.setPaintProperty('ppr-layer', 'raster-opacity', 0.55);
       }
     } catch {}
 
@@ -644,11 +644,11 @@ const P03 = {
       duration: 1200,
     });
 
-    // Forcer couche PPR visible et opacité forte
+    // Forcer couche PPR visible — opacité maîtrisée pour garder les toponymes lisibles
     try {
       if (map.getLayer('ppr-layer')) {
         map.setLayoutProperty('ppr-layer', 'visibility', 'visible');
-        map.setPaintProperty('ppr-layer', 'raster-opacity', 0.85);
+        map.setPaintProperty('ppr-layer', 'raster-opacity', 0.6);
       }
     } catch {}
 

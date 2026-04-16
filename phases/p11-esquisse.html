@@ -239,8 +239,27 @@ const P11 = {
       svg.setAttribute('height', wrap.clientHeight - 60);
     }
 
-    // Initialiser le canvas
-    await EsquisseCanvas.init('p11-svg', session);
+    // Initialiser le canvas — bascule vers Métaforme si flag activé
+    let metaformeActive = false;
+    if (window.TERLAB_USE_METAFORME === true) {
+      try {
+        const mod = await import('../components/esquisse-metaforme-adapter.js');
+        const svgEl = document.getElementById('p11-svg');
+        if (svgEl) {
+          const adapter = mod.createAdapter(svgEl, { viewW: 860, viewH: 600, scale: 5 });
+          if (adapter.loadSession(session)) {
+            window.EsquisseMetaforme = adapter;
+            metaformeActive = true;
+            console.info('[P11] Esquisse : moteur Métaforme v3 actif');
+          }
+        }
+      } catch (e) {
+        console.warn('[P11] Métaforme adapter failed, fallback EsquisseCanvas:', e.message);
+      }
+    }
+    if (!metaformeActive) {
+      await EsquisseCanvas.init('p11-svg', session);
+    }
 
     // TERLAB × BPF Vegetation · calque différentiel + toolbar
     try {

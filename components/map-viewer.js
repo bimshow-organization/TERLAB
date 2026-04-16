@@ -592,7 +592,7 @@ const MapViewer = {
         id: 'ppr-layer',
         type: 'raster',
         source: 'ppr-peigeo',
-        paint: { 'raster-opacity': 0.65 }
+        paint: { 'raster-opacity': 0.5 }
       });
 
       // Fallback si PEIGEO indisponible (timeout, CORS, etc.)
@@ -611,6 +611,78 @@ const MapViewer = {
       console.info('[Map] Overlay PPR WMS indisponible en HTTPS — risques via Georisques API');
       this._showStubBanner('Zonage PPR non cartographique (HTTPS) — risques recupere via Georisques');
     }
+
+    // Ravines/rivières (waterway OSM) rendues AU-DESSUS du PPRN pour rester lisibles
+    m.addLayer({
+      id: 'hydro-ravines',
+      type: 'line',
+      source: 'composite',
+      'source-layer': 'waterway',
+      paint: {
+        'line-color': '#22d3ee',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 10, 0.8, 14, 2, 17, 3.5],
+        'line-opacity': 0.9
+      }
+    });
+    // Remonter TOUS les labels natifs (waterway + place + road) par-dessus le raster PPRN
+    // et booster la taille des toponymes hydro pour les voir de loin.
+    try {
+      const style = m.getStyle();
+      const labelIds = (style?.layers ?? [])
+        .filter(l => l.type === 'symbol' && (l['source-layer'] === 'waterway' || l['source-layer'] === 'natural_label' || l['source-layer'] === 'place_label' || /label/.test(l.id)))
+        .map(l => l.id);
+      for (const id of labelIds) {
+        try { m.moveLayer(id); } catch {}
+      }
+      // Boost taille + contraste sur les labels hydro natifs de satellite-streets-v12
+      for (const id of labelIds) {
+        const layer = m.getLayer(id);
+        if (!layer) continue;
+        const sl = layer['source-layer'];
+        const isHydro = sl === 'waterway' || (sl === 'natural_label' && /water|river|stream/.test(id));
+        if (!isHydro) continue;
+        try {
+          m.setLayoutProperty(id, 'text-size', ['interpolate', ['linear'], ['zoom'], 8, 12, 11, 14, 14, 17, 17, 21, 20, 26]);
+          m.setLayoutProperty(id, 'text-font', ['Open Sans Bold Italic', 'Arial Unicode MS Bold']);
+          m.setLayoutProperty(id, 'symbol-spacing', 200);
+          m.setLayoutProperty(id, 'text-max-angle', 40);
+          m.setPaintProperty(id, 'text-color', '#e0f7ff');
+          m.setPaintProperty(id, 'text-halo-color', 'rgba(8,47,73,0.95)');
+          m.setPaintProperty(id, 'text-halo-width', 2.4);
+          m.setMinZoom && m.getLayer(id).minzoom !== undefined && null; // no-op
+          m.setLayerZoomRange(id, 8, 24);
+        } catch {}
+      }
+    } catch (e) {
+      console.warn('[Map] boost hydro labels failed', e?.message);
+    }
+
+    // Couche custom de secours : si la base style n'expose pas de label waterway
+    // (ou pas pour cette région), on ajoute notre propre symbol layer.
+    m.addLayer({
+      id: 'hydro-ravines-labels',
+      type: 'symbol',
+      source: 'composite',
+      'source-layer': 'waterway',
+      minzoom: 9,
+      filter: ['has', 'name'],
+      layout: {
+        'text-field': ['coalesce', ['get', 'name_fr'], ['get', 'name']],
+        'text-font': ['Open Sans Bold Italic', 'Arial Unicode MS Bold'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 9, 12, 12, 14, 15, 17, 17, 21, 20, 26],
+        'symbol-placement': 'line',
+        'symbol-spacing': 180,
+        'text-letter-spacing': 0.06,
+        'text-max-angle': 40,
+        'text-padding': 2
+      },
+      paint: {
+        'text-color': '#e0f7ff',
+        'text-halo-color': 'rgba(8,47,73,0.95)',
+        'text-halo-width': 2.4,
+        'text-halo-blur': 0.5
+      }
+    });
 
     // Couche simulation inondation — bathtub DEM
     m.addSource('flood-sim', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
@@ -742,7 +814,7 @@ const MapViewer = {
       source: 'composite',
       'source-layer': 'building',
       maxzoom: 18,
-      layout: { visibility: 'none' },
+      layout: { visibility: 'visible' },
       paint: {
         'heatmap-weight': ['interpolate', ['linear'], ['coalesce', ['get', 'height'], 6], 0, 0, 6, 0.4, 15, 0.8, 30, 1],
         'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 11, 0.3, 15, 1],

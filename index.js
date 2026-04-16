@@ -140,7 +140,8 @@ const AppState = {
   currentPhase: 0,
   sessionId:    null,
   mapboxToken:  null,
-  loading:      false
+  loading:      false,
+  cameraIntroSeen: new Set()
 };
 
 // ═════════════════════════════════════════════════════════════════
@@ -566,6 +567,9 @@ async function loadPhase(id) {
   window.AeraulicPlanner?.destroy?.();
   window.RtaaVentilationSim?.destroy?.();
 
+  // ─── Vegetation P06 panel cleanup ───────────────────────
+  window.VegetationP06Panel?.dispose?.();
+
   // 3. Injecter le HTML (SANS les scripts — innerHTML ne les exécute pas)
   const container = document.getElementById('phase-container');
 
@@ -664,7 +668,9 @@ async function loadPhase(id) {
 
       // Si terrain connu et phase > 0 : démarrer à la verticale du projet (pitch 0, zoom reculé)
       // puis animer vers le zoom/pitch/bearing cible de la phase
-      const startAboveProject = hasTerrain && id > 0;
+      // Intro caméra uniquement la première visite de la phase dans la session
+      const alreadySeen = AppState.cameraIntroSeen.has(id);
+      const startAboveProject = hasTerrain && id > 0 && !alreadySeen;
       const initCenter = startAboveProject ? [parseFloat(terrain.lng), parseFloat(terrain.lat)] : undefined;
       const initZoom   = (id === 0 && !hasTerrain) ? 10 : (startAboveProject ? Math.max(targetZoom - 3, 10) : targetZoom);
       const initPitch  = startAboveProject ? 0 : targetPitch;
@@ -690,11 +696,11 @@ async function loadPhase(id) {
         // Attendre que la carte soit idle pour que le flyTo fonctionne correctement
         const _doFly = () => {
           _showTerrainOnMap(terrain);
+          const lng = parseFloat(terrain.lng);
+          const lat = parseFloat(terrain.lat);
 
           if (startAboveProject) {
             // Animation : plonger depuis la verticale vers la vue cible de la phase
-            const lng = parseFloat(terrain.lng);
-            const lat = parseFloat(terrain.lat);
             _map.flyTo({
               center:   [lng, lat],
               zoom:     targetZoom,
@@ -703,20 +709,26 @@ async function loadPhase(id) {
               duration: 2000,
               essential: true
             });
+          } else if (alreadySeen && id > 0) {
+            // Phase déjà visitée dans la session : pas d'animation, on va direct à la cible
+            _map.jumpTo({ center: [lng, lat], zoom: targetZoom, pitch: targetPitch, bearing: targetBearing });
           } else if (terrain.parcelle_geojson) {
-            // Phase 0 avec terrain : fitBounds classique
+            // Phase 0 avec terrain : fitBounds classique (première visite uniquement)
             try {
               const bbox = turf.bbox({ type: 'Feature', geometry: terrain.parcelle_geojson });
               _map.fitBounds([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { padding: 80, duration: 1200 });
             } catch {
-              MapViewer.flyTo(parseFloat(terrain.lng), parseFloat(terrain.lat), targetZoom);
+              MapViewer.flyTo(lng, lat, targetZoom);
             }
           } else {
-            MapViewer.flyTo(parseFloat(terrain.lng), parseFloat(terrain.lat), targetZoom);
+            MapViewer.flyTo(lng, lat, targetZoom);
           }
+          AppState.cameraIntroSeen.add(id);
         };
         if (_map.isStyleLoaded()) { setTimeout(_doFly, 300); }
         else { _map.once('idle', _doFly); }
+      } else {
+        AppState.cameraIntroSeen.add(id);
       }
     } catch (e) {
       console.warn('[Map] Init failed:', e.message);

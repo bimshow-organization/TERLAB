@@ -7,15 +7,18 @@
 
 import VegetationSpecies from './vegetation-species.js';
 
-const IGN_ORTHO_WMS   = 'https://data.geopf.fr/wms-r/wms';
+const IGN_WMS         = 'https://data.geopf.fr/wms-r/wms';
 const IGN_ORTHO_LAYER = 'HR.ORTHOIMAGERY.ORTHOPHOTOS';
+const IGN_COSIA_LAYER = 'IGNF_COSIA_2021-2023';
 const DEFAULT_CONFIG = {
   source:           'obia',
   ndviThreshold:    0.28,
-  minBlobArea_m2:   2,
+  minBlobArea_m2:   4,         // rejet buissons < ~1.1m rayon
   maxBlobArea_m2:   300,
-  lidarMinHeight_m: 2.0,
-  clusterEpsilon_m: 1.5,
+  lidarMinHeight_m: 3.0,       // rejet arbustes < 3m de haut
+  clusterEpsilon_m: 3.0,       // merge detections < 3m = meme arbre
+  gridRes_m:        1.0,       // CHM grid 1m (smooth, evite faux peaks par branche)
+  peakNeighborhood: 2,         // local-max sur fenetre 5x5 (au lieu 3x3)
 };
 
 function wgs84ToLocal(lng, lat, refLng, refLat) {
@@ -29,6 +32,28 @@ function localToWgs84(x, y, refLng, refLat) {
   return [refLng + x / LNG_M, refLat - y / LAT_M];
 }
 
+// Point-in-polygon ray casting (lng/lat en WGS84, polygon = [[lng,lat], ...])
+function pointInPolygon(lng, lat, polygon) {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i][0], yi = polygon[i][1];
+    const xj = polygon[j][0], yj = polygon[j][1];
+    const intersect = ((yi > lat) !== (yj > lat))
+      && (lng < (xj - xi) * (lat - yi) / (yj - yi + 1e-12) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+// Extrait le premier ring du parcelle_geojson (Polygon ou MultiPolygon)
+function extractParcelRing(geojson) {
+  const g = geojson?.geometry || geojson;
+  if (!g?.coordinates) return null;
+  if (g.type === 'Polygon')       return g.coordinates[0];
+  if (g.type === 'MultiPolygon')  return g.coordinates[0]?.[0];
+  return null;
+}
+
 const VegetationDetection = {
 
   async detect(bbox, centroid, altitude, biome, sessionId, config = {}) {
@@ -37,19 +62,30 @@ const VegetationDetection = {
     const [refLng, refLat] = centroid;
 
     let features = [];
-    if (cfg.source === 'obia' || cfg.source === 'manual') {
-      features = await this._detectOBIA(bbox, centroid, cfg);
+    if (cfg.source === 'cosia' || cfg.source === 'obia' || cfg.source === 'manual') {
+      features = await this._detectCOSIA(bbox, centroid, cfg);
     }
     if (cfg.source === 'lidar') {
-      features = await this._detectLiDAR(bbox, centroid, cfg);
+      features = await this._detectLiDAR(bbox, centroid, cfg, sessionId);
+    }
+
+    // Clip a la parcelle (le user ne veut que son terrain, pas le voisinage)
+    const terrain = window.SessionManager?._data?.terrain || window.SessionManager?.getTerrain?.();
+    const parcelRing = extractParcelRing(terrain?.parcelle_geojson);
+    if (parcelRing && parcelRing.length >= 3) {
+      const before = features.length;
+      features = features.filter(f => pointInPolygon(f.position[0], f.position[1], parcelRing));
+      console.info(`[VegDetect] clip parcelle : ${features.length}/${before} arbres conserves`);
     }
 
     features = this._clusterDeduplicate(features, cfg.clusterEpsilon_m);
 
+    const isCoastal = typeof altitude === 'number' && altitude < 100;
     features = features.map(f => {
       const candidates = VegetationSpecies.suggestSpecies(
         f.heightMeasured != null ? f.heightMeasured : 10,
-        f.canopyRadiusMeasured, altitude, biome
+        f.canopyRadiusMeasured, altitude, biome, 3,
+        { palmLikelihood: f.palmLikelihood || 0, isCoastal }
       );
       return {
         ...f,
@@ -71,12 +107,75 @@ const VegetationDetection = {
     };
   },
 
+  async _detectCOSIA(bbox, centroid, cfg) {
+    const [minLng, minLat, maxLng, maxLat] = bbox;
+    const [, refLat] = centroid;
+    const IMG_SIZE = 1024;
+
+    const wmsUrl = `${IGN_WMS}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap`
+      + `&LAYERS=${IGN_COSIA_LAYER}&CRS=EPSG:4326`
+      + `&BBOX=${minLat},${minLng},${maxLat},${maxLng}`
+      + `&WIDTH=${IMG_SIZE}&HEIGHT=${IMG_SIZE}&FORMAT=image/png&STYLES=`;
+
+    let imgData;
+    try { imgData = await this._fetchImageData(wmsUrl, IMG_SIZE, IMG_SIZE); }
+    catch (e) {
+      console.warn('[VegDetect] COSIA WMS failed, fallback OBIA ortho:', e);
+      return this._detectOBIA(bbox, centroid, cfg);
+    }
+
+    const mask = this._cosiaVegetationMask(imgData);
+    const blobs = this._labelBlobs(mask, IMG_SIZE, IMG_SIZE);
+    if (blobs.length === 0) {
+      console.warn('[VegDetect] COSIA mask vide, fallback OBIA ortho');
+      return this._detectOBIA(bbox, centroid, cfg);
+    }
+
+    const features = [];
+    const pxToM = (maxLng - minLng) * 111320 * Math.cos(refLat * Math.PI / 180) / IMG_SIZE;
+    for (const blob of blobs) {
+      const area_m2 = blob.pixelCount * pxToM * pxToM;
+      if (area_m2 < cfg.minBlobArea_m2 || area_m2 > cfg.maxBlobArea_m2) continue;
+
+      const lng = minLng + (blob.cx / IMG_SIZE) * (maxLng - minLng);
+      const lat = maxLat - (blob.cy / IMG_SIZE) * (maxLat - minLat);
+      const canopyRadius = Math.sqrt(area_m2 / Math.PI);
+
+      features.push({
+        id: `cosia_${Math.random().toString(36).slice(2)}`,
+        position: [lng, lat],
+        canopyRadiusMeasured: Math.round(canopyRadius * 10) / 10,
+        canopyArea: Math.round(area_m2),
+        status: 'existing_keep',
+        source: 'cosia',
+        timestamp: new Date().toISOString(),
+      });
+    }
+    return features;
+  },
+
+  // Masque vegetation depuis raster COSIA IGN (IA-segmente).
+  // Classes vegetation = Conifères / Feuillus / Broussailles (tons verts dominants).
+  // Exclut classes non-vert : cultures (jaune), vignes (magenta), sol (tan), eau (bleu), bati (rouge).
+  _cosiaVegetationMask(imgData) {
+    const { data, width, height } = imgData;
+    const mask = new Uint8Array(width * height);
+    for (let i = 0; i < width * height; i++) {
+      const R = data[i*4], G = data[i*4+1], B = data[i*4+2], A = data[i*4+3];
+      if (A < 128) continue;
+      const greenDom = G > R + 10 && G > B + 10 && G > 50;
+      const notOliveCrop = !(R > 150 && G > 150 && B < 120 && Math.abs(R - G) < 40);
+      mask[i] = (greenDom && notOliveCrop) ? 1 : 0;
+    }
+    return mask;
+  },
+
   async _detectOBIA(bbox, centroid, cfg) {
     const [minLng, minLat, maxLng, maxLat] = bbox;
     const [, refLat] = centroid;
     const IMG_SIZE = 512;
 
-    const wmsUrl = `${IGN_ORTHO_WMS}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap`
+    const wmsUrl = `${IGN_WMS}?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap`
       + `&LAYERS=${IGN_ORTHO_LAYER}&CRS=EPSG:4326`
       + `&BBOX=${minLat},${minLng},${maxLat},${maxLng}`
       + `&WIDTH=${IMG_SIZE}&HEIGHT=${IMG_SIZE}&FORMAT=image/png&STYLES=`;
@@ -114,26 +213,80 @@ const VegetationDetection = {
     return features;
   },
 
-  async _detectLiDAR(bbox, centroid, cfg) {
-    const COPCReader = window.COPCReader;
-    if (!COPCReader) {
-      console.warn('[VegDetect] COPCReader absent, fallback OBIA');
-      return this._detectOBIA(bbox, centroid, cfg);
-    }
+  async _detectLiDAR(bbox, centroid, cfg, sessionId) {
     const [refLng, refLat] = centroid;
-    const GRID_RES = 0.5;
-    const pts = await COPCReader.readBBox(bbox, { classification: [4, 5] });
-    if (!pts || !pts.length) return this._demoFeatures(centroid);
+    const GRID_RES = cfg.gridRes_m || 1.0;
+    const PEAK_NBR = cfg.peakNeighborhood || 2;
+
+    // Priorite : points deja charges par P01 dans LidarCache (arrays [lng,lat,z,r,g,b,cls])
+    // Fallback : COPCReader (si dispo), sinon COSIA WMS
+    let pts = null;
+    let groundZ = null; // altitude sol (min Z classe 2) pour normaliser CHM
+    const cache = window.LidarCache;
+    const terrain = window.SessionManager?._data?.terrain || window.SessionManager?.getTerrain?.();
+    if (cache && terrain?.parcelle_geojson && sessionId) {
+      try {
+        const rec = await cache.getPoints({
+          sessionId,
+          geojson: terrain.parcelle_geojson,
+          classes: '2,3,4,5,6,9',
+        });
+        if (rec?.points?.length) {
+          const groundPts = rec.points.filter(p => p[6] === 2);
+          if (groundPts.length) {
+            let sum = 0; for (const p of groundPts) sum += p[2];
+            groundZ = sum / groundPts.length;
+          }
+          // Classes LiDAR 4+5 + filtre RGB : rejette toits/murs mis-classifies
+          // (si couleur satellite pas verte, c'est pas de la vegetation)
+          pts = rec.points
+            .filter(p => p[6] === 4 || p[6] === 5)
+            .map(p => ({ lng: p[0], lat: p[1], z: p[2], r: p[3], g: p[4], b: p[5] }))
+            .filter(p => {
+              // RGB LiDAR peut etre en [0..255] ou [0..1] normalise selon colorisation
+              const scale = (p.r > 1 || p.g > 1 || p.b > 1) ? 1 : 255;
+              const R = p.r * scale, G = p.g * scale, B = p.b * scale;
+              // Accepter si vert dominant OU si pas de couleur (RGB=0 = pas colorise, on garde)
+              const hasColor = (R + G + B) > 10;
+              if (!hasColor) return true;
+              return G > R - 5 && G > B - 5 && G > 30;
+            });
+          console.info(`[VegDetect] LidarCache : ${pts.length} pts vegetation verts (classes 4,5) · sol moy ${groundZ?.toFixed(1)}m`);
+        }
+      } catch (e) { console.warn('[VegDetect] LidarCache lookup failed:', e); }
+    }
+
+    if (!pts || !pts.length) {
+      const COPCReader = window.COPCReader;
+      if (COPCReader) {
+        try { pts = await COPCReader.readBBox(bbox, { classification: [4, 5] }); }
+        catch (e) { console.warn('[VegDetect] COPCReader failed:', e); }
+      }
+    }
+
+    if (!pts || !pts.length) {
+      console.warn('[VegDetect] Aucun point LiDAR vegetation, fallback COSIA');
+      return this._detectCOSIA(bbox, centroid, cfg);
+    }
+
+    // Normaliser Z en height-above-ground (CHM) si on a le sol
+    if (groundZ == null) {
+      let minZ = Infinity;
+      for (const p of pts) if (p.z < minZ) minZ = p.z;
+      groundZ = minZ;
+    }
+    for (const p of pts) p.z = Math.max(0, p.z - groundZ);
 
     const gridW = 80, gridH = 80;
     const chm = new Float32Array(gridW * gridH);
     const LNG_M = 111320 * Math.cos(refLat * Math.PI / 180);
     const LAT_M = 111320;
+    // Pre-convertir en coords locales (metres) pour reuse dans _trunkHollowness
     for (const pt of pts) {
-      const lx = (pt.lng - refLng) * LNG_M;
-      const ly = -(pt.lat - refLat) * LAT_M;
-      const gi = Math.floor(lx / GRID_RES + gridW / 2);
-      const gj = Math.floor(ly / GRID_RES + gridH / 2);
+      pt.lx = (pt.lng - refLng) * LNG_M;
+      pt.ly = -(pt.lat - refLat) * LAT_M;
+      const gi = Math.floor(pt.lx / GRID_RES + gridW / 2);
+      const gj = Math.floor(pt.ly / GRID_RES + gridH / 2);
       if (gi < 0 || gi >= gridW || gj < 0 || gj >= gridH) continue;
       const idx = gj * gridW + gi;
       if (pt.z > chm[idx]) chm[idx] = pt.z;
@@ -141,15 +294,16 @@ const VegetationDetection = {
 
     const features = [];
     const visited = new Uint8Array(gridW * gridH);
-    for (let j = 1; j < gridH - 1; j++) {
-      for (let i = 1; i < gridW - 1; i++) {
+    for (let j = PEAK_NBR; j < gridH - PEAK_NBR; j++) {
+      for (let i = PEAK_NBR; i < gridW - PEAK_NBR; i++) {
         const idx = j * gridW + i;
         const h = chm[idx];
         if (h < cfg.lidarMinHeight_m || visited[idx]) continue;
 
+        // Local-max sur voisinage (2*PEAK_NBR+1) x (...) — peak dominant
         let isMax = true;
-        for (let dj = -1; dj <= 1 && isMax; dj++) {
-          for (let di = -1; di <= 1 && isMax; di++) {
+        for (let dj = -PEAK_NBR; dj <= PEAK_NBR && isMax; dj++) {
+          for (let di = -PEAK_NBR; di <= PEAK_NBR && isMax; di++) {
             if (di === 0 && dj === 0) continue;
             if (chm[(j + dj) * gridW + (i + di)] > h) isMax = false;
           }
@@ -182,6 +336,16 @@ const VegetationDetection = {
         const [lng, lat] = localToWgs84(lx, ly, refLng, refLat);
         const canopyRadius = Math.max(1, (r - 1) * GRID_RES);
 
+        // Signature palmier : peak aigu + sous-canopee vide
+        // 1. Peak sharpness : chute d'altitude rapide (a 2m du peak, le CHM descend ≥55%)
+        const sharpness = this._peakSharpness(chm, gridW, gridH, i, j, h);
+        // 2. Trunk hollowness : fraction de points LiDAR entre 1m et 0.6*h dans rayon canopy
+        const hollow = this._trunkHollowness(pts, lx, ly, canopyRadius, h);
+        // Combiner : les palmiers ont sharpness > 0.55 ET hollow > 0.7
+        const palmLikelihood = Math.max(0, Math.min(1,
+          (sharpness - 0.4) * 1.2 + (hollow - 0.5) * 1.0
+        ));
+
         features.push({
           id: `lidar_${Math.random().toString(36).slice(2)}`,
           position: [lng, lat],
@@ -190,11 +354,57 @@ const VegetationDetection = {
           canopyArea: Math.round(Math.PI * canopyRadius * canopyRadius),
           status: 'existing_keep',
           source: 'lidar',
+          palmLikelihood: Math.round(palmLikelihood * 100) / 100,
+          sharpness: Math.round(sharpness * 100) / 100,
+          hollow: Math.round(hollow * 100) / 100,
           timestamp: new Date().toISOString(),
         });
       }
     }
+    const palmCount = features.filter(f => f.palmLikelihood > 0.5).length;
+    if (palmCount) console.info(`[VegDetect] Signature palmier detectee : ${palmCount}/${features.length} arbres`);
     return features;
+  },
+
+  // Mesure la nettete du peak : a 2m du sommet, a quel point le CHM descend ?
+  // Retourne 0 (canopee plate = feuillus etendu) a 1 (peak ponctuel = palmier)
+  _peakSharpness(chm, gridW, gridH, i, j, peakH) {
+    if (peakH < 1) return 0;
+    const ring = 2; // 2 cellules = ~2m avec GRID_RES 1.0
+    let sum = 0, count = 0;
+    for (let dj = -ring; dj <= ring; dj++) {
+      for (let di = -ring; di <= ring; di++) {
+        const d = Math.round(Math.sqrt(di*di + dj*dj));
+        if (d !== ring) continue;
+        const ni = i+di, nj = j+dj;
+        if (ni<0||ni>=gridW||nj<0||nj>=gridH) continue;
+        sum += chm[nj*gridW+ni]; count++;
+      }
+    }
+    if (!count) return 0;
+    const avgRing = sum / count;
+    // Sharpness = 1 - (avg ring / peak). Palmier ~0.6-0.8, feuillus dense ~0.1-0.3.
+    return Math.max(0, 1 - avgRing / peakH);
+  },
+
+  // Mesure si le tronc est creux : peu de points LiDAR dans la tranche 1m < z < 0.6*h
+  // Retourne 0 (sous-canopee pleine = feuillus) a 1 (tronc vide = palmier)
+  // pts[] doivent avoir {lx, ly, z} en coords locales metres (height-above-ground)
+  _trunkHollowness(pts, localX, localY, radiusM, peakH) {
+    if (peakH < 5 || !pts?.length) return 0;
+    const r2 = radiusM * radiusM * 1.5; // zone elargie pour capturer les fronds
+    const zTrunkMax = peakH * 0.6;
+    let canopyPts = 0, trunkPts = 0;
+    for (const p of pts) {
+      if (p.lx == null) continue;
+      const dx = p.lx - localX;
+      const dy = p.ly - localY;
+      if (dx*dx + dy*dy > r2) continue;
+      if (p.z >= peakH * 0.75) canopyPts++;
+      else if (p.z > 1 && p.z <= zTrunkMax) trunkPts++;
+    }
+    if (canopyPts + trunkPts < 5) return 0;
+    return canopyPts / (canopyPts + trunkPts * 3);
   },
 
   _fetchImageData(url, w, h) {

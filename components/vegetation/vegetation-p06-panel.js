@@ -150,17 +150,20 @@ const VegetationP06Panel = {
     const panel = document.createElement('div');
     panel.className = 'veg-panel';
     panel.id = PANEL_ID;
+    panel.style.display = 'none';   // ferme par defaut, ouvert via P06.focusVegetationPanel
     panel.innerHTML = `
       <div class="veg-panel-hd">
         <span>🌿 Végétation · P06</span>
         <span class="veg-badge" id="veg-badge">0 arbres</span>
+        <button id="veg-btn-close" title="Fermer" style="margin-left:auto;background:transparent;border:none;color:inherit;font-size:16px;cursor:pointer;padding:0 4px">✕</button>
       </div>
       <div class="veg-panel-body">
         <div>
           <div class="veg-label">Source détection</div>
           <select id="veg-source-select" class="veg-select">
-            <option value="obia">OBIA (Ortho IGN)</option>
-            <option value="lidar">LiDAR CHM (COPC)</option>
+            <option value="lidar" selected>LiDAR CHM (points caches P01)</option>
+            <option value="cosia">COSIA IGN (segmentation IA)</option>
+            <option value="obia">OBIA NDVI (ortho IGN)</option>
             <option value="manual">Manuel uniquement</option>
           </select>
         </div>
@@ -217,6 +220,24 @@ const VegetationP06Panel = {
       this.runDetection(src);
     });
     document.getElementById('veg-btn-export').addEventListener('click', () => this.exportGeoJSON());
+    document.getElementById('veg-btn-close')?.addEventListener('click', () => this.hide());
+  },
+
+  show() {
+    if (this._panel) this._panel.style.display = '';
+    window.P06?._updateVegBtnLabel?.(true);
+  },
+  hide() {
+    if (this._panel) this._panel.style.display = 'none';
+    window.P06?._updateVegBtnLabel?.(false);
+  },
+  toggle() {
+    if (!this._panel) return;
+    const isOpen = this._panel.style.display !== 'none';
+    if (isOpen) this.hide(); else this.show();
+  },
+  isOpen() {
+    return !!this._panel && this._panel.style.display !== 'none';
   },
 
   _updatePanelStats(state) {
@@ -265,10 +286,19 @@ const VegetationP06Panel = {
 
   dispose() {
     try { VegetationMapbox.remove(); } catch {}
-    if (typeof this._unsubState === 'function') this._unsubState();
+    if (typeof this._unsubState === 'function') {
+      try { this._unsubState(); } catch {}
+    }
     this._unsubState = null;
-    if (this._panel) this._panel.remove();
+    if (this._panel) {
+      try { this._panel.remove(); } catch {}
+    }
     this._panel = null;
+    this._map = null;
+    this._state = null;
+    this._addMode = false;
+    const staleDom = document.getElementById(PANEL_ID);
+    if (staleDom) { try { staleDom.remove(); } catch {} }
   },
 };
 

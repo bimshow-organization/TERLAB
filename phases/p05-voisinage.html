@@ -229,7 +229,7 @@
         Plus la zone est rouge, plus l'ICU potentiel est élevé.
       </p>
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.72rem;font-family:var(--font-mono)">
-        <input type="checkbox" id="p05-icu-toggle" onchange="P05.toggleICU(this.checked)" style="width:13px;height:13px">
+        <input type="checkbox" id="p05-icu-toggle" checked onchange="P05.toggleICU(this.checked)" style="width:13px;height:13px">
         Afficher heatmap ICU sur la carte
       </label>
     </div>
@@ -257,7 +257,7 @@
       <div id="p05-age-stats" style="display:none;font-size:11px;line-height:1.6;margin-bottom:8px"></div>
 
       <!-- Toggle couche carte -->
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.72rem;font-family:var(--font-mono);margin-bottom:6px">
+      <label id="p05-age-toggle-label" style="display:none;align-items:center;gap:6px;cursor:pointer;font-size:.72rem;font-family:var(--font-mono);margin-bottom:6px">
         <input type="checkbox" id="p05-age-toggle" onchange="P05.toggleAgeLayer(this.checked)" style="width:13px;height:13px">
         Afficher anciennete sur la carte
       </label>
@@ -1016,6 +1016,10 @@ if (window.AtlasModal) AtlasModal.injectPreview('atlas-preview-urbain', 'composi
         if (ageLoader) ageLoader.textContent = 'Aucune donnee d\'anciennete disponible pour ce secteur';
         return;
       }
+
+      // Donnees disponibles : on revele le toggle carte
+      const ageToggleLabel = document.getElementById('p05-age-toggle-label');
+      if (ageToggleLabel) ageToggleLabel.style.display = 'flex';
 
       // Charger la couche sur la carte (invisible par defaut)
       const map = window.TerlabMap?.getMap?.();

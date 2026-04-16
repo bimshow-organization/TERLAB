@@ -138,9 +138,13 @@ function get(key) { return _byKey ? _byKey.get(key) || null : null; }
 
 function all() { return _db ? _db.slice() : []; }
 
-function suggestSpecies(hauteurM, canopyRadiusM, altitude, biome, maxCandidates = 3) {
+function suggestSpecies(hauteurM, canopyRadiusM, altitude, biome, maxCandidates = 3, opts = {}) {
   if (!_db) return [];
   const biomeLc = (biome || '').toLowerCase();
+  // opts.palmLikelihood ∈ [0..1] : 0 = pas signature palmier, 1 = signature palmier nette
+  // opts.isCoastal (altitude < 100m) : boost cocotier specifiquement
+  const palm = Math.max(0, Math.min(1, opts.palmLikelihood ?? 0));
+  const coastal = !!opts.isCoastal;
   return _db
     .filter(sp => {
       const [lo, hi] = sp.altitude;
@@ -154,7 +158,17 @@ function suggestSpecies(hauteurM, canopyRadiusM, altitude, biome, maxCandidates 
     .map(sp => {
       const rDelta = Math.abs(sp.canopyRadius_m - canopyRadiusM) / Math.max(sp.canopyRadius_m, 1);
       const hDelta = Math.abs(sp.matureHeight_m - (hauteurM || sp.matureHeight_m)) / Math.max(sp.matureHeight_m, 1);
-      const score = Math.max(0, 1 - (rDelta * 0.6 + hDelta * 0.4));
+      let score = Math.max(0, 1 - (rDelta * 0.6 + hDelta * 0.4));
+
+      // Bonus/malus palmier selon signature LiDAR
+      if (palm > 0) {
+        if (sp.isPalm) score += palm * 0.35;                 // palmier favorise
+        else           score -= palm * 0.25;                 // feuillus penalise
+        // Cocotier boost cote
+        if (coastal && /cocos/i.test(sp.scientificName || '')) score += 0.15;
+      }
+      score = Math.max(0, Math.min(1, score));
+
       return {
         speciesKey:          sp.key,
         commonName:          sp.commonName,

@@ -67,9 +67,12 @@ const EsquisseCanvas = {
   _contoursVisible: true,      // toggle utilisateur (bouton P11)
 
   // ── INIT ───────────────────────────────────────────────────────
-  async init(svgId, sessionData) {
+  async init(svgId, sessionData, opts = {}) {
     this._session  = sessionData ?? {};
-    this._map      = window.MapViewer?.getMap();
+    // Mode standalone : forcer rendu SVG autonome sans overlay Mapbox.
+    // Utilisé par l'onglet ESQUISSE pour éviter la double rotation
+    // (bearing Mapbox vs rotation SVG locale) et masquer la base carto.
+    this._map      = opts.standalone ? null : (window.MapViewer?.getMap() ?? null);
 
     // ── 1. SVG overlay ───────────────────────────────────────────
     // Si Mapbox disponible : overlay sur le canvas Mapbox

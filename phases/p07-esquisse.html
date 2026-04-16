@@ -25,118 +25,33 @@
     <span id="tb-plu-status" class="plu-badge"></span>
   </div>
 
-  <!-- Programme -->
+  <!-- Règles PLU identifiées (compact, éditable) -->
   <div class="form-section anim-slide-up">
-    <div class="fs-head">Programme du projet</div>
-    <div class="prog-grid">
-      <div class="field-row">
-        <label class="field-label" for="sp-m2">Surface de plancher (m²)</label>
-        <input type="number" id="sp-m2" class="field-input" data-session-key="surface_plancher_m2"
-               placeholder="150" min="10" oninput="window.P07?.update()"/>
-      </div>
-      <div class="field-row">
-        <label class="field-label" for="sp-niveaux">Niveaux</label>
-        <select id="sp-niveaux" class="field-select" data-session-key="niveaux" onchange="window.P07?.update()">
-          <option value="1">R+0 (plain-pied)</option>
-          <option value="2">R+1</option>
-          <option value="3">R+2</option>
-          <option value="4">R+3</option>
-        </select>
-      </div>
+    <div class="fs-head">Règles PLU identifiées</div>
+    <div id="p07-plu-rules" class="plu-rules-grid">
+      <!-- Généré dynamiquement par _p07RenderPluRules() au chargement -->
+      <div style="font-size:10px;color:var(--faint);padding:6px 0">Chargement des règles PLU…</div>
     </div>
-    <div class="gabarit-inputs">
-      <div class="field-row">
-        <label class="field-label" for="sp-l">Longueur L (m)</label>
-        <input type="number" id="sp-l" class="field-input" data-session-key="gabarit_l_m"
-               placeholder="12" min="3" step="0.5" oninput="window.P07?.update()"/>
-      </div>
-      <div class="field-row">
-        <label class="field-label" for="sp-w">Largeur l (m)</label>
-        <input type="number" id="sp-w" class="field-input" data-session-key="gabarit_w_m"
-               placeholder="8" min="3" step="0.5" oninput="window.P07?.update()"/>
-      </div>
-      <div class="field-row">
-        <label class="field-label" for="sp-h">Hauteur H (m)</label>
-        <input type="number" id="sp-h" class="field-input" data-session-key="gabarit_h_m"
-               placeholder="7.2" min="2.5" step="0.1" oninput="window.P07?.update()"/>
-      </div>
+    <div style="font-size:8.5px;color:var(--faint);margin-top:6px;line-height:1.5">
+      Cliquez une valeur pour la corriger si le PLU détecté est faux.
+      Les règles effectives pilotent l'enveloppe constructible et les scénarios.
     </div>
   </div>
 
-  <!-- Programme Plan Masse v5 -->
-  <div class="form-section anim-slide-up">
-    <div class="fs-head">Programme plan masse</div>
-    <div class="prog-grid" style="gap:6px">
-      <div class="field-row">
-        <label class="field-label">Type</label>
-        <div style="display:flex;gap:3px;flex-wrap:wrap">
-          <button class="tg-btn active" id="pm-type-maison" onclick="window.P07?.setProg('type','maison');window.PlanMasseCanvas?.setProg('type','maison')">Maison</button>
-          <button class="tg-btn" id="pm-type-collectif" onclick="window.P07?.setProg('type','collectif');window.PlanMasseCanvas?.setProg('type','collectif')">Collectif</button>
-          <button class="tg-btn" id="pm-type-bureau" onclick="window.P07?.setProg('type','bureau')">Bureau</button>
-          <button class="tg-btn" id="pm-type-erp" onclick="window.P07?.setProg('type','erp')">ERP</button>
-          <button class="tg-btn" id="pm-type-commerce" onclick="window.P07?.setProg('type','commerce')">Commerce</button>
-        </div>
-      </div>
-      <div class="field-row">
-        <label class="field-label">Niv. max</label>
-        <input type="range" id="pm-nvmax" min="1" max="3" value="2" step="1"
-               oninput="window.P07?.setProg('nvMax',+this.value);window.PlanMasseCanvas?.setProg('nvMax',+this.value);document.getElementById('pm-nvmax-lbl').textContent=['','R+0','R+1','R+2','R+3'][+this.value];window._p07RefreshPluLimits?.()"/>
-        <span id="pm-nvmax-lbl" style="font-size:10px;color:var(--accent);min-width:30px">R+1</span>
-      </div>
-      <div id="pm-nvmax-hint" style="font:8.5px var(--font-mono);color:var(--faint);margin-top:-4px;margin-left:78px"></div>
-      <!-- TOPO CASE PANEL (alimenté par EsquisseCanvas._applyTopoConstraints) -->
-      <div id="topo-case-panel" class="topo-panel" style="display:none">
-        <div class="topo-label">
-          <span id="topo-case-badge" class="topo-badge"></span>
-          <span id="topo-case-name"></span>
-        </div>
-        <div id="topo-constraints-list" class="topo-constraints"></div>
-        <a id="topo-conseils-link" class="topo-link" target="_blank">
-          Voir les conseils §C →
-        </a>
-        <div id="topo-coupe-preview" class="topo-coupe-wrap" style="display:none;margin-top:8px">
-          <div style="font-family:var(--font-mono);font-size:8.5px;color:var(--muted);margin-bottom:4px">Coupe de principe :</div>
-          <div id="topo-coupe-svg-container"></div>
-        </div>
-      </div>
-
-      <div class="field-row">
-        <label class="field-label">Prof. max N-S</label>
-        <input type="range" id="pm-profmax" min="5" max="25" value="15" step="0.5"
-               oninput="window.P07?.setProg('profMax',+this.value);window.PlanMasseCanvas?.setProg('profMax',+this.value);document.getElementById('pm-profmax-lbl').textContent=this.value+'m';window._p07RefreshPluLimits?.()"/>
-        <span id="pm-profmax-lbl" style="font-size:10px;color:var(--accent);min-width:30px">15m</span>
-      </div>
-      <div id="pm-profmax-hint" style="font:8.5px var(--font-mono);color:var(--faint);margin-top:-4px;margin-left:78px"></div>
-      <div class="field-row" id="pm-maxunits-row" style="display:none">
-        <label class="field-label">Max lgts/bloc</label>
-        <input type="range" id="pm-maxunits" min="0" max="40" value="20" step="1"
-               oninput="window.P07?.setProg('maxUnits',+this.value);window.PlanMasseCanvas?.setProg('maxUnits',+this.value);document.getElementById('pm-maxunits-lbl').textContent=this.value===0?'∞':this.value"/>
-        <span id="pm-maxunits-lbl" style="font-size:10px;color:var(--accent);min-width:30px">20</span>
-      </div>
-      <div class="field-row" id="pm-effectif-row" style="display:none">
-        <label class="field-label">Effectif public</label>
-        <input type="number" id="pm-effectif" class="field-input" placeholder="200" min="1"
-               oninput="window.P07?.setProg('effectifERP',+this.value)"
-               style="width:70px"/>
-        <span id="pm-effectif-cat" style="font-size:9px;color:var(--faint);margin-left:4px"></span>
-      </div>
-      <div class="field-row">
-        <label class="field-label">Parking</label>
-        <div style="display:flex;gap:3px">
-          <button class="tg-btn active" id="pm-park-ext" onclick="window.P07?.setProg('parkMode','ext');window.PlanMasseCanvas?.setProg('parkMode','ext')">Ext</button>
-          <button class="tg-btn" id="pm-park-rdc" onclick="window.P07?.setProg('parkMode','rdc');window.PlanMasseCanvas?.setProg('parkMode','rdc')">RdC</button>
-          <button class="tg-btn" id="pm-park-ss" onclick="window.P07?.setProg('parkMode','ss');window.PlanMasseCanvas?.setProg('parkMode','ss')">Sous-sol</button>
-        </div>
-      </div>
-      <div class="field-row">
-        <label class="field-label">Côté PK</label>
-        <div style="display:flex;gap:3px">
-          <button class="tg-btn" id="pm-side-est" onclick="window.P07?.setParkSide('est');window.PlanMasseCanvas?.setParkSide('est')">E</button>
-          <button class="tg-btn active" id="pm-side-nord" onclick="window.P07?.setParkSide('nord');window.PlanMasseCanvas?.setParkSide('nord')">N</button>
-          <button class="tg-btn" id="pm-side-ouest" onclick="window.P07?.setParkSide('ouest');window.PlanMasseCanvas?.setParkSide('ouest')">O</button>
-          <button class="tg-btn" id="pm-side-sud" onclick="window.P07?.setParkSide('sud');window.PlanMasseCanvas?.setParkSide('sud')">S</button>
-        </div>
-      </div>
+  <!-- Topo case (réglé par EsquisseCanvas._applyTopoConstraints) -->
+  <div id="topo-case-panel" class="form-section anim-slide-up topo-panel" style="display:none">
+    <div class="fs-head">Topographie</div>
+    <div class="topo-label">
+      <span id="topo-case-badge" class="topo-badge"></span>
+      <span id="topo-case-name"></span>
+    </div>
+    <div id="topo-constraints-list" class="topo-constraints"></div>
+    <a id="topo-conseils-link" class="topo-link" target="_blank">
+      Voir les conseils §C →
+    </a>
+    <div id="topo-coupe-preview" class="topo-coupe-wrap" style="display:none;margin-top:8px">
+      <div style="font-family:var(--font-mono);font-size:8.5px;color:var(--muted);margin-bottom:4px">Coupe de principe :</div>
+      <div id="topo-coupe-svg-container"></div>
     </div>
   </div>
 
@@ -580,29 +495,46 @@
     </button>
   </div>
 
-  <!-- ═══ TOOLBAR PLAN MASSE (ivoire) ═══ -->
-  <div id="pmc-toolbar" style="position:absolute;top:52px;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:4px;align-items:center;font-family:var(--font-mono);font-size:9px">
-    <div id="pmc-sc-wrap" style="display:flex;gap:2px;background:rgba(237,232,220,.92);border:1px solid var(--border);border-radius:4px;padding:2px;backdrop-filter:blur(6px);box-shadow:var(--sh);flex-wrap:wrap;max-width:680px;justify-content:center">
-      <!-- boutons scénarios générés dynamiquement par P07._renderScenarioToolbar() -->
-    </div>
-    <div id="pmc-shape-wrap" style="display:flex;gap:2px;background:rgba(237,232,220,.92);border:1px solid var(--border);border-radius:4px;padding:2px;backdrop-filter:blur(6px);box-shadow:var(--sh);margin-left:4px">
-      <span style="padding:3px 4px;font:600 8px var(--font-mono);color:var(--faint);align-self:center">FORME</span>
-      <button class="pmc-shape-btn" data-shape="I" title="Mono-bloc rectangulaire"    style="padding:3px 7px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 10px var(--font-mono);cursor:pointer">I</button>
-      <button class="pmc-shape-btn" data-shape="L" title="Forme en L"                  style="padding:3px 7px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 10px var(--font-mono);cursor:pointer">L</button>
-      <button class="pmc-shape-btn" data-shape="T" title="Forme en T"                  style="padding:3px 7px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 10px var(--font-mono);cursor:pointer">T</button>
-      <button class="pmc-shape-btn" data-shape="X" title="Croix / X"                   style="padding:3px 7px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 10px var(--font-mono);cursor:pointer">X</button>
-      <button class="pmc-shape-btn" data-shape="Y" title="Trois branches à 120°"       style="padding:3px 7px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 10px var(--font-mono);cursor:pointer">Y</button>
-    </div>
-    <div id="pmc-mit-wrap" style="display:flex;gap:2px;background:rgba(237,232,220,.92);border:1px solid var(--border);border-radius:4px;padding:2px;backdrop-filter:blur(6px);box-shadow:var(--sh);margin-left:4px">
-      <span style="padding:3px 4px;font:600 8px var(--font-mono);color:var(--faint);align-self:center">LIMITES</span>
-      <button class="pmc-mit-btn" data-role="G"    title="Latérale gauche : bascule mitoyen 0m ↔ recul normal"  style="padding:3px 7px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 9px var(--font-mono);cursor:pointer">Mit. G</button>
-      <button class="pmc-mit-btn" data-role="D"    title="Latérale droite : bascule mitoyen 0m ↔ recul normal"  style="padding:3px 7px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 9px var(--font-mono);cursor:pointer">Mit. D</button>
-      <button class="pmc-mit-btn" data-role="fond" title="Fond de parcelle : bascule mitoyen 0m ↔ recul normal" style="padding:3px 7px;border:1px solid var(--border);border-radius:3px;background:var(--card);color:var(--muted);font:600 9px var(--font-mono);cursor:pointer">Fond</button>
-    </div>
-    <button id="pmc-btn-auto" style="padding:3px 10px;border:1px solid var(--success);border-radius:4px;background:rgba(61,107,46,.12);color:var(--success);font:600 9px var(--font-mono);cursor:pointer" title="Placement automatique PIR">◎ Auto</button>
-    <button id="pmc-btn-reset" style="padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:var(--card);color:var(--muted);font:600 9px var(--font-mono);cursor:pointer" title="Recentrer">⌂</button>
-    <button id="pmc-btn-svg" style="padding:3px 10px;border:1px solid var(--border2);border-radius:4px;background:var(--accent2);color:var(--accent);font:600 9px var(--font-mono);cursor:pointer">↓ SVG</button>
-  </div>
+  <!-- Toggle moteur d'édition Esquisse : legacy ↔ Métaforme v3 -->
+  <button id="p07-toggle-metaforme"
+    title="Bascule moteur édition : Legacy (EsquisseCanvas) ↔ Métaforme v3 (drag/split/arcs/typologies)"
+    style="position:absolute;top:10px;right:12px;z-index:50;padding:5px 10px;font:600 9px var(--font-mono);letter-spacing:.08em;text-transform:uppercase;background:rgba(237,232,220,.94);color:var(--muted,#6b5c3e);border:1px solid var(--border2);border-radius:4px;cursor:pointer;backdrop-filter:blur(6px);box-shadow:var(--sh)">
+    <span id="p07-metaforme-lbl">M⚡ legacy</span>
+  </button>
+  <script>
+    (function() {
+      const btn = document.getElementById('p07-toggle-metaforme');
+      const lbl = document.getElementById('p07-metaforme-lbl');
+      if (!btn || !lbl) return;
+      const sync = () => {
+        const on = window.TERLAB_USE_METAFORME === true;
+        lbl.textContent = on ? 'M⚡ métaforme' : 'M⚡ legacy';
+        btn.style.background = on ? 'rgba(154,120,32,.18)' : 'rgba(237,232,220,.94)';
+        btn.style.color = on ? '#9a7820' : 'var(--muted,#6b5c3e)';
+      };
+      sync();
+      btn.addEventListener('click', () => {
+        window.TERLAB_USE_METAFORME = !(window.TERLAB_USE_METAFORME === true);
+        sync();
+        // Reset ready flag et re-trigger setView si on est actuellement en esquisse
+        if (typeof _esquisseReady !== 'undefined') {
+          window._esquisseReady = false;
+          try { window.EsquisseMetaforme?.destroy?.(); } catch (_) {}
+          window.EsquisseMetaforme = null;
+        }
+        if (window.P07?.setView && document.getElementById('p07-esquisse-wrap')?.style.display !== 'none') {
+          window.P07.setView('esquisse');
+        } else {
+          window.TerlabToast?.show?.(
+            `Moteur Esquisse : ${window.TERLAB_USE_METAFORME ? 'Métaforme v3' : 'Legacy'} · recharge l'onglet Esquisse pour appliquer`,
+            'info', 3000);
+        }
+      });
+    })();
+  </script>
+
+  <!-- Toolbar flottant remplacé par le right-panel #pmc-conception-section -->
+  <div id="pmc-toolbar" style="display:none"></div>
 
   <!-- ═══ AIDE RACCOURCIS (toggle) ═══ -->
   <button id="pmc-help-btn" title="Raccourcis et astuces (touche ? ou H)"
@@ -644,18 +576,8 @@
     </div>
   </div>
 
-  <!-- ═══ PANEL ÉDITION BLOCS (multi-blocs uniquement) ═══ -->
-  <div id="pmc-blocs-panel" style="position:absolute;top:100px;right:12px;z-index:60;background:rgba(237,232,220,.96);border:1px solid var(--border);border-radius:var(--r-sm,4px);padding:8px 10px;backdrop-filter:blur(6px);box-shadow:var(--sh);font-family:var(--font-mono);font-size:10px;max-width:250px;display:none">
-    <div style="font:600 9px var(--font-mono);color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:4px">
-      <span style="flex:1">Blocs · étages</span>
-      <button id="pmc-bloc-add-btn" title="Ajouter un nouveau bloc" style="padding:2px 5px;font:700 10px var(--font-mono);background:var(--card);color:var(--success,#3d6b2e);border:1px solid var(--border);border-radius:2px;cursor:pointer">+</button>
-      <button id="pmc-bloc-dup-btn" title="Dupliquer le bloc actif" style="padding:2px 5px;font:700 10px var(--font-mono);background:var(--card);color:var(--muted);border:1px solid var(--border);border-radius:2px;cursor:pointer">⧉</button>
-      <button id="pmc-bloc-del-btn" title="Supprimer le bloc actif" style="padding:2px 5px;font:700 10px var(--font-mono);background:var(--card);color:var(--danger,#b33);border:1px solid var(--border);border-radius:2px;cursor:pointer">×</button>
-      <button id="pmc-blocs-sync-btn" title="Appliquer le réglage du bloc actif à tous les blocs" style="padding:2px 6px;font:700 8px var(--font-mono);background:var(--card);color:var(--muted);border:1px solid var(--border);border-radius:2px;cursor:pointer">Tous</button>
-    </div>
-    <div id="pmc-blocs-list" style="display:flex;flex-direction:column;gap:5px;max-height:360px;overflow:auto"></div>
-    <div id="pmc-blocs-totals" style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border);font-size:9px;color:var(--muted);line-height:1.5"></div>
-  </div>
+  <!-- Panel blocs flottant remplacé par le right-panel #pmc-conception-section -->
+  <div id="pmc-blocs-panel" style="display:none"></div>
 
   <!-- ═══ PLAN MASSE CANVAS (visible par défaut — fond ivoire) ═══ -->
   <div id="pmc-wrap" style="position:absolute;inset:0;z-index:4;background:var(--bg,#ede8dc)">
@@ -669,6 +591,11 @@
   <!-- Carte Mapbox (cachée par défaut) -->
   <div id="map" style="width:100%;height:100%;position:absolute;inset:0;display:none"></div>
   <div id="map-stub-banner" style="display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(245,158,11,.85);color:#000;padding:5px 14px;border-radius:4px;font-family:monospace;font-size:10px"></div>
+
+  <!-- Esquisse SVG autonome (standalone, sans Mapbox) -->
+  <div id="p07-esquisse-wrap" style="display:none;position:absolute;inset:0;z-index:5;background:var(--bg,#ede8dc);overflow:hidden">
+    <svg id="p07-esquisse-svg" width="100%" height="100%" style="display:block"></svg>
+  </div>
 
   <!-- Vue Coupe N-S (cachée par défaut) -->
   <div id="p07-coupe-wrap" style="display:none;position:absolute;inset:0;background:#F7F4EE;z-index:5;overflow:auto;padding:10px">
@@ -813,6 +740,157 @@
 
 <!-- ═══════════════════ COLONNE DROITE ══════════════════════════ -->
 <div class="right-panel">
+
+  <!-- ═══ PLAN MASSE · CONCEPTION (consolidé — remplace toolbar/blocs-panel flottants) ═══ -->
+  <div class="rp-section" id="pmc-conception-section">
+    <div class="rp-head">Plan masse · Conception</div>
+
+    <!-- Continuum Maison → Collectif max -->
+    <div class="pmc-sub" id="pmc-continuum-sub">
+      <div class="pmc-sub-head" style="display:flex;align-items:center;justify-content:space-between">
+        <span>Typologie</span>
+        <span id="pmc-continuum-label" style="font-weight:600;color:var(--accent)">Maison</span>
+      </div>
+      <div class="pmc-continuum-bar">
+        <span style="font-size:9px;color:#7a4520">🏠 Maison (min)</span>
+        <input type="range" id="pmc-continuum" min="0" max="100" value="0" step="1" style="flex:1"/>
+        <span style="font-size:9px;color:#2a5848">Emprise MAX 🏢</span>
+      </div>
+      <div style="font-size:8.5px;color:var(--faint);text-align:center;margin-top:3px" id="pmc-continuum-hint">
+        Min = maison · Max = emprise MAX PLU, espace vert MIN PLU
+      </div>
+    </div>
+
+    <!-- Programme (profondeur / niveaux / parking — type piloté par continuum) -->
+    <div class="pmc-sub">
+      <div class="pmc-sub-head">Programme</div>
+      <div class="pmc-prog-row">
+        <label>Prof. max</label>
+        <input type="range" id="pm-profmax" min="5" max="25" value="15" step="0.5"
+               oninput="window.P07?.setProg('profMax',+this.value);window.PlanMasseCanvas?.setProg('profMax',+this.value);document.getElementById('pm-profmax-lbl').textContent=this.value+'m';window._p07RefreshPluLimits?.()"/>
+        <span id="pm-profmax-lbl" class="pmc-prog-val">15m</span>
+      </div>
+      <div id="pm-profmax-hint" style="font:8.5px var(--font-mono);color:var(--faint);margin:-2px 0 4px 64px"></div>
+      <div class="pmc-prog-row">
+        <label>Niv. max</label>
+        <input type="range" id="pm-nvmax" min="1" max="3" value="2" step="1"
+               oninput="window.P07?.setProg('nvMax',+this.value);window.PlanMasseCanvas?.setProg('nvMax',+this.value);document.getElementById('pm-nvmax-lbl').textContent=['','R+0','R+1','R+2','R+3'][+this.value];window._p07RefreshPluLimits?.()"/>
+        <span id="pm-nvmax-lbl" class="pmc-prog-val">R+1</span>
+      </div>
+      <div id="pm-nvmax-hint" style="font:8.5px var(--font-mono);color:var(--faint);margin:-2px 0 4px 64px"></div>
+      <div class="pmc-prog-row" id="pm-units-row" style="display:none">
+        <label>Lgts min/max</label>
+        <div style="display:flex;gap:4px;flex:1;align-items:center">
+          <input type="range" id="pm-minunits" min="1" max="40" value="1" step="1" style="flex:1"
+                 oninput="window._p07SyncUnits?.('min',+this.value)"/>
+          <span id="pm-minunits-lbl" style="font:9px var(--font-mono);min-width:18px;text-align:center;color:var(--accent)">1</span>
+          <input type="range" id="pm-maxunits" min="1" max="40" value="20" step="1" style="flex:1"
+                 oninput="window._p07SyncUnits?.('max',+this.value)"/>
+          <span id="pm-maxunits-lbl" style="font:9px var(--font-mono);min-width:22px;text-align:center;color:var(--accent)">20</span>
+        </div>
+      </div>
+      <div id="pm-units-hint" style="font:8.5px var(--font-mono);color:var(--faint);margin:-2px 0 4px 64px;display:none">Plage synchronisée · min ≤ max</div>
+      <div class="pmc-prog-row" id="pm-effectif-row" style="display:none">
+        <label>Effectif ERP</label>
+        <input type="number" id="pm-effectif" class="field-input" placeholder="200" min="1"
+               oninput="window.P07?.setProg('effectifERP',+this.value)" style="width:60px;flex:0 0 60px"/>
+        <span id="pm-effectif-cat" style="font-size:9px;color:var(--faint)"></span>
+      </div>
+      <div class="pmc-prog-row">
+        <label>Parking</label>
+        <div class="pmc-btn-row" style="flex:1">
+          <button class="tg-btn active" id="pm-park-ext"  onclick="window.P07?.setProg('parkMode','ext');window.PlanMasseCanvas?.setProg('parkMode','ext')">Ext</button>
+          <button class="tg-btn"        id="pm-park-rdc"  onclick="window.P07?.setProg('parkMode','rdc');window.PlanMasseCanvas?.setProg('parkMode','rdc')">RdC</button>
+          <button class="tg-btn"        id="pm-park-ss"   onclick="window.P07?.setProg('parkMode','ss');window.PlanMasseCanvas?.setProg('parkMode','ss')">SS</button>
+        </div>
+      </div>
+      <div style="font:8.5px var(--font-mono);color:var(--faint);margin:-2px 0 4px 64px">
+        Côté PK = auto (entrée voie) · recul PK selon PLU commune
+      </div>
+    </div>
+
+    <!-- Stratégies Pareto -->
+    <div class="pmc-sub">
+      <div class="pmc-sub-head">Stratégie</div>
+      <div id="pmc-sc-wrap" class="pmc-strat-grid">
+        <!-- boutons scénarios générés dynamiquement par P07._renderScenarioToolbar() -->
+      </div>
+    </div>
+
+    <!-- Forme du bâtiment -->
+    <div class="pmc-sub">
+      <div class="pmc-sub-head">Forme</div>
+      <div class="pmc-btn-row">
+        <button class="pmc-shape-btn" data-shape="I" title="Mono-bloc rectangulaire">I</button>
+        <button class="pmc-shape-btn" data-shape="L" title="Forme en L">L</button>
+        <button class="pmc-shape-btn" data-shape="T" title="Forme en T">T</button>
+        <button class="pmc-shape-btn" data-shape="X" title="Croix / X">X</button>
+        <button class="pmc-shape-btn" data-shape="Y" title="Trois branches à 120°">Y</button>
+      </div>
+    </div>
+
+    <!-- Limites mitoyennes -->
+    <div class="pmc-sub">
+      <div class="pmc-sub-head">Limites PLU</div>
+      <div class="pmc-btn-row">
+        <button class="pmc-mit-btn" data-role="G" title="Latérale gauche — bascule mitoyen 0m ↔ recul">Mit. G</button>
+        <button class="pmc-mit-btn" data-role="D" title="Latérale droite — bascule mitoyen 0m ↔ recul">Mit. D</button>
+        <button class="pmc-mit-btn" data-role="fond" title="Fond — bascule mitoyen 0m ↔ recul">Fond</button>
+      </div>
+      <div style="font-size:8.5px;color:var(--faint);margin-top:4px">Clic arête sur le plan : cycle voie → lat → mitoyen → fond</div>
+    </div>
+
+    <!-- Mix logements -->
+    <div class="pmc-sub" id="pmc-mix-sub">
+      <div class="pmc-sub-head">Mix logements</div>
+      <div class="pmc-mix-bar">
+        <div class="pmc-mix-ind" id="pmc-mix-bar-ind"></div>
+        <div class="pmc-mix-band" id="pmc-mix-bar-band"></div>
+        <div class="pmc-mix-col" id="pmc-mix-bar-col"></div>
+      </div>
+      <div class="pmc-mix-row">
+        <label style="color:#7a4520">Individ.</label>
+        <input type="range" id="pmc-mix-ind" min="0" max="100" value="0" step="1"/>
+        <span class="pmc-mix-val" id="pmc-mix-ind-val" style="color:#7a4520">0%</span>
+      </div>
+      <div class="pmc-mix-row">
+        <label style="color:#8a5535">Bande</label>
+        <input type="range" id="pmc-mix-band" min="0" max="100" value="0" step="1"/>
+        <span class="pmc-mix-val" id="pmc-mix-band-val" style="color:#8a5535">0%</span>
+      </div>
+      <div class="pmc-mix-row">
+        <label style="color:#2a5848">Coll.</label>
+        <input type="range" id="pmc-mix-col" min="0" max="100" value="100" step="1"/>
+        <span class="pmc-mix-val" id="pmc-mix-col-val" style="color:#2a5848">100%</span>
+      </div>
+    </div>
+
+    <!-- Blocs & étages -->
+    <div class="pmc-sub">
+      <div class="pmc-sub-head" style="display:flex;align-items:center;gap:4px">
+        <span style="flex:1">Blocs · étages</span>
+        <button id="pmc-bloc-add-btn" title="Ajouter un bloc" class="pmc-icon-btn success">+</button>
+        <button id="pmc-bloc-dup-btn" title="Dupliquer le bloc actif" class="pmc-icon-btn">⧉</button>
+        <button id="pmc-bloc-del-btn" title="Supprimer le bloc actif" class="pmc-icon-btn danger">×</button>
+        <button id="pmc-blocs-sync-btn" title="Appliquer à tous les blocs" class="pmc-icon-btn" style="font-size:8px">Tous</button>
+      </div>
+      <div id="pmc-blocs-list" style="display:flex;flex-direction:column;gap:4px;max-height:220px;overflow:auto"></div>
+      <div id="pmc-blocs-totals" style="margin-top:6px;padding-top:4px;border-top:1px solid var(--border);font-size:9px;color:var(--muted);line-height:1.5"></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="pmc-sub">
+      <div class="pmc-btn-row">
+        <button id="pmc-btn-auto" class="pmc-action-btn success" title="Placement auto (PIR)">◎ Auto</button>
+        <button id="pmc-btn-resetstrat" class="pmc-action-btn" title="Rejouer la stratégie courante · efface les éditions manuelles">↻ Stratégie</button>
+        <button id="pmc-btn-reset" class="pmc-action-btn" title="Recentrer la vue">⌂ Vue</button>
+        <button id="pmc-btn-svg" class="pmc-action-btn accent">↓ SVG</button>
+      </div>
+      <div id="pmc-manual-edit-pill" style="display:none;margin-top:4px;padding:2px 6px;background:var(--accent-weak,rgba(154,120,32,.12));border-radius:3px;font:9px var(--font-mono);color:var(--accent,#9a7820);text-align:center">
+        ✎ Édition manuelle active · sliders/limites figés jusqu'au ↻
+      </div>
+    </div>
+  </div>
 
   <!-- ═══ RÉSULTATS ÉTUDE DE CAPACITÉ (top priority) ═══ -->
   <div class="rp-section" id="pmc-metrics-section">
@@ -982,6 +1060,148 @@
 <style>
 .pmc-pill.nok { background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);color:#F87171; }
 .pmc-pill.ok  { background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.25);color:#4ADE80; }
+
+/* ── PLAN MASSE · CONCEPTION right-panel section ───────────────── */
+#pmc-conception-section { font-family: var(--font-mono); }
+#pmc-conception-section .pmc-sub { margin-bottom: 10px; }
+#pmc-conception-section .pmc-sub-head {
+  font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 5px; padding-bottom: 3px;
+  border-bottom: 1px solid var(--border);
+}
+#pmc-conception-section .pmc-strat-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 3px;
+}
+#pmc-conception-section .pmc-btn-row {
+  display: flex; gap: 3px; flex-wrap: wrap;
+}
+#pmc-conception-section .pmc-shape-btn,
+#pmc-conception-section .pmc-mit-btn {
+  flex: 1; min-width: 0; padding: 4px 6px;
+  border: 1px solid var(--border); border-radius: 3px;
+  background: var(--card); color: var(--muted);
+  font: 600 10px var(--font-mono); cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+#pmc-conception-section .pmc-shape-btn:hover,
+#pmc-conception-section .pmc-mit-btn:hover {
+  background: var(--raised); border-color: var(--accent);
+}
+#pmc-conception-section .pmc-shape-btn.active {
+  background: var(--accent2); color: var(--accent); border-color: var(--border2);
+}
+#pmc-conception-section .pmc-mit-btn.active {
+  background: var(--danger, #b33); color: #fff; border-color: var(--danger, #b33);
+}
+#pmc-conception-section .pmc-action-btn {
+  flex: 1; padding: 5px 10px;
+  border: 1px solid var(--border); border-radius: 4px;
+  background: var(--card); color: var(--muted);
+  font: 600 10px var(--font-mono); cursor: pointer;
+}
+#pmc-conception-section .pmc-action-btn:hover { background: var(--raised); }
+#pmc-conception-section .pmc-action-btn.success {
+  border-color: var(--success); background: rgba(61,107,46,.12); color: var(--success);
+}
+#pmc-conception-section .pmc-action-btn.accent {
+  border-color: var(--border2); background: var(--accent2); color: var(--accent);
+}
+#pmc-conception-section .pmc-icon-btn {
+  padding: 2px 6px; border: 1px solid var(--border); border-radius: 2px;
+  background: var(--card); color: var(--muted);
+  font: 700 10px var(--font-mono); cursor: pointer;
+}
+#pmc-conception-section .pmc-icon-btn.success { color: var(--success); }
+#pmc-conception-section .pmc-icon-btn.danger  { color: #b33; }
+
+/* Mix logements — stacked bar + 3 sliders */
+.pmc-mix-bar {
+  display: flex; height: 8px; border-radius: 3px; overflow: hidden;
+  background: var(--raised); margin-bottom: 6px;
+}
+.pmc-mix-bar > div { transition: flex-basis .2s; }
+#pmc-mix-bar-ind  { background: #7a4520; }
+#pmc-mix-bar-band { background: #8a5535; }
+#pmc-mix-bar-col  { background: #2a5848; }
+.pmc-mix-row {
+  display: flex; align-items: center; gap: 6px; padding: 1px 0;
+}
+.pmc-mix-row label {
+  font-size: 9.5px; font-weight: 600; min-width: 52px;
+}
+.pmc-mix-row input[type=range] {
+  flex: 1; height: 3px; accent-color: #8a5535;
+}
+.pmc-mix-val {
+  font-size: 9.5px; font-weight: 700; min-width: 34px; text-align: right;
+}
+
+/* Programme rows — compact variante de field-row pour le right panel */
+.pmc-prog-row {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 4px;
+}
+.pmc-prog-row > label {
+  font: 600 9.5px var(--font-mono); color: var(--muted);
+  min-width: 56px;
+}
+.pmc-prog-row > input[type=range] { flex: 1; height: 3px; }
+.pmc-prog-val {
+  font: 600 9.5px var(--font-mono); color: var(--accent);
+  min-width: 34px; text-align: right;
+}
+
+/* Continuum Maison ↔ Collectif slider */
+.pmc-continuum-bar {
+  display: flex; align-items: center; gap: 6px;
+}
+#pmc-continuum {
+  flex: 1; height: 4px;
+  background: linear-gradient(to right, #7a4520 0%, #8a5535 50%, #2a5848 100%);
+  border-radius: 2px; accent-color: var(--accent);
+}
+
+/* Règles PLU identifiées — grid compact sur left bar */
+.plu-rules-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 4px 8px; font-family: var(--font-mono); font-size: 10px;
+}
+.plu-rule {
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px 0; border-bottom: 1px solid var(--border);
+}
+.plu-rule-label { color: var(--muted); flex: 1; font-size: 9.5px; }
+.plu-rule-val {
+  font-weight: 700; color: var(--accent); cursor: pointer;
+  padding: 1px 4px; border-radius: 2px;
+  transition: background .12s;
+}
+.plu-rule-val:hover {
+  background: var(--accent2); text-decoration: underline dotted;
+}
+.plu-rule-val.editing {
+  padding: 0; background: var(--card);
+  border: 1px solid var(--accent); outline: none;
+  width: 60px; font-family: inherit; font-size: inherit; font-weight: inherit;
+  color: var(--accent);
+}
+
+/* Stratégies cards style */
+#pmc-sc-wrap .pmc-sc {
+  padding: 5px 6px; border: 1px solid var(--border); border-radius: 3px;
+  background: var(--card); color: var(--muted);
+  font: 600 9.5px var(--font-mono); cursor: pointer;
+  display: flex; flex-direction: column; gap: 1px; text-align: left;
+  transition: background .12s, border-color .12s;
+}
+#pmc-sc-wrap .pmc-sc:hover { background: var(--raised); }
+#pmc-sc-wrap .pmc-sc.active {
+  background: var(--accent2); color: var(--accent); border-color: var(--border2);
+}
+#pmc-sc-wrap .pmc-sc.disabled {
+  opacity: .4; cursor: not-allowed;
+}
+#pmc-sc-wrap .pmc-sc .id { font-size: 8px; font-weight: 700; letter-spacing: .08em; opacity: .7; }
+#pmc-sc-wrap .pmc-sc .lbl { font-size: 10px; }
 .prog-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .gabarit-inputs { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
 
@@ -2019,6 +2239,11 @@ let _dimsOn       = true;
 let _contoursOn   = true;
 let _3dReady      = false;
 let _esquisseReady = false;
+// Exposer pour que le bouton toggle Métaforme puisse reset et re-init l'onglet
+Object.defineProperty(window, '_esquisseReady', {
+  get() { return _esquisseReady; },
+  set(v) { _esquisseReady = !!v; },
+});
 
 Object.assign(P07, {
 
@@ -2027,19 +2252,22 @@ Object.assign(P07, {
     const mapEl     = document.getElementById('map');
     const wrap3d    = document.getElementById('p07-3d-wrap');
     const wrapCoupe = document.getElementById('p07-coupe-wrap');
+    const wrapEsq   = document.getElementById('p07-esquisse-wrap');
     const pmcWrap   = document.getElementById('pmc-wrap');
     const pmcTB     = document.getElementById('pmc-toolbar');
     _viewMode = mode;
     _viewIs3D = mode === '3d';
 
     const isPMC = mode === 'planmasse' || mode === 'plancoupe';
+    const isEsq = mode === 'esquisse';
 
-    // Visibilité des vues
+    // Visibilité des vues : esquisse autonome (pas d'overlay Mapbox)
     if (pmcWrap)   pmcWrap.style.display   = isPMC ? 'flex' : 'none';
     if (pmcTB)     pmcTB.style.display     = isPMC ? 'flex' : 'none';
-    mapEl.style.display    = (!isPMC && mode !== '3d' && mode !== 'coupe') ? 'block' : 'none';
+    mapEl.style.display    = (!isPMC && !isEsq && mode !== '3d' && mode !== 'coupe') ? 'block' : 'none';
     wrap3d.style.display   = mode === '3d' ? 'block' : 'none';
     if (wrapCoupe) wrapCoupe.style.display = mode === 'coupe' ? 'flex' : 'none';
+    if (wrapEsq)   wrapEsq.style.display   = isEsq ? 'block' : 'none';
 
     // Highlight active tab
     document.querySelectorAll('.p07-vtab').forEach(btn => {
@@ -2071,23 +2299,37 @@ Object.assign(P07, {
       window.EsquisseCanvas?.renderCoupe('coupe-svg');
     }
 
-    // ── Esquisse SVG overlay on Mapbox ───────────────────────────
+    // ── Esquisse SVG standalone (dédié, sans Mapbox) ─────────────
+    // Deux moteurs possibles :
+    //  (A) défaut : EsquisseCanvas legacy en mode standalone
+    //  (B) window.TERLAB_USE_METAFORME = true → nouveau moteur Métaforme v3
+    //      (drag/split/arcs/béziers/typologies isolée/collée/bande)
     if (mode === 'esquisse' && !_esquisseReady) {
-      const EC = window.EsquisseCanvas;
-      if (EC?.init) {
-        let svg = document.getElementById('p07-esquisse-svg');
-        if (!svg) {
-          svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-          svg.id = 'p07-esquisse-svg';
-          const mapContainer = MapViewer?.getMap()?.getContainer();
-          if (mapContainer) mapContainer.appendChild(svg);
+      const useMetaforme = window.TERLAB_USE_METAFORME === true;
+      if (useMetaforme) {
+        try {
+          const mod = await import('../components/esquisse-metaforme-adapter.js');
+          const svgEl = document.getElementById('p07-esquisse-svg');
+          if (svgEl) {
+            const adapter = mod.createAdapter(svgEl, { viewW: 860, viewH: 600, scale: 5 });
+            if (adapter.loadSession(SessionManager._data)) {
+              window.EsquisseMetaforme = adapter;
+              _esquisseReady = true;
+              console.info('[P07] Esquisse : moteur Métaforme v3 actif');
+            }
+          }
+        } catch (e) {
+          console.warn('[P07] Métaforme adapter failed, fallback EsquisseCanvas:', e.message);
         }
-        await EC.init('p07-esquisse-svg', SessionManager._data);
-        _esquisseReady = true;
+      }
+      if (!_esquisseReady) {
+        const EC = window.EsquisseCanvas;
+        if (EC?.init) {
+          await EC.init('p07-esquisse-svg', SessionManager._data, { standalone: true });
+          _esquisseReady = true;
+        }
       }
     }
-    const esqSvg = document.getElementById('p07-esquisse-svg');
-    if (esqSvg) esqSvg.style.display = mode === 'esquisse' ? 'block' : 'none';
 
     if (_viewIs3D && !_3dReady) {
       document.getElementById('t3d-loader').classList.remove('done');
@@ -2499,8 +2741,11 @@ Object.assign(P07, {
       ['maison', 'collectif', 'bureau', 'erp', 'commerce'].forEach(t => {
         document.getElementById(`pm-type-${t}`)?.classList.toggle('active', value === t);
       });
-      const muRow = document.getElementById('pm-maxunits-row');
-      if (muRow) muRow.style.display = ['collectif', 'bureau', 'erp'].includes(value) ? '' : 'none';
+      const muRow = document.getElementById('pm-units-row');
+      const muHint = document.getElementById('pm-units-hint');
+      const showUnits = ['collectif', 'bureau', 'erp'].includes(value);
+      if (muRow)  muRow.style.display  = showUnits ? '' : 'none';
+      if (muHint) muHint.style.display = showUnits ? '' : 'none';
       // Afficher effectif ERP si type ERP/commerce/bureau
       const effRow = document.getElementById('pm-effectif-row');
       if (effRow) effRow.style.display = ['erp', 'commerce', 'enseignement', 'sante', 'bureau'].includes(value) ? '' : 'none';
@@ -3107,8 +3352,8 @@ P07.setView = async function(mode) {
     const pmcTB = document.getElementById('pmc-toolbar');
     if (pmcTB) pmcTB.style.display = 'none';
     if (gabaritWrap) gabaritWrap.style.display = 'block';
-    const esqSvg = document.getElementById('p07-esquisse-svg');
-    if (esqSvg) esqSvg.style.display = 'none';
+    const esqWrap = document.getElementById('p07-esquisse-wrap');
+    if (esqWrap) esqWrap.style.display = 'none';
 
     // Highlight tabs (même style que setView principal)
     document.querySelectorAll('.p07-vtab').forEach(btn => {
@@ -3145,21 +3390,18 @@ function _renderScenarioToolbar() {
       sc.hint ? `→ ${sc.hint}` : '',
       dis ? `\u26a0 ${sc.disabledReason}` : sc.disabledReason ? `\u26a0 ${sc.disabledReason}` : '',
     ].filter(Boolean).join('\n');
-    const bg = active ? 'var(--accent2)' : (dis ? 'rgba(200,190,170,.3)' : 'var(--card)');
-    const col = active ? 'var(--accent)' : (dis ? 'var(--faint)' : 'var(--muted)');
-    const bdr = active ? 'var(--border2)' : 'var(--border)';
-    const op = dis ? '.45' : '1';
-    const star = sc.hint ? '<span style="font-size:7px;color:var(--success);margin-left:2px">\u25c6</span>' : '';
-    const badge = `<span style="font-size:7.5px;opacity:.55;margin-right:3px">${sc.id}</span>`;
-    return `<button class="pmc-sc-btn${active ? ' active' : ''}" data-sc="${sc.id}" ${dis ? 'data-disabled="1"' : ''}
-      title="${tip.replace(/"/g, '&quot;')}"
-      style="padding:3px 7px;border:1px solid ${bdr};border-radius:3px;background:${bg};color:${col};font:600 9px var(--font-mono);cursor:${dis ? 'not-allowed' : 'pointer'};opacity:${op};position:relative;white-space:nowrap">${badge}${sc.short || sc.label}${star}</button>`;
+    const cls = ['pmc-sc', active ? 'active' : '', dis ? 'disabled' : ''].filter(Boolean).join(' ');
+    const star = sc.hint ? ' \u25c6' : '';
+    return `<button class="${cls}" data-sc="${sc.id}" ${dis ? 'data-disabled="1"' : ''}
+      title="${tip.replace(/"/g, '&quot;')}">
+      <span class="id">${sc.id}${star}</span>
+      <span class="lbl">${sc.short || sc.label}</span>
+    </button>`;
   }).join('');
-  wrap.querySelectorAll('.pmc-sc-btn[data-sc]').forEach(btn => {
+  wrap.querySelectorAll('.pmc-sc[data-sc]').forEach(btn => {
     btn.addEventListener('click', () => {
       if (!window.PlanMasseCanvas?._ready) return;
       if (btn.dataset.disabled === '1') {
-        // Feedback : toast indiquant pourquoi la stratégie est indispo
         const sc = scenarios.find(s => s.id === btn.dataset.sc);
         window.TerlabNotification?.notify({
           severity: 'avertissement',
@@ -3191,10 +3433,7 @@ window.P07._renderScenarioToolbar = _refreshScenarioToolbar;
 function _refreshShapeToolbar() {
   const active = window.PlanMasseCanvas?.S?.shapePreset ?? 'I';
   document.querySelectorAll('.pmc-shape-btn[data-shape]').forEach(btn => {
-    const on = btn.dataset.shape === active;
-    btn.style.background   = on ? 'var(--accent2)' : 'var(--card)';
-    btn.style.color        = on ? 'var(--accent)'  : 'var(--muted)';
-    btn.style.borderColor  = on ? 'var(--border2)' : 'var(--border)';
+    btn.classList.toggle('active', btn.dataset.shape === active);
   });
 }
 document.querySelectorAll('.pmc-shape-btn[data-shape]').forEach(btn => {
@@ -3217,10 +3456,8 @@ function _refreshMitoyenToolbar() {
     const state = pmc.edgeStateByRole(btn.dataset.role); // 'mitoyen' | 'recul' | null
     const active = state === 'mitoyen';
     const missing = state === null;
-    btn.style.background   = active ? 'var(--danger,#b33)' : 'var(--card)';
-    btn.style.color        = active ? '#fff' : (missing ? 'var(--faint)' : 'var(--muted)');
-    btn.style.borderColor  = active ? 'var(--danger,#b33)' : 'var(--border)';
-    btn.style.opacity      = missing ? '.4' : '1';
+    btn.classList.toggle('active', active);
+    btn.style.opacity = missing ? '.4' : '1';
     btn.title = missing ? 'Arête non identifiée pour ce rôle' :
       (active ? `${btn.dataset.role} : en mitoyenneté (0 m) — clique pour annuler` :
                 `${btn.dataset.role} : recul normal — clique pour passer en mitoyen 0 m`);
@@ -3302,6 +3539,23 @@ window._p07RefreshPluLimits = _p07RefreshPluLimits;
 window.addEventListener('pmc:metrics', _p07RefreshPluLimits);
 // Tente un premier refresh quand PLU se charge (le pmc:metrics sera émis au prochain render)
 setTimeout(_p07RefreshPluLimits, 300);
+
+// Sync min/max lgts : garantit min ≤ max, push les 2 state holders + re-apply geom
+window._p07SyncUnits = function(which, val) {
+  const minEl = document.getElementById('pm-minunits');
+  const maxEl = document.getElementById('pm-maxunits');
+  if (!minEl || !maxEl) return;
+  let min = +minEl.value, max = +maxEl.value;
+  if (which === 'min' && min > max) { max = min; maxEl.value = String(max); }
+  if (which === 'max' && max < min) { min = max; minEl.value = String(min); }
+  document.getElementById('pm-minunits-lbl').textContent = min;
+  document.getElementById('pm-maxunits-lbl').textContent = max;
+  window.P07?.setProg?.('minUnits', min);
+  window.P07?.setProg?.('maxUnits', max);
+  window.PlanMasseCanvas?.setProg?.('minUnits', min);
+  window.PlanMasseCanvas?.setProg?.('maxUnits', max);
+  window._p07RefreshPluLimits?.();
+};
 
 // ── Panel édition blocs (niveaux + usage par bloc) ────────────────
 const USAGES = [
@@ -3451,6 +3705,286 @@ document.getElementById('sp-niveaux')?.addEventListener('change', e => {
   _p07RefreshBlocsPanel();
 });
 
+// ── Mix logements (Ind / Bande / Coll) ─────────────────────────────
+// Rééquilibrage automatique pour que la somme reste 100%
+(function initMixSliders() {
+  const keys = ['ind', 'band', 'col'];
+  const inputs = Object.fromEntries(keys.map(k => [k, document.getElementById('pmc-mix-' + k)]));
+  const vals   = Object.fromEntries(keys.map(k => [k, document.getElementById('pmc-mix-' + k + '-val')]));
+  const bars   = Object.fromEntries(keys.map(k => [k, document.getElementById('pmc-mix-bar-' + k)]));
+  if (!inputs.ind || !inputs.band || !inputs.col) return;
+
+  const readMix = () => ({
+    ind:  +inputs.ind.value  || 0,
+    band: +inputs.band.value || 0,
+    col:  +inputs.col.value  || 0,
+  });
+  const applyMix = (mix) => {
+    keys.forEach(k => {
+      inputs[k].value = Math.round(mix[k]);
+      vals[k].textContent = Math.round(mix[k]) + '%';
+      bars[k].style.flexBasis = mix[k] + '%';
+    });
+    // Pousser dans PMC (optionnel : champ libre, pas encore consommé côté géom)
+    if (window.PlanMasseCanvas?.S?.prog) {
+      window.PlanMasseCanvas.S.prog.mix = { ...mix };
+    }
+    // Bascule auto Maison↔Collectif selon dominante (compat moteur existant)
+    const domType = mix.ind >= mix.band && mix.ind >= mix.col ? 'maison' : 'collectif';
+    const curType = window.PlanMasseCanvas?.S?.prog?.type;
+    if (curType && curType !== domType) {
+      window.PlanMasseCanvas.setProg('type', domType);
+      document.getElementById('pm-type-maison')?.classList.toggle('active', domType === 'maison');
+      document.getElementById('pm-type-collectif')?.classList.toggle('active', domType === 'collectif');
+    }
+  };
+
+  const rebalance = (changed) => {
+    const mix = readMix();
+    const v = mix[changed];
+    const others = keys.filter(k => k !== changed);
+    const remain = Math.max(0, 100 - v);
+    const sumOthers = others.reduce((s, k) => s + mix[k], 0) || 1;
+    others.forEach(k => { mix[k] = sumOthers > 0 ? (mix[k] / sumOthers) * remain : remain / 2; });
+    applyMix(mix);
+  };
+
+  keys.forEach(k => {
+    inputs[k].addEventListener('input', () => rebalance(k));
+  });
+  // Init visuel
+  applyMix(readMix());
+  // Exposer pour que le continuum puisse l'appeler
+  window._p07ApplyMix = applyMix;
+})();
+
+// ── Continuum Maison ↔ Collectif max ──────────────────────────────
+// Slider 0→100 : 0 = tout ind, 100 = tout coll (capacité PLU max).
+// Pilote les 3 mini-sliders + bascule type + propose scénario.
+(function initContinuumSlider() {
+  const slider = document.getElementById('pmc-continuum');
+  const label  = document.getElementById('pmc-continuum-label');
+  const hint   = document.getElementById('pmc-continuum-hint');
+  if (!slider) return;
+
+  const labelFor = (v) => v < 25 ? 'Maison' :
+                          v < 50 ? 'Mix indiv/bande' :
+                          v < 75 ? 'Bande/petit coll' :
+                                   'Collectif dense';
+  const mixFor = (v) => {
+    // Courbe : 0 = (100,0,0), 50 = (0,100,0) bande dominante, 100 = (0,0,100)
+    if (v <= 50) {
+      const t = v / 50;
+      return { ind: 100 * (1 - t), band: 100 * t, col: 0 };
+    }
+    const t = (v - 50) / 50;
+    return { ind: 0, band: 100 * (1 - t), col: 100 * t };
+  };
+  const typeFor = (v) => v < 40 ? 'maison' : 'collectif';
+  // NB: le slider ne change PAS la stratégie courante (user explicite).
+  // Il pilote uniquement l'échelle min/max (emprCiblePct) de la stratégie
+  // sélectionnée. MAX = emprise MAX PLU / espace vert MIN PLU (déductions
+  // veg + ANC + parking appliquées en amont par _applyScenarioGeometry).
+
+  // Calcule l'emprise max exploitable en retirant végétation, ANC, parking RdC
+  const computeMaxFootprint = () => {
+    const pmc = window.PlanMasseCanvas;
+    const t = pmc?._terrain;
+    const sess = window.SessionManager?._data;
+    if (!t?.plu) return null;
+
+    const parcelArea = t.area ?? 0;
+    const emprMaxPct = t.plu.emprMax ?? 50;
+    const permMinPct = t.plu.permMin ?? 25;
+    const assainissement = sess?.terrain?.assainissement ?? 'collectif'; // défaut ville = tout-à-l'égout
+    const parkMode = pmc.S?.prog?.parkMode ?? 'ext';
+
+    const ces_max = parcelArea * (emprMaxPct / 100);
+    const veg_min = parcelArea * (permMinPct / 100);
+    // ANC : estimation 40 m² (filière compacte ~5-6 EH, majorité cas Réunion)
+    const anc_surface = assainissement === 'ANC' ? 40 : 0;
+    // Parking RdC : intégré au bâtiment, pas de déduction au sol
+    // Parking Ext : ~25 m²/place × nbLgts estimés, max 30% de la surface libre
+    const surface_libre = parcelArea - ces_max - veg_min - anc_surface;
+    const park_ext_estim = parkMode === 'ext'
+      ? Math.min(surface_libre * 0.8, 50) // approximation : 2 places × 25m² pour maison
+      : 0;
+
+    const empriseDispo = Math.max(0, Math.min(ces_max, parcelArea - veg_min - anc_surface - park_ext_estim));
+
+    return {
+      parcelArea, ces_max, veg_min, anc_surface, park_ext_estim,
+      empriseDispo, assainissement, parkMode,
+    };
+  };
+
+  // Le continuum absorbe l'ex-slider "Cible empr." : v=0 → maison (~15%
+   // empriseDispo), v=100 → emprise MAX PLU (100% empriseDispo, capée par CES).
+  const emprCibleFor = (v) => {
+    if (v < 25) return 15 + (v / 25) * 15;           // 15%..30% (maison)
+    if (v < 75) return 30 + ((v - 25) / 50) * 55;    // 30%..85% (équilibre)
+    return 85 + ((v - 75) / 25) * 15;                // 85%..100% (MAX)
+  };
+
+  const apply = (v) => {
+    label.textContent = labelFor(v);
+    const mix = mixFor(v);
+    if (window._p07ApplyMix) window._p07ApplyMix(mix);
+    const newType = typeFor(v);
+    const pmc = window.PlanMasseCanvas;
+    if (pmc?._ready && pmc.S?.prog?.type !== newType) {
+      pmc.setProg('type', newType);
+    }
+    // Pilote l'emprise cible — la stratégie courante reste inchangée,
+    // seule l'échelle min/max varie (recalc via setProg → _applyScenarioGeometry).
+    const emprPct = Math.round(emprCibleFor(v));
+    if (pmc?._ready) {
+      pmc.setProg('emprCiblePct', emprPct);
+    }
+    // Hint : rappel des limites PLU actives pour la stratégie en cours
+    const plu = pmc?._terrain?.plu ?? {};
+    const emprMax = plu.emprMax ?? '—';
+    const permMin = plu.permMin ?? '—';
+    const sc = pmc?.curSc?.();
+    const scLbl = sc ? `${sc.id} · ${sc.label}` : 'stratégie';
+    if (v >= 75) {
+      const f = computeMaxFootprint();
+      if (f) {
+        const ancLbl = f.assainissement === 'ANC' ? ` · ANC −${Math.round(f.anc_surface)}m²` : ' · égout';
+        hint.innerHTML =
+          `→ ${scLbl} · MAX emprise ${emprMax}% · MIN perm ${permMin}% · cible ${Math.round(f.empriseDispo)} m² <span style="opacity:.7">(veg −${Math.round(f.veg_min)}m²${ancLbl})</span>`;
+      } else {
+        hint.textContent = `→ ${scLbl} · MAX emprise ${emprMax}% · MIN perm ${permMin}%`;
+      }
+    } else if (v < 25) {
+      hint.textContent = `→ ${scLbl} · maison · empr. ${emprPct}% · R+0-1`;
+    } else {
+      const nvMax = pmc?.nvMaxPLU?.() ?? 2;
+      const nvLbl = newType === 'maison' ? 'R+0-1' : `R+1-${Math.min(nvMax - 1, 3)}`;
+      hint.textContent = `→ ${scLbl} · empr. ${emprPct}% · ${nvLbl}`;
+    }
+  };
+
+  slider.addEventListener('input', () => apply(+slider.value));
+  // Init à la prochaine frame pour que PMC soit prêt
+  requestAnimationFrame(() => apply(+slider.value));
+})();
+
+// ── Règles PLU identifiées (affichage compact, édition inline) ────
+function _p07RenderPluRules() {
+  const host = document.getElementById('p07-plu-rules');
+  const pmc = window.PlanMasseCanvas;
+  const plu = pmc?._terrain?.plu;
+  if (!host || !plu) return;
+
+  const rules = [
+    { key: 'zone_plu',      label: 'Zone',      val: plu.zone ?? '—',     unit: '',   editable: false },
+    { key: 'ces_max',       label: 'CES max',   val: plu.emprMax ?? '—',  unit: '%',  min: 10, max: 100, step: 5 },
+    { key: 'cos_max',       label: 'COS',       val: plu.cos ?? '—',      unit: '',   min: 0,  max: 3,   step: 0.1 },
+    { key: 'recul_voie',    label: 'Recul voie',val: plu.recul_voie ?? '—', unit: 'm', min: 0, max: 15,  step: 0.5 },
+    { key: 'recul_lat',     label: 'Recul lat', val: plu.recul_lat ?? '—',  unit: 'm', min: 0, max: 10,  step: 0.5 },
+    { key: 'recul_fond',    label: 'Recul fond',val: plu.recul_fond ?? '—', unit: 'm', min: 0, max: 15,  step: 0.5 },
+    { key: 'he_max',        label: 'H max',     val: plu.heMax ?? '—',     unit: 'm',  min: 3, max: 25,  step: 0.5 },
+    { key: 'perm_min',      label: 'Perm. min', val: plu.permMin ?? '—',   unit: '%',  min: 0, max: 80,  step: 5 },
+  ];
+
+  host.innerHTML = rules.map(r => `
+    <div class="plu-rule">
+      <span class="plu-rule-label">${r.label}</span>
+      <span class="plu-rule-val${r.editable === false ? ' readonly' : ''}"
+            data-key="${r.key}"
+            ${r.editable === false ? '' : `data-min="${r.min}" data-max="${r.max}" data-step="${r.step}"`}>
+        ${r.val}${r.unit}
+      </span>
+    </div>
+  `).join('');
+
+  // Édition inline sur click
+  host.querySelectorAll('.plu-rule-val:not(.readonly)').forEach(el => {
+    el.addEventListener('click', () => _p07EditPluValue(el));
+  });
+}
+
+function _p07EditPluValue(el) {
+  const curText = el.textContent.trim();
+  const curNum = parseFloat(curText) || 0;
+  const min = +el.dataset.min, max = +el.dataset.max, step = +el.dataset.step;
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.value = curNum;
+  input.min = min; input.max = max; input.step = step;
+  input.className = 'plu-rule-val editing';
+  const key = el.dataset.key;
+  el.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const commit = () => {
+    const v = +input.value;
+    _p07ApplyPluOverride(key, v);
+    _p07RenderPluRules();
+  };
+  const cancel = () => _p07RenderPluRules();
+
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+  });
+}
+
+function _p07ApplyPluOverride(key, value) {
+  const pmc = window.PlanMasseCanvas;
+  if (!pmc?._terrain?.plu) return;
+  const map = {
+    ces_max:    'emprMax',
+    cos_max:    'cos',
+    recul_voie: 'recul_voie',
+    recul_lat:  'recul_lat',
+    recul_fond: 'recul_fond',
+    he_max:     'heMax',
+    perm_min:   'permMin',
+  };
+  const pluKey = map[key];
+  if (!pluKey) return;
+  // 1. Override direct sur PMC (immédiat)
+  pmc._terrain.plu[pluKey] = value;
+  // 2. Persist dans session P04 pour rebuild/reload
+  const sess = window.SessionManager?._data;
+  if (sess) {
+    sess.phases = sess.phases ?? {};
+    sess.phases[4] = sess.phases[4] ?? { data: {} };
+    sess.phases[4].data = sess.phases[4].data ?? {};
+    const p4Map = {
+      emprMax:    'emprise_sol_max_pct',
+      cos:        'cos_max',
+      recul_voie: 'recul_voie_m',
+      recul_lat:  'recul_lat_m',
+      recul_fond: 'recul_fond_m',
+      heMax:      'hauteur_max_m',
+      permMin:    'permeabilite_min_pct',
+    };
+    sess.phases[4].data[p4Map[pluKey]] = value;
+    window.SessionManager?.save?.();
+  }
+  // 3. Recalc envelope + ré-applique la stratégie courante avec les nouvelles
+  // limites SAUF si l'utilisateur a édité manuellement (flag _manualEdit).
+  pmc._reApplyIfClean?.('pluOverride') ?? pmc.render();
+  pmc.render();
+  window.P07?._renderScenarioToolbar?.();
+  window.TerlabNotification?.notify?.({
+    severity: 'info',
+    message: `PLU ${key} → ${value} (override user)`,
+    duration: 2500,
+  });
+}
+
+// Render au ready PMC + update sur pmc:metrics (rarement change mais safe)
+const _pluRenderOnce = () => { _p07RenderPluRules(); };
+if (window.PlanMasseCanvas?._ready) _pluRenderOnce();
+else window.addEventListener('pmc:metrics', _pluRenderOnce, { once: true });
+window.addEventListener('pmc:metrics', _p07RenderPluRules);
+
 // ── Aide raccourcis (bouton ? / touches ?/H) ──────────────────────
 function _p07ToggleHelp(force) {
   const panel = document.getElementById('pmc-help-panel');
@@ -3496,6 +4030,18 @@ document.getElementById('pmc-btn-auto')?.addEventListener('click', () => {
   b.textContent = '✓ Auto'; setTimeout(() => { b.textContent = '◎ Auto'; }, 800);
 });
 document.getElementById('pmc-btn-reset')?.addEventListener('click', () => window.PlanMasseCanvas?.resetView());
+document.getElementById('pmc-btn-resetstrat')?.addEventListener('click', () => {
+  window.PlanMasseCanvas?.resetToStrategy?.();
+  _p07SyncManualEditPill?.();
+});
+
+// Affiche / cache la pill "édition manuelle active" selon S._manualEdit
+window._p07SyncManualEditPill = function() {
+  const pill = document.getElementById('pmc-manual-edit-pill');
+  if (!pill) return;
+  pill.style.display = window.PlanMasseCanvas?.S?._manualEdit ? 'block' : 'none';
+};
+window.addEventListener('pmc:metrics', window._p07SyncManualEditPill);
 document.getElementById('pmc-btn-svg')?.addEventListener('click', () => window.PlanMasseCanvas?.exportSVG());
 
 // ═══════════════════════════════════════════════════════════════

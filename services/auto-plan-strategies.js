@@ -475,6 +475,119 @@ const AutoPlanStrategies = {
     return out.length >= 2 ? out : [];
   },
 
+  // ── Stratégie : 2 Lames parallèles (split axial + maxAABB par moitié) ──
+  // Découpe l'enveloppe par la médiane (Y si portrait, X si paysage) avec un
+  // gap central, puis inscrit un rectangle max dans chaque moitié.
+  deuxLames(env, gap = 4, minDimM = 5) {
+    if (!env || env.length < 3) return [];
+    const envXY = env.map(p => FH.toXY(p));
+    const xs = envXY.map(p => p.x), ys = envXY.map(p => p.y);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs);
+    const y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const zW = x1 - x0, zH = y1 - y0;
+    const PAD = 1000, HG = gap / 2;
+    let poly1 = null, poly2 = null;
+
+    if (zH >= zW) {
+      const mY = y0 + zH / 2;
+      const top = FH.clipPolygon(envXY, [
+        { x: x0 - PAD, y: y0 - PAD }, { x: x1 + PAD, y: y0 - PAD },
+        { x: x1 + PAD, y: mY - HG }, { x: x0 - PAD, y: mY - HG },
+      ]);
+      const bot = FH.clipPolygon(envXY, [
+        { x: x0 - PAD, y: mY + HG }, { x: x1 + PAD, y: mY + HG },
+        { x: x1 + PAD, y: y1 + PAD }, { x: x0 - PAD, y: y1 + PAD },
+      ]);
+      if (top?.length >= 3) poly1 = FH.maxInscribedAABB(top);
+      if (bot?.length >= 3) poly2 = FH.maxInscribedAABB(bot);
+    } else {
+      const mX = x0 + zW / 2;
+      const lf = FH.clipPolygon(envXY, [
+        { x: x0 - PAD, y: y0 - PAD }, { x: mX - HG, y: y0 - PAD },
+        { x: mX - HG, y: y1 + PAD }, { x: x0 - PAD, y: y1 + PAD },
+      ]);
+      const rt = FH.clipPolygon(envXY, [
+        { x: mX + HG, y: y0 - PAD }, { x: x1 + PAD, y: y0 - PAD },
+        { x: x1 + PAD, y: y1 + PAD }, { x: mX + HG, y: y1 + PAD },
+      ]);
+      if (lf?.length >= 3) poly1 = FH.maxInscribedAABB(lf);
+      if (rt?.length >= 3) poly2 = FH.maxInscribedAABB(rt);
+    }
+    const minD = r => {
+      if (!r || r.length < 3) return 0;
+      const xx = r.map(p => p.x), yy = r.map(p => p.y);
+      return Math.min(Math.max(...xx) - Math.min(...xx), Math.max(...yy) - Math.min(...yy));
+    };
+    const res = [poly1, poly2].filter(r => r && r.length >= 3 && minD(r) >= minDimM);
+    if (res.length < 2) return [];
+    return res.map((p, i) => {
+      const bb = FH.aabb(p);
+      return {
+        polygon: p, theta: 0, w: Math.min(bb.w, bb.l), l: Math.max(bb.w, bb.l),
+        strategy: 'deuxLames', shapeType: 'deuxLames', part: `lame${i + 1}`,
+        areaM2: FH.area(p),
+      };
+    });
+  },
+
+  // ── Stratégie : 3 Lames parallèles (3 bandes égales + maxAABB par bande) ──
+  troisLames(env, gap = 4, minDimM = 5) {
+    if (!env || env.length < 3) return [];
+    const envXY = env.map(p => FH.toXY(p));
+    const xs = envXY.map(p => p.x), ys = envXY.map(p => p.y);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs);
+    const y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const zW = x1 - x0, zH = y1 - y0;
+    const PAD = 1000;
+    // Seuil empirique v4h : pas la peine sous ~12 × 12 m utiles (une fois gaps)
+    if (zW * zH < 12 * 12) return [];
+    const res = [];
+
+    if (zH >= zW) {
+      const slH = (zH - 2 * gap) / 3;
+      if (slH < minDimM) return [];
+      for (let k = 0; k < 3; k++) {
+        const yS = y0 + k * (slH + gap), yE = yS + slH;
+        const sl = FH.clipPolygon(envXY, [
+          { x: x0 - PAD, y: yS }, { x: x1 + PAD, y: yS },
+          { x: x1 + PAD, y: yE }, { x: x0 - PAD, y: yE },
+        ]);
+        if (sl?.length >= 3) {
+          const r = FH.maxInscribedAABB(sl);
+          if (r?.length >= 3) res.push(r);
+        }
+      }
+    } else {
+      const slW = (zW - 2 * gap) / 3;
+      if (slW < minDimM) return [];
+      for (let k = 0; k < 3; k++) {
+        const xS = x0 + k * (slW + gap), xE = xS + slW;
+        const sl = FH.clipPolygon(envXY, [
+          { x: xS, y: y0 - PAD }, { x: xE, y: y0 - PAD },
+          { x: xE, y: y1 + PAD }, { x: xS, y: y1 + PAD },
+        ]);
+        if (sl?.length >= 3) {
+          const r = FH.maxInscribedAABB(sl);
+          if (r?.length >= 3) res.push(r);
+        }
+      }
+    }
+    const minD = r => {
+      const xx = r.map(p => p.x), yy = r.map(p => p.y);
+      return Math.min(Math.max(...xx) - Math.min(...xx), Math.max(...yy) - Math.min(...yy));
+    };
+    const valid = res.filter(r => minD(r) >= minDimM);
+    if (valid.length < 2) return [];
+    return valid.map((p, i) => {
+      const bb = FH.aabb(p);
+      return {
+        polygon: p, theta: 0, w: Math.min(bb.w, bb.l), l: Math.max(bb.w, bb.l),
+        strategy: 'troisLames', shapeType: 'troisLames', part: `lame${i + 1}`,
+        areaM2: FH.area(p),
+      };
+    });
+  },
+
   // ── Tagger niveaux + hauteur sur une liste de blocs ──────────────
   applyLevels(blocs, niveaux, hNiv = H_NIV) {
     return blocs.map(b => ({

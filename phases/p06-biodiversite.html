@@ -66,16 +66,27 @@
     <p class="field-note">À La Réunion, les ravines sont les corridors écologiques principaux. Leur ripisylve doit être préservée.</p>
   </div>
 
-  <!-- Détection végétation OBIA satellite -->
+  <!-- Végétation existante : accès rapide au panneau détection/placement -->
   <div class="form-section anim-slide-up" id="obia-section">
-    <div class="fs-head">Occupation du sol (analyse satellite)</div>
-    <p class="field-note" style="margin-bottom:8px">Détection automatique de la végétation depuis l'imagerie satellite Mapbox. Les seuils HSV sont calibrés pour La Réunion.</p>
-    <button class="search-btn wide" id="btn-obia"
-            onclick="P06.analyzeVegetation()">
-      Détecter la végétation depuis satellite
+    <div class="fs-head">Végétation existante</div>
+    <p class="field-note" style="margin-bottom:8px">Le panneau à droite de la carte permet détection LiDAR, placement manuel et validation des arbres à conserver ou abattre.</p>
+    <button class="search-btn wide" id="btn-veg-focus"
+            onclick="P06.focusVegetationPanel()">
+      Modifier la végétation existante
     </button>
-    <div id="obia-result" class="obia-result" style="display:none" aria-live="polite">
-      <div class="obia-grid" id="obia-grid"></div>
+  </div>
+
+  <!-- Surfaces imperméables (parking, allées, terrasses) -->
+  <div class="form-section anim-slide-up" id="parking-section">
+    <div class="fs-head">Surfaces imperméables</div>
+    <p class="field-note" style="margin-bottom:8px">Détection des parkings, allées et terrasses dallées depuis COSIA + validation LiDAR (rejette toitures grises).</p>
+    <button class="search-btn wide" id="btn-parking-detect"
+            onclick="P06.detectParking()">
+      Détecter les surfaces minérales
+    </button>
+    <div id="parking-result" style="display:none;margin-top:8px;padding:8px;background:rgba(120,120,120,0.08);border-radius:4px;font-size:11px">
+      <div id="parking-stats"></div>
+      <button onclick="P06.clearParking()" style="margin-top:6px;font-size:10px;padding:3px 8px;border:1px solid #888;background:transparent;color:#666;cursor:pointer;border-radius:3px">Effacer overlay</button>
     </div>
   </div>
 
@@ -317,6 +328,71 @@ const P06 = {
   _selectedSpecies: new Set(),
   _currentFond: 'nature',
 
+  // Toggle panneau vegetation (ouvre si ferme, ferme si ouvert) + flash
+  focusVegetationPanel() {
+    const ctrl = window.VegetationP06Panel;
+    if (!ctrl?.toggle) {
+      window.TerlabToast?.show('Panneau végétation non encore initialisé, réessaye dans 1s', 'warning');
+      return;
+    }
+    ctrl.toggle();
+    if (ctrl.isOpen?.()) {
+      const panel = document.getElementById('veg-phase06-panel');
+      if (panel) {
+        panel.style.transition = 'box-shadow 0.3s';
+        panel.style.boxShadow = '0 0 0 3px #3d6b2e, 0 8px 20px rgba(0,0,0,0.18)';
+        setTimeout(() => { panel.style.boxShadow = ''; }, 1500);
+      }
+    }
+  },
+
+  _updateVegBtnLabel(isOpen) {
+    const btn = document.getElementById('btn-veg-focus');
+    if (btn) btn.textContent = isOpen ? 'Fermer la fenêtre de végétation' : 'Modifier la végétation existante';
+  },
+
+  // Parking detection (COSIA + validation LiDAR)
+  async detectParking() {
+    const map = MapViewer?.getMap();
+    const terrain = SessionManager.getTerrain();
+    if (!map || !terrain?.parcelle_geojson) {
+      window.TerlabToast?.show('Pas de parcelle définie', 'warning');
+      return;
+    }
+    const btn = document.getElementById('btn-parking-detect');
+    if (btn) { btn.disabled = true; btn.textContent = 'Détection en cours…'; }
+    try {
+      const { default: ParkingDetection } = await import('../services/parking-detection.js');
+      const bounds = map.getBounds();
+      const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+      const centroid = [map.getCenter().lng, map.getCenter().lat];
+      const sessionId = SessionManager._sessionId || SessionManager.sessionId;
+      const detections = await ParkingDetection.detect(bbox, centroid, sessionId);
+      ParkingDetection.renderOnMap(map, detections);
+      const total = detections.reduce((s, d) => s + d.area_m2, 0);
+      const result = document.getElementById('parking-result');
+      const stats = document.getElementById('parking-stats');
+      if (stats) stats.innerHTML = detections.length
+        ? `<strong>${detections.length}</strong> zones détectées · <strong>${total} m²</strong> total imperméable`
+        : 'Aucune surface minérale détectée sur ce viewport';
+      if (result) result.style.display = 'block';
+    } catch (e) {
+      console.error('[P06] parking detect:', e);
+      window.TerlabToast?.show('Erreur détection parking : ' + e.message, 'warning');
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Détecter les surfaces minérales'; }
+    }
+  },
+
+  async clearParking() {
+    const map = MapViewer?.getMap();
+    if (!map) return;
+    const { default: ParkingDetection } = await import('../services/parking-detection.js');
+    ParkingDetection.removeFromMap(map);
+    const r = document.getElementById('parking-result');
+    if (r) r.style.display = 'none';
+  },
+
   // ── Basculer fond de carte (interne, pas expose en UI) ──────────
   // Phase 6 reste toujours en Nature. Le passage satellite est uniquement
   // un intermediaire technique pour OBIA (capture de pixels) puis retour immediat.
@@ -441,7 +517,14 @@ const P06 = {
     try {
       // 1. Bascule satellite (necessaire pour OBIA pixel classification)
       await this.setFond('satellite');
-      await new Promise(r => setTimeout(r, 1500));
+      // Attendre que les tuiles satellite soient idle (timeout 6s, puis fallback 800ms)
+      await Promise.race([
+        new Promise(r => map.once('idle', r)),
+        new Promise(r => setTimeout(r, 6000)),
+      ]);
+      if (typeof map.areTilesLoaded === 'function' && !map.areTilesLoaded()) {
+        await new Promise(r => setTimeout(r, 800));
+      }
 
       // 2. Analyse
       const result = await OBIAService.analyzeParcel(map, { type: 'Feature', geometry: geojson });
@@ -513,22 +596,95 @@ window.P06 = P06;
   } catch (e) { console.warn('[P06 Veg] init skip:', e); }
 })();
 
-// ─── Auto-declenchement analyse OBIA vegetation ───
+// ─── Auto-charger LiDAR si cache vide (pour detection veg/parking) ────
 (async () => {
+  const terrain = SessionManager.getTerrain();
   if (!terrain?.parcelle_geojson) return;
-  // Attendre que Mapbox soit pret
+  const cache = window.LidarCache;
+  const sessionId = SessionManager._sessionId;
+  if (!cache || !sessionId) return;
+
+  // Verifier presence en cache
+  try {
+    const rec = await cache.getPoints({ sessionId, geojson: terrain.parcelle_geojson, classes: '2,3,4,5,6,9' });
+    if (rec?.points?.length) {
+      console.info(`[P06] LiDAR déjà en cache : ${rec.points.length} pts`);
+      return;
+    }
+  } catch {}
+
+  if (!window.LidarService?.getPointsForParcel) {
+    console.warn('[P06] LidarService absent, skip auto-load');
+    return;
+  }
+
+  window.TerlabToast?.show('Chargement LiDAR HD IGN en arrière-plan…', 'info', 3000);
+  try {
+    const result = await window.LidarService.getPointsForParcel(
+      terrain.parcelle_geojson, 50,
+      { classes: '2,3,4,5,6,9', maxPoints: 300000 }
+    );
+    if (!result?.points?.length) {
+      console.warn('[P06] Aucun point LiDAR disponible pour la zone');
+      return;
+    }
+    await cache.putPoints({
+      sessionId, geojson: terrain.parcelle_geojson, classes: '2,3,4,5,6,9',
+      points: result.points, meta: { source: result.source, autoloaded: 'P06' },
+    });
+    window.LidarService.setRawPoints?.(result.points, '2,3,4,5,6,9');
+    window.TerlabToast?.show(`LiDAR chargé : ${result.points.length} pts · détection végétation/parking prête`, 'success', 3000);
+  } catch (e) {
+    console.warn('[P06] Auto-load LiDAR échoué:', e.message);
+  }
+})();
+
+// ─── Overlays rendu "corpus-viewer" : IGN ortho + COSIA semi-transparents ───
+(async () => {
   const waitMap = async () => {
     const m = MapViewer?.getMap?.();
     if (m && m.loaded()) return m;
-    await new Promise(r => setTimeout(r, 600));
+    await new Promise(r => setTimeout(r, 400));
     return waitMap();
   };
+  const map = await waitMap();
+
+  // Sources raster WMS IGN : ortho HD + COSIA segmentation IA
+  const IGN_ORTHO = 'https://data.geopf.fr/wms-r/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=HR.ORTHOIMAGERY.ORTHOPHOTOS&CRS=EPSG:3857&FORMAT=image/jpeg&STYLES=&WIDTH=256&HEIGHT=256&BBOX={bbox-epsg-3857}';
+  const IGN_COSIA = 'https://data.geopf.fr/wms-r/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=IGNF_COSIA_2021-2023&CRS=EPSG:3857&FORMAT=image/png&TRANSPARENT=TRUE&STYLES=&WIDTH=256&HEIGHT=256&BBOX={bbox-epsg-3857}';
+
+  const addRaster = (id, url, opacity) => {
+    if (map.getSource(id)) return;
+    map.addSource(id, { type: 'raster', tiles: [url], tileSize: 256, maxzoom: 19 });
+    map.addLayer({ id, type: 'raster', source: id, paint: { 'raster-opacity': opacity } });
+  };
   try {
-    await waitMap();
-    // Laisser la carte charger les tuiles initiales
-    await new Promise(r => setTimeout(r, 800));
-    await P06.analyzeVegetation();
-  } catch (e) { console.warn('[P06] Auto-OBIA skip:', e.message); }
+    addRaster('p06-ign-ortho', IGN_ORTHO, 0.65);
+    addRaster('p06-cosia',     IGN_COSIA, 0.50);
+    // Remonter parcelle au-dessus des rasters
+    for (const id of ['parcelle-fill', 'parcelle-casing', 'parcelle-outline']) {
+      if (map.getLayer(id)) map.moveLayer(id);
+    }
+  } catch (e) { console.warn('[P06] overlays IGN:', e.message); }
+
+  // Zoom etendu parcelle avec animation douce
+  const terrain = SessionManager.getTerrain();
+  const geojson = terrain?.parcelle_geojson;
+  if (geojson) {
+    const coords = [];
+    const walk = n => { if (typeof n?.[0] === 'number') coords.push(n); else if (Array.isArray(n)) n.forEach(walk); };
+    walk(geojson.geometry?.coordinates ?? geojson.coordinates ?? []);
+    if (coords.length >= 3) {
+      let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+      for (const [lng, lat] of coords) {
+        if (lng < minLng) minLng = lng; if (lng > maxLng) maxLng = lng;
+        if (lat < minLat) minLat = lat; if (lat > maxLat) maxLat = lat;
+      }
+      map.fitBounds([[minLng, minLat], [maxLng, maxLat]], {
+        padding: 80, duration: 2200, maxZoom: 19, essential: true,
+      });
+    }
+  }
 })();
 
 // ─── Auto-détection ZNIEFF & Parc National via BiodiversiteService ───

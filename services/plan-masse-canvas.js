@@ -162,7 +162,7 @@ const PlanMasseCanvas = {
     blocs: [],
     activeBlocIdx: 0,
     shapePreset: null,  // 'I' (simple), 'L', 'T', 'X', 'Y', 'multi'
-    prog: { type: 'maison', nvMax: 2, profMax: 15, parkMode: 'ext', parkSS: false, maxUnits: 20 },
+    prog: { type: 'maison', nvMax: 2, profMax: 15, parkMode: 'ext', parkSS: false, minUnits: 1, maxUnits: 20, emprCiblePct: 100 },
     parkSide: 'est',
     edgeTypes: [],
     mitoyen: [],
@@ -170,6 +170,10 @@ const PlanMasseCanvas = {
     layers: { reculs: true, env: true, veg: true, parking: true, dims: true, pir: false, contours: true, ngr: true, emprise: false, circ: false, prog: false },
     view: 'plan',  // 'plan' | 'coupe'
     _insetWarn: null,
+    // Dirty flag : user a édité manuellement (drag/resize/rotate/split/addNode/delNode).
+    // Bloque les recalculs automatiques (sliders / PLU override / edgeType toggle) pour
+    // préserver le travail manuel. Reset explicite ou changement de stratégie → clear.
+    _manualEdit: false,
   },
 
   // Historique Undo/Redo : stack de snapshots { blocs, activeBlocIdx, shapePreset }
@@ -194,6 +198,12 @@ const PlanMasseCanvas = {
     { id: 'C2',  nv: 3, eff: 0.75, aide: 0.45, col: '#14B8A6', short: 'Épouse',     label: 'épouse zone',     strategy: 'zone',      emprFac: 0.55, desc: 'Épouse la zone constructible, emprise min' },
     { id: 'C2b', nv: 3, eff: 0.78, aide: 0.48, col: '#059669', short: 'Hull',       label: 'zone adaptative', strategy: 'zoneHull',  emprFac: 0.65, desc: 'Hull de la zone avec surface cible' },
     { id: 'D1',  nv: 2, eff: 0.80, aide: 0.55, col: '#0EA5E9', short: 'Isohypses',  label: 'isohypses',       strategy: 'isohypses', emprFac: 0.70, desc: 'Bâtiment \u22a5 à la pente', requires: 'slope' },
+    // Stratégies portées de v4h — typologies multi-volume pour densité compacte
+    { id: 'T',   nv: 2, eff: 0.80, aide: 0.55, col: '#7C3AED', short: 'T',          label: 'T-shape',         strategy: 'tShape',    emprFac: 0.75, desc: 'Bar traversant + noyau central (typologie Heidegger)' },
+    { id: 'X',   nv: 2, eff: 0.78, aide: 0.52, col: '#0D9488', short: 'X',          label: 'croix',           strategy: 'cross',     emprFac: 0.70, desc: 'Plan en croix (4 ailes autour d\u2019un noyau)' },
+    { id: 'BB',  nv: 3, eff: 0.82, aide: 0.58, col: '#B45309', short: 'Bi-barre',   label: 'bi-barre reliée', strategy: 'biBarre',   emprFac: 0.85, desc: '2 barres parallèles reliées par un noyau' },
+    { id: '2L',  nv: 2, eff: 0.80, aide: 0.55, col: '#0369A1', short: '2 Lames',    label: '2 lames parallèles', strategy: 'deuxLames', emprFac: 0.75, desc: '2 rectangles max inscrits dans chaque moitié de zone' },
+    { id: '3L',  nv: 3, eff: 0.78, aide: 0.50, col: '#7E22CE', short: '3 Lames',    label: '3 lames parallèles', strategy: 'troisLames', emprFac: 0.82, desc: '3 bandes parallèles (parcelles longues/larges ≥ 12×12 m utiles)' },
   ],
   _scId: 'B1',
 
@@ -379,6 +389,7 @@ const PlanMasseCanvas = {
     };
 
     const emprMaxRaw = parseFloat(p4.ces_max ?? pluCfg?.plu?.emprMax ?? 60);
+    const cosRaw = p4.cos ?? pluCfg?.plu?.cos;
     const plu = {
       emprMax: emprMaxRaw > 1 ? emprMaxRaw : emprMaxRaw * 100,
       permMin: parseFloat(pluCfg?.plu?.permMin ?? p4.permeabilite_min_pct ?? 25),
@@ -387,6 +398,10 @@ const PlanMasseCanvas = {
       zone: p4.zone_plu ?? pluCfg?.meta?.zone ?? 'U',
       interBatMin: parseFloat(pluCfg?.plu?.interBatMin ?? 4),
       constructible: (p4.zone_plu ?? 'U').charAt(0) !== 'A' && (p4.zone_plu ?? 'U').charAt(0) !== 'N',
+      recul_voie: reculs.voie,
+      recul_lat:  reculs.lat,
+      recul_fond: reculs.fond,
+      cos: (cosRaw !== null && cosRaw !== undefined && cosRaw !== '') ? parseFloat(cosRaw) : null,
     };
 
     // Origine géographique = centroïde de la parcelle WGS84 (cohérent avec EsquisseCanvas._geoToLocal)
@@ -406,6 +421,25 @@ const PlanMasseCanvas = {
     }
 
     this._terrain = { poly, edgeTypes, reculs, area, plu, commune: terrain.commune ?? 'Commune', reference: terrain.reference ?? '', parcelGeo, geoOrigin };
+
+    // Auto-side PK : côté de l'arête voie vs centre parcelle (entrée = voie).
+    // NB : certaines mairies imposent un recul PK (reculs.voie couvre déjà la
+    // limite voie, mais un recul PK spécifique peut différer — TODO rapatrier
+    // plu.recul_parking_m depuis data/plu-rules-*.json quand disponible).
+    try {
+      const voieIdx = edgeTypes.findIndex(t => t === 'voie');
+      if (voieIdx >= 0) {
+        const a = poly[voieIdx], b = poly[(voieIdx + 1) % poly.length];
+        const emx = (a[0] + b[0]) / 2, emy = (a[1] + b[1]) / 2;
+        let cx = 0, cy = 0;
+        for (const p of poly) { cx += p[0]; cy += p[1]; }
+        cx /= poly.length; cy /= poly.length;
+        const dx = emx - cx, dy = emy - cy;
+        this.S.parkSide = Math.abs(dx) > Math.abs(dy)
+          ? (dx > 0 ? 'est' : 'ouest')
+          : (dy > 0 ? 'nord' : 'sud');
+      }
+    } catch { /* parkSide default reste 'est' */ }
   },
 
   // ── CONVERSION WGS84 → local mètres (cohérent avec EsquisseCanvas) ─
@@ -474,7 +508,31 @@ const PlanMasseCanvas = {
   computeEnvPoly() {
     const t = this._terrain;
     const R = this.S.edgeTypes.map((_, i) => this.edgeRecul(i));
-    let env = _insetPoly(t.poly, R);
+
+    // Route v4h : convexe → half-plane intersection, concave → raster + flood-fill.
+    // Gère les pointes aiguës sur arête mitoyenne (recul=0) voisine d'arêtes à fort
+    // recul, et les parcelles non-convexes. Fallback sur _insetPoly si indispo.
+    let env = null;
+    if (FH && typeof FH.buildZone === 'function') {
+      try {
+        const polyXY = t.poly.map(([x, y]) => ({ x, y }));
+        const zoneV4 = FH.buildZone(polyXY, R);
+        if (zoneV4 && zoneV4.length >= 3) env = zoneV4.map(pt => [pt.x, pt.y]);
+      } catch (e) {
+        console.warn('[PMC] FH.buildZone error, fallback _insetPoly:', e.message);
+      }
+    }
+    if (!env) env = _insetPoly(t.poly, R);
+
+    // Filet v4h : supprimer les pointes résiduelles (angle < 90°) que le raster
+    // peut produire aux coins perdus entre 2 reculs très différents.
+    if (FH && typeof FH.rmSpikes === 'function' && env.length >= 4) {
+      try {
+        const cleaned = FH.rmSpikes(env.map(([x, y]) => ({ x, y })), 60);
+        if (cleaned.length >= 3) env = cleaned.map(pt => [pt.x, pt.y]);
+      } catch (e) { /* best-effort, garder env tel quel */ }
+    }
+
     const area = polyArea(env);
     if (area <= 5) {
       const bb = polyAABB(t.poly);
@@ -845,9 +903,9 @@ const PlanMasseCanvas = {
       parts.push(cg + '</g>');
     }
 
-    // Zone fills recul
+    // Zone fills recul — bande perpendiculaire largeur=recul, clippée à la parcelle
+    // pour éviter les triangles d'overlap aux sommets aigus (diagonales).
     if (this.S.layers.reculs) {
-      const envPoly = this.computeEnvPoly();
       const n = t.poly.length;
       for (let i = 0; i < n; i++) {
         const type = this.S.edgeTypes[i];
@@ -855,9 +913,23 @@ const PlanMasseCanvas = {
         if (r <= 0) continue;
         const col = COL[type];
         const [p1x, p1y] = t.poly[i], [p2x, p2y] = t.poly[(i + 1) % n];
-        const [e1x, e1y] = envPoly[i], [e2x, e2y] = envPoly[(i + 1) % n];
-        const pts = [[p1x, p1y], [p2x, p2y], [e2x, e2y], [e1x, e1y]].map(([x, y]) => this._w2s(x, y).map(v => this._dd(v)).join(',')).join(' ');
-        parts.push(`<polygon points="${pts}" fill="${this._ra(col, .09)}" stroke="none"/>`);
+        const dx = p2x - p1x, dy = p2y - p1y, len = Math.hypot(dx, dy);
+        if (len < 0.1) continue;
+        // Normale rentrante (vers l'intérieur du polygone) — orientation via signedArea
+        const sa = _signedAreaArr(t.poly);
+        const orient = sa >= 0 ? 1 : -1;
+        const nxu = -dy / len * orient, nyu = dx / len * orient;
+        // Quad perpendiculaire de largeur r (pas dérivé du env polygon)
+        const band = [
+          [p1x, p1y],
+          [p2x, p2y],
+          [p2x + nxu * r, p2y + nyu * r],
+          [p1x + nxu * r, p1y + nyu * r],
+        ];
+        const clipped = clipSH(band, t.poly);
+        if (clipped.length < 3) continue;
+        const pts = clipped.map(([x, y]) => this._w2s(x, y).map(v => this._dd(v)).join(',')).join(' ');
+        parts.push(`<polygon points="${pts}" fill="${this._ra(col, .08)}" stroke="none"/>`);
       }
     }
 
@@ -865,30 +937,8 @@ const PlanMasseCanvas = {
     parts.push(`<polygon points="${this._polyPts(t.poly)}" fill="none" stroke="rgba(100,88,68,.5)" stroke-width="1.5"/>`);
     parts.push(this._tx((x0 + x1) / 2, y0 - 1.6, `${t.area.toFixed(0)} m² · ${t.commune}`, 8.5, 'rgba(100,88,68,.7)'));
 
-    // Arêtes colorées — épaisseur double + label "MITOYEN" pour les
-    // arêtes latérales en limite (recul = 0 par règle binaire PLU)
-    { const n = t.poly.length;
-      for (let i = 0; i < n; i++) {
-        const [p1x, p1y] = t.poly[i], [p2x, p2y] = t.poly[(i + 1) % n];
-        const [sx1, sy1] = this._w2s(p1x, p1y), [sx2, sy2] = this._w2s(p2x, p2y);
-        const type = this.S.edgeTypes[i];
-        const col = COL[type];
-        const isMit = type === 'lat' && this.S.mitoyen[i];
-        const sw = isMit ? 7 : 4;
-        const op = isMit ? 0.92 : 0.68;
-        parts.push(`<line x1="${this._dd(sx1)}" y1="${this._dd(sy1)}" x2="${this._dd(sx2)}" y2="${this._dd(sy2)}" stroke="${col}" stroke-width="${sw}" opacity="${op}" stroke-linecap="round"/>`);
-        if (isMit) {
-          // Label MITOYEN (0m) sur le milieu de l'arête
-          const mx = (p1x + p2x) / 2, my = (p1y + p2y) / 2;
-          const dx = p2x - p1x, dy = p2y - p1y, len = Math.hypot(dx, dy) || 1;
-          const nxu = -dy / len, nyu = dx / len;
-          const lx = mx + nxu * 1.0, ly = my + nyu * 1.0;
-          const [slx, sly] = this._w2s(lx, ly);
-          parts.push(`<rect x="${this._dd(slx - 30)}" y="${this._dd(sly - 9)}" width="60" height="13" fill="rgba(59,130,246,.92)" rx="2"/>`);
-          parts.push(`<text x="${this._dd(slx)}" y="${this._dd(sly + 1)}" text-anchor="middle" font-size="9" font-weight="700" fill="white" font-family="'Inconsolata',monospace">MITOYEN 0m</text>`);
-        }
-      }
-    }
+    // NB : les arêtes colorées épaisses sont dessinées en fin de renderPlan
+    // (après bâtiment/parking/végétation) pour rester toujours lisibles.
 
     // Inset lines + labels
     if (this.S.layers.reculs) {
@@ -942,7 +992,7 @@ const PlanMasseCanvas = {
       for (const p of plants) this._drawPlant(parts, p.x, p.y, p.r, p.type, p.s);
     }
 
-    // Parking
+    // Parking — clippé contre la PARCELLE et l'enveloppe pour ne pas déborder
     if (this.S.layers.parking && this.S.prog.parkMode === 'ext' && !this.S.prog.parkSS && m.parkReq > 0 && this._terrain.plu.constructible) {
       const GAP = 1.0, totalArea = m.parkReq * 25;
       const env2 = this.computeEnv();
@@ -951,27 +1001,40 @@ const PlanMasseCanvas = {
       else if (this.S.parkSide === 'ouest') { const av = b.x - env2.x - GAP; pkw = Math.max(4, Math.min(13, av)); pkl = Math.min(env2.h, Math.max(5, totalArea / pkw)); pkx = Math.max(env2.x, b.x - pkw - GAP); pkbb = Math.max(env2.y, Math.min(b.y, env2.y1 - pkl)); }
       else if (this.S.parkSide === 'nord') { const av = env2.y1 - (b.y + b.l) - GAP; pkl = Math.max(4, Math.min(13, av)); pkw = Math.min(env2.w, Math.max(5, totalArea / pkl)); pkx = Math.max(env2.x, Math.min(b.x, env2.x1 - pkw)); pkbb = Math.min(b.y + b.l + GAP, env2.y1 - pkl); }
       else { const av = b.y - env2.y - GAP; pkl = Math.max(4, Math.min(13, av)); pkw = Math.min(env2.w, Math.max(5, totalArea / pkl)); pkx = Math.max(env2.x, Math.min(b.x, env2.x1 - pkw)); pkbb = Math.max(env2.y, b.y - pkl - GAP); }
-      const [prx, pry] = this._w2s(pkx, pkbb + pkl);
-      parts.push(`<rect x="${this._dd(prx)}" y="${this._dd(pry)}" width="${this._dd(this._px(pkw))}" height="${this._dd(this._px(pkl))}" fill="rgba(172,164,140,.32)" stroke="rgba(120,112,90,.45)" stroke-width="1" rx="2"/>`);
-      parts.push(`<rect x="${this._dd(prx)}" y="${this._dd(pry)}" width="${this._dd(this._px(pkw))}" height="${this._dd(this._px(pkl))}" fill="url(#pmc-hatch)" opacity=".4"/>`);
-      parts.push(this._tx(pkx + pkw / 2, pkbb + pkl / 2, `${m.parkReq} PK`, 9, 'rgba(70,60,50,.7)'));
+      const pkRect = [[pkx, pkbb], [pkx + pkw, pkbb], [pkx + pkw, pkbb + pkl], [pkx, pkbb + pkl]];
+      const pkClipped = clipSH(clipSH(pkRect, env.poly), t.poly);
+      if (pkClipped.length >= 3) {
+        const pkPts = pkClipped.map(([x, y]) => this._w2s(x, y).map(v => this._dd(v)).join(',')).join(' ');
+        parts.push(`<polygon points="${pkPts}" fill="rgba(172,164,140,.32)" stroke="rgba(120,112,90,.45)" stroke-width="1"/>`);
+        parts.push(`<polygon points="${pkPts}" fill="url(#pmc-hatch)" opacity=".4"/>`);
+        const cx = pkClipped.reduce((s, p) => s + p[0], 0) / pkClipped.length;
+        const cy = pkClipped.reduce((s, p) => s + p[1], 0) / pkClipped.length;
+        parts.push(this._tx(cx, cy, `${m.parkReq} PK`, 9, 'rgba(70,60,50,.7)'));
+      }
     }
 
-    // Bâtiment — filet de sécurité : clip contre la zone constructible ET la
-    // parcelle, puis vérification de surface minimale (12 m²). Si la forme
-    // résultante est trop petite, on n'affiche RIEN et on remonte un warning.
+    // Bâtiment — filet de sécurité : clip chaque BLOC (pas l'AABB global) contre
+    // la parcelle, puis vérification de surface minimale (12 m²). L'AABB peut
+    // déborder d'une parcelle diagonale ou d'une forme L/T — d'où le check bloc
+    // par bloc avant d'abandonner le rendu.
     const SURFACE_MIN_M2 = 12;
-    const batRect = [
-      [b.x,         b.y],
-      [b.x + b.w,   b.y],
-      [b.x + b.w,   b.y + b.l],
-      [b.x,         b.y + b.l],
-    ];
-    const batClipped = clipSH(clipSH(batRect, env.poly), t.poly);
-    const batClippedArea = batClipped.length >= 3 ? polyArea(batClipped) : 0;
-    const batSafe = batClippedArea >= SURFACE_MIN_M2;
+    let batTotalArea = 0;
+    for (const bl of (this.S.blocs ?? [])) {
+      const blPoly = bl.polygon?.length >= 3
+        ? bl.polygon.map(p => [p.x ?? p[0], p.y ?? p[1]])
+        : [[bl.x, bl.y], [bl.x + bl.w, bl.y], [bl.x + bl.w, bl.y + bl.l], [bl.x, bl.y + bl.l]];
+      const blClipped = clipSH(blPoly, t.poly);
+      if (blClipped.length >= 3) batTotalArea += polyArea(blClipped);
+    }
+    // Fallback legacy : test AABB si blocs absents
+    if (!this.S.blocs?.length) {
+      const batRect = [[b.x, b.y], [b.x + b.w, b.y], [b.x + b.w, b.y + b.l], [b.x, b.y + b.l]];
+      const batClipped = clipSH(clipSH(batRect, env.poly), t.poly);
+      batTotalArea = batClipped.length >= 3 ? polyArea(batClipped) : 0;
+    }
+    const batSafe = batTotalArea >= SURFACE_MIN_M2;
     if (!batSafe) {
-      this.S._insetWarn = `Bâtiment hors zone constructible (clip = ${batClippedArea.toFixed(1)} m²) — repositionnez ou ajustez les reculs`;
+      this.S._insetWarn = `Bâtiment hors parcelle (surface clip = ${batTotalArea.toFixed(1)} m²) — repositionnez ou ajustez les reculs`;
     }
 
     if (this._terrain.plu.constructible && batSafe) {
@@ -1119,7 +1182,30 @@ const PlanMasseCanvas = {
     // Programme COLL/BANDE/INDIV + split JOUR/NUIT (via FH.clipToBand)
     if (this.S.layers.prog && this._terrain.plu.constructible) this._drawProgramme(parts, m);
 
-    // Arêtes hit areas
+    // Arêtes colorées épaisses — dessinées EN DERNIER pour rester visibles
+    // par-dessus bâtiment/parking/végétation (demande utilisateur).
+    { const n = t.poly.length;
+      for (let i = 0; i < n; i++) {
+        const [p1x, p1y] = t.poly[i], [p2x, p2y] = t.poly[(i + 1) % n];
+        const [sx1, sy1] = this._w2s(p1x, p1y), [sx2, sy2] = this._w2s(p2x, p2y);
+        const type = this.S.edgeTypes[i];
+        const col = COL[type];
+        const isMit = type === 'lat' && this.S.mitoyen[i];
+        const sw = isMit ? 7 : 4;
+        const op = isMit ? 0.95 : 0.85;
+        parts.push(`<line x1="${this._dd(sx1)}" y1="${this._dd(sy1)}" x2="${this._dd(sx2)}" y2="${this._dd(sy2)}" stroke="${col}" stroke-width="${sw}" opacity="${op}" stroke-linecap="round" pointer-events="none"/>`);
+        if (isMit) {
+          const mx = (p1x + p2x) / 2, my = (p1y + p2y) / 2;
+          const dx = p2x - p1x, dy = p2y - p1y, len = Math.hypot(dx, dy) || 1;
+          const nxu = -dy / len, nyu = dx / len;
+          const [slx, sly] = this._w2s(mx + nxu * 1.0, my + nyu * 1.0);
+          parts.push(`<rect x="${this._dd(slx - 30)}" y="${this._dd(sly - 9)}" width="60" height="13" fill="rgba(59,130,246,.92)" rx="2" pointer-events="none"/>`);
+          parts.push(`<text x="${this._dd(slx)}" y="${this._dd(sly + 1)}" text-anchor="middle" font-size="9" font-weight="700" fill="white" font-family="'Inconsolata',monospace" pointer-events="none">MITOYEN 0m</text>`);
+        }
+      }
+    }
+
+    // Arêtes hit areas (par-dessus tout pour capter les clics)
     { const n = t.poly.length;
       for (let i = 0; i < n; i++) {
         const [p1x, p1y] = t.poly[i], [p2x, p2y] = t.poly[(i + 1) % n];
@@ -1314,22 +1400,38 @@ const PlanMasseCanvas = {
     sv('pmc-maxlgts', m.maxLgts);
     sv('pmc-maxniv', `${NV[m.nvMaxPLU] || 'R+' + (this.nvMaxPLU() - 1)} PLU · ${plu.heMax}m`);
 
-    // Gauges
+    // Gauges — labels PLU explicites (emprise MAX, perméabilité MIN)
     const empPct = m.empPct, empMax = plu.emprMax;
     const empBar = Math.min(100, empPct / empMax * 100);
-    const empColor = empPct > empMax ? 'var(--svg-voie)' : empPct > empMax * .9 ? '#F59E0B' : '#6366F1';
+    const empOver = empPct > empMax;
+    const empColor = empOver ? 'var(--svg-voie)' : empPct > empMax * .9 ? '#F59E0B' : '#6366F1';
     const gfEmp = g('pmc-gf-emp');
     if (gfEmp) { gfEmp.style.width = empBar.toFixed(0) + '%'; gfEmp.style.background = empColor; }
     sv('pmc-gv-emp', empPct.toFixed(1) + '%');
-    sv('pmc-gl-emp', `max ${empMax}%`);
+    const glEmp = g('pmc-gl-emp');
+    if (glEmp) {
+      glEmp.textContent = `MAX ${empMax}% PLU`;
+      glEmp.style.color = empOver ? 'var(--svg-voie)' : 'var(--faint)';
+      glEmp.style.fontWeight = empOver ? '700' : '400';
+    }
 
     const permPct = m.permPct, permMin = plu.permMin;
     const permBar = Math.min(100, permPct / 100 * 100);
-    const permColor = permPct < permMin ? 'var(--svg-voie)' : 'var(--svg-fond)';
+    const permUnder = permPct < permMin;
+    const permColor = permUnder ? 'var(--svg-voie)' : 'var(--svg-fond)';
     const gfPerm = g('pmc-gf-perm');
     if (gfPerm) { gfPerm.style.width = permBar.toFixed(0) + '%'; gfPerm.style.background = permColor; }
-    sv('pmc-gv-perm', permPct.toFixed(1) + '%');
-    sv('pmc-gl-perm', `min ${permMin}%`);
+    const gvPerm = g('pmc-gv-perm');
+    if (gvPerm) {
+      gvPerm.textContent = permPct.toFixed(1) + '%';
+      gvPerm.style.color = permUnder ? 'var(--svg-voie)' : 'var(--success)';
+    }
+    const glPerm = g('pmc-gl-perm');
+    if (glPerm) {
+      glPerm.textContent = `MIN ${permMin}% PLU (espace vert)`;
+      glPerm.style.color = permUnder ? 'var(--svg-voie)' : 'var(--faint)';
+      glPerm.style.fontWeight = permUnder ? '700' : '400';
+    }
 
     // Checks table
     const ckBody = g('pmc-ck-body');
@@ -1722,6 +1824,12 @@ const PlanMasseCanvas = {
       if (self._drag?.type === 'edge-pending' && !self._drag.moved) {
         self.cycleEdge(self._drag.edgeIdx);
       }
+      // Drag réel sur bloc (body/handle) → édition manuelle : marque dirty
+      // pour que les sliders / PLU override ne réécrasent pas la géométrie.
+      const d = self._drag;
+      if (d && (d.type === 'body' || d.type === 'handle')) {
+        self.S._manualEdit = true;
+      }
       self._drag = null;
     });
 
@@ -1766,6 +1874,9 @@ const PlanMasseCanvas = {
     }
     this._persistEdgeState();
     this._clampBat();
+    // edgeType change l'enveloppe constructible (reculs voie/lat/fond) →
+    // re-appliquer la stratégie SAUF si édition manuelle en cours.
+    this._reApplyIfClean('cycleEdge');
     this.render();
   },
 
@@ -1786,6 +1897,8 @@ const PlanMasseCanvas = {
     this.S.mitoyen[edgeIdx] = !!isMitoyen;
     this._persistEdgeState();
     this._clampBat();
+    // Mitoyen = recul 0 sur cette arête → enveloppe change → re-apply sauf manual edit
+    this._reApplyIfClean('setMitoyen');
     this.render();
     if (isMitoyen) {
       const hLim = this._terrain.plu.heMax ?? 9;
@@ -1875,6 +1988,18 @@ const PlanMasseCanvas = {
 
   setView(v) { this.S.view = v; this.render(); },
 
+  // Re-applique la stratégie courante SAUF si l'utilisateur a édité manuellement.
+  // Utilisé par les sliders, overrides PLU, cycleEdge et mitoyen pour ne pas
+  // écraser une édition utilisateur ponctuelle. Reset explicite nécessaire.
+  _reApplyIfClean(label) {
+    if (this.S._manualEdit) {
+      console.info(`[PMC] skip re-apply (${label}) — _manualEdit=true`);
+      return false;
+    }
+    try { this._applyScenarioGeometry(this.curSc()); return true; }
+    catch (e) { console.warn(`[PMC] scenario re-apply after ${label} failed:`, e.message); return false; }
+  },
+
   setProg(key, val) {
     if (key === 'type') {
       this.S.prog.type = val;
@@ -1882,8 +2007,7 @@ const PlanMasseCanvas = {
       this._initBatFromPIR();
       // Matérialiser la stratégie courante — évite que la bascule maison↔collectif
       // laisse un rect PIR trop étroit pour passer le clip batSafe.
-      try { this._applyScenarioGeometry(this.curSc()); }
-      catch (e) { console.warn('[PMC] scenario re-apply failed:', e.message); }
+      this._reApplyIfClean('setProg(type)');
     } else if (key === 'nvMax') {
       const capped = Math.min(val, this.nvMaxPLU());
       this.S.prog.nvMax = capped;
@@ -1893,12 +2017,25 @@ const PlanMasseCanvas = {
           if (bl.niveaux > capped) bl.niveaux = capped;
         }
       }
+      this._reApplyIfClean('setProg(nvMax)');
     } else if (key === 'profMax') {
       this.S.prog.profMax = val;
+      this._reApplyIfClean('setProg(profMax)');
     } else if (key === 'parkMode') {
       this.S.prog.parkMode = val;
+      this._reApplyIfClean('setProg(parkMode)');
     } else if (key === 'maxUnits') {
-      this.S.prog.maxUnits = val;
+      this.S.prog.maxUnits = Math.max(this.S.prog.minUnits ?? 1, val);
+      this._reApplyIfClean('setProg(maxUnits)');
+    } else if (key === 'minUnits') {
+      const capped = Math.min(this.S.prog.maxUnits ?? val, Math.max(1, val));
+      this.S.prog.minUnits = capped;
+      // si min > max, pousser max (sync complète côté state)
+      if (this.S.prog.maxUnits < capped) this.S.prog.maxUnits = capped;
+      this._reApplyIfClean('setProg(minUnits)');
+    } else if (key === 'emprCiblePct') {
+      this.S.prog.emprCiblePct = Math.max(0, Math.min(100, val));
+      this._reApplyIfClean('setProg(emprCiblePct)');
     }
     this.render();
   },
@@ -2055,6 +2192,7 @@ const PlanMasseCanvas = {
     if (role === 'fond') this.S.edgeTypes[i] = 'fond';
     else this.S.edgeTypes[i] = 'lat';
     this.S.mitoyen[i] = !this.S.mitoyen[i];
+    this._reApplyIfClean('toggleMitoyen');
     this.render();
     this._persistEdges?.();
     return this.S.mitoyen[i];
@@ -2413,7 +2551,21 @@ const PlanMasseCanvas = {
     const sc = this.curSc();
     if (!sc) return;
     this.S.prog.nvMax = Math.min(sc.nv, this.nvMaxPLU());
+    // Changement explicite de stratégie → clear dirty, géométrie fraîche
+    this.S._manualEdit = false;
     this._applyScenarioGeometry(sc);
+    this.render();
+  },
+
+  /**
+   * Reset : efface le flag manual-edit et ré-applique la stratégie courante.
+   * Utilisé par le bouton UI "Reset" pour retrouver la géométrie auto après édition.
+   */
+  resetToStrategy() {
+    this.pushHistory?.();
+    this.S._manualEdit = false;
+    try { this._applyScenarioGeometry(this.curSc()); }
+    catch (e) { console.warn('[PMC] resetToStrategy failed:', e.message); }
     this.render();
   },
 
@@ -2432,33 +2584,171 @@ const PlanMasseCanvas = {
     const profMax = this.S.prog.profMax ?? 15;
     const fac = sc.emprFac ?? 1;
 
-    let wTarget = Math.min(rtaaW, env.w * 0.9) * fac;
-    let lTarget = Math.min(profMax, env.h * 0.9) * fac;
-    if (env.h < lTarget * 0.7 && env.w > wTarget) [wTarget, lTarget] = [lTarget, wTarget];
+    // Mode densité max (A1 emprFac=1.0, stratégie rect) : lève le cap rtaaW
+    // mais target dans le repère OBB de l'enveloppe (pas AABB) pour que le rect
+    // orienté par la stratégie tienne EXACTEMENT dans env, sans déborder sur
+    // les reculs après clipping.
+    // ── Cible CES uniforme sur toutes les stratégies (v4h pattern) ───
+    // Ciblage par surface : cibleM2 = parcelArea × emprMax% × emprCible% × emprFac
+    //   - emprCiblePct (slider user, 0-100) : override global du % CES
+    //   - sc.emprFac (0.55-1.00) : cap présélectionné par stratégie
+    //   - emprMax PLU : plafond réglementaire absolu
+    // Puis dimensionne w/l dans le repère OBB de l'enveloppe pour respecter
+    // l'orientation de la parcelle, en appliquant les caps RTAA (largeur
+    // ventilation) sur les strategies mono-bloc uniquement.
+    const parcelArea = this._terrain.area ?? 0;
+    const cesMaxM2   = parcelArea * ((plu.emprMax ?? 60) / 100);
+    const vegMin     = parcelArea * ((plu.permMin ?? 25) / 100);
+    const isANC      = (this._session?.terrain?.assainissement === 'ANC');
+    const ancArea    = isANC ? 40 : 0;
+    const parkExt    = this.S.prog.parkMode === 'ext' ? Math.min(50, parcelArea * 0.05) : 0;
+    const empriseDispo = Math.max(20, Math.min(cesMaxM2, parcelArea - vegMin - ancArea - parkExt));
+    const emprCibleFrac = Math.max(0, Math.min(1, (this.S.prog.emprCiblePct ?? 100) / 100));
+    let cibleM2 = Math.max(MIN_W * MIN_L, empriseDispo * emprCibleFrac * fac);
+
+    // ── Contraintes lgts min/max : clamp cibleM2 sur la plage de logements ──
+    // lgts = cibleFootprint × nvEff × eff / SP_MOY (≈57 m²/logement pondéré).
+    // Applicable uniquement aux types collectif/bureau/erp où le slider est visible.
+    const typeIsUnits = ['collectif', 'bureau', 'erp'].includes(this.S.prog.type);
+    if (typeIsUnits) {
+      const nvEff = Math.min(this.S.prog.nvMax ?? sc.nv, this.nvMaxPLU());
+      const lgtsPerM2 = (nvEff * (sc.eff ?? 0.8)) / SP_MOY;
+      const minU = Math.max(1, this.S.prog.minUnits ?? 1);
+      const maxU = Math.max(minU, this.S.prog.maxUnits ?? 40);
+      const cibleMin = minU / lgtsPerM2;
+      const cibleMax = maxU / lgtsPerM2;
+      if (cibleM2 < cibleMin) cibleM2 = Math.min(empriseDispo, cibleMin);
+      if (cibleM2 > cibleMax) cibleM2 = cibleMax;
+      this.S._lgtsRange = { min: minU, max: maxU, per: lgtsPerM2, cibleMin, cibleMax };
+    } else {
+      this.S._lgtsRange = null;
+    }
+
+    const envXY = env.poly.map(p => FH.toXY(p));
+    const envOBB = FH.obb(envXY);
+    const envArea = polyArea(env.poly);
+    const fillRatio = Math.min(1, cibleM2 / Math.max(envArea, 1));
+    const linearScale = Math.sqrt(fillRatio);
+
+    // Escalade densité MAX : si mono-bloc capé par RTAA/profMax ne peut pas
+    // atteindre cibleM2, bascule sur multiRect pour saturer vers l'emprMax PLU.
+    // Critère : cibleM2 > 115% du cap mono-bloc ET parcelle assez longue
+    // pour ≥2 blocs alignés (profMax + gap interBat minimum).
+    const monoBloc = ['rect', 'oblique', 'isohypses'].includes(sc.strategy);
+    const monoCapM2 = Math.min(rtaaW, envOBB.w * 0.95) * Math.min(profMax, envOBB.l * 0.95);
+    const gapInter = Math.max(plu.interBatMin || 4, sc.nv * H_NIV / 2);
+    const canMultiFit = envOBB.l >= (Math.min(profMax, envOBB.l * 0.45) * 2 + gapInter);
+    const escaladeMulti = monoBloc && cibleM2 > monoCapM2 * 1.15 && canMultiFit;
+    const effStrategy = escaladeMulti ? 'multi' : sc.strategy;
+    const effMono = ['rect', 'oblique', 'isohypses'].includes(effStrategy);
+
+    // Dimensions cibles dans le repère OBB (respecte la rotation parcelle)
+    let wTarget, lTarget;
+    if (escaladeMulti) {
+      // Multi escaladé : bloc = cap RTAA × cap profMax, multiRect tuile obb.l
+      wTarget = Math.min(rtaaW, envOBB.w * 0.95);
+      lTarget = Math.min(profMax, (envOBB.l - gapInter) / 2);
+    } else {
+      wTarget = envOBB.w * linearScale;
+      lTarget = envOBB.l * linearScale;
+      // Caps RTAA DOM (largeur ventilation) : uniquement mono-bloc.
+      // Multi-blocs / zone distribuent la surface : chaque bloc reste dans RTAA.
+      if (effMono) {
+        const wCap = Math.min(rtaaW, envOBB.w * 0.95);
+        const lCap = Math.min(profMax, envOBB.l * 0.95);
+        if (wTarget > wCap) { lTarget *= (wCap / wTarget); wTarget = wCap; }
+        if (lTarget > lCap) { wTarget *= (lCap / lTarget); lTarget = lCap; }
+      }
+    }
+
+    // Réorienter si l'enveloppe est plus étroite côté l que w
+    if (envOBB.l < lTarget * 0.7 && envOBB.w > wTarget) [wTarget, lTarget] = [lTarget, wTarget];
+
+    // Filet final : le rect d'UN bloc ne doit pas dépasser cibleM2.
+    // Exception : multi escaladé → cibleM2 se répartit sur N blocs,
+    // le cap par bloc n'a pas de sens.
+    if (!escaladeMulti) {
+      const cur = wTarget * lTarget;
+      if (cur > cibleM2) {
+        const k = Math.sqrt(cibleM2 / cur);
+        wTarget *= k; lTarget *= k;
+      }
+    }
+    wTarget = Math.max(MIN_W, wTarget);
+    lTarget = Math.max(MIN_L, lTarget);
+
+    // Exposer pour hints UI
+    this.S._empriseDispo = empriseDispo;
+    this.S._cibleM2 = cibleM2;
+    this.S._deductions = { vegMin, ancArea, parkExt, isANC };
+    this.S._escaladeMulti = escaladeMulti;
 
     const AS = window.AutoPlanStrategies;
     let rawBlocs = [];
-    if (AS && typeof AS[sc.strategy] === 'function') {
+    if (AS && typeof AS[effStrategy] === 'function') {
       try {
         const pir = poleOfInaccessibility(env.poly, 1.5);
         const pirXY = { x: pir[0], y: pir[1] };
         const gapMin = Math.max(plu.interBatMin || 4, sc.nv * H_NIV / 2);
         const azimut = this.S.prog?._topoConstraints?.azimut_deg;
-        switch (sc.strategy) {
-          case 'rect':      rawBlocs = AS.rect(env.poly, wTarget, lTarget, pirXY); break;
-          case 'oblique':   rawBlocs = AS.oblique(env.poly, this._terrain.poly, this._terrain.edgeTypes, wTarget, lTarget); break;
-          case 'zone':      rawBlocs = AS.zone(env.poly, 0.5, wTarget * lTarget); break;
-          case 'zoneHull':  rawBlocs = AS.zoneHull(env.poly, wTarget * lTarget); break;
-          case 'multi':     rawBlocs = AS.multiRect(env.poly, wTarget, lTarget, gapMin, 4); break;
-          case 'lshape':    rawBlocs = AS.lShape(env.poly, wTarget, lTarget, pirXY); break;
-          case 'trapezoid': rawBlocs = AS.trapezoid(env.poly, this._terrain.poly, this._terrain.edgeTypes, wTarget, lTarget); break;
+        switch (effStrategy) {
+          case 'rect':       rawBlocs = AS.rect(env.poly, wTarget, lTarget, pirXY); break;
+          case 'oblique':    rawBlocs = AS.oblique(env.poly, this._terrain.poly, this._terrain.edgeTypes, wTarget, lTarget); break;
+          case 'zone':       rawBlocs = AS.zone(env.poly, 0.5, wTarget * lTarget); break;
+          case 'zoneHull':   rawBlocs = AS.zoneHull(env.poly, wTarget * lTarget); break;
+          case 'multi':      rawBlocs = AS.multiRect(env.poly, wTarget, lTarget, gapMin, 4); break;
+          case 'lshape':     rawBlocs = AS.lShape(env.poly, wTarget, lTarget, pirXY); break;
+          case 'trapezoid':  rawBlocs = AS.trapezoid(env.poly, this._terrain.poly, this._terrain.edgeTypes, wTarget, lTarget); break;
+          case 'tShape':     rawBlocs = AS.tShape(env.poly); break;
+          case 'cross':      rawBlocs = AS.cross(env.poly); break;
+          case 'biBarre':    rawBlocs = AS.biBarre(env.poly, null, Math.max(3, gapMin)); break;
+          case 'deuxLames':  rawBlocs = AS.deuxLames(env.poly, gapMin); break;
+          case 'troisLames': rawBlocs = AS.troisLames(env.poly, gapMin); break;
           case 'isohypses':
-            if (Number.isFinite(azimut)) rawBlocs = AS.isohypses(env.poly, wTarget, lTarget, pirXY, azimut, profMax);
+            if (Number.isFinite(azimut)) {
+              rawBlocs = AS.isohypses(env.poly, wTarget, lTarget, pirXY, azimut, profMax);
+              // v4h : clampProf applique la contrainte profondeur relative à la pente
+              rawBlocs = (rawBlocs || []).map(bl => bl?.polygon
+                ? { ...bl, polygon: FH.clampProf(bl.polygon, azimut, profMax) }
+                : bl);
+            }
             break;
+        }
+        // Si escalade multi échoue (fallback requis) : retomber sur mono-rect capé
+        if (escaladeMulti && !rawBlocs.length) {
+          const wCap = Math.min(rtaaW, envOBB.w * 0.95);
+          const lCap = Math.min(profMax, envOBB.l * 0.95);
+          rawBlocs = AS.rect(env.poly, wCap, lCap, pirXY);
         }
       } catch (e) {
         console.warn('[PMC] scenario geometry failed', sc.id, e);
       }
+    }
+
+    // ── v4h expandToMit : pousser vers les arêtes mitoyennes recul=0 ──
+    // Uniquement si au moins une arête latérale est marquée mitoyenne.
+    const hasMitoyen = this._terrain.edgeTypes.some((t, i) =>
+      t === 'lat' && (this.S.mitoyen?.[i] === true));
+    if (hasMitoyen && rawBlocs.length) {
+      try {
+        const reculsArr = this.S.edgeTypes.map((_, i) => this.edgeRecul(i));
+        const batPolys = rawBlocs.map(bl => bl.polygon).filter(p => p?.length >= 3);
+        const expanded = FH.expandToMit(batPolys, this._terrain.poly, reculsArr, this._terrain.edgeTypes, env.poly);
+        if (expanded?.length === rawBlocs.length) {
+          // Remplace polygones en conservant theta/w/l/metadata
+          rawBlocs = rawBlocs.map((bl, i) => expanded[i]?.length >= 3
+            ? { ...bl, polygon: expanded[i] }
+            : bl);
+        }
+        // Mesure de contact mitoyenneté (métrique exposée pour validation PLU)
+        this.S._lMitFacade = FH.lMitFacade(
+          rawBlocs.map(bl => bl.polygon).filter(p => p?.length >= 3),
+          this._terrain.poly, reculsArr, this._terrain.edgeTypes);
+      } catch (e) {
+        console.warn('[PMC] expandToMit failed:', e.message);
+      }
+    } else {
+      this.S._lMitFacade = 0;
     }
 
     // Usage par défaut selon le type programme
@@ -2480,8 +2770,8 @@ const PlanMasseCanvas = {
 
     if (blocs.length) {
       this.S.blocs = blocs;
-      this.S.shapePreset = sc.strategy === 'lshape' ? 'L' :
-                           sc.strategy === 'multi' ? 'multi' : 'I';
+      this.S.shapePreset = effStrategy === 'lshape' ? 'L' :
+                           effStrategy === 'multi' ? 'multi' : 'I';
       this.S.activeBlocIdx = 0;
       this._syncBatFromBlocs();
       this._clampBat();

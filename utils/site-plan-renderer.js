@@ -81,9 +81,10 @@ const SitePlanRenderer = {
    * @returns {Promise<{ svg: string, meta: object }>}
    */
   async build(session, opts = {}) {
-    const withProject   = !!opts.withProject;
-    const fetchExternal = opts.fetchExternal !== false;
-    const cache         = opts.cache ?? {};
+    const withProject    = !!opts.withProject;
+    const fetchExternal  = opts.fetchExternal !== false;
+    const cache          = opts.cache ?? {};
+    const satelliteGhost = Math.max(0, Math.min(1, Number(opts.satelliteGhost ?? 0)));
 
     // ── 1. Géométrie parcelle cible ────────────────────────────────
     const parcelGeo = this._extractParcelGeo(session);
@@ -131,10 +132,16 @@ const SitePlanRenderer = {
       offsetY_mm: fmt.marginMm,
     };
 
+    // ── 4b. Satellite ghost overlay (IGN ortho) ────────────────────
+    if (satelliteGhost > 0 && fetchExternal) {
+      ctx.satelliteDataUrl = cache.satelliteDataUrl
+        ?? await this._fetchSatelliteGhost(view, clng, clat, fmt);
+    }
+
     // ── 5. Render ──────────────────────────────────────────────────
     const svg = this._renderSVG({
       session, parcelGeo, parcelLocal, ctx, view, scale, format, fmt,
-      withProject, clng, clat,
+      withProject, clng, clat, satelliteGhost,
     });
 
     return {
@@ -145,8 +152,37 @@ const SitePlanRenderer = {
         commune: session?.terrain?.commune ?? '',
         reference: session?.terrain?.reference ?? '',
         layers: Object.keys(ctx).filter(k => ctx[k]),
+        satelliteDataUrl: ctx.satelliteDataUrl ?? null,
       },
     };
+  },
+
+  // Récupère l'ortho IGN en JPEG dataURL couvrant la vue
+  async _fetchSatelliteGhost(view, clng, clat, fmt) {
+    try {
+      const LNG = 111320 * Math.cos(clat * Math.PI / 180);
+      const LAT = 111320;
+      const lngMin = clng + view.minX_m / LNG;
+      const lngMax = clng + view.maxX_m / LNG;
+      const latMin = clat - view.maxY_m / LAT;
+      const latMax = clat - view.minY_m / LAT;
+      const clipW = fmt.widthMm - 2 * fmt.marginMm - 70;
+      const clipH = fmt.heightMm - 2 * fmt.marginMm;
+      const pxW = Math.min(2048, Math.round(clipW * 4));
+      const pxH = Math.min(2048, Math.round(clipH * 4));
+      const url = `https://data.geopf.fr/wms-r?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=HR.ORTHOIMAGERY.ORTHOPHOTOS&STYLES=&CRS=EPSG:4326&BBOX=${latMin},${lngMin},${latMax},${lngMax}&WIDTH=${pxW}&HEIGHT=${pxH}&FORMAT=image/jpeg`;
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      return await new Promise(r => {
+        const fr = new FileReader();
+        fr.onload = () => r(fr.result);
+        fr.readAsDataURL(blob);
+      });
+    } catch (e) {
+      console.warn('[SitePlan] satellite ghost failed:', e.message);
+      return null;
+    }
   },
 
   /**
@@ -258,6 +294,14 @@ const SitePlanRenderer = {
       } catch (e) { console.warn('[SitePlan] bdtopo routes failed:', e.message); }
     }
 
+    // Lazy-load BILTerrain si absent (cas random-pdf ou phase appelée avant P01)
+    if (fetchExternal && typeof window !== 'undefined' && !window.BILTerrain) {
+      try {
+        const mod = await import('../services/bil-terrain.js');
+        window.BILTerrain = mod.default ?? mod.BILTerrain;
+      } catch (e) { console.warn('[SitePlan] BILTerrain lazy-load failed:', e.message); }
+    }
+
     // Courbes de niveau (uniquement si BIL disponible — sinon skip silencieux)
     if (cache.contour) {
       ctx.contour = cache.contour;
@@ -279,6 +323,9 @@ const SitePlanRenderer = {
         ctx.cornerAlts = res.points;
       } catch (e) { console.warn('[SitePlan] NGR sample failed:', e.message); }
     }
+
+    // Synthèse PLU (toujours, même sans projet — alimente le cartouche)
+    ctx.pluSynth = await this._resolvePluSynthesis(session);
 
     // Couches projet (si demandé)
     if (withProject) {
@@ -306,7 +353,7 @@ const SitePlanRenderer = {
   // INTERNALS — rendu SVG
   // ════════════════════════════════════════════════════════════════
 
-  _renderSVG({ session, parcelGeo, parcelLocal, ctx, view, scale, format, fmt, withProject, clng, clat }) {
+  _renderSVG({ session, parcelGeo, parcelLocal, ctx, view, scale, format, fmt, withProject, clng, clat, satelliteGhost = 0 }) {
     const W = fmt.widthMm, H = fmt.heightMm;
     const layers = [];
 
@@ -345,14 +392,16 @@ const SitePlanRenderer = {
     // ── Background ───────────────────────────────────────────────
     layers.push(`<rect width="${W}" height="${H}" fill="${C.paper}"/>`);
 
-    // ── Cadre extérieur ──────────────────────────────────────────
-    layers.push(`<rect x="${fmt.marginMm * 0.5}" y="${fmt.marginMm * 0.5}" width="${W - fmt.marginMm}" height="${H - fmt.marginMm}" fill="none" stroke="${C.frame}" stroke-width="0.4"/>`);
-
     // ── Zone de contenu (clip) ───────────────────────────────────
     const clipW = W - 2 * fmt.marginMm - 70;
     const clipH = H - 2 * fmt.marginMm;
     layers.push(`<defs><clipPath id="content-clip"><rect x="${fmt.marginMm}" y="${fmt.marginMm}" width="${clipW}" height="${clipH}"/></clipPath></defs>`);
     layers.push(`<g clip-path="url(#content-clip)">`);
+
+    // ── 0. Ortho satellite (fond ghost) ───────────────────────────
+    if (satelliteGhost > 0 && ctx.satelliteDataUrl) {
+      layers.push(`<image x="${fmt.marginMm}" y="${fmt.marginMm}" width="${clipW}" height="${clipH}" href="${ctx.satelliteDataUrl}" opacity="${satelliteGhost.toFixed(2)}" preserveAspectRatio="none"/>`);
+    }
 
     // ── 1. Courbes de niveau (fond) ───────────────────────────────
     if (ctx.contour?.lines?.length) {
@@ -596,10 +645,44 @@ const SitePlanRenderer = {
     const cx = W - fmt.marginMm - 75;
     const cy = fmt.marginMm + 12;
     return `<g transform="translate(${cx},${cy})">
-  <circle r="6" fill="${C.paper}" stroke="${C.frame}" stroke-width="0.3"/>
-  <path d="M0,-5 L1.6,2 L0,1 L-1.6,2 Z" fill="${C.frame}"/>
-  <text y="-7.5" text-anchor="middle" font-family="Playfair Display, serif" font-size="3.5" font-weight="700" fill="${C.frame}">N</text>
+  <line x1="0" y1="5" x2="0" y2="-5" stroke="${C.frame}" stroke-width="0.35"/>
+  <circle r="1.6" fill="${C.paper}" stroke="${C.frame}" stroke-width="0.35"/>
+  <text y="-7" text-anchor="middle" font-family="Playfair Display, serif" font-size="3.6" font-weight="700" fill="${C.frame}">N</text>
 </g>`;
+  },
+
+  // ── Synthèse PLU : résolution zone + règles via PLUP07Adapter ─
+  async _resolvePluSynthesis(session) {
+    const t = session?.terrain ?? {};
+    const zone = t.zone_plu ?? session?.phases?.[4]?.data?.zone_plu ?? null;
+    const commune = t.commune ?? null;
+    if (!zone || !commune) return null;
+    try {
+      const mod = await import('../services/plu-p07-adapter.js');
+      const Adapter = mod.PLUP07Adapter ?? mod.default;
+      const adapter = new Adapter();
+      await adapter.loadRules('../data/plu-rules-reunion.json');
+      const insee = t.insee ?? t.code_insee ?? commune;
+      const res = adapter.resolve(insee, zone, t.zone_rtaa ?? '1');
+      if (!res) return null;
+      return {
+        zone: res.zone_plu ?? zone,
+        label: res.label ?? commune,
+        type: res.plu?.type ?? null,
+        sousType: res.plu?.sous_type ?? null,
+        heMax: res.plu?.heMax ?? null,
+        emprMax: res.plu?.emprMax ?? null,
+        permMin: res.plu?.permMin ?? null,
+        recVoie: res.reculs?.voie ?? null,
+        recLat: res.reculs?.lat ?? null,
+        recFond: res.reculs?.fond ?? null,
+        interBat: res.plu?.interBatMin ?? null,
+        confidence: res._meta?.confidence ?? 0,
+      };
+    } catch (e) {
+      console.warn('[SitePlan] PLU synth failed:', e.message);
+      return null;
+    }
   },
 
   _renderEchelle(scale, fmt, H) {
@@ -630,38 +713,73 @@ const SitePlanRenderer = {
   _renderCartouche({ session, scale, format, fmt, withProject, ctx, W, H }) {
     const t = session?.terrain ?? {};
     const x = W - fmt.marginMm - 65;
-    const y = fmt.marginMm + 22;
+    const y = fmt.marginMm + 26;
     const w = 60;
     const lineH = 4.2;
 
-    const lines = [];
-    lines.push({ k: 'Document', v: withProject ? 'Plan masse projet' : "Plan d'état des lieux" });
-    lines.push({ k: 'Commune',  v: t.commune ?? '—' });
-    lines.push({ k: 'Parcelle', v: `${t.section ?? ''} ${t.parcelle ?? ''}`.trim() || '—' });
-    lines.push({ k: 'Contenance', v: t.contenance_m2 ? `${Math.round(t.contenance_m2)} m²` : '—' });
-    lines.push({ k: 'Échelle',  v: `1/${scale}` });
-    lines.push({ k: 'Format',   v: format });
+    // ── Section 1 : Document ─────────────────────────────────────
+    const head = [];
+    head.push({ k: 'Document', v: withProject ? 'Plan masse projet' : "Plan d'état des lieux" });
+    head.push({ k: 'Commune',  v: t.commune ?? '—' });
+    head.push({ k: 'Parcelle', v: `${t.section ?? ''} ${t.parcelle ?? ''}`.trim() || '—' });
+    head.push({ k: 'Contenance', v: t.contenance_m2 ? `${Math.round(t.contenance_m2)} m²` : '—' });
+    head.push({ k: 'Échelle',  v: `1/${scale}` });
+    head.push({ k: 'Format',   v: format });
 
-    if (withProject && ctx.project?.plu) {
-      lines.push({ k: 'Zone PLU', v: ctx.project.plu.zone });
-      if (ctx.project.plu.ces  != null) lines.push({ k: 'CES max',  v: `${ctx.project.plu.ces}` });
-      if (ctx.project.plu.hMax != null) lines.push({ k: 'H max',    v: `${ctx.project.plu.hMax} m` });
+    // ── Section 2 : Synthèse PLU (toujours si dispo) ─────────────
+    const plu = ctx.pluSynth ?? (withProject && ctx.project?.plu ? {
+      zone: ctx.project.plu.zone,
+      emprMax: ctx.project.plu.ces,
+      heMax: ctx.project.plu.hMax,
+      recVoie: ctx.project.plu.recVoie,
+      recLat: ctx.project.plu.recLat,
+      recFond: ctx.project.plu.recFond,
+    } : null);
+
+    const pluRows = [];
+    if (plu) {
+      pluRows.push({ k: 'Zone', v: plu.zone ?? '—' });
+      if (plu.emprMax != null) pluRows.push({ k: 'Emprise', v: `${plu.emprMax} %` });
+      if (plu.heMax   != null) pluRows.push({ k: 'Hauteur', v: `${plu.heMax} m` });
+      const reculs = [plu.recVoie, plu.recLat, plu.recFond]
+        .map(v => v != null ? `${v}` : '–').join('/');
+      if (plu.recVoie != null || plu.recLat != null || plu.recFond != null) {
+        pluRows.push({ k: 'Reculs V/L/F', v: `${reculs} m` });
+      }
     }
 
+    // ── Section 3 : Édition ──────────────────────────────────────
     const today = new Date().toISOString().slice(0, 10);
-    lines.push({ k: 'Édité le', v: today });
+    const foot = [{ k: 'Édité le', v: today }];
 
-    const rows = lines.map((l, i) => `
-  <text x="${(x + 1.5).toFixed(2)}" y="${(y + 4 + i * lineH).toFixed(2)}" font-family="IBM Plex Mono, monospace" font-size="2" fill="${C.textMuted}">${this._esc(l.k)}</text>
-  <text x="${(x + w - 1.5).toFixed(2)}" y="${(y + 4 + i * lineH).toFixed(2)}" font-family="IBM Plex Mono, monospace" font-size="2" font-weight="600" fill="${C.text}" text-anchor="end">${this._esc(l.v)}</text>`).join('');
+    const sections = [
+      { title: null,              rows: head },
+      ...(pluRows.length ? [{ title: 'Synthèse PLU', rows: pluRows }] : []),
+      { title: null,              rows: foot },
+    ];
 
-    const hBox = 8 + lines.length * lineH;
+    const out = [];
+    let cursor = y + 4;
+    for (const s of sections) {
+      if (s.title) {
+        out.push(`<line x1="${(x + 1.5).toFixed(2)}" y1="${(cursor - 2.5).toFixed(2)}" x2="${(x + w - 1.5).toFixed(2)}" y2="${(cursor - 2.5).toFixed(2)}" stroke="${C.textMuted}" stroke-width="0.12" opacity="0.5"/>`);
+        out.push(`<text x="${(x + 1.5).toFixed(2)}" y="${(cursor + 0.6).toFixed(2)}" font-family="Playfair Display, serif" font-size="2.2" font-weight="700" fill="${C.parcelTarget}" letter-spacing="0.08">${this._esc(s.title.toUpperCase())}</text>`);
+        cursor += 3.4;
+      }
+      for (const r of s.rows) {
+        out.push(`<text x="${(x + 1.5).toFixed(2)}" y="${cursor.toFixed(2)}" font-family="IBM Plex Mono, monospace" font-size="2" fill="${C.textMuted}">${this._esc(r.k)}</text>`);
+        out.push(`<text x="${(x + w - 1.5).toFixed(2)}" y="${cursor.toFixed(2)}" font-family="IBM Plex Mono, monospace" font-size="2" font-weight="600" fill="${C.text}" text-anchor="end">${this._esc(r.v)}</text>`);
+        cursor += lineH;
+      }
+    }
+    const hBox = (cursor - y) + 2;
 
     return `<g>
   <rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w}" height="${hBox.toFixed(2)}" fill="${C.paper}" stroke="${C.frame}" stroke-width="0.3"/>
-  <text x="${(x + w / 2).toFixed(2)}" y="${(y - 1).toFixed(2)}" font-family="Playfair Display, serif" font-size="3" font-weight="700" fill="${C.frame}" text-anchor="middle">TERLAB</text>
-  ${rows}
-  <text x="${(x + w / 2).toFixed(2)}" y="${(y + hBox + 3).toFixed(2)}" font-family="IBM Plex Mono, monospace" font-size="1.6" fill="${C.textMuted}" text-anchor="middle">Source : IGN Géoplateforme — usage pédagogique</text>
+  <rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${w}" height="5" fill="${C.frame}"/>
+  <text x="${(x + w / 2).toFixed(2)}" y="${(y + 3.6).toFixed(2)}" font-family="Playfair Display, serif" font-size="3.2" font-weight="700" fill="${C.paper}" text-anchor="middle" letter-spacing="0.2">TERLAB</text>
+  ${out.join('\n  ')}
+  <text x="${(x + w / 2).toFixed(2)}" y="${(y + hBox + 3).toFixed(2)}" font-family="IBM Plex Mono, monospace" font-size="1.6" fill="${C.textMuted}" text-anchor="middle">Source : IGN Géoplateforme · PLU GPU — usage pédagogique</text>
 </g>`;
   },
 
