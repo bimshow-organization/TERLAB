@@ -118,7 +118,16 @@ const BILTerrain = {
     const cY = (minY + minY + H * px) / 2;
 
     const url = this._buildUrl(bbox, W, H);
-    const buf = await (await fetch(url)).arrayBuffer();
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`BIL WMS ${res.status} ${res.statusText}`);
+    const ct = res.headers.get('content-type') ?? '';
+    if (!ct.includes('bil') && !ct.includes('octet')) {
+      throw new Error(`BIL WMS réponse inattendue: ${ct.slice(0, 80)}`);
+    }
+    const buf = await res.arrayBuffer();
+    if (buf.byteLength < W * H * 4) {
+      throw new Error(`BIL buffer trop petit: ${buf.byteLength} octets (attendu ${W * H * 4})`);
+    }
     const heights = this._parseBIL(buf);
 
     const stepX = (W * px) / (W - 1), stepY = (H * px) / (H - 1);

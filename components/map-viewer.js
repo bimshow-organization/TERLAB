@@ -642,15 +642,14 @@ const MapViewer = {
         const isHydro = sl === 'waterway' || (sl === 'natural_label' && /water|river|stream/.test(id));
         if (!isHydro) continue;
         try {
-          m.setLayoutProperty(id, 'text-size', ['interpolate', ['linear'], ['zoom'], 8, 12, 11, 14, 14, 17, 17, 21, 20, 26]);
+          m.setLayoutProperty(id, 'text-size', ['interpolate', ['linear'], ['zoom'], 5, 10, 8, 13, 11, 15, 14, 18, 17, 22, 20, 28]);
           m.setLayoutProperty(id, 'text-font', ['Open Sans Bold Italic', 'Arial Unicode MS Bold']);
-          m.setLayoutProperty(id, 'symbol-spacing', 200);
-          m.setLayoutProperty(id, 'text-max-angle', 40);
+          m.setLayoutProperty(id, 'symbol-spacing', 160);
+          m.setLayoutProperty(id, 'text-max-angle', 45);
           m.setPaintProperty(id, 'text-color', '#e0f7ff');
           m.setPaintProperty(id, 'text-halo-color', 'rgba(8,47,73,0.95)');
-          m.setPaintProperty(id, 'text-halo-width', 2.4);
-          m.setMinZoom && m.getLayer(id).minzoom !== undefined && null; // no-op
-          m.setLayerZoomRange(id, 8, 24);
+          m.setPaintProperty(id, 'text-halo-width', 2.8);
+          m.setLayerZoomRange(id, 5, 24);
         } catch {}
       }
     } catch (e) {
@@ -664,22 +663,22 @@ const MapViewer = {
       type: 'symbol',
       source: 'composite',
       'source-layer': 'waterway',
-      minzoom: 9,
+      minzoom: 5,
       filter: ['has', 'name'],
       layout: {
         'text-field': ['coalesce', ['get', 'name_fr'], ['get', 'name']],
         'text-font': ['Open Sans Bold Italic', 'Arial Unicode MS Bold'],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 9, 12, 12, 14, 15, 17, 17, 21, 20, 26],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 5, 10, 8, 13, 11, 15, 14, 18, 17, 22, 20, 28],
         'symbol-placement': 'line',
-        'symbol-spacing': 180,
+        'symbol-spacing': 160,
         'text-letter-spacing': 0.06,
-        'text-max-angle': 40,
-        'text-padding': 2
+        'text-max-angle': 45,
+        'text-padding': 1
       },
       paint: {
         'text-color': '#e0f7ff',
         'text-halo-color': 'rgba(8,47,73,0.95)',
-        'text-halo-width': 2.4,
+        'text-halo-width': 2.8,
         'text-halo-blur': 0.5
       }
     });

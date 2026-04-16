@@ -477,19 +477,47 @@ const PlanMasseCanvas = {
   },
 
   async _loadCornerAltsOnce() {
-    if (this._cornerAlts || !window.ParcelAltitudes) return;
+    if (this._cornerAlts) return;
     if (!this._terrain?.parcelGeo?.length) return;
-    try {
-      const res = await window.ParcelAltitudes.sampleParcelKeyPoints(this._terrain.parcelGeo, { longEdgeM: 30 });
-      // Pré-projeter en local pour rendu rapide
-      this._cornerAlts = res.points.map(pt => {
-        const [lp] = this._geoToLocal([pt.coord]);
-        return { ...pt, local: lp };
-      });
-    } catch (e) {
-      console.warn('[PMC] NGR sample failed:', e.message);
-      this._cornerAlts = null;
+
+    const keyPts = window.ParcelAltitudes
+      ? window.ParcelAltitudes.selectKeyPoints(this._terrain.parcelGeo, { longEdgeM: 30 })
+      : this._terrain.parcelGeo.map((c, i) => ({ kind: 'corner', coord: c, edge: i }));
+    if (!keyPts.length) return;
+
+    let alts = null;
+    // 1) BIL batch (ParcelAltitudes.sample)
+    if (window.ParcelAltitudes) {
+      try {
+        const res = await window.ParcelAltitudes.sample(keyPts.map(p => p.coord));
+        if (res.minAlt != null) alts = res.points.map(p => p.alt);
+      } catch { /* batch BIL indispo */ }
     }
+    // 2) BIL point par point (inclut deja fallback Mapbox DEM interne)
+    if (!alts && window.BILTerrain) {
+      try {
+        const singles = await Promise.all(keyPts.map(p => window.BILTerrain.getElevation(p.coord[0], p.coord[1])));
+        if (singles.some(a => a != null)) alts = singles;
+      } catch { /* single BIL indispo */ }
+    }
+    // 3) Mapbox DEM direct (queryTerrainElevation)
+    if (!alts) {
+      const map = window.TerlabMap?.getMap?.();
+      if (map?.queryTerrainElevation) {
+        alts = keyPts.map(p => map.queryTerrainElevation(p.coord) ?? null);
+      }
+    }
+
+    if (!alts || !alts.some(a => a != null)) {
+      console.warn('[PMC] NGR sample: aucune source altitude disponible');
+      this._cornerAlts = null;
+      return;
+    }
+
+    this._cornerAlts = keyPts.map((pt, i) => {
+      const [lp] = this._geoToLocal([pt.coord]);
+      return { ...pt, alt: alts[i], local: lp };
+    });
   },
 
   // ── ENVELOPPE ─────────────────────────────────────────────────────
@@ -509,39 +537,42 @@ const PlanMasseCanvas = {
     const t = this._terrain;
     const R = this.S.edgeTypes.map((_, i) => this.edgeRecul(i));
 
-    // Route v4h : convexe → half-plane intersection, concave → raster + flood-fill.
-    // Gère les pointes aiguës sur arête mitoyenne (recul=0) voisine d'arêtes à fort
-    // recul, et les parcelles non-convexes. Fallback sur _insetPoly si indispo.
-    let env = null;
-    if (FH && typeof FH.buildZone === 'function') {
-      try {
-        const polyXY = t.poly.map(([x, y]) => ({ x, y }));
-        const zoneV4 = FH.buildZone(polyXY, R);
-        if (zoneV4 && zoneV4.length >= 3) env = zoneV4.map(pt => [pt.x, pt.y]);
-      } catch (e) {
-        console.warn('[PMC] FH.buildZone error, fallback _insetPoly:', e.message);
-      }
-    }
-    if (!env) env = _insetPoly(t.poly, R);
+    // Chemin principal : _insetPoly préserve N sommets (1:1 avec parcelle)
+    // → nécessaire pour lostCorners(), bandes de recul, et edgeTypes mapping.
+    let env = _insetPoly(t.poly, R);
 
-    // Filet v4h : supprimer les pointes résiduelles (angle < 90°) que le raster
-    // peut produire aux coins perdus entre 2 reculs très différents.
-    if (FH && typeof FH.rmSpikes === 'function' && env.length >= 4) {
-      try {
-        const cleaned = FH.rmSpikes(env.map(([x, y]) => ({ x, y })), 60);
-        if (cleaned.length >= 3) env = cleaned.map(pt => [pt.x, pt.y]);
-      } catch (e) { /* best-effort, garder env tel quel */ }
-    }
-
+    // Filet : si l'inset principal produit une self-intersection (arête courte +
+    // recul asymétrique), tenter FH.buildZone (v4h) comme fallback sûr.
+    // buildZone peut retourner un nombre de sommets différent → on l'utilise
+    // UNIQUEMENT si l'inset principal a échoué (area ≤ 5 ou self-intersect).
     const area = polyArea(env);
     if (area <= 5) {
+      // Tentative 1 : buildZone (convexe half-plane / concave raster)
+      if (FH && typeof FH.buildZone === 'function') {
+        try {
+          const polyXY = t.poly.map(([x, y]) => ({ x, y }));
+          const zoneV4 = FH.buildZone(polyXY, R);
+          if (zoneV4 && zoneV4.length >= 3) {
+            const envV4 = zoneV4.map(pt => [pt.x, pt.y]);
+            if (polyArea(envV4) > 5) {
+              this.S._insetWarn = 'Inset v4h (buildZone fallback)';
+              return envV4;
+            }
+          }
+        } catch (e) {
+          console.warn('[PMC] FH.buildZone fallback error:', e.message);
+        }
+      }
+      // Tentative 2 : réduction uniforme des reculs
       const bb = polyAABB(t.poly);
       const lMin = Math.min(bb.w, bb.h);
       const rMax = Math.max(...R.filter(r => r > 0), 1);
       const ratio = Math.min(0.85, lMin / (2.2 * rMax));
       env = _insetPoly(t.poly, R.map(r => r * ratio));
       this.S._insetWarn = `Reculs réduits ×${ratio.toFixed(2)} — parcelle étroite`;
-    } else { this.S._insetWarn = null; }
+    } else {
+      this.S._insetWarn = null;
+    }
     return env;
   },
 
@@ -834,6 +865,37 @@ const PlanMasseCanvas = {
       w: Math.max(MIN_W, this._snap(maxX - minX)),
       l: Math.max(MIN_L, this._snap(maxY - minY)),
     };
+  },
+
+  /**
+   * Guard permMin PLU après drag/resize : si l'emprise totale + parking ext
+   * dépasserait le seuil d'imperméabilisation max, scale down les blocs.
+   * Appelé par _clampBat (post-drag uniquement via flag _drag).
+   */
+  _enforcePermMin() {
+    const plu = this._terrain?.plu;
+    if (!plu || !(plu.permMin > 0) || !this.S.blocs?.length) return;
+    const parcelArea = this._terrain.area;
+    if (parcelArea <= 0) return;
+    const totalEmprise = this._totalBlocArea();
+    const parkExtArea = this.S.prog.parkMode === 'ext'
+      ? Math.min(200, totalEmprise * 0.35)
+      : 0;
+    const maxImperm = parcelArea * (1 - plu.permMin / 100);
+    if (totalEmprise + parkExtArea <= maxImperm) return;
+    const targetEmprise = Math.max(MIN_W * MIN_L, maxImperm - parkExtArea);
+    if (targetEmprise >= totalEmprise) return;
+    const scale = Math.sqrt(targetEmprise / totalEmprise);
+    for (const bl of this.S.blocs) {
+      if (!bl.polygon?.length) continue;
+      bl.polygon = bl.polygon.map(p => ({
+        x: bl.cx + (p.x - bl.cx) * scale,
+        y: bl.cy + (p.y - bl.cy) * scale,
+      }));
+      bl.w *= scale;
+      bl.l *= scale;
+    }
+    this._syncBatFromBlocs();
   },
 
   /** Somme des aires des blocs (fallback sur S.bat.w*l si pas de blocs). */
@@ -1400,38 +1462,8 @@ const PlanMasseCanvas = {
     sv('pmc-maxlgts', m.maxLgts);
     sv('pmc-maxniv', `${NV[m.nvMaxPLU] || 'R+' + (this.nvMaxPLU() - 1)} PLU · ${plu.heMax}m`);
 
-    // Gauges — labels PLU explicites (emprise MAX, perméabilité MIN)
-    const empPct = m.empPct, empMax = plu.emprMax;
-    const empBar = Math.min(100, empPct / empMax * 100);
-    const empOver = empPct > empMax;
-    const empColor = empOver ? 'var(--svg-voie)' : empPct > empMax * .9 ? '#F59E0B' : '#6366F1';
-    const gfEmp = g('pmc-gf-emp');
-    if (gfEmp) { gfEmp.style.width = empBar.toFixed(0) + '%'; gfEmp.style.background = empColor; }
-    sv('pmc-gv-emp', empPct.toFixed(1) + '%');
-    const glEmp = g('pmc-gl-emp');
-    if (glEmp) {
-      glEmp.textContent = `MAX ${empMax}% PLU`;
-      glEmp.style.color = empOver ? 'var(--svg-voie)' : 'var(--faint)';
-      glEmp.style.fontWeight = empOver ? '700' : '400';
-    }
-
-    const permPct = m.permPct, permMin = plu.permMin;
-    const permBar = Math.min(100, permPct / 100 * 100);
-    const permUnder = permPct < permMin;
-    const permColor = permUnder ? 'var(--svg-voie)' : 'var(--svg-fond)';
-    const gfPerm = g('pmc-gf-perm');
-    if (gfPerm) { gfPerm.style.width = permBar.toFixed(0) + '%'; gfPerm.style.background = permColor; }
-    const gvPerm = g('pmc-gv-perm');
-    if (gvPerm) {
-      gvPerm.textContent = permPct.toFixed(1) + '%';
-      gvPerm.style.color = permUnder ? 'var(--svg-voie)' : 'var(--success)';
-    }
-    const glPerm = g('pmc-gl-perm');
-    if (glPerm) {
-      glPerm.textContent = `MIN ${permMin}% PLU (espace vert)`;
-      glPerm.style.color = permUnder ? 'var(--svg-voie)' : 'var(--faint)';
-      glPerm.style.fontWeight = permUnder ? '700' : '400';
-    }
+    // Sliders emprise/espace vert : valeurs actualisées via pmc:metrics (p07-esquisse.html)
+    // Les labels des bornes (MAX PLU / MIN PLU) sont aussi mis à jour côté p07.
 
     // Checks table
     const ckBody = g('pmc-ck-body');
@@ -1816,6 +1848,7 @@ const PlanMasseCanvas = {
       }
       if (self.S.blocs?.length) self._syncBatFromBlocs();
       self._clampBat();
+      self._enforcePermMin();
       self.render();
     });
 
@@ -1991,13 +2024,58 @@ const PlanMasseCanvas = {
   // Re-applique la stratégie courante SAUF si l'utilisateur a édité manuellement.
   // Utilisé par les sliders, overrides PLU, cycleEdge et mitoyen pour ne pas
   // écraser une édition utilisateur ponctuelle. Reset explicite nécessaire.
+  //
+  // Stratégie de préservation : quand les limites changent (mitoyen toggle, cycleEdge),
+  // on tente d'abord de CLIPPER les blocs existants à la nouvelle enveloppe.
+  // Si le clip préserve des blocs viables (aire > MIN_W×MIN_L), on les garde
+  // au lieu de regénérer de zéro (qui risque de détruire un placement bi-barre/multi).
   _reApplyIfClean(label) {
     if (this.S._manualEdit) {
       console.info(`[PMC] skip re-apply (${label}) — _manualEdit=true`);
       return false;
     }
-    try { this._applyScenarioGeometry(this.curSc()); return true; }
-    catch (e) { console.warn(`[PMC] scenario re-apply after ${label} failed:`, e.message); return false; }
+    // Sauvegarder les blocs actuels avant regénération
+    const prevBlocs = this.S.blocs?.length ? this.S.blocs.map(b => ({
+      ...b, polygon: b.polygon?.map(p => ({ ...p })),
+    })) : [];
+    const prevTotal = prevBlocs.reduce((s, b) => s + (FH.area(b.polygon) || 0), 0);
+
+    try {
+      this._applyScenarioGeometry(this.curSc());
+    } catch (e) {
+      console.warn(`[PMC] scenario re-apply after ${label} failed:`, e.message);
+      return false;
+    }
+
+    // Si la regénération a produit un bon résultat, garder
+    const newTotal = (this.S.blocs || []).reduce((s, b) => s + (FH.area(b.polygon) || 0), 0);
+    if (newTotal >= prevTotal * 0.6 || prevBlocs.length <= 1) return true;
+
+    // Sinon : tenter de clipper les anciens blocs à la nouvelle enveloppe
+    const env = this.computeEnv();
+    if (!env?.poly || env.poly.length < 3) return true;
+    const envXY = env.poly.map(p => FH.toXY(p));
+    const clipped = prevBlocs.map(b => {
+      if (!b.polygon?.length) return null;
+      const c = FH.clipPolygon(b.polygon, envXY);
+      return c?.length >= 3 && FH.area(c) >= MIN_W * MIN_L
+        ? { ...b, polygon: c, w: 0, l: 0 }
+        : null;
+    }).filter(Boolean);
+
+    if (clipped.length >= prevBlocs.length && clipped.reduce((s, b) => s + FH.area(b.polygon), 0) > newTotal * 0.8) {
+      // Clip des anciens blocs → meilleure préservation que regénération
+      this.S.blocs = clipped.map((bl, i) => {
+        let cx = 0, cy = 0;
+        for (const p of bl.polygon) { cx += p.x; cy += p.y; }
+        cx /= bl.polygon.length; cy /= bl.polygon.length;
+        return { ...bl, cx, cy, id: bl.id || `bl${i}` };
+      });
+      this._syncBatFromBlocs();
+      console.info(`[PMC] ${label} : blocs préservés par clip (${clipped.length} blocs, ${clipped.reduce((s, b) => s + FH.area(b.polygon), 0).toFixed(0)} m²)`);
+    }
+    this.render();
+    return true;
   },
 
   setProg(key, val) {
@@ -2606,6 +2684,19 @@ const PlanMasseCanvas = {
     const emprCibleFrac = Math.max(0, Math.min(1, (this.S.prog.emprCiblePct ?? 100) / 100));
     let cibleM2 = Math.max(MIN_W * MIN_L, empriseDispo * emprCibleFrac * fac);
 
+    // ── Hard cap permMin PLU : perméabilité est un plafond absolu à l'emprise ──
+    // permPct = 100 - (emprise + parkingExt) / parcelArea * 100.
+    // On ne doit JAMAIS descendre sous permMin → cap emprise en conséquence.
+    // Estimation parking réaliste (1 pass) basée sur cibleM2 pré-cap.
+    const nvEstPerm = Math.min(this.S.prog.nvMax ?? sc.nv, this.nvMaxPLU());
+    const spEst = cibleM2 * 0.82 * nvEstPerm;
+    const lgtsEst = this.S.prog.type === 'maison' ? 1 : Math.max(1, Math.floor(spEst / SP_MOY));
+    const parkReqEst = this.S.prog.type === 'maison' ? 2 : lgtsEst * 2;
+    const parkExtPerm = this.S.prog.parkMode === 'ext' ? parkReqEst * 25 : 0;
+    const maxImpermeab = parcelArea * (1 - (plu.permMin ?? 25) / 100);
+    const maxEmprFromPerm = Math.max(MIN_W * MIN_L, maxImpermeab - parkExtPerm - ancArea);
+    if (cibleM2 > maxEmprFromPerm) cibleM2 = maxEmprFromPerm;
+
     // ── Contraintes lgts min/max : clamp cibleM2 sur la plage de logements ──
     // lgts = cibleFootprint × nvEff × eff / SP_MOY (≈57 m²/logement pondéré).
     // Applicable uniquement aux types collectif/bureau/erp où le slider est visible.
@@ -2632,13 +2723,14 @@ const PlanMasseCanvas = {
 
     // Escalade densité MAX : si mono-bloc capé par RTAA/profMax ne peut pas
     // atteindre cibleM2, bascule sur multiRect pour saturer vers l'emprMax PLU.
-    // Critère : cibleM2 > 115% du cap mono-bloc ET parcelle assez longue
+    // Critère : cibleM2 > 85% du cap mono-bloc (marge pour que le multi
+    // démarre AVANT que le mono-bloc sature à 100%). Parcelle assez longue
     // pour ≥2 blocs alignés (profMax + gap interBat minimum).
     const monoBloc = ['rect', 'oblique', 'isohypses'].includes(sc.strategy);
     const monoCapM2 = Math.min(rtaaW, envOBB.w * 0.95) * Math.min(profMax, envOBB.l * 0.95);
     const gapInter = Math.max(plu.interBatMin || 4, sc.nv * H_NIV / 2);
     const canMultiFit = envOBB.l >= (Math.min(profMax, envOBB.l * 0.45) * 2 + gapInter);
-    const escaladeMulti = monoBloc && cibleM2 > monoCapM2 * 1.15 && canMultiFit;
+    const escaladeMulti = monoBloc && cibleM2 > monoCapM2 * 0.85 && canMultiFit;
     const effStrategy = escaladeMulti ? 'multi' : sc.strategy;
     const effMono = ['rect', 'oblique', 'isohypses'].includes(effStrategy);
 

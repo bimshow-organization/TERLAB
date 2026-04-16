@@ -326,7 +326,7 @@ const Terrain3D = {
 
       console.log(`[Terrain3D] BIL mesh OK — ${meshW.toFixed(0)}×${meshH.toFixed(0)}m, pixel ${ud.pixelSizeM}m`);
     } catch (err) {
-      console.warn('[Terrain3D] BIL indisponible, fallback ShapeGeometry:', err.message);
+      console.warn('[Terrain3D] BIL indisponible, fallback ShapeGeometry:', err?.stack ?? err);
       topMesh = this._buildFallbackTerrain(coords, center, LAT_SCALE, LNG_SCALE, localPts, minX, maxX, minZ, maxZ);
     }
 
@@ -422,6 +422,22 @@ const Terrain3D = {
     }
     topGeo.attributes.position.needsUpdate = true;
     topGeo.computeVertexNormals();
+    topGeo.computeBoundingBox();
+
+    // Remap UVs to 0..1 bbox so orthophoto maps correctly
+    const bb = topGeo.boundingBox;
+    const uv = topGeo.attributes.uv;
+    if (uv && bb) {
+      const rangeX = bb.max.x - bb.min.x || 1;
+      const rangeY = bb.max.y - bb.min.y || 1;
+      for (let i = 0; i < uv.count; i++) {
+        uv.setXY(i,
+          (pos[i * 3]     - bb.min.x) / rangeX,
+          (pos[i * 3 + 1] - bb.min.y) / rangeY
+        );
+      }
+      uv.needsUpdate = true;
+    }
 
     const mesh = new THREE.Mesh(topGeo, new THREE.MeshStandardMaterial({
       color: 0x4a7c3f, roughness: 0.85, side: THREE.FrontSide,
@@ -740,15 +756,15 @@ const Terrain3D = {
     ctx.lineWidth = 2;
     ctx.strokeRect(1, 1, 254, 62);
     ctx.fillStyle = '#9a7820';
-    ctx.font = 'bold 18px Inconsolata, monospace';
+    ctx.font = 'bold 14px Inconsolata, monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(`${L}m \u00d7 ${W}m \u00d7 H${H}m`, 128, 32);
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({
       map: new THREE.CanvasTexture(cv), depthTest: false,
     }));
-    sp.position.set(0, this.EXTRUDE_DEPTH + scH + 3, 0);
-    sp.scale.set(14, 4, 1);
+    sp.position.set(0, this.EXTRUDE_DEPTH + scH + 2, 0);
+    sp.scale.set(8, 2.5, 1);
     sp.name = 'gabarit-label';
     this._scene.add(sp);
   },
@@ -872,20 +888,20 @@ const Terrain3D = {
       lx.fillRect(4, 4, 6, 56);
       // Texte pente
       lx.fillStyle = hexColor;
-      lx.font = 'bold 22px Inconsolata, monospace';
+      lx.font = 'bold 16px Inconsolata, monospace';
       lx.textAlign = 'center';
       lx.textBaseline = 'top';
       lx.fillText(pctPente.toFixed(1) + '%', 104, 8);
       // Classification label
       lx.fillStyle = 'rgba(255,255,255,0.7)';
-      lx.font = '13px Inter, sans-serif';
+      lx.font = '11px Inter, sans-serif';
       lx.fillText(cat.label, 104, 36);
 
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({
         map: new THREE.CanvasTexture(lv), depthTest: false, transparent: true, opacity: 0.92,
       }));
-      sp.position.set(mx, my + 2, -mz);
-      sp.scale.set(8, 3, 1);
+      sp.position.set(mx, my + 1.5, -mz);
+      sp.scale.set(4.5, 1.8, 1);
       sp.name = 'slope-label';
       this._scene.add(sp);
       this._slopeArrows.push(sp);
@@ -910,15 +926,15 @@ const Terrain3D = {
       ctx.lineWidth = 1.5;
       ctx.strokeRect(1.5, 1.5, 177, 69);
       ctx.fillStyle = '#9a7820';
-      ctx.font = 'bold 22px Inconsolata, monospace';
+      ctx.font = 'bold 16px Inconsolata, monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(parseFloat(alt).toFixed(1) + ' m', 90, 36);
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({
         map: new THREE.CanvasTexture(cv), depthTest: false,
       }));
-      sp.position.set(p.x, (p.y ?? this.EXTRUDE_DEPTH) + 5, -(p.z ?? 0));
-      sp.scale.set(9, 4, 1);
+      sp.position.set(p.x, (p.y ?? this.EXTRUDE_DEPTH) + 3, -(p.z ?? 0));
+      sp.scale.set(5, 2.2, 1);
       sp.name = 'alt-label';
       this._scene.add(sp);
       this._dimLabels.push(sp);
@@ -965,7 +981,7 @@ const Terrain3D = {
       ctx.fillStyle = 'rgba(8,10,18,0.85)';
       ctx.fillRect(0, 0, 160, 56);
       ctx.fillStyle = '#6b5c3e';
-      ctx.font = '16px Inconsolata, monospace';
+      ctx.font = '13px Inconsolata, monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(text, 80, 28);
@@ -973,14 +989,14 @@ const Terrain3D = {
         map: new THREE.CanvasTexture(cv), depthTest: false, transparent: true, opacity: 0.85,
       }));
       sp.position.set(x, y, z);
-      sp.scale.set(8, 3, 1);
+      sp.scale.set(4.5, 1.8, 1);
       sp.name = 'dim-label';
       this._scene.add(sp);
       this._dimLabels.push(sp);
     };
 
-    addLabel(realW.toFixed(1) + ' m', (minX + maxX) / 2, h, -(minZ - 6));
-    addLabel(realD.toFixed(1) + ' m', maxX + 7, h, -(minZ + maxZ) / 2);
+    addLabel(realW.toFixed(1) + ' m', (minX + maxX) / 2, h, -(minZ - 3.5));
+    addLabel(realD.toFixed(1) + ' m', maxX + 4, h, -(minZ + maxZ) / 2);
   },
 
   // ─── SOLEIL 3D ────────────────────────────────────────────────
@@ -1156,14 +1172,14 @@ const Terrain3D = {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.beginPath(); ctx.roundRect(2, 2, 124, 44, 8); ctx.fill();
     ctx.fillStyle = '#' + (color & 0xffffff).toString(16).padStart(6, '0');
-    ctx.font = 'bold 18px Inter, sans-serif';
+    ctx.font = 'bold 14px Inter, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, 64, 24);
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({
       map: new THREE.CanvasTexture(cv), depthTest: false, transparent: true,
     }));
-    sp.scale.set(8 * scale, 3 * scale, 1);
+    sp.scale.set(5 * scale, 2 * scale, 1);
     return sp;
   },
 
@@ -1510,6 +1526,72 @@ const Terrain3D = {
   toggleVegetation(on) {
     if (!this._vegetationGroup) return;
     this._vegetationGroup.visible = on ?? !this._vegetationGroup.visible;
+  },
+
+  // ── RANDOM VEGETATION FALLBACK ──────────────────────────────────
+  RANDOM_VEG_SPECIES: [
+    { key: 'palm_coconut',      r: 5   },
+    { key: 'latania',           r: 3   },
+    { key: 'mango',             r: 6   },
+    { key: 'flamboyant',        r: 7   },
+    { key: 'tamarind',          r: 6   },
+    { key: 'pandanus',          r: 3   },
+    { key: 'plumeria',          r: 2.5 },
+    { key: 'terminalia_catappa', r: 6  },
+  ],
+
+  async generateRandomVegetation(count = 25) {
+    if (!this._scaledPts?.length || this._vegetationGroup?.children?.length) return;
+    const sf = this._terrainSF ?? 1;
+    const pts = this._scaledPts;
+
+    // BBox from scaled parcel points
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (const p of pts) {
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.z < minZ) minZ = p.z;
+      if (p.z > maxZ) maxZ = p.z;
+    }
+
+    // Point-in-polygon (winding) on scaled XZ coords
+    const inParcel = (tx, tz) => {
+      let inside = false;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        const zi = pts[i].z, zj = pts[j].z, xi = pts[i].x, xj = pts[j].x;
+        if ((zi > tz) !== (zj > tz) && tx < (xj - xi) * (tz - zi) / (zj - zi) + xi)
+          inside = !inside;
+      }
+      return inside;
+    };
+
+    const margin = (maxX - minX) * 0.08;
+    const plants = [];
+    const species = this.RANDOM_VEG_SPECIES;
+    let attempts = 0;
+
+    while (plants.length < count && attempts < count * 20) {
+      attempts++;
+      const rx = minX + margin + Math.random() * (maxX - minX - 2 * margin);
+      const rz = minZ + margin + Math.random() * (maxZ - minZ - 2 * margin);
+      if (!inParcel(rx, rz)) continue;
+
+      // Min distance to existing plants (~3 scaled units)
+      const tooClose = plants.some(p => Math.hypot(p.x / sf - rx, p.y / sf - rz) < 2.5);
+      if (tooClose) continue;
+
+      const sp = species[Math.floor(Math.random() * species.length)];
+      plants.push({
+        x: rx / sf, y: rz / sf,
+        speciesKey: sp.key,
+        canopyRadius: sp.r * (0.6 + Math.random() * 0.6),
+      });
+    }
+
+    if (plants.length) {
+      console.log(`[Terrain3D] Végétation aléatoire : ${plants.length} arbres générés`);
+      await this.setVegetation(plants);
+    }
   },
 };
 

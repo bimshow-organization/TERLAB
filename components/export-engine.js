@@ -156,7 +156,7 @@ const ExportEngine = {
       return;
     }
 
-    const modeLabel = mode === 'projet' ? 'PDF Projet' : 'PDF Site';
+    const modeLabel = mode === 'full' ? 'PDF Full' : mode === 'projet' ? 'PDF Projet' : 'PDF Site';
     this._setProgress(2, `${modeLabel} — Capture des cartes...`);
     window.TerlabToast?.show(`Generation ${modeLabel} A4 en cours...`, 'info', 15000);
 
@@ -284,6 +284,11 @@ const ExportEngine = {
 
   _renderAllPlanches(session, terrain, maps, mode) {
     const ref = `${terrain.section ?? ''}${terrain.parcelle ?? ''}`;
+
+    if (mode === 'full') {
+      return this._renderFullPlanches(session, terrain, maps, ref);
+    }
+
     // Total pages : cover+identité (1) + planche 2_3 (2) + [4 + GIEP en mode projet] + 5_6 (5/3) + 7 (synthèse fusionnée)
     // Site : 4 pages   ·   Projet : 6 pages
     const tp = mode === 'projet' ? 6 : 4;
@@ -300,6 +305,162 @@ const ExportEngine = {
 
     html += this._renderPlanche5_6(session, terrain, maps, ref, tp); // Voisinage + Gabarit fusionnés
     html += this._renderPlanche7(session, terrain, maps, ref, tp);    // Synthèse + Audit + Sources fusionnés
+
+    // Annexe : plan cadastral pleine page
+    html += this._renderAnnexeCadastre(terrain, maps, ref, tp);
+
+    return html;
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  //  FULL MODE — toutes cartes/dessins pleine largeur, sauts de page
+  // ═══════════════════════════════════════════════════════════════
+
+  _renderFullPlanches(session, terrain, maps, ref) {
+    const commune = (terrain.commune ?? 'Terrain').toUpperCase();
+    const date = new Date().toLocaleDateString('fr-FR');
+    const uuid = session?.getOrCreateUUID?.()?.slice(-8) ?? '';
+
+    // Collecte ordonnee de toutes les images/visuels disponibles
+    const panels = [];
+
+    /** Helper : ajoute un visuel si present */
+    const add = (src, label, source, h = 'auto') => {
+      if (src) panels.push({ src, label, source, h });
+    };
+
+    // ── 1. Cover maps ──
+    add(maps?.cover_situation,        'Ile · 1:500 000',                   'Mapbox');
+    add(maps?.p01_situation_marked,   'Commune · 1:25 000',                'Mapbox Satellite');
+    add(maps?.p01_situation,          'Quartier · 1:5 000',                'Mapbox Satellite');
+    add(maps?.p01_cadastre,           'Parcelle · Cadastre',               'IGN · Mapbox Satellite');
+
+    // ── 2. Topographie ──
+    add(maps?.sectionA ?? this._visuals?.sectionA,   'Coupe A — Longitudinale',          'LiDAR HD');
+    add(maps?.sectionB ?? this._visuals?.sectionB,   'Coupe B — Perpendiculaire',        'LiDAR HD');
+    add(this._visuals?.contoursMap,                   `Courbes de niveau · ${this._visuals?.contoursMeta?.interval ?? '?'}m`, 'IGN BIL HD');
+    add(this._visuals?.profileChart,                  'Profil altimetrique',               'Chart.js');
+    add(this._visuals?.terrainSvg,                    'Terrain SVG',                       'Phase 1');
+
+    // ── 3. Geologie + PPR ──
+    add(maps?.p02_geologie,           'Geologie · BRGM 1:50 000',         'geoservices.brgm.fr WMS');
+    add(maps?.p03_ppr ?? terrain.snap_ppr ?? this._visuals?.phaseSnaps?.[3],
+                                       'Carte PPR',                         'AGORAH PEIGEO');
+
+    // ── 4. Reculs / PLU ──
+    add(this._visuals?.reculsCanvas,  'Reculs PLU · parcelle',             'Phase 4');
+
+    // ── 5. Bioclimatique ──
+    add(this._visuals?.heliodone,     'Heliodone — course solaire',        'DiagRenderer');
+    add(this._visuals?.windRose,      `Rose des vents${this._visuals?.windMeta?.stationName ? ' · ' + this._visuals.windMeta.stationName : ''}`, this._visuals?.windMeta?.source ?? 'Meteo');
+    add(this._visuals?.rainfallChart, 'Pluviometrie mensuelle',            'Open-Meteo ERA5');
+    add(this._visuals?.aeroOverlay,   'Aeraulique overlay',                'Phase 1');
+
+    // ── 6. Voisinage ──
+    add(terrain.snap_bati3d ?? this._visuals?.phaseSnaps?.[5],
+                                       'Batiments voisins 3D',              'Mapbox');
+    add(maps?.p05_context3d,          'Contexte 3D',                       'Mapbox');
+    add(this._visuals?.obiaChart,     'Couverture sol · OBIA satellite',   'Mapbox sat. · OBIA HSV');
+
+    // ── 7. Esquisse + plan masse ──
+    add(this._visuals?.coupeGabarit,  'Coupe N-S · Gabarit PLU',          'coupe-renderer');
+    add(this._visuals?.terrain3d ?? this._visuals?.bimshow,
+                                       'LiDAR · vue oblique',               'IGN HD · Three.js');
+    add(this._visuals?.terrain3dTop,  'LiDAR · vue oblique opposee',       'IGN HD · Three.js');
+    add(this._visuals?.planMasse,     'Plan masse',                        'TERLAB · Auto-plan');
+    add(this._visuals?.cadastreVector,'Plan cadastral · contexte IGN',     'IGN · Cadastre WFS');
+    add(this._visuals?.windNav,       'Navigateur vent',                   'Phase 7');
+
+    // ── 8. Captures generiques Chart.js ──
+    if (this._visuals?.chartCanvases) {
+      for (const [id, src] of Object.entries(this._visuals.chartCanvases)) {
+        add(src, `Chart · ${id}`, 'Chart.js');
+      }
+    }
+
+    // ── 9. SVG diagrams generiques ──
+    if (this._visuals?.svgDiagrams) {
+      for (const [id, src] of Object.entries(this._visuals.svgDiagrams)) {
+        // Eviter doublons deja ajoutes individuellement
+        if (!panels.some(p => p.src === src)) {
+          add(src, `SVG · ${id}`, 'DOM');
+        }
+      }
+    }
+
+    // ── 10. Phase snapshots (Mapbox par phase) ──
+    if (this._visuals?.phaseSnaps) {
+      for (const [ph, src] of Object.entries(this._visuals.phaseSnaps)) {
+        if (!panels.some(p => p.src === src)) {
+          add(src, `Phase ${ph} · snapshot`, 'Mapbox');
+        }
+      }
+    }
+
+    // ── 11. GeoJSON custom layers ──
+    add(this._visuals?.customGeoJsonLayers, 'Couches GeoJSON custom', 'GeoJsonLayerService');
+
+    // ── 12. ACV carbone ──
+    add(this._visuals?.acvChart, 'ACV carbone', 'Phase 9');
+
+    // ── 13. QR code ──
+    add(this._visuals?.qrCode, 'QR Code session', 'Phase 12');
+
+    // Filtrer les panels sans source
+    const validPanels = panels.filter(p => p.src);
+
+    // Construire le HTML — 1 image pleine largeur par page A4
+    let html = '';
+    let pageNum = 0;
+
+    // Page de couverture
+    pageNum++;
+    html += `<div class="page full-page">
+      ${pageHead('Analyse de terrain · PDF Full')}
+      <div class="full-cover">
+        <div class="mode-pill"><span class="mode-dot"></span>ANALYSE FULL</div>
+        <div class="commune">${ref || commune}</div>
+        <div class="parcelle-ref">${ref ? commune : ''}</div>
+        <div class="full-meta">
+          <span>${terrain.commune ?? ''} · ${val(terrain.section)}${val(terrain.parcelle)}</span>
+          <span>Zone PLU : ${val(terrain.zone_plu)}</span>
+          <span>${terrain.contenance_m2 ? terrain.contenance_m2 + ' m2' : ''}</span>
+          <span>${date} · ${uuid}</span>
+        </div>
+        <div class="full-toc">
+          <div class="stitle">VISUELS (${validPanels.length})</div>
+          ${validPanels.map((p, i) => `<div class="full-toc-row"><span class="full-toc-n">${i + 1}</span><span class="full-toc-lbl">${p.label}</span><span class="full-toc-src">${p.source}</span></div>`).join('')}
+        </div>
+      </div>
+      <div class="pg-foot">
+        <span class="pf">TERLAB v1.0 · ENSA La Reunion · Document pedagogique non opposable</span>
+        <span class="pf">${uuid} · ${date}</span>
+      </div>
+    </div>`;
+
+    // Pages de visuels — 1 image pleine largeur par page
+    for (let i = 0; i < validPanels.length; i++) {
+      const p = validPanels[i];
+      pageNum++;
+      html += `<div class="page full-page">
+        <div class="full-head">
+          <span class="full-head-brand">TERLAB</span>
+          <span class="full-head-sep">|</span>
+          <span class="full-head-label">${p.label}</span>
+          <span class="full-head-n">${i + 1} / ${validPanels.length}</span>
+        </div>
+        <div class="full-visual">
+          <img src="${p.src}" alt="${p.label}">
+          <span class="map-lbl">${p.label}</span>
+          <span class="map-src">${p.source}</span>
+        </div>
+        <div class="full-foot">
+          <span>${commune} · ${ref}</span>
+          <span>${p.source}</span>
+          <span>${pageNum}</span>
+        </div>
+      </div>`;
+    }
 
     return html;
   },
@@ -821,12 +982,12 @@ const ExportEngine = {
     };
 
     const snapBati = terrain.snap_bati3d ?? this._visuals?.phaseSnaps?.[5] ?? null;
-    const snapshot3d = p7.glb_snapshot ?? this._visuals?.terrain3d ?? this._visuals?.bimshow ?? null;
+    const snapshot3d = p7.snapshot_3d ?? p7.glb_snapshot ?? this._visuals?.terrain3d ?? this._visuals?.bimshow ?? null;
     const coupeGabarit = this._visuals?.coupeGabarit ?? null;
 
     // Pre-esquisse auto
     let preEsquisseHtml = '';
-    const hasManualEsquisse = p7.gabarit_l_m || p7.surface_plancher_m2 || p7.glb_snapshot;
+    const hasManualEsquisse = p7.gabarit_l_m || p7.surface_plancher_m2 || p7.snapshot_3d || p7.glb_snapshot;
     if (!hasManualEsquisse && pluRules && terrain.contenance_m2) {
       const surface = parseFloat(terrain.contenance_m2);
       const emprMax = pluRules.plu?.emprMax ?? 60;
@@ -1200,6 +1361,68 @@ const ExportEngine = {
   },
 
   // ═══════════════════════════════════════════════════════════════
+  //  ANNEXE — Plan cadastral pleine page
+  // ═══════════════════════════════════════════════════════════════
+
+  _renderAnnexeCadastre(terrain, maps, ref, tp) {
+    const cadastreImg = this._visuals?.cadastreVector ?? null;
+    const orthoImg    = maps?.p01_cadastre ?? null;
+    if (!cadastreImg && !orthoImg) return '';
+
+    const commune = (terrain.commune ?? '').toUpperCase();
+    const date = new Date().toLocaleDateString('fr-FR');
+
+    let html = '';
+
+    // Page annexe : ortho satellite + cadastre superposes
+    if (orthoImg) {
+      html += `<div class="page full-page">
+        <div class="full-head">
+          <span class="full-head-brand">TERLAB</span>
+          <span class="full-head-sep">|</span>
+          <span class="full-head-label">Annexe — Cadastre sur ortho</span>
+          <span class="full-head-n">A1</span>
+        </div>
+        <div class="full-visual annexe-cadastre-ortho">
+          <img src="${orthoImg}" alt="Ortho satellite + cadastre" class="annexe-ortho-bg">
+          ${cadastreImg ? `<img src="${cadastreImg}" alt="Plan cadastral" class="annexe-cadastre-overlay">` : ''}
+          <span class="map-lbl">Cadastre · ortho 25% · ${commune}</span>
+          <span class="map-src">IGN · Mapbox Satellite · Cadastre WFS</span>
+        </div>
+        <div class="full-foot">
+          <span>${commune} · ${ref}</span>
+          <span>IGN · Cadastre WFS + BDTOPO</span>
+          <span>Annexe · ${date}</span>
+        </div>
+      </div>`;
+    }
+
+    // Page annexe : plan cadastral vecteur seul (pleine largeur, fond blanc)
+    if (cadastreImg) {
+      html += `<div class="page full-page">
+        <div class="full-head">
+          <span class="full-head-brand">TERLAB</span>
+          <span class="full-head-sep">|</span>
+          <span class="full-head-label">Annexe — Plan cadastral vecteur</span>
+          <span class="full-head-n">${orthoImg ? 'A2' : 'A1'}</span>
+        </div>
+        <div class="full-visual">
+          <img src="${cadastreImg}" alt="Plan cadastral vecteur" style="object-fit:contain">
+          <span class="map-lbl">Plan cadastral · ${commune} · ${ref}</span>
+          <span class="map-src">IGN · Cadastre WFS + BDTOPO</span>
+        </div>
+        <div class="full-foot">
+          <span>${commune} · ${ref}</span>
+          <span>IGN · Cadastre WFS + BDTOPO</span>
+          <span>Annexe · ${date}</span>
+        </div>
+      </div>`;
+    }
+
+    return html;
+  },
+
+  // ═══════════════════════════════════════════════════════════════
   //  HELPERS
   // ═══════════════════════════════════════════════════════════════
 
@@ -1438,8 +1661,11 @@ const ExportEngine = {
     // Reculs canvas (phase 4)
     v.reculsCanvas = this._canvasToDataURL('reculs-canvas');
 
-    // Vue 3D terrain (phase 7)
-    v.terrain3d = window.Terrain3DViewer?.capture?.() ?? window.Terrain3D?.capture?.() ?? null;
+    // Vue 3D terrain (phase 7) — capture live ou session
+    v.terrain3d = window.Terrain3DViewer?.capture?.()
+      ?? window.Terrain3D?.capture?.()
+      ?? window.SessionManager?.getPhase?.(7)?.data?.snapshot_3d
+      ?? null;
 
     // Snapshot BIMShow Three.js (phase 7)
     const bimCanvas = document.querySelector('.tv-canvas');
@@ -1451,8 +1677,8 @@ const ExportEngine = {
     // QR code (phase 12)
     v.qrCode = this._canvasToDataURL('qr-canvas');
 
-    // Plan masse SVG (phase 11)
-    const planSvg = document.getElementById('p11-svg');
+    // Plan masse SVG — p11 (esquisse finale) ou pmc-svg (Phase 7 plan masse)
+    const planSvg = document.getElementById('p11-svg') ?? document.getElementById('pmc-svg');
     if (planSvg) v.planMasse = await this._svgToDataURL(planSvg, 1000, 700);
 
     // Plan cadastre vecteur — esquisse SVG avec cadastre visible

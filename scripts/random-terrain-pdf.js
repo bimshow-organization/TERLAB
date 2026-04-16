@@ -38,6 +38,7 @@ const TARGET_INSEE    = args.find((_, i, a) => a[i - 1] === '--insee') ?? null;
 const TARGET_SECTION  = args.find((_, i, a) => a[i - 1] === '--section') ?? null;
 const TARGET_PARCELLE = args.find((_, i, a) => a[i - 1] === '--parcelle') ?? null;
 const TARGETED = !!(TARGET_INSEE && TARGET_SECTION && TARGET_PARCELLE);
+const PDF_MODE  = args.find((_, i, a) => a[i - 1] === '--mode') ?? 'projet'; // site | projet | full
 const OUT_DIR   = path.resolve(__dirname, '..', 'docs', 'random-pdf');
 
 // Token Mapbox — depuis .env, CLI, ou fallback embarqué
@@ -882,7 +883,7 @@ async function processOneTerrain(browser, runIndex) {
     log('6. Génération PDF…');
 
     // Patcher ExportEngine pour capturer le HTML au lieu de print()
-    const pdfHtml = await page.evaluate(() => {
+    const pdfHtml = await page.evaluate((pdfModeArg) => {
       return new Promise(async (resolve, reject) => {
         const timeout = setTimeout(() => reject(new Error('PDF gen timeout')), 60000);
         try {
@@ -1608,8 +1609,8 @@ async function processOneTerrain(browser, runIndex) {
           const capSizes = capKeys.map(k => `${k}:${Math.round((allMaps[k]?.length ?? 0)/1024)}K`);
           console.log(`[PDF] ${capKeys.length} captures — ${capSizes.join(', ')}`);
 
-          // Toujours mode projet pour avoir la planche plan masse
-          const pdfMode = 'projet';
+          // Mode PDF : projet (default), site, ou full (toutes cartes pleine largeur)
+          const pdfMode = pdfModeArg;
           const html = engine._renderAllPlanches(session, terrain, allMaps, pdfMode);
 
           clearTimeout(timeout);
@@ -1619,7 +1620,7 @@ async function processOneTerrain(browser, runIndex) {
           reject(e);
         }
       });
-    });
+    }, PDF_MODE);
 
     if (!pdfHtml || pdfHtml.length < 500) throw new Error('HTML planches vide ou trop court');
     log(`  📄 HTML généré : ${(pdfHtml.length / 1024).toFixed(0)} Ko`);

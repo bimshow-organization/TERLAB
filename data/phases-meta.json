@@ -137,7 +137,7 @@
       "map_mode": "pprn+simulation-eau",
       "map_pitch": 45,
       "map_bearing": 0,
-      "map_zoom_default": 14,
+      "map_zoom_default": 16,
       "exports": ["pdf-risques", "json"],
       "apis_requises": ["georisques"],
       "apis_optionnelles": ["georisques-proxy-stub"],

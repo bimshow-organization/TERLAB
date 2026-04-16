@@ -481,16 +481,18 @@
       style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:none;color:var(--muted,#6b5c3e);border:none;cursor:pointer;transition:all .15s">
       Carte
     </button>
+    <!-- Esquisse masqué (problème rendu standalone) -->
     <button id="p07-toggle-esquisse" class="p07-vtab" data-view="esquisse"
-      style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:none;color:var(--muted,#6b5c3e);border:none;cursor:pointer;transition:all .15s">
+      style="display:none;padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:none;color:var(--muted,#6b5c3e);border:none;cursor:pointer;transition:all .15s">
       Esquisse
     </button>
     <button id="p07-toggle-3d" class="p07-vtab" data-view="3d"
       style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:none;color:var(--muted,#6b5c3e);border:none;cursor:pointer;transition:all .15s">
       Vue 3D
     </button>
+    <!-- Gabarit masqué (non fonctionnel) -->
     <button id="p07-toggle-gabarit" class="p07-vtab" data-view="gabarit"
-      style="padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:none;color:var(--muted,#6b5c3e);border:none;cursor:pointer;transition:all .15s">
+      style="display:none;padding:6px 16px;font-family:var(--font-mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;background:none;color:var(--muted,#6b5c3e);border:none;cursor:pointer;transition:all .15s">
       Gabarit
     </button>
   </div>
@@ -905,15 +907,33 @@
       <span id="pmc-lgts" style="font:700 24px var(--font-mono);color:var(--text)">0</span>
       <span id="pmc-lgts-sub" style="font-size:9px;color:var(--muted)">logements</span>
     </div>
+    <!-- Slider Emprise : 0 → (100 - permMin)% PLU -->
     <div style="margin-bottom:5px">
-      <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><span style="font-size:9px;color:var(--muted);flex:1">Emprise</span><span id="pmc-gv-emp" style="font:600 9px var(--font-mono);color:var(--accent)">—</span></div>
-      <div style="height:4px;background:var(--raised);border-radius:2px;overflow:hidden"><div id="pmc-gf-emp" style="height:100%;border-radius:2px;width:0;transition:width .4s"></div></div>
-      <div id="pmc-gl-emp" style="font-size:7px;color:var(--faint);text-align:right">max —%</div>
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
+        <span style="font-size:9px;color:var(--muted);flex:1">Emprise</span>
+        <span id="pmc-gv-emp" style="font:600 9px var(--font-mono);color:var(--accent)">—</span>
+      </div>
+      <input type="range" id="pmc-sl-emp" min="0" max="30" value="10" step="0.5"
+             style="width:100%;accent-color:#6366F1;height:6px;cursor:pointer"
+             oninput="window._p07EmprSliderInput?.(+this.value)"/>
+      <div style="display:flex;justify-content:space-between;font-size:7px;color:var(--faint)">
+        <span>0%</span>
+        <span id="pmc-gl-emp">MAX —% PLU</span>
+      </div>
     </div>
+    <!-- Slider Espace vert : permMin% PLU → 100% -->
     <div style="margin-bottom:5px">
-      <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><span style="font-size:9px;color:var(--muted);flex:1">Perméabilité</span><span id="pmc-gv-perm" style="font:600 9px var(--font-mono);color:var(--success)">—</span></div>
-      <div style="height:4px;background:var(--raised);border-radius:2px;overflow:hidden"><div id="pmc-gf-perm" style="height:100%;border-radius:2px;width:0;background:var(--success);transition:width .4s"></div></div>
-      <div id="pmc-gl-perm" style="font-size:7px;color:var(--faint);text-align:right">min —%</div>
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
+        <span style="font-size:9px;color:var(--muted);flex:1">Espace vert</span>
+        <span id="pmc-gv-perm" style="font:600 9px var(--font-mono);color:var(--success)">—</span>
+      </div>
+      <input type="range" id="pmc-sl-perm" min="70" max="100" value="85" step="0.5"
+             style="width:100%;accent-color:var(--success,#3d6b2e);height:6px;cursor:pointer"
+             oninput="window._p07PermSliderInput?.(+this.value)"/>
+      <div style="display:flex;justify-content:space-between;font-size:7px;color:var(--faint)">
+        <span id="pmc-gl-perm">MIN —% PLU</span>
+        <span>100%</span>
+      </div>
     </div>
     <div style="font-size:9px">
       <div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">SP totale</span><span id="pmc-sp" style="font:600 9px var(--font-mono);color:var(--text)">—</span></div>
@@ -2338,9 +2358,29 @@ Object.assign(P07, {
       document.getElementById('t3d-loader').classList.add('done');
       P07._updateTopoPanel();
 
-      // Cablage vegetation : replay si deja genere + listener live
+      // Cablage vegetation : P06 detected → EsquisseCanvas → random fallback
       const EC2 = window.EsquisseCanvas;
-      if (EC2?._vegetationPlants?.length) Terrain3D.setVegetation(EC2._vegetationPlants);
+      const p06Veg = SessionManager._data?.phases?.p06?.vegetation?.features;
+      if (EC2?._vegetationPlants?.length) {
+        Terrain3D.setVegetation(EC2._vegetationPlants);
+      } else if (p06Veg?.length) {
+        const p06Plants = p06Veg
+          .filter(f => f.status !== 'existing_cut' && f.positionLocal)
+          .map(f => ({
+            x: f.positionLocal.x,
+            y: f.positionLocal.y,
+            speciesKey: f.speciesKey ?? 'palm_coconut',
+            canopyRadius: f.canopyRadiusMeasured ?? 3,
+          }));
+        if (p06Plants.length) {
+          console.log(`[P07] Végétation P06 récupérée : ${p06Plants.length} arbres détectés`);
+          Terrain3D.setVegetation(p06Plants);
+        } else {
+          Terrain3D.generateRandomVegetation(20);
+        }
+      } else {
+        Terrain3D.generateRandomVegetation(20);
+      }
       window.addEventListener('terlab:vegetation-generated', (ev) => {
         if (Terrain3D._scene) Terrain3D.setVegetation(ev.detail?.plants ?? []);
       });
@@ -3841,27 +3881,30 @@ document.getElementById('sp-niveaux')?.addEventListener('change', e => {
     if (pmc?._ready) {
       pmc.setProg('emprCiblePct', emprPct);
     }
-    // Hint : rappel des limites PLU actives pour la stratégie en cours
+    // Hint : emprise RÉELLE projetée (% de la parcelle), pas le % de capacité
     const plu = pmc?._terrain?.plu ?? {};
-    const emprMax = plu.emprMax ?? '—';
-    const permMin = plu.permMin ?? '—';
     const sc = pmc?.curSc?.();
     const scLbl = sc ? `${sc.id} · ${sc.label}` : 'stratégie';
+    const parcelArea = pmc?._terrain?.area ?? 0;
+    // cibleM2 réel calculé par PMC (post-caps PLU/permMin/parking)
+    const cibleM2 = pmc?.S?._cibleM2 ?? 0;
+    const projEmprPct = parcelArea > 0 ? (cibleM2 / parcelArea * 100).toFixed(1) : '—';
+    const permMin = plu.permMin ?? '—';
     if (v >= 75) {
       const f = computeMaxFootprint();
       if (f) {
         const ancLbl = f.assainissement === 'ANC' ? ` · ANC −${Math.round(f.anc_surface)}m²` : ' · égout';
         hint.innerHTML =
-          `→ ${scLbl} · MAX emprise ${emprMax}% · MIN perm ${permMin}% · cible ${Math.round(f.empriseDispo)} m² <span style="opacity:.7">(veg −${Math.round(f.veg_min)}m²${ancLbl})</span>`;
+          `→ ${scLbl} · empr. proj. <b>${projEmprPct}%</b> · perm. MIN ${permMin}% · dispo ${Math.round(f.empriseDispo)} m² <span style="opacity:.7">(veg −${Math.round(f.veg_min)}m²${ancLbl})</span>`;
       } else {
-        hint.textContent = `→ ${scLbl} · MAX emprise ${emprMax}% · MIN perm ${permMin}%`;
+        hint.textContent = `→ ${scLbl} · empr. proj. ${projEmprPct}% · perm. MIN ${permMin}%`;
       }
     } else if (v < 25) {
-      hint.textContent = `→ ${scLbl} · maison · empr. ${emprPct}% · R+0-1`;
+      hint.textContent = `→ ${scLbl} · maison · empr. proj. ${projEmprPct}%`;
     } else {
       const nvMax = pmc?.nvMaxPLU?.() ?? 2;
       const nvLbl = newType === 'maison' ? 'R+0-1' : `R+1-${Math.min(nvMax - 1, 3)}`;
-      hint.textContent = `→ ${scLbl} · empr. ${emprPct}% · ${nvLbl}`;
+      hint.textContent = `→ ${scLbl} · empr. proj. ${projEmprPct}% · ${nvLbl}`;
     }
   };
 
@@ -4043,6 +4086,97 @@ window._p07SyncManualEditPill = function() {
 };
 window.addEventListener('pmc:metrics', window._p07SyncManualEditPill);
 document.getElementById('pmc-btn-svg')?.addEventListener('click', () => window.PlanMasseCanvas?.exportSVG());
+
+// ── Sliders Emprise / Espace vert liés (bornes PLU) ─────────────────
+// Calibre min/max depuis PLU et synchronise les deux sliders.
+// Emprise slider : [0, 100 - permMin%]
+// Espace vert slider : [permMin%, 100%]
+// Bouger l'un met à jour l'autre et pilote emprCiblePct sur PMC.
+(function() {
+  const slEmp  = document.getElementById('pmc-sl-emp');
+  const slPerm = document.getElementById('pmc-sl-perm');
+  if (!slEmp || !slPerm) return;
+
+  let _suppressSync = false;
+
+  // Calibre les bornes et valeurs initiales depuis PLU (appelé après PMC ready)
+  window._p07CalibrateEmprPermSliders = function() {
+    const pmc = window.PlanMasseCanvas;
+    const plu = pmc?._terrain?.plu;
+    if (!plu) return;
+    const permMin = plu.permMin ?? 25;
+    const emprMaxFromPerm = Math.max(1, 100 - permMin);
+    const cesMax = plu.emprMax ?? 60;
+    const emprMaxEffective = Math.min(cesMax, emprMaxFromPerm);
+
+    slEmp.min = '0';
+    slEmp.max = String(emprMaxEffective);
+    slPerm.min = String(permMin);
+    slPerm.max = '100';
+
+    // Labels bornes
+    const glEmp = document.getElementById('pmc-gl-emp');
+    if (glEmp) glEmp.textContent = `MAX ${emprMaxEffective}% PLU`;
+    const glPerm = document.getElementById('pmc-gl-perm');
+    if (glPerm) glPerm.textContent = `MIN ${permMin}% PLU`;
+  };
+
+  // Emprise slider → met à jour espace vert + PMC
+  window._p07EmprSliderInput = function(empVal) {
+    if (_suppressSync) return;
+    _suppressSync = true;
+    const permVal = Math.max(+slPerm.min, 100 - empVal);
+    slPerm.value = String(permVal);
+    // Convertir en emprCiblePct (0-100% de la capacité dispo)
+    const emprMax = +slEmp.max || 30;
+    const emprCiblePct = emprMax > 0 ? Math.round((empVal / emprMax) * 100) : 0;
+    window.PlanMasseCanvas?.setProg?.('emprCiblePct', emprCiblePct);
+    _suppressSync = false;
+  };
+
+  // Espace vert slider → met à jour emprise + PMC
+  window._p07PermSliderInput = function(permVal) {
+    if (_suppressSync) return;
+    _suppressSync = true;
+    const empVal = Math.min(+slEmp.max, 100 - permVal);
+    slEmp.value = String(Math.max(0, empVal));
+    const emprMax = +slEmp.max || 30;
+    const emprCiblePct = emprMax > 0 ? Math.round((empVal / emprMax) * 100) : 0;
+    window.PlanMasseCanvas?.setProg?.('emprCiblePct', emprCiblePct);
+    _suppressSync = false;
+  };
+
+  // Sync read-only : met à jour les valeurs affichées et positions sliders
+  // depuis les métriques réelles (après render PMC).
+  window._p07SyncEmprPermFromMetrics = function() {
+    const pmc = window.PlanMasseCanvas;
+    if (!pmc?._ready) return;
+    const m = pmc.metrics?.();
+    if (!m) return;
+    // Affichage valeurs réelles
+    const gvEmp = document.getElementById('pmc-gv-emp');
+    if (gvEmp) {
+      gvEmp.textContent = m.empPct.toFixed(1) + '%';
+      gvEmp.style.color = m.empPct > (+slEmp.max || 60) ? 'var(--svg-voie)' : 'var(--accent)';
+    }
+    const gvPerm = document.getElementById('pmc-gv-perm');
+    if (gvPerm) {
+      gvPerm.textContent = m.permPct.toFixed(1) + '%';
+      gvPerm.style.color = m.permPct < (+slPerm.min || 25) ? 'var(--svg-voie)' : 'var(--success)';
+    }
+  };
+
+  // Calibrer au ready PMC, puis sync sur chaque render
+  const _initOnce = () => {
+    window._p07CalibrateEmprPermSliders?.();
+    window._p07SyncEmprPermFromMetrics?.();
+  };
+  if (window.PlanMasseCanvas?._ready) _initOnce();
+  window.addEventListener('pmc:metrics', () => {
+    window._p07CalibrateEmprPermSliders?.();
+    window._p07SyncEmprPermFromMetrics?.();
+  });
+})();
 
 // ═══════════════════════════════════════════════════════════════
 // CELLULE GENERATOR — Plan de plateau logement collectif

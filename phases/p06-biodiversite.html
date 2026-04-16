@@ -661,9 +661,19 @@ window.P06 = P06;
   try {
     addRaster('p06-ign-ortho', IGN_ORTHO, 0.65);
     addRaster('p06-cosia',     IGN_COSIA, 0.50);
-    // Remonter parcelle au-dessus des rasters
-    for (const id of ['parcelle-fill', 'parcelle-casing', 'parcelle-outline']) {
-      if (map.getLayer(id)) map.moveLayer(id);
+
+    // Contour parcelle dedié P06 AU-DESSUS des rasters
+    const terrain = SessionManager.getTerrain();
+    const geojson = terrain?.parcelle_geojson;
+    if (geojson && !map.getSource('p06-parcelle')) {
+      const fc = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: geojson }] };
+      map.addSource('p06-parcelle', { type: 'geojson', data: fc });
+      map.addLayer({ id: 'p06-parcelle-fill', type: 'fill', source: 'p06-parcelle',
+        paint: { 'fill-color': '#C1652B', 'fill-opacity': 0.10 } });
+      map.addLayer({ id: 'p06-parcelle-casing', type: 'line', source: 'p06-parcelle',
+        paint: { 'line-color': '#000000', 'line-width': 4, 'line-opacity': 0.4 } });
+      map.addLayer({ id: 'p06-parcelle-outline', type: 'line', source: 'p06-parcelle',
+        paint: { 'line-color': '#C1652B', 'line-width': 2.5 } });
     }
   } catch (e) { console.warn('[P06] overlays IGN:', e.message); }
 
