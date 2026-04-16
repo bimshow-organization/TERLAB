@@ -1764,114 +1764,120 @@ const P01 = {
     setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
   },
 
-  // ─── Popup 3D du mesh TIN — Three.js + OrbitControls + auto-orbit ──
+  // ─── Popup 3D du mesh TIN — Three.js + OrbitControls + layers autonomes ──
   showMesh3D() {
-    const mesh = this._terrainMesh;
-    if (!mesh) {
+    const srcMesh = this._terrainMesh;
+    if (!srcMesh) {
       window.TerlabToast?.show('Aucun mesh — lancez LiDAR Make Mesh d\'abord', 'warning');
       return;
     }
-
     const T = window.THREE;
-    if (!T) {
-      window.TerlabToast?.show('Three.js non disponible', 'error');
-      return;
-    }
+    if (!T) { window.TerlabToast?.show('Three.js non disponible', 'error'); return; }
 
-    // Supprimer popup precedente si presente
     document.getElementById('mesh-3d-popup')?.remove();
 
-    // Creer la popup modale
     const popup = document.createElement('div');
     popup.id = 'mesh-3d-popup';
     popup.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(8,14,24,0.85);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;animation:meshPopFade .2s ease';
     popup.innerHTML = `
       <style>
         @keyframes meshPopFade { from { opacity:0 } to { opacity:1 } }
-        .mesh3d-box { background:var(--surface,#1a1814);border:1px solid var(--border,#2a2a2a);border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.6);width:92vw;height:88vh;max-width:1400px;display:flex;flex-direction:column;overflow:hidden }
-        .mesh3d-head { display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border,#2a2a2a);gap:10px;flex-shrink:0 }
-        .mesh3d-title { font-family:var(--font-ui,'Jost',system-ui);font-size:14px;font-weight:600;color:var(--text-primary,#e8e0d0);flex:1 }
-        .mesh3d-meta { font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:10px;color:var(--text-dim,#8a8070) }
-        .mesh3d-close { background:none;border:none;color:var(--text-dim,#8a8070);font-size:20px;cursor:pointer;padding:4px 8px;border-radius:4px }
-        .mesh3d-close:hover { background:rgba(255,255,255,.08);color:#fff }
-        .mesh3d-body { flex:1;display:flex;min-height:0 }
-        .mesh3d-canvas-wrap { flex:1;position:relative;min-height:0 }
-        .mesh3d-canvas-wrap canvas { width:100%!important;height:100%!important;display:block }
-        .mesh3d-sidebar { width:200px;flex-shrink:0;border-left:1px solid var(--border,#2a2a2a);padding:12px;display:flex;flex-direction:column;gap:12px;overflow-y:auto }
-        .mesh3d-section { display:flex;flex-direction:column;gap:6px }
-        .mesh3d-label { font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim,#8a8070) }
-        .mesh3d-btn { font-family:var(--font-mono);font-size:10px;padding:5px 10px;border-radius:4px;border:1px solid var(--border,#2a2a2a);background:var(--surface-2,#222);color:var(--text-primary,#e8e0d0);cursor:pointer;text-align:left }
-        .mesh3d-btn:hover { background:rgba(255,255,255,.08) }
-        .mesh3d-btn.active { background:rgba(154,120,32,.25);border-color:rgba(154,120,32,.5) }
-        .mesh3d-slider-row { display:flex;align-items:center;gap:6px }
-        .mesh3d-slider-row label { font-family:var(--font-mono);font-size:9px;color:var(--text-dim,#8a8070);min-width:55px }
-        .mesh3d-slider-row input[type=range] { flex:1;height:4px;accent-color:#9a7820 }
-        .mesh3d-slider-row .mesh3d-val { font-family:var(--font-mono);font-size:9px;color:var(--text-primary,#e8e0d0);min-width:28px;text-align:right }
-        .mesh3d-layers { display:flex;flex-direction:column;gap:3px }
+        .m3-box { background:var(--surface,#1a1814);border:1px solid var(--border,#2a2a2a);border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.6);width:92vw;height:88vh;max-width:1400px;display:flex;flex-direction:column;overflow:hidden }
+        .m3-head { display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border,#2a2a2a);gap:10px;flex-shrink:0 }
+        .m3-title { font-family:var(--font-ui,'Jost',system-ui);font-size:14px;font-weight:600;color:var(--text-primary,#e8e0d0);flex:1 }
+        .m3-meta { font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:10px;color:var(--text-dim,#8a8070) }
+        .m3-close { background:none;border:none;color:var(--text-dim,#8a8070);font-size:20px;cursor:pointer;padding:4px 8px;border-radius:4px }
+        .m3-close:hover { background:rgba(255,255,255,.08);color:#fff }
+        .m3-body { flex:1;display:flex;min-height:0 }
+        .m3-canvas { flex:1;position:relative;min-height:0 }
+        .m3-canvas canvas { width:100%!important;height:100%!important;display:block }
+        .m3-side { width:210px;flex-shrink:0;border-left:1px solid var(--border,#2a2a2a);padding:10px;display:flex;flex-direction:column;gap:10px;overflow-y:auto }
+        .m3-sec { display:flex;flex-direction:column;gap:5px }
+        .m3-lbl { font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim,#8a8070) }
+        .m3-layer { display:flex;align-items:center;gap:5px;padding:3px 6px;border-radius:4px;border:1px solid var(--border,#2a2a2a);background:var(--surface-2,#222) }
+        .m3-layer.active { border-color:rgba(154,120,32,.5);background:rgba(154,120,32,.15) }
+        .m3-layer input[type=checkbox] { accent-color:#9a7820;margin:0 }
+        .m3-layer-name { font-family:var(--font-mono);font-size:10px;color:var(--text-primary,#e8e0d0);flex:1;cursor:pointer }
+        .m3-layer input[type=range] { width:50px;height:3px;accent-color:#9a7820 }
+        .m3-layer-pct { font-family:var(--font-mono);font-size:8px;color:var(--text-dim,#8a8070);width:24px;text-align:right }
+        .m3-srow { display:flex;align-items:center;gap:5px }
+        .m3-srow label { font-family:var(--font-mono);font-size:9px;color:var(--text-dim,#8a8070);min-width:50px }
+        .m3-srow input[type=range] { flex:1;height:3px;accent-color:#9a7820 }
+        .m3-srow .m3-v { font-family:var(--font-mono);font-size:9px;color:var(--text-primary,#e8e0d0);min-width:28px;text-align:right }
+        .m3-btn { font-family:var(--font-mono);font-size:10px;padding:4px 8px;border-radius:4px;border:1px solid var(--border,#2a2a2a);background:var(--surface-2,#222);color:var(--text-primary,#e8e0d0);cursor:pointer }
+        .m3-btn:hover { background:rgba(255,255,255,.08) }
+        .m3-btn.active { background:rgba(154,120,32,.25);border-color:rgba(154,120,32,.5) }
       </style>
-      <div class="mesh3d-box">
-        <div class="mesh3d-head">
-          <span class="mesh3d-title">Terrain TIN — LiDAR HD</span>
-          <span class="mesh3d-meta" id="mesh3d-meta"></span>
-          <button class="mesh3d-close" id="mesh3d-close">&#10005;</button>
+      <div class="m3-box">
+        <div class="m3-head">
+          <span class="m3-title">Terrain TIN — LiDAR HD</span>
+          <span class="m3-meta" id="m3-meta"></span>
+          <button class="m3-close" id="m3-close">&#10005;</button>
         </div>
-        <div class="mesh3d-body">
-          <div class="mesh3d-canvas-wrap" id="mesh3d-wrap"></div>
-          <div class="mesh3d-sidebar">
-            <div class="mesh3d-section">
-              <span class="mesh3d-label">Couche couleur</span>
-              <div class="mesh3d-layers" id="mesh3d-layers">
-                <button class="mesh3d-btn active" data-layer="classification">Classes</button>
-                <button class="mesh3d-btn" data-layer="slope">Pente</button>
-                <button class="mesh3d-btn" data-layer="altitude">Altitude</button>
-                <button class="mesh3d-btn" data-layer="ortho">Ortho IGN</button>
+        <div class="m3-body">
+          <div class="m3-canvas" id="m3-wrap"></div>
+          <div class="m3-side">
+            <div class="m3-sec">
+              <span class="m3-lbl">Couches</span>
+              <div class="m3-layer active" data-layer="classification">
+                <input type="checkbox" checked data-vis="classification">
+                <span class="m3-layer-name" data-sel="classification">Classes</span>
+                <input type="range" min="0" max="100" value="100" data-opa="classification">
+                <span class="m3-layer-pct">100</span>
+              </div>
+              <div class="m3-layer" data-layer="slope">
+                <input type="checkbox" data-vis="slope">
+                <span class="m3-layer-name" data-sel="slope">Pente</span>
+                <input type="range" min="0" max="100" value="100" data-opa="slope">
+                <span class="m3-layer-pct">100</span>
+              </div>
+              <div class="m3-layer" data-layer="altitude">
+                <input type="checkbox" data-vis="altitude">
+                <span class="m3-layer-name" data-sel="altitude">Altitude</span>
+                <input type="range" min="0" max="100" value="100" data-opa="altitude">
+                <span class="m3-layer-pct">100</span>
+              </div>
+              <div class="m3-layer" data-layer="wireframe">
+                <input type="checkbox" data-vis="wireframe">
+                <span class="m3-layer-name">Fil de fer</span>
+                <input type="range" min="0" max="100" value="40" data-opa="wireframe">
+                <span class="m3-layer-pct">40</span>
               </div>
             </div>
-            <div class="mesh3d-section">
-              <span class="mesh3d-label">Affichage</span>
-              <div class="mesh3d-slider-row">
-                <label>Opacite</label>
-                <input type="range" min="0" max="100" value="100" id="mesh3d-opacity">
-                <span class="mesh3d-val" id="mesh3d-opacity-val">100%</span>
-              </div>
-              <div class="mesh3d-slider-row">
-                <label>Wireframe</label>
-                <input type="range" min="0" max="100" value="0" id="mesh3d-wire-opacity">
-                <span class="mesh3d-val" id="mesh3d-wire-val">0%</span>
-              </div>
-              <div class="mesh3d-slider-row">
+            <div class="m3-sec">
+              <span class="m3-lbl">Terrain</span>
+              <div class="m3-srow">
                 <label>Exag. Z</label>
-                <input type="range" min="10" max="500" value="100" id="mesh3d-zscale">
-                <span class="mesh3d-val" id="mesh3d-zscale-val">1.0x</span>
+                <input type="range" min="10" max="500" value="100" id="m3-zscale">
+                <span class="m3-v" id="m3-zscale-v">1.0x</span>
               </div>
             </div>
-            <div class="mesh3d-section">
-              <span class="mesh3d-label">Camera</span>
-              <button class="mesh3d-btn active" id="mesh3d-auto-orbit" data-mode="auto">Auto-orbit</button>
-              <button class="mesh3d-btn" data-mode="reset">Reset vue</button>
-              <button class="mesh3d-btn" data-mode="top">Vue dessus</button>
+            <div class="m3-sec">
+              <span class="m3-lbl">Camera</span>
+              <button class="m3-btn active" data-mode="auto">Auto-orbit</button>
+              <button class="m3-btn" data-mode="reset">Reset vue</button>
+              <button class="m3-btn" data-mode="top">Vue dessus</button>
             </div>
-            <div class="mesh3d-section">
-              <span class="mesh3d-label">Eclairage</span>
-              <div class="mesh3d-slider-row">
+            <div class="m3-sec">
+              <span class="m3-lbl">Eclairage</span>
+              <div class="m3-srow">
                 <label>Soleil</label>
-                <input type="range" min="0" max="200" value="120" id="mesh3d-sun">
-                <span class="mesh3d-val" id="mesh3d-sun-val">1.2</span>
+                <input type="range" min="0" max="200" value="120" id="m3-sun">
+                <span class="m3-v" id="m3-sun-v">1.2</span>
               </div>
-              <div class="mesh3d-slider-row">
+              <div class="m3-srow">
                 <label>Ambiant</label>
-                <input type="range" min="0" max="200" value="50" id="mesh3d-amb">
-                <span class="mesh3d-val" id="mesh3d-amb-val">0.5</span>
+                <input type="range" min="0" max="200" value="50" id="m3-amb">
+                <span class="m3-v" id="m3-amb-v">0.5</span>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    `;
+      </div>`;
     document.body.appendChild(popup);
 
-    // Setup Three.js
-    const wrap = document.getElementById('mesh3d-wrap');
+    // ── Three.js setup ──
+    const wrap = document.getElementById('m3-wrap');
     const w = wrap.clientWidth, h = wrap.clientHeight;
 
     const renderer = new T.WebGLRenderer({ antialias: true, alpha: false });
@@ -1884,33 +1890,103 @@ const P01 = {
     const scene = new T.Scene();
     scene.fog = new T.FogExp2(0x1a1814, 0.002);
 
-    // Utiliser le mesh original (setColorLayer modifie en place)
-    // mais sauvegarder l'offset pour le recentrer sans modifier l'original
-    const box = new T.Box3().setFromObject(mesh);
+    // Clone la geometrie pour etre autonome
+    const geo = srcMesh.geometry.clone();
+    const positions = geo.getAttribute('position').array;
+    const nVerts = geo.getAttribute('position').count;
+    const indices = geo.index?.array;
+
+    // Sauvegarder les vertex colors originales (classification)
+    const origColors = geo.getAttribute('color')
+      ? new Float32Array(geo.getAttribute('color').array)
+      : null;
+
+    // ── Pre-calculer les 3 palettes de couleurs ──
+    const colorBuffers = {};
+
+    // Classification : couleurs originales du mesh
+    colorBuffers.classification = origColors
+      ? new Float32Array(origColors)
+      : new Float32Array(nVerts * 3).fill(0.6);
+
+    // Altitude : gradient bleu-blanc-rouge
+    const altBuf = new Float32Array(nVerts * 3);
+    let yMin = Infinity, yMax = -Infinity;
+    for (let i = 0; i < nVerts; i++) {
+      const y = positions[i * 3 + 1]; // Y = altitude dans Three.js
+      if (y < yMin) yMin = y; if (y > yMax) yMax = y;
+    }
+    const yRange = (yMax - yMin) || 1;
+    for (let i = 0; i < nVerts; i++) {
+      const t = (positions[i * 3 + 1] - yMin) / yRange;
+      // bleu → blanc → rouge
+      if (t < 0.5) {
+        const s = t * 2;
+        altBuf[i*3] = 0.13 + s * 0.87; altBuf[i*3+1] = 0.4 + s * 0.6; altBuf[i*3+2] = 0.67 + s * 0.33;
+      } else {
+        const s = (t - 0.5) * 2;
+        altBuf[i*3] = 1.0; altBuf[i*3+1] = 1.0 - s * 0.73; altBuf[i*3+2] = 1.0 - s * 0.83;
+      }
+    }
+    colorBuffers.altitude = altBuf;
+
+    // Pente : vert-jaune-rouge depuis normales des triangles
+    const slopeBuf = new Float32Array(nVerts * 3);
+    const slopeVals = new Float32Array(nVerts);
+    const slopeCounts = new Uint16Array(nVerts);
+    if (indices) {
+      for (let t = 0; t < indices.length; t += 3) {
+        const i0 = indices[t], i1 = indices[t+1], i2 = indices[t+2];
+        const ax = positions[i1*3]-positions[i0*3], ay = positions[i1*3+1]-positions[i0*3+1], az = positions[i1*3+2]-positions[i0*3+2];
+        const bx = positions[i2*3]-positions[i0*3], by = positions[i2*3+1]-positions[i0*3+1], bz = positions[i2*3+2]-positions[i0*3+2];
+        const ny = az*bx - ax*bz;
+        const len = Math.sqrt((ay*bz-az*by)**2 + ny**2 + (ax*by-ay*bx)**2);
+        if (len < 1e-10) continue;
+        const cosA = Math.abs(ny / len);
+        const sp = cosA > 0.999 ? 0 : Math.tan(Math.acos(cosA)) * 100;
+        slopeVals[i0]+=sp; slopeCounts[i0]++; slopeVals[i1]+=sp; slopeCounts[i1]++; slopeVals[i2]+=sp; slopeCounts[i2]++;
+      }
+    }
+    const slopePal = [[5,[.3,.69,.31]],[10,[.55,.76,.29]],[15,[1,.92,.23]],[25,[1,.6,0]],[40,[.96,.26,.21]],[999,[.62,.16,.16]]];
+    for (let i = 0; i < nVerts; i++) {
+      const s = slopeCounts[i] > 0 ? slopeVals[i]/slopeCounts[i] : 0;
+      let c = slopePal[slopePal.length-1][1];
+      for (const [mx, col] of slopePal) { if (s <= mx) { c = col; break; } }
+      slopeBuf[i*3] = c[0]; slopeBuf[i*3+1] = c[1]; slopeBuf[i*3+2] = c[2];
+    }
+    colorBuffers.slope = slopeBuf;
+
+    // ── Material principal (vertex colors) ──
+    const mat = new T.MeshStandardMaterial({
+      vertexColors: true, flatShading: false, roughness: 0.85, metalness: 0.05,
+      side: T.DoubleSide, transparent: true,
+    });
+    const meshObj = new T.Mesh(geo, mat);
+
+    // Wireframe overlay
+    const wireMat = new T.MeshBasicMaterial({
+      color: 0xffffff, wireframe: true, transparent: true, opacity: 0, visible: false,
+    });
+    const wireMesh = new T.Mesh(geo, wireMat);
+    wireMesh.renderOrder = 1;
+
+    // Centrer
+    const box = new T.Box3().setFromObject(meshObj);
     const center = box.getCenter(new T.Vector3());
     const size = box.getSize(new T.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
 
-    // Groupe wrapper pour centrer sans toucher mesh.position
     const group = new T.Group();
     group.position.sub(center);
-    group.add(mesh);
-    scene.add(group);
-
-    // Wireframe overlay (meme geometrie, rendu par-dessus)
-    const wireMat = new T.MeshBasicMaterial({
-      color: 0xffffff, wireframe: true, transparent: true, opacity: 0, depthTest: true,
-    });
-    const wireMesh = new T.Mesh(mesh.geometry, wireMat);
-    wireMesh.renderOrder = 1;
+    group.add(meshObj);
     group.add(wireMesh);
+    scene.add(group);
 
     // Camera
     const camera = new T.PerspectiveCamera(45, w / h, 0.1, maxDim * 10);
     camera.position.set(maxDim * 0.8, maxDim * 0.6, maxDim * 0.8);
     camera.lookAt(0, 0, 0);
 
-    // OrbitControls
     const controls = new T.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
@@ -1928,22 +2004,30 @@ const P01 = {
     fill.position.set(-maxDim, maxDim * 0.3, -maxDim);
     scene.add(fill);
 
-    // Grid helper
+    // Grid
     const gridSize = Math.ceil(maxDim * 1.5 / 10) * 10;
     const grid = new T.GridHelper(gridSize, Math.ceil(gridSize / 5), 0x333330, 0x222220);
     grid.position.y = box.min.y - center.y - 0.5;
     scene.add(grid);
 
-    // Meta info
-    const geo = mesh.geometry;
-    const nV = geo.attributes?.position?.count ?? '?';
-    const nT = geo.index ? Math.round(geo.index.count / 3) : '?';
-    document.getElementById('mesh3d-meta').textContent = `${nV.toLocaleString('fr')} sommets · ${nT.toLocaleString('fr')} triangles · ${size.x.toFixed(0)}×${size.z.toFixed(0)} m`;
+    // Meta
+    const nT = indices ? Math.round(indices.length / 3) : '?';
+    document.getElementById('m3-meta').textContent = `${nVerts.toLocaleString('fr')} sommets · ${nT.toLocaleString('fr')} triangles · ${size.x.toFixed(0)}×${size.z.toFixed(0)} m`;
 
-    // State
+    // ── State ──
     let autoOrbit = true;
     let running = true;
+    let activeLayer = 'classification';
     const origScaleY = group.scale.y;
+
+    // Apply color buffer to geometry
+    function applyColors(layerName) {
+      const buf = colorBuffers[layerName];
+      if (!buf) return;
+      geo.setAttribute('color', new T.BufferAttribute(new Float32Array(buf), 3));
+      geo.attributes.color.needsUpdate = true;
+      activeLayer = layerName;
+    }
 
     // ── Animate ──
     const clock = new T.Clock();
@@ -1952,8 +2036,8 @@ const P01 = {
       requestAnimationFrame(animate);
       const dt = clock.getDelta();
       if (autoOrbit) {
-        const angle = dt * 0.15;
-        const cos = Math.cos(angle), sin = Math.sin(angle);
+        const a = dt * 0.15;
+        const cos = Math.cos(a), sin = Math.sin(a);
         const x = camera.position.x, z = camera.position.z;
         camera.position.x = x * cos - z * sin;
         camera.position.z = x * sin + z * cos;
@@ -1973,89 +2057,109 @@ const P01 = {
     };
     window.addEventListener('resize', onResize);
 
-    // ── Layer buttons ──
-    document.getElementById('mesh3d-layers').addEventListener('click', async (e) => {
-      const btn = e.target.closest('.mesh3d-btn');
-      if (!btn) return;
-      const layer = btn.dataset.layer;
-      document.querySelectorAll('#mesh3d-layers .mesh3d-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      btn.textContent = '...';
-      try {
-        if (layer === 'ortho') {
-          const pts = P01._lidarPoints ?? [];
-          if (pts.length) {
-            let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
-            for (const p of pts) {
-              if (p[0] < minLng) minLng = p[0]; if (p[0] > maxLng) maxLng = p[0];
-              if (p[1] < minLat) minLat = p[1]; if (p[1] > maxLat) maxLat = p[1];
+    // ── Layer interactions ──
+    const sidebar = popup.querySelector('.m3-side');
+
+    // Checkbox visibility + click name to select active layer
+    sidebar.addEventListener('change', (e) => {
+      const vis = e.target.dataset?.vis;
+      const opa = e.target.dataset?.opa;
+      if (vis) {
+        const checked = e.target.checked;
+        const row = e.target.closest('.m3-layer');
+        if (vis === 'wireframe') {
+          wireMat.visible = checked;
+          wireMat.needsUpdate = true;
+        } else if (checked) {
+          // Activer cette couche (radio-like pour les couleurs)
+          sidebar.querySelectorAll('.m3-layer[data-layer]').forEach(r => {
+            const ln = r.dataset.layer;
+            if (ln !== 'wireframe') {
+              r.classList.toggle('active', ln === vis);
+              r.querySelector('[data-vis]').checked = (ln === vis);
             }
-            await TerrainMeshBuilder.applyOrthoTexture({ west: minLng, east: maxLng, south: minLat, north: maxLat });
+          });
+          applyColors(vis);
+          // Appliquer l'opacite de cette couche
+          const slider = row?.querySelector('[data-opa]');
+          if (slider) {
+            mat.opacity = parseInt(slider.value) / 100;
+            mat.needsUpdate = true;
           }
-        } else {
-          await TerrainMeshBuilder.setColorLayer(layer);
         }
-      } catch (err) { console.warn('[Mesh3D] layer switch error:', err); }
-      btn.textContent = { classification: 'Classes', slope: 'Pente', altitude: 'Altitude', ortho: 'Ortho IGN' }[layer];
+      }
+      if (opa) {
+        const v = parseInt(e.target.value);
+        const pct = e.target.closest('.m3-layer')?.querySelector('.m3-layer-pct');
+        if (pct) pct.textContent = v;
+        if (opa === 'wireframe') {
+          wireMat.opacity = v / 100;
+          wireMat.needsUpdate = true;
+        } else if (opa === activeLayer) {
+          mat.opacity = v / 100;
+          mat.needsUpdate = true;
+        }
+      }
     });
 
-    // ── Sliders ──
-    // Opacite
-    document.getElementById('mesh3d-opacity').addEventListener('input', (e) => {
+    // Also handle range inputs (input event, not change for smooth)
+    sidebar.addEventListener('input', (e) => {
+      const opa = e.target.dataset?.opa;
+      if (!opa) {
+        // Check named sliders
+        if (e.target.id === 'm3-zscale') {
+          const v = parseInt(e.target.value) / 100;
+          document.getElementById('m3-zscale-v').textContent = v.toFixed(1) + 'x';
+          group.scale.y = origScaleY * v;
+        } else if (e.target.id === 'm3-sun') {
+          const v = parseInt(e.target.value) / 100;
+          document.getElementById('m3-sun-v').textContent = v.toFixed(1);
+          dir.intensity = v;
+        } else if (e.target.id === 'm3-amb') {
+          const v = parseInt(e.target.value) / 100;
+          document.getElementById('m3-amb-v').textContent = v.toFixed(1);
+          amb.intensity = v;
+        }
+        return;
+      }
       const v = parseInt(e.target.value);
-      document.getElementById('mesh3d-opacity-val').textContent = v + '%';
-      mesh.material.transparent = v < 100;
-      mesh.material.opacity = v / 100;
-      mesh.material.needsUpdate = true;
+      const pct = e.target.closest('.m3-layer')?.querySelector('.m3-layer-pct');
+      if (pct) pct.textContent = v;
+      if (opa === 'wireframe') {
+        wireMat.opacity = v / 100;
+        wireMat.needsUpdate = true;
+      } else if (opa === activeLayer) {
+        mat.opacity = v / 100;
+        mat.needsUpdate = true;
+      }
     });
 
-    // Wireframe overlay opacity
-    document.getElementById('mesh3d-wire-opacity').addEventListener('input', (e) => {
-      const v = parseInt(e.target.value);
-      document.getElementById('mesh3d-wire-val').textContent = v + '%';
-      wireMat.opacity = v / 100;
-      wireMat.transparent = true;
-      wireMat.visible = v > 0;
-      wireMat.needsUpdate = true;
-    });
-
-    // Z exaggeration
-    document.getElementById('mesh3d-zscale').addEventListener('input', (e) => {
-      const v = parseInt(e.target.value) / 100;
-      document.getElementById('mesh3d-zscale-val').textContent = v.toFixed(1) + 'x';
-      group.scale.y = origScaleY * v;
-    });
-
-    // Sun intensity
-    document.getElementById('mesh3d-sun').addEventListener('input', (e) => {
-      const v = parseInt(e.target.value) / 100;
-      document.getElementById('mesh3d-sun-val').textContent = v.toFixed(1);
-      dir.intensity = v;
-    });
-
-    // Ambient intensity
-    document.getElementById('mesh3d-amb').addEventListener('input', (e) => {
-      const v = parseInt(e.target.value) / 100;
-      document.getElementById('mesh3d-amb-val').textContent = v.toFixed(1);
-      amb.intensity = v;
-    });
-
-    // ── Camera buttons ──
-    const sidebar = popup.querySelector('.mesh3d-sidebar');
+    // Click layer name = select that layer
     sidebar.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-mode]');
-      if (!btn || btn.closest('#mesh3d-layers')) return;
-      const mode = btn.dataset.mode;
+      const sel = e.target.dataset?.sel;
+      if (sel && sel !== activeLayer) {
+        sidebar.querySelectorAll('.m3-layer[data-layer]').forEach(r => {
+          const ln = r.dataset.layer;
+          if (ln !== 'wireframe') {
+            r.classList.toggle('active', ln === sel);
+            r.querySelector('[data-vis]').checked = (ln === sel);
+          }
+        });
+        applyColors(sel);
+        const row = e.target.closest('.m3-layer');
+        const slider = row?.querySelector('[data-opa]');
+        if (slider) { mat.opacity = parseInt(slider.value) / 100; mat.needsUpdate = true; }
+      }
+      // Camera buttons
+      const mode = e.target.dataset?.mode;
       if (mode === 'auto') {
         autoOrbit = !autoOrbit;
-        btn.classList.toggle('active', autoOrbit);
+        e.target.classList.toggle('active', autoOrbit);
       } else if (mode === 'reset') {
         camera.position.set(maxDim * 0.8, maxDim * 0.6, maxDim * 0.8);
-        camera.lookAt(0, 0, 0);
         controls.target.set(0, 0, 0);
       } else if (mode === 'top') {
-        camera.position.set(0, maxDim * 1.5, 0);
-        camera.lookAt(0, 0, 0);
+        camera.position.set(0, maxDim * 1.5, 0.01);
         controls.target.set(0, 0, 0);
       }
     });
@@ -2064,20 +2168,11 @@ const P01 = {
     const close = () => {
       running = false;
       window.removeEventListener('resize', onResize);
-      // Retirer le mesh du groupe et le remettre dans la scene Mapbox
-      group.remove(mesh);
-      group.remove(wireMesh);
-      wireMat.dispose();
+      geo.dispose(); mat.dispose(); wireMat.dispose();
       renderer.dispose();
       popup.remove();
-      // Remettre le mesh dans la scene Mapbox si disponible
-      if (window.MapViewer?.addTerrainMesh) MapViewer.addTerrainMesh(mesh);
-      // Restaurer opacite/scale au cas ou modifie
-      mesh.material.transparent = false;
-      mesh.material.opacity = 1;
-      mesh.material.needsUpdate = true;
     };
-    document.getElementById('mesh3d-close').addEventListener('click', close);
+    document.getElementById('m3-close').addEventListener('click', close);
     popup.addEventListener('click', (e) => { if (e.target === popup) close(); });
     document.addEventListener('keydown', function esc(e) {
       if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
