@@ -2260,10 +2260,16 @@ let _contoursOn   = true;
 let _3dReady      = false;
 let _esquisseReady = false;
 // Exposer pour que le bouton toggle Métaforme puisse reset et re-init l'onglet
-Object.defineProperty(window, '_esquisseReady', {
-  get() { return _esquisseReady; },
-  set(v) { _esquisseReady = !!v; },
-});
+// configurable:true nécessaire car le script se re-exécute à chaque navigation hash
+if (!Object.getOwnPropertyDescriptor(window, '_esquisseReady')?.get) {
+  Object.defineProperty(window, '_esquisseReady', {
+    get() { return _esquisseReady; },
+    set(v) { _esquisseReady = !!v; },
+    configurable: true,
+  });
+} else {
+  window._esquisseReady = false;
+}
 
 Object.assign(P07, {
 

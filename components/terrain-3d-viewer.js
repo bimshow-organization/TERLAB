@@ -1474,8 +1474,8 @@ const Terrain3D = {
           float col = mod(slot, 4.0);
           float row = floor(slot / 4.0);
 
-          // Atlas 4 colonnes x 2 lignes, row 0 en haut de l'image
-          vUv = vec2((uv.x + col) / 4.0, (1.0 - uv.y + row) / 2.0);
+          // Atlas 4 colonnes x 2 lignes, row 0 en haut (V=0.5..1.0)
+          vUv = vec2((uv.x + col) / 4.0, (uv.y + 1.0 - row) / 2.0);
 
           // Billboard : right = cross(up, toCam), up = (0,1,0)
           vec3 toCam3 = normalize(uCameraPos - worldPos);
@@ -1577,12 +1577,12 @@ const Terrain3D = {
       if (!inParcel(rx, rz)) continue;
 
       // Min distance to existing plants (~3 scaled units)
-      const tooClose = plants.some(p => Math.hypot(p.x / sf - rx, p.y / sf - rz) < 2.5);
+      const tooClose = plants.some(p => Math.hypot(p.x / sf - rx, p.y / sf + rz) < 2.5);
       if (tooClose) continue;
 
       const sp = species[Math.floor(Math.random() * species.length)];
       plants.push({
-        x: rx / sf, y: rz / sf,
+        x: rx / sf, y: -rz / sf,  // scaledPts.z = north-positive → setVegetation.y = south-positive
         speciesKey: sp.key,
         canopyRadius: sp.r * (0.6 + Math.random() * 0.6),
       });

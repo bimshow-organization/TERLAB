@@ -223,6 +223,7 @@
       <div style="display:flex;gap:6px;margin-top:8px">
         <button class="ui-btn" style="flex:1;font-size:11px" onclick="P01.exportMesh('glb')" title="Telecharger le mesh au format glTF binaire (.glb)">⬇ Export GLB</button>
         <button class="ui-btn" style="flex:1;font-size:11px" onclick="P01.exportMesh('obj')" title="Telecharger le mesh au format Wavefront OBJ">⬇ Export OBJ</button>
+        <button class="ui-btn" style="flex:1;font-size:11px;background:linear-gradient(135deg,#2a4a6e,#1a3a5e);border-color:#3a6a8e;color:#fff" onclick="P01.showMesh3D()" title="Visualiser le mesh en 3D">&#9653; Voir 3D</button>
       </div>
     </div>
 
@@ -1249,6 +1250,38 @@ const P01 = {
     }
 
     const btn = document.getElementById('btn-lidar');
+
+    // ── Vérifier le cache IndexedDB avant de re-télécharger ──
+    if (!this._lidarPoints?.length && window.LidarCache) {
+      try {
+        const cached = await window.LidarCache.getPoints({
+          sessionId: SessionManager._sessionId,
+          geojson: terrain.parcelle_geojson,
+          classes: '2,3,4,5,6,9',
+        });
+        if (cached?.points?.length) {
+          console.info(`[P01] LiDAR cache hit : ${cached.count} pts — skip download`);
+          this._lidarPoints = cached.points;
+          LidarService.setRawPoints(cached.points, cached.classes || '2,3,4,5,6,9');
+
+          // Analyser pente / exposition / altitudes depuis le cache
+          const analysis = LidarService.analyzeTerrain(cached.points, terrain.parcelle_geojson);
+          this._applyLidarAnalysis(terrain, cached, analysis);
+          return;
+        }
+      } catch (e) {
+        console.warn('[P01] LiDAR cache lookup failed:', e.message);
+      }
+    }
+
+    // Déjà chargé en mémoire (changement de phase sans reload)
+    if (this._lidarPoints?.length) {
+      console.info(`[P01] LiDAR déjà en mémoire : ${this._lidarPoints.length} pts — skip download`);
+      const analysis = LidarService.analyzeTerrain(this._lidarPoints, terrain.parcelle_geojson);
+      this._applyLidarAnalysis(terrain, { points: this._lidarPoints, source: 'memory' }, analysis);
+      return;
+    }
+
     btn?.classList.add('loading');
     btn && (btn.textContent = '⏳ Chargement LiDAR…');
 
@@ -1307,88 +1340,7 @@ const P01 = {
 
       // Analyser pente / exposition / altitudes
       const analysis = LidarService.analyzeTerrain(result.points, terrain.parcelle_geojson);
-      if (analysis.error) {
-        window.TerlabToast?.show(analysis.error, 'warning');
-        return;
-      }
-
-      // Mettre à jour l'UI
-      document.getElementById('topo-alt-min').textContent  = analysis.alt_min;
-      document.getElementById('topo-alt-max').textContent  = analysis.alt_max;
-      document.getElementById('topo-pente').textContent    = analysis.pente_moy_pct;
-      document.getElementById('topo-denivele').textContent = analysis.denivele_m;
-
-      // Badge source
-      const badge = document.getElementById('topo-source-badge');
-      if (badge) {
-        badge.textContent = 'LiDAR HD';
-        badge.dataset.source = 'lidar';
-      }
-
-      // Info LiDAR
-      const info = document.getElementById('lidar-info');
-      const infoText = document.getElementById('lidar-info-text');
-      if (info && infoText) {
-        info.style.display = 'flex';
-        infoText.textContent = `${result.count.toLocaleString('fr')} pts · ${result.tile_count} tile(s) · ${analysis.exposition} · source: ${result.source}`;
-      }
-
-      // Sauvegarder en session
-      const altMoy = Math.round((analysis.alt_min + analysis.alt_max) / 2);
-      SessionManager.saveTerrain({
-        altitude_ngr: altMoy,
-        pente_moy_pct: analysis.pente_moy_pct,
-        orientation_terrain: analysis.exposition,
-      });
-      SessionManager.savePhase(1, {
-        lidar_available: true,
-        lidar_source: 'lidar_hd',
-        lidar_point_count: result.count,
-        lidar_ground_count: analysis.point_count,
-        lidar_alt_min: analysis.alt_min,
-        lidar_alt_max: analysis.alt_max,
-        lidar_pente: analysis.pente_moy_pct,
-        lidar_exposition: analysis.exposition,
-        lidar_denivele: analysis.denivele_m,
-        lidar_analysis_date: new Date().toISOString(),
-      });
-
-      // RTAA zone update
-      const rtaaZone = altMoy < 400 ? '1 (Aw côtier)' : altMoy < 900 ? '2 (Cf mi-pentes)' : '3 (Cwb hauts)';
-      document.getElementById('ts-rtaa').textContent = rtaaZone;
-      if (terrain.altitude_ngr) document.getElementById('ts-alt').textContent = `${altMoy} m`;
-
-      // Highlight étage
-      document.querySelectorAll('.etage-item').forEach(e => e.classList.remove('active'));
-      const etageId = altMoy < 400 ? 'etage-aw' : altMoy < 900 ? 'etage-cf' : 'etage-cwb';
-      document.getElementById(etageId)?.classList.add('active');
-
-      // Overlay PERENE sur la carte (Izard)
-      window.TerlabMap?.addPereneOverlay?.(altMoy);
-
-      // Auto-select orientation radio
-      const expMap = { 'N': 'Nord', 'NE': 'Nord-Est', 'E': 'Est', 'SE': 'Sud-Est', 'S': 'Sud', 'SO': 'Sud-Ouest', 'O': 'Ouest', 'NO': 'Nord-Ouest' };
-      const expVal = expMap[analysis.exposition];
-      if (expVal) {
-        document.querySelectorAll('[name="orientation"]').forEach(r => {
-          if (r.value === expVal) {
-            r.checked = true;
-            r.closest('.radio-option')?.classList.add('selected');
-          }
-        });
-      }
-
-      window.TerlabToast?.show(`LiDAR HD — ${analysis.point_count} pts sol · pente ${analysis.pente_moy_pct}% ${analysis.exposition}`, 'success', 4000);
-      P01._autoDetectMeteo(parseFloat(terrain.lat), parseFloat(terrain.lng));
-
-      // Afficher les points sur la carte + panneau de visualisation
-      this._showLidarViz(result.points, result.count);
-
-      // Afficher la section Coupes A/B (LiDAR disponible pour HD)
-      document.getElementById('section-ab-section').style.display = '';
-
-      // Afficher la section Maillage terrain TIN
-      document.getElementById('lidar-mesh-section').style.display = '';
+      this._applyLidarAnalysis(terrain, result, analysis);
 
     } catch (err) {
       console.error('[P01] Erreur LiDAR:', err);
@@ -1401,6 +1353,96 @@ const P01 = {
         btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="2" stroke="currentColor" stroke-width="1.2"/><path d="M3 3L2 2M9 3L10 2M3 9L2 10M9 9L10 10" stroke="currentColor" stroke-width="1" stroke-linecap="round"/></svg> LiDAR HD (±0.15m)`;
       }
     }
+  },
+
+  // ─── Appliquer les résultats LiDAR à l'UI (cache ou réseau) ──
+  _applyLidarAnalysis(terrain, result, analysis) {
+    if (analysis.error) {
+      window.TerlabToast?.show(analysis.error, 'warning');
+      return;
+    }
+
+    // Mettre à jour l'UI
+    document.getElementById('topo-alt-min').textContent  = analysis.alt_min;
+    document.getElementById('topo-alt-max').textContent  = analysis.alt_max;
+    document.getElementById('topo-pente').textContent    = analysis.pente_moy_pct;
+    document.getElementById('topo-denivele').textContent = analysis.denivele_m;
+
+    // Badge source
+    const badge = document.getElementById('topo-source-badge');
+    if (badge) {
+      badge.textContent = 'LiDAR HD';
+      badge.dataset.source = 'lidar';
+    }
+
+    // Info LiDAR
+    const info = document.getElementById('lidar-info');
+    const infoText = document.getElementById('lidar-info-text');
+    if (info && infoText) {
+      info.style.display = 'flex';
+      const count = result.count ?? result.points?.length ?? 0;
+      const tiles = result.tile_count ?? '?';
+      const src   = result.source ?? 'cache';
+      infoText.textContent = `${count.toLocaleString('fr')} pts · ${tiles} tile(s) · ${analysis.exposition} · source: ${src}`;
+    }
+
+    // Sauvegarder en session
+    const altMoy = Math.round((analysis.alt_min + analysis.alt_max) / 2);
+    SessionManager.saveTerrain({
+      altitude_ngr: altMoy,
+      pente_moy_pct: analysis.pente_moy_pct,
+      orientation_terrain: analysis.exposition,
+    });
+    SessionManager.savePhase(1, {
+      lidar_available: true,
+      lidar_source: 'lidar_hd',
+      lidar_point_count: result.count ?? result.points?.length,
+      lidar_ground_count: analysis.point_count,
+      lidar_alt_min: analysis.alt_min,
+      lidar_alt_max: analysis.alt_max,
+      lidar_pente: analysis.pente_moy_pct,
+      lidar_exposition: analysis.exposition,
+      lidar_denivele: analysis.denivele_m,
+      lidar_analysis_date: new Date().toISOString(),
+    });
+
+    // RTAA zone update
+    const rtaaZone = altMoy < 400 ? '1 (Aw côtier)' : altMoy < 900 ? '2 (Cf mi-pentes)' : '3 (Cwb hauts)';
+    document.getElementById('ts-rtaa').textContent = rtaaZone;
+    if (terrain.altitude_ngr) document.getElementById('ts-alt').textContent = `${altMoy} m`;
+
+    // Highlight étage
+    document.querySelectorAll('.etage-item').forEach(e => e.classList.remove('active'));
+    const etageId = altMoy < 400 ? 'etage-aw' : altMoy < 900 ? 'etage-cf' : 'etage-cwb';
+    document.getElementById(etageId)?.classList.add('active');
+
+    // Overlay PERENE sur la carte (Izard)
+    window.TerlabMap?.addPereneOverlay?.(altMoy);
+
+    // Auto-select orientation radio
+    const expMap = { 'N': 'Nord', 'NE': 'Nord-Est', 'E': 'Est', 'SE': 'Sud-Est', 'S': 'Sud', 'SO': 'Sud-Ouest', 'O': 'Ouest', 'NO': 'Nord-Ouest' };
+    const expVal = expMap[analysis.exposition];
+    if (expVal) {
+      document.querySelectorAll('[name="orientation"]').forEach(r => {
+        if (r.value === expVal) {
+          r.checked = true;
+          r.closest('.radio-option')?.classList.add('selected');
+        }
+      });
+    }
+
+    const pts = result.points?.length ?? result.count ?? 0;
+    window.TerlabToast?.show(`LiDAR HD — ${analysis.point_count} pts sol · pente ${analysis.pente_moy_pct}% ${analysis.exposition}`, 'success', 4000);
+    P01._autoDetectMeteo(parseFloat(terrain.lat), parseFloat(terrain.lng));
+
+    // Afficher les points sur la carte + panneau de visualisation
+    this._showLidarViz(result.points ?? this._lidarPoints, pts);
+
+    // Afficher la section Coupes A/B (LiDAR disponible pour HD)
+    document.getElementById('section-ab-section').style.display = '';
+
+    // Afficher la section Maillage terrain TIN
+    document.getElementById('lidar-mesh-section').style.display = '';
   },
 
   // ─── Afficher la visualisation LiDAR sur la carte ─────────────
@@ -1720,6 +1762,326 @@ const P01 = {
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+  },
+
+  // ─── Popup 3D du mesh TIN — Three.js + OrbitControls + auto-orbit ──
+  showMesh3D() {
+    const mesh = this._terrainMesh;
+    if (!mesh) {
+      window.TerlabToast?.show('Aucun mesh — lancez LiDAR Make Mesh d\'abord', 'warning');
+      return;
+    }
+
+    const T = window.THREE;
+    if (!T) {
+      window.TerlabToast?.show('Three.js non disponible', 'error');
+      return;
+    }
+
+    // Supprimer popup precedente si presente
+    document.getElementById('mesh-3d-popup')?.remove();
+
+    // Creer la popup modale
+    const popup = document.createElement('div');
+    popup.id = 'mesh-3d-popup';
+    popup.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(8,14,24,0.85);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;animation:meshPopFade .2s ease';
+    popup.innerHTML = `
+      <style>
+        @keyframes meshPopFade { from { opacity:0 } to { opacity:1 } }
+        .mesh3d-box { background:var(--surface,#1a1814);border:1px solid var(--border,#2a2a2a);border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.6);width:92vw;height:88vh;max-width:1400px;display:flex;flex-direction:column;overflow:hidden }
+        .mesh3d-head { display:flex;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border,#2a2a2a);gap:10px;flex-shrink:0 }
+        .mesh3d-title { font-family:var(--font-ui,'Jost',system-ui);font-size:14px;font-weight:600;color:var(--text-primary,#e8e0d0);flex:1 }
+        .mesh3d-meta { font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:10px;color:var(--text-dim,#8a8070) }
+        .mesh3d-close { background:none;border:none;color:var(--text-dim,#8a8070);font-size:20px;cursor:pointer;padding:4px 8px;border-radius:4px }
+        .mesh3d-close:hover { background:rgba(255,255,255,.08);color:#fff }
+        .mesh3d-body { flex:1;display:flex;min-height:0 }
+        .mesh3d-canvas-wrap { flex:1;position:relative;min-height:0 }
+        .mesh3d-canvas-wrap canvas { width:100%!important;height:100%!important;display:block }
+        .mesh3d-sidebar { width:200px;flex-shrink:0;border-left:1px solid var(--border,#2a2a2a);padding:12px;display:flex;flex-direction:column;gap:12px;overflow-y:auto }
+        .mesh3d-section { display:flex;flex-direction:column;gap:6px }
+        .mesh3d-label { font-family:var(--font-mono,'IBM Plex Mono',monospace);font-size:9px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim,#8a8070) }
+        .mesh3d-btn { font-family:var(--font-mono);font-size:10px;padding:5px 10px;border-radius:4px;border:1px solid var(--border,#2a2a2a);background:var(--surface-2,#222);color:var(--text-primary,#e8e0d0);cursor:pointer;text-align:left }
+        .mesh3d-btn:hover { background:rgba(255,255,255,.08) }
+        .mesh3d-btn.active { background:rgba(154,120,32,.25);border-color:rgba(154,120,32,.5) }
+        .mesh3d-slider-row { display:flex;align-items:center;gap:6px }
+        .mesh3d-slider-row label { font-family:var(--font-mono);font-size:9px;color:var(--text-dim,#8a8070);min-width:55px }
+        .mesh3d-slider-row input[type=range] { flex:1;height:4px;accent-color:#9a7820 }
+        .mesh3d-slider-row .mesh3d-val { font-family:var(--font-mono);font-size:9px;color:var(--text-primary,#e8e0d0);min-width:28px;text-align:right }
+        .mesh3d-layers { display:flex;flex-direction:column;gap:3px }
+      </style>
+      <div class="mesh3d-box">
+        <div class="mesh3d-head">
+          <span class="mesh3d-title">Terrain TIN — LiDAR HD</span>
+          <span class="mesh3d-meta" id="mesh3d-meta"></span>
+          <button class="mesh3d-close" id="mesh3d-close">&#10005;</button>
+        </div>
+        <div class="mesh3d-body">
+          <div class="mesh3d-canvas-wrap" id="mesh3d-wrap"></div>
+          <div class="mesh3d-sidebar">
+            <div class="mesh3d-section">
+              <span class="mesh3d-label">Couche couleur</span>
+              <div class="mesh3d-layers" id="mesh3d-layers">
+                <button class="mesh3d-btn active" data-layer="classification">Classes</button>
+                <button class="mesh3d-btn" data-layer="slope">Pente</button>
+                <button class="mesh3d-btn" data-layer="altitude">Altitude</button>
+                <button class="mesh3d-btn" data-layer="ortho">Ortho IGN</button>
+              </div>
+            </div>
+            <div class="mesh3d-section">
+              <span class="mesh3d-label">Affichage</span>
+              <div class="mesh3d-slider-row">
+                <label>Opacite</label>
+                <input type="range" min="0" max="100" value="100" id="mesh3d-opacity">
+                <span class="mesh3d-val" id="mesh3d-opacity-val">100%</span>
+              </div>
+              <div class="mesh3d-slider-row">
+                <label>Wireframe</label>
+                <input type="range" min="0" max="100" value="0" id="mesh3d-wire-opacity">
+                <span class="mesh3d-val" id="mesh3d-wire-val">0%</span>
+              </div>
+              <div class="mesh3d-slider-row">
+                <label>Exag. Z</label>
+                <input type="range" min="10" max="500" value="100" id="mesh3d-zscale">
+                <span class="mesh3d-val" id="mesh3d-zscale-val">1.0x</span>
+              </div>
+            </div>
+            <div class="mesh3d-section">
+              <span class="mesh3d-label">Camera</span>
+              <button class="mesh3d-btn active" id="mesh3d-auto-orbit" data-mode="auto">Auto-orbit</button>
+              <button class="mesh3d-btn" data-mode="reset">Reset vue</button>
+              <button class="mesh3d-btn" data-mode="top">Vue dessus</button>
+            </div>
+            <div class="mesh3d-section">
+              <span class="mesh3d-label">Eclairage</span>
+              <div class="mesh3d-slider-row">
+                <label>Soleil</label>
+                <input type="range" min="0" max="200" value="120" id="mesh3d-sun">
+                <span class="mesh3d-val" id="mesh3d-sun-val">1.2</span>
+              </div>
+              <div class="mesh3d-slider-row">
+                <label>Ambiant</label>
+                <input type="range" min="0" max="200" value="50" id="mesh3d-amb">
+                <span class="mesh3d-val" id="mesh3d-amb-val">0.5</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(popup);
+
+    // Setup Three.js
+    const wrap = document.getElementById('mesh3d-wrap');
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+
+    const renderer = new T.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setSize(w, h);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x1a1814, 1);
+    renderer.toneMapping = T.ACESFilmicToneMapping;
+    wrap.appendChild(renderer.domElement);
+
+    const scene = new T.Scene();
+    scene.fog = new T.FogExp2(0x1a1814, 0.002);
+
+    // Utiliser le mesh original (setColorLayer modifie en place)
+    // mais sauvegarder l'offset pour le recentrer sans modifier l'original
+    const box = new T.Box3().setFromObject(mesh);
+    const center = box.getCenter(new T.Vector3());
+    const size = box.getSize(new T.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+
+    // Groupe wrapper pour centrer sans toucher mesh.position
+    const group = new T.Group();
+    group.position.sub(center);
+    group.add(mesh);
+    scene.add(group);
+
+    // Wireframe overlay (meme geometrie, rendu par-dessus)
+    const wireMat = new T.MeshBasicMaterial({
+      color: 0xffffff, wireframe: true, transparent: true, opacity: 0, depthTest: true,
+    });
+    const wireMesh = new T.Mesh(mesh.geometry, wireMat);
+    wireMesh.renderOrder = 1;
+    group.add(wireMesh);
+
+    // Camera
+    const camera = new T.PerspectiveCamera(45, w / h, 0.1, maxDim * 10);
+    camera.position.set(maxDim * 0.8, maxDim * 0.6, maxDim * 0.8);
+    camera.lookAt(0, 0, 0);
+
+    // OrbitControls
+    const controls = new T.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.target.set(0, 0, 0);
+    controls.minDistance = maxDim * 0.05;
+    controls.maxDistance = maxDim * 5;
+
+    // Lights
+    const amb = new T.AmbientLight(0xffffff, 0.5);
+    scene.add(amb);
+    const dir = new T.DirectionalLight(0xffffff, 1.2);
+    dir.position.set(maxDim, maxDim * 1.5, maxDim * 0.5);
+    scene.add(dir);
+    const fill = new T.DirectionalLight(0x8899bb, 0.4);
+    fill.position.set(-maxDim, maxDim * 0.3, -maxDim);
+    scene.add(fill);
+
+    // Grid helper
+    const gridSize = Math.ceil(maxDim * 1.5 / 10) * 10;
+    const grid = new T.GridHelper(gridSize, Math.ceil(gridSize / 5), 0x333330, 0x222220);
+    grid.position.y = box.min.y - center.y - 0.5;
+    scene.add(grid);
+
+    // Meta info
+    const geo = mesh.geometry;
+    const nV = geo.attributes?.position?.count ?? '?';
+    const nT = geo.index ? Math.round(geo.index.count / 3) : '?';
+    document.getElementById('mesh3d-meta').textContent = `${nV.toLocaleString('fr')} sommets · ${nT.toLocaleString('fr')} triangles · ${size.x.toFixed(0)}×${size.z.toFixed(0)} m`;
+
+    // State
+    let autoOrbit = true;
+    let running = true;
+    const origScaleY = group.scale.y;
+
+    // ── Animate ──
+    const clock = new T.Clock();
+    function animate() {
+      if (!running) return;
+      requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+      if (autoOrbit) {
+        const angle = dt * 0.15;
+        const cos = Math.cos(angle), sin = Math.sin(angle);
+        const x = camera.position.x, z = camera.position.z;
+        camera.position.x = x * cos - z * sin;
+        camera.position.z = x * sin + z * cos;
+        camera.lookAt(controls.target);
+      }
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // ── Resize ──
+    const onResize = () => {
+      const w2 = wrap.clientWidth, h2 = wrap.clientHeight;
+      camera.aspect = w2 / h2;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w2, h2);
+    };
+    window.addEventListener('resize', onResize);
+
+    // ── Layer buttons ──
+    document.getElementById('mesh3d-layers').addEventListener('click', async (e) => {
+      const btn = e.target.closest('.mesh3d-btn');
+      if (!btn) return;
+      const layer = btn.dataset.layer;
+      document.querySelectorAll('#mesh3d-layers .mesh3d-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      btn.textContent = '...';
+      try {
+        if (layer === 'ortho') {
+          const pts = P01._lidarPoints ?? [];
+          if (pts.length) {
+            let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
+            for (const p of pts) {
+              if (p[0] < minLng) minLng = p[0]; if (p[0] > maxLng) maxLng = p[0];
+              if (p[1] < minLat) minLat = p[1]; if (p[1] > maxLat) maxLat = p[1];
+            }
+            await TerrainMeshBuilder.applyOrthoTexture({ west: minLng, east: maxLng, south: minLat, north: maxLat });
+          }
+        } else {
+          await TerrainMeshBuilder.setColorLayer(layer);
+        }
+      } catch (err) { console.warn('[Mesh3D] layer switch error:', err); }
+      btn.textContent = { classification: 'Classes', slope: 'Pente', altitude: 'Altitude', ortho: 'Ortho IGN' }[layer];
+    });
+
+    // ── Sliders ──
+    // Opacite
+    document.getElementById('mesh3d-opacity').addEventListener('input', (e) => {
+      const v = parseInt(e.target.value);
+      document.getElementById('mesh3d-opacity-val').textContent = v + '%';
+      mesh.material.transparent = v < 100;
+      mesh.material.opacity = v / 100;
+      mesh.material.needsUpdate = true;
+    });
+
+    // Wireframe overlay opacity
+    document.getElementById('mesh3d-wire-opacity').addEventListener('input', (e) => {
+      const v = parseInt(e.target.value);
+      document.getElementById('mesh3d-wire-val').textContent = v + '%';
+      wireMat.opacity = v / 100;
+      wireMat.transparent = true;
+      wireMat.visible = v > 0;
+      wireMat.needsUpdate = true;
+    });
+
+    // Z exaggeration
+    document.getElementById('mesh3d-zscale').addEventListener('input', (e) => {
+      const v = parseInt(e.target.value) / 100;
+      document.getElementById('mesh3d-zscale-val').textContent = v.toFixed(1) + 'x';
+      group.scale.y = origScaleY * v;
+    });
+
+    // Sun intensity
+    document.getElementById('mesh3d-sun').addEventListener('input', (e) => {
+      const v = parseInt(e.target.value) / 100;
+      document.getElementById('mesh3d-sun-val').textContent = v.toFixed(1);
+      dir.intensity = v;
+    });
+
+    // Ambient intensity
+    document.getElementById('mesh3d-amb').addEventListener('input', (e) => {
+      const v = parseInt(e.target.value) / 100;
+      document.getElementById('mesh3d-amb-val').textContent = v.toFixed(1);
+      amb.intensity = v;
+    });
+
+    // ── Camera buttons ──
+    const sidebar = popup.querySelector('.mesh3d-sidebar');
+    sidebar.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-mode]');
+      if (!btn || btn.closest('#mesh3d-layers')) return;
+      const mode = btn.dataset.mode;
+      if (mode === 'auto') {
+        autoOrbit = !autoOrbit;
+        btn.classList.toggle('active', autoOrbit);
+      } else if (mode === 'reset') {
+        camera.position.set(maxDim * 0.8, maxDim * 0.6, maxDim * 0.8);
+        camera.lookAt(0, 0, 0);
+        controls.target.set(0, 0, 0);
+      } else if (mode === 'top') {
+        camera.position.set(0, maxDim * 1.5, 0);
+        camera.lookAt(0, 0, 0);
+        controls.target.set(0, 0, 0);
+      }
+    });
+
+    // ── Close ──
+    const close = () => {
+      running = false;
+      window.removeEventListener('resize', onResize);
+      // Retirer le mesh du groupe et le remettre dans la scene Mapbox
+      group.remove(mesh);
+      group.remove(wireMesh);
+      wireMat.dispose();
+      renderer.dispose();
+      popup.remove();
+      // Remettre le mesh dans la scene Mapbox si disponible
+      if (window.MapViewer?.addTerrainMesh) MapViewer.addTerrainMesh(mesh);
+      // Restaurer opacite/scale au cas ou modifie
+      mesh.material.transparent = false;
+      mesh.material.opacity = 1;
+      mesh.material.needsUpdate = true;
+    };
+    document.getElementById('mesh3d-close').addEventListener('click', close);
+    popup.addEventListener('click', (e) => { if (e.target === popup) close(); });
+    document.addEventListener('keydown', function esc(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+    });
   },
 
   // ─── Changement de couche couleur sur le mesh TIN ─────────────
