@@ -5,11 +5,13 @@
    ================================================================ */
 
 /* ── Éléments cachés sur desktop, visibles uniquement sur mobile ── */
-.mob-tabbar       { display: none }
-.mob-sheet        { display: none }
-.mob-fab          { display: none }
-.mob-sheet-handle { display: none }
-.mob-phase-nav    { display: none }
+.mob-tabbar        { display: none }
+.mob-sheet         { display: none }
+.mob-fab           { display: none }
+.mob-sheet-handle  { display: none }
+.mob-phase-nav     { display: none }
+.mob-sheet-action  { display: none }
+#tb-phase-label    { display: none }
 
 /* ================================================================
    MOBILE : @media max-width 800px
@@ -171,6 +173,71 @@
   /* Boutons topbar surnuméraires → cachés */
   .topbar .topbar-desktop-only {
     display: none !important;
+  }
+
+  /* Sources : deplace dans le bottom sheet en responsive.
+     Bouton BIMSHOW aussi masque (acces via sheet si besoin). */
+  #tb-sources,
+  #btn-bimshow {
+    display: none !important;
+  }
+
+  /* Phase name : valoriser P## + nom dans la tb-brand */
+  .tb-brand .tb-name,
+  .tb-brand .tb-terrain-name {
+    display: none !important;
+  }
+  .tb-brand #tb-phase-label {
+    display: flex !important;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+    padding: 0 4px;
+    max-width: 180px;
+    overflow: hidden;
+  }
+  .tb-brand #tb-phase-label .tb-phase-num {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: .12em;
+    color: var(--accent);
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  .tb-brand #tb-phase-label .tb-phase-title {
+    font-family: var(--font-serif, 'Playfair Display', serif);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Bouton Sources compact dans mob-sheet-tabs */
+  .mob-sheet-action {
+    margin-left: auto;
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    margin-right: 6px;
+    background: var(--raised);
+    border: 1px solid var(--border2);
+    border-radius: var(--r-md, 6px);
+    color: var(--accent);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: .04em;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    flex-shrink: 0;
+  }
+  .mob-sheet-action:active {
+    background: var(--accent);
+    color: var(--surface);
   }
 
   /* ── Tab Bar de navigation phases ── */
@@ -423,6 +490,155 @@
     cursor: default;
   }
 
+  /* ══════════════════════════════════════════════════════════
+     MOBILE STEPPER — progression par sous-etapes
+     ══════════════════════════════════════════════════════════ */
+
+  /* ── Progress bar segmentee ── */
+  .mob-stepper-progress {
+    display: flex !important;
+    gap: 3px;
+    padding: 10px var(--sp-lg) 4px;
+    flex-shrink: 0;
+  }
+  .mob-stepper-progress .step-seg {
+    flex: 1;
+    height: 3px;
+    border-radius: 1.5px;
+    background: var(--border);
+    transition: background var(--t-sm) var(--ease);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mob-stepper-progress .step-seg.active {
+    background: var(--accent);
+  }
+  .mob-stepper-progress .step-seg.done {
+    background: var(--c-ok, #3d9);
+  }
+
+  /* ── Step indicator ── */
+  .mob-stepper-indicator {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    padding: 2px var(--sp-lg) 8px;
+    flex-shrink: 0;
+  }
+  .mob-step-num {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: .08em;
+    color: var(--accent);
+    background: var(--accent2);
+    padding: 2px 8px;
+    border-radius: var(--r-xl, 12px);
+    white-space: nowrap;
+  }
+  .mob-step-title {
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── Stepper body : form-sections as cards ── */
+  .mob-stepper-body .form-section {
+    background: var(--card, var(--raised));
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg, 8px);
+    margin: 0 var(--sp-sm) var(--sp-sm);
+    padding: 14px var(--sp-lg);
+  }
+
+  .mob-stepper-body .lp-head {
+    padding: var(--sp-sm) var(--sp-lg);
+  }
+
+  .mob-stepper-body .val-block {
+    margin: 0 var(--sp-sm);
+    padding: var(--sp-sm) var(--sp-lg);
+    background: var(--card, var(--raised));
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg, 8px);
+  }
+
+  /* ── Tip cards ── */
+  .mob-stepper-tips {
+    padding: 0 var(--sp-lg) var(--sp-sm);
+  }
+  .mob-tip-card {
+    background: var(--accent2);
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, transparent);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--r, 6px);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--text2);
+  }
+  .mob-tip-card .tip-label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 8px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+
+  /* ── Stepper nav buttons ── */
+  .mob-stepper-nav {
+    display: flex !important;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .mob-step-prev,
+  .mob-step-next {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px;
+    border-radius: var(--r, 7px);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: 1px solid var(--border2);
+    background: var(--surface);
+    color: var(--text);
+    transition: all var(--t-sm) var(--ease);
+    min-height: 44px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mob-step-next {
+    background: var(--accent2);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+  .mob-step-prev:active,
+  .mob-step-next:active {
+    transform: scale(.97);
+  }
+  .mob-step-prev:disabled,
+  .mob-step-next:disabled {
+    opacity: .3;
+    cursor: default;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     /MOBILE STEPPER
+     ══════════════════════════════════════════════════════════ */
+
   /* ── Sections formulaire dans le sheet ── */
   .form-section {
     padding: var(--sp-sm) var(--sp-lg);
@@ -436,7 +652,7 @@
   .field-input,
   .field-select {
     height: 40px;
-    font-size: 16px; /* Évite le zoom auto iOS */
+    font-size: 16px; /* Evite le zoom auto iOS */
   }
 
   .field-label {
@@ -456,14 +672,24 @@
     font-size: 12px;
   }
 
-  /* ── Toast repositionné au-dessus tab bar ── */
-  .toast,
+  /* ── Toast container repositionné au-dessus tab bar ──
+        PAS de backdrop-filter sur le conteneur : il heriterait du top
+        desktop et couvrirait plein ecran → floute la carte entiere.
+        Blur uniquement sur les toast individuels (qui ont un background). ── */
   #toast-container,
-  .toast-container,
-  .terlab-toast {
+  .toast-container {
+    top: auto !important;
     bottom: calc(var(--mob-tabbar-h) + env(safe-area-inset-bottom, 0px) + 12px) !important;
     left: var(--sp-lg) !important;
     right: var(--sp-lg) !important;
+    height: auto !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    pointer-events: none;
+  }
+  .toast,
+  .terlab-toast {
     border-radius: var(--r-lg, 11px) !important;
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
@@ -583,6 +809,19 @@
 
   /* ── Hide orientation warning (we handle mobile now) ── */
   .orientation-warning {
+    display: none !important;
+  }
+
+  /* ── Overlay hint P00 : bloque la carte au demarrage, la tab bar
+        mobile sert deja de guidage → on masque. ── */
+  #map-hint-overlay {
+    display: none !important;
+  }
+
+  /* ── Theme switcher (dark/ivory/earth) masque en responsive :
+        UI compacte, le theme se change depuis desktop. ── */
+  #theme-switcher,
+  .theme-switcher {
     display: none !important;
   }
 

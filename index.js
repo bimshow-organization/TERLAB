@@ -33,6 +33,7 @@ import OBIAService          from './services/obia-service.js';
 // ─── Composants utilisés par les phases ─────────────────────────
 import RiskPlayer        from './components/risk-player.js';
 import Terrain3D         from './components/terrain-3d-viewer.js';
+import BimshowProjectModal from './components/bimshow-project-modal.js';
 import AccesPompiers     from './components/acces-pompiers-canvas.js';
 import EsquisseCanvas    from './components/esquisse-canvas.js';
 import GIEPScore         from './components/giep-score.js';
@@ -62,10 +63,14 @@ import ParcelAltitudes        from './services/parcel-altitudes.js';
 import BpfBridge              from './services/bpf-bridge.js';
 import ImpostorLoader         from './services/impostor-loader.js';
 import RoofBuilder            from './services/roof-builder.js';
+import BuildingReconstruction from './services/building-reconstruction.js';
 import FootprintAnalyzer      from './services/footprint-analyzer.js';
 import FootprintHelpers       from './services/footprint-helpers.js';
 import GeoUtils               from './services/geo-utils.js';
+import GeomInlet              from './services/geom-inlet.js';
+import Parking                from './services/parking.js';
 import AutoPlanStrategies     from './services/auto-plan-strategies.js';
+import                             './data/strategies.js';
 import AutoPlanEngine         from './services/auto-plan-engine.js';
 import ExistingBuildings      from './services/existing-buildings.js';
 import CapacityStudyRenderer  from './services/capacity-study-renderer.js';
@@ -104,8 +109,9 @@ import GLBExporter       from './utils/glb-exporter.js';
 // ─── Mini-viewer 3D intégré (remplace popup BIMSHOW) ────────
 import BimshowViewer     from './components/bimshow-viewer.js';
 
-// ─── Mobile responsive controller ───────────────────────────
+// ─── Mobile responsive controller + stepper ────────────────
 import MobileController  from './components/mobile-controller.js';
+import MobileStepper     from './components/mobile-stepper.js';
 
 // ─── Éditeur GeoJSON 3 niveaux (GPU + import + dessin) ──────
 import CoordConverter        from './utils/coord-converter.js';
@@ -252,6 +258,8 @@ async function init() {
     window.TERLAB.Router  = Router;
     window.TERLAB.Mobile  = MobileController;
     window.MobileController = MobileController;
+    window.TERLAB.MobileStepper = MobileStepper;
+    window.MobileStepper = MobileStepper;
 
     // Utilitaires réseau (disponibles dans les scripts inline des phases)
     window.resilientFetch     = resilientFetch;
@@ -291,6 +299,7 @@ async function init() {
     window.BpfBridge              = BpfBridge;
     window.ImpostorLoader         = ImpostorLoader;
     window.RoofBuilder            = RoofBuilder;
+    window.BuildingReconstruction = BuildingReconstruction;
     window.FootprintAnalyzer      = FootprintAnalyzer;
     window.FootprintHelpers       = FootprintHelpers;
     window.GeoUtils               = GeoUtils;
@@ -315,6 +324,7 @@ async function init() {
     // Composants phases
     window.RiskPlayer    = RiskPlayer;
     window.Terrain3D     = Terrain3D;
+    window.BimshowProjectModal = BimshowProjectModal;
     window.AccesPompiers = AccesPompiers;
     window.EsquisseCanvas = EsquisseCanvas;
     window.GIEPScore     = GIEPScore;
@@ -388,8 +398,9 @@ async function init() {
     // Topbar — afficher le terrain si déjà chargé
     updateTerrainStrips();
 
-    // Init mobile controller (après DOM prêt + première phase chargée)
+    // Init mobile controller + stepper (apres DOM pret + premiere phase chargee)
     MobileController.init();
+    MobileStepper.init();
 
     // Init GeoJSON layer system
     GeoJsonLayerService.restore();

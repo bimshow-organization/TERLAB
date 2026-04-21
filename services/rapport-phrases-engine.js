@@ -184,8 +184,56 @@ export function buildFullContext(terrain = {}, phases = {}, extras = {}) {
   const sdis_warn = sdisVals.some(v => v === 'warn');
   const sdis_err  = sdisVals.some(v => v === 'err');
 
+  // ── PLU conformité (section plu_synthese) ──────────────────────────
+  const recul_voie_projet_m = proposal.recul_voie_m ?? p7.recul_voie_m ?? null;
+  const recul_lat_projet_m  = proposal.recul_lat_m  ?? p7.recul_lat_m  ?? null;
+  const recul_fond_projet_m = proposal.recul_fond_m ?? p7.recul_fond_m ?? null;
+  const hauteur_projet_m    = bat.h ?? p7.gabarit_h_m ?? null;
+
+  const _numOk = (v) => v != null && !Number.isNaN(Number(v));
+
+  const recul_voie_conforme = (_numOk(recul_voie_projet_m) && _numOk(pluCtx.recul_voie_m))
+    ? Number(recul_voie_projet_m) >= Number(pluCtx.recul_voie_m) : null;
+  const recul_lat_conforme  = (_numOk(recul_lat_projet_m)  && _numOk(pluCtx.recul_lat_m))
+    ? Number(recul_lat_projet_m)  >= Number(pluCtx.recul_lat_m)  : null;
+  const recul_fond_conforme = (_numOk(recul_fond_projet_m) && _numOk(pluCtx.recul_fond_m))
+    ? Number(recul_fond_projet_m) >= Number(pluCtx.recul_fond_m) : null;
+  const hauteur_conforme    = (_numOk(hauteur_projet_m)    && _numOk(pluCtx.hauteur_max_m))
+    ? Number(hauteur_projet_m)    <= Number(pluCtx.hauteur_max_m) : null;
+  const ces_conforme        = (_numOk(metrics.ces_pct)     && _numOk(pluCtx.emprise_sol_max_pct))
+    ? Number(metrics.ces_pct)     <= Number(pluCtx.emprise_sol_max_pct) : null;
+  const permeable_conforme  = (_numOk(metrics.permeable_pct) && _numOk(pluCtx.permeable_min_pct))
+    ? Number(metrics.permeable_pct) >= Number(pluCtx.permeable_min_pct) : null;
+
+  const statio_places_projet  = proposal.statio_places ?? p7.statio_places ?? null;
+  const statio_places_requises = p4.statio_places_requises ?? null;
+  const statio_conforme = (_numOk(statio_places_projet) && _numOk(statio_places_requises))
+    ? Number(statio_places_projet) >= Number(statio_places_requises) : null;
+  const statio_deficit = (_numOk(statio_places_projet) && _numOk(statio_places_requises))
+    ? Math.max(0, Number(statio_places_requises) - Number(statio_places_projet)) : null;
+
+  const ces_marge_pct = (_numOk(metrics.ces_pct) && _numOk(pluCtx.emprise_sol_max_pct))
+    ? Math.max(0, Number(pluCtx.emprise_sol_max_pct) - Number(metrics.ces_pct)).toFixed(0) : null;
+
+  // Compteur de non-conformités (only count checks that could be evaluated)
+  const checks = [recul_voie_conforme, recul_lat_conforme, recul_fond_conforme,
+                  hauteur_conforme, ces_conforme, permeable_conforme, statio_conforme];
+  const plu_non_conformites = checks.filter(c => c === false).length;
+  const plu_all_conforme = checks.some(c => c != null) && checks.every(c => c !== false);
+
   return {
     ...pluCtx,
+    // PLU conformité
+    recul_voie_projet_m, recul_lat_projet_m, recul_fond_projet_m,
+    hauteur_projet_m,
+    recul_voie_conforme, recul_lat_conforme, recul_fond_conforme,
+    hauteur_conforme, ces_conforme, permeable_conforme,
+    statio_places_projet, statio_places_requises, statio_conforme, statio_deficit,
+    ces_marge_pct, plu_non_conformites, plu_all_conforme,
+    plu_date_approbation: p4.plu_date_approbation ?? terrain.plu_date_approbation ?? null,
+    plu_en_revision: p4.plu_en_revision ?? terrain.plu_en_revision ?? false,
+    vegetation_plu_conforme: (_numOk(metrics.arbres_count) && metrics.arbres_count > 0) ? true : null,
+    programme: proposal.programme ?? p7.programme ?? null,
     // Identification
     section: terrain.section ?? null,
     parcelle: terrain.parcelle ?? null,
@@ -239,6 +287,31 @@ export function buildFullContext(terrain = {}, phases = {}, extras = {}) {
     dir_dominante: windMeta.dominantDir?.[0] ?? null, // E/O/N/S (premiere lettre)
     mean_speed: windMeta.meanSpeed ?? null,
     annual_mm: rainfallMeta.annual ?? null,
+    // PC4 notice — état initial & insertion
+    has_constructions_existantes: !!(terrain.constructions_existantes_desc),
+    constructions_existantes_desc: terrain.constructions_existantes_desc ?? null,
+    has_constructions_a_demolir: !!(terrain.constructions_a_demolir_desc),
+    constructions_a_demolir_desc: terrain.constructions_a_demolir_desc ?? null,
+    quartier_type: terrain.quartier_type ?? p7.quartier_type ?? null,
+    vegetation_existante: terrain.vegetation_existante ?? null,
+    arbres_existants_desc: terrain.arbres_existants_desc ?? null,
+    arbres_conserves_count: terrain.arbres_conserves_count ?? null,
+    has_vue_mer: terrain.has_vue_mer ?? false,
+    has_vue_montagne: terrain.has_vue_montagne ?? false,
+    // PC4 notice — matériaux & couleurs
+    materiaux_structure: proposal.materiaux_structure ?? p7.materiaux_structure ?? null,
+    materiaux_toiture: proposal.materiaux_toiture ?? p7.materiaux_toiture ?? null,
+    couleur_facade: proposal.couleur_facade ?? p7.couleur_facade ?? null,
+    cloture_type: proposal.cloture_type ?? p7.cloture_type ?? null,
+    cloture_h_m: proposal.cloture_h_m ?? p7.cloture_h_m ?? null,
+    soutenement_h_m: proposal.soutenement_h_m ?? p7.soutenement_h_m ?? null,
+    // PC4 notice — accès
+    acces_type: terrain.acces_type ?? null,
+    voie_largeur_m: terrain.voie_largeur_m ?? null,
+    portail_largeur_m: proposal.portail_largeur_m ?? p7.portail_largeur_m ?? null,
+    acces_public_direction: proposal.acces_public_direction ?? null,
+    acces_public_largeur_m: proposal.acces_public_largeur_m ?? null,
+    statio_pmr: proposal.statio_pmr ?? p7.statio_pmr ?? null,
   };
 }
 

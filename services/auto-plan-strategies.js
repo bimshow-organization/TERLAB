@@ -233,10 +233,13 @@ const AutoPlanStrategies = {
       }
     }
 
-    // Vérifier que les gaps réels entre blocs sont OK
+    // Vérifier gaps — si trop serrés, avertir mais ne PAS rejeter
+    // (le PLU vérifie le gap dans les checks, pas ici)
     if (blocs.length >= 2) {
-      const ok = FH.blocsRespectGap(blocs, gap * 0.9); // tolérance 10%
-      if (!ok) return [];
+      const ok = FH.blocsRespectGap(blocs, gap * 0.5);
+      if (!ok) {
+        console.warn(`[multiRect] gaps trop serrés (min requis ${(gap * 0.5).toFixed(1)}m) — blocs conservés avec warning`);
+      }
     }
 
     return blocs;

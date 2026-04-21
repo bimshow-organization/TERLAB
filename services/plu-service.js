@@ -77,6 +77,10 @@ const PLUService = {
       const features = zoneData.features ?? [];
       if (!features.length) return this._fallback(lat, lng);
 
+      // Prioriser U > AU > A > N quand le point tombe en limite de zones
+      const _ZP = { U: 0, AU: 1, A: 2, N: 3 };
+      features.sort((a, b) =>
+        (_ZP[a.properties?.typezone] ?? 9) - (_ZP[b.properties?.typezone] ?? 9));
       const zone = features[0];
       const p    = zone.properties ?? {};
 
@@ -152,7 +156,17 @@ const PLUService = {
       const data = await resp.json();
       if (!data.features?.length) return null;
 
-      const p  = data.features[0].properties;
+      // WFS peut retourner plusieurs zones quand le point est en limite
+      // (ex: N + Uc + Ua). Prioriser U > AU > A > N pour éviter de classer
+      // constructible en naturel par hasard d'ordre.
+      const ZONE_PRIORITY = { U: 0, AU: 1, A: 2, N: 3 };
+      const deduped = data.features
+        .filter((f, i, a) => a.findIndex(g =>
+          g.properties?.libelle === f.properties?.libelle) === i);
+      deduped.sort((a, b) =>
+        (ZONE_PRIORITY[a.properties?.typezone] ?? 9)
+        - (ZONE_PRIORITY[b.properties?.typezone] ?? 9));
+      const p  = deduped[0].properties;
       const tz = p?.typezone;
       const res = {
         zone:          p?.libelle ?? '—',

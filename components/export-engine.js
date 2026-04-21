@@ -2354,6 +2354,182 @@ const ExportEngine = {
     a.click();
     URL.revokeObjectURL(url);
     window.TerlabToast?.show('Session JSON exportee', 'success');
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  //  ZIP IMAGES (cadastre, situation, PPR, 3D, coupes, plan masse, charts)
+  // ═══════════════════════════════════════════════════════════════
+  async generateImagesZIP() {
+    const session = window.SessionManager;
+    const terrain = session?.getTerrain?.() ?? {};
+    if (!terrain.commune) {
+      window.TerlabToast?.show('Completez la Phase 0 avant d\'exporter', 'warning');
+      return;
+    }
+
+    this._setProgress(2, 'ZIP Images — Chargement JSZip...');
+    window.TerlabToast?.show('Generation ZIP images en cours...', 'info', 10000);
+
+    try {
+      const JSZip = await this._loadJSZip();
+      if (!JSZip) {
+        window.TerlabToast?.show('JSZip indisponible (CDN bloque ?)', 'error');
+        this._hideProgress();
+        return;
+      }
+
+      this._setProgress(8, 'Cadastre · force layer visible...');
+      const cadastreRestore = this._forceCadastreVisible();
+
+      this._setProgress(12, 'Capture cartes Mapbox HD (cadastre, situation, PPR)...');
+      const mapCaptures = await MapCapture.captureAll(session);
+
+      this._setProgress(40, 'Capture visuels DOM (SVG, charts, 3D)...');
+      const visuals = await this._captureVisuals();
+
+      this._setProgress(60, 'Capture LiDAR · 4 modes (elevation/slope/ortho/satellite)...');
+      const lidarCaptures = await this._captureLidarTerrainModes();
+
+      cadastreRestore?.();
+
+      this._setProgress(80, 'Creation archive ZIP...');
+      const zip = new JSZip();
+      const safeCommune = (terrain.commune ?? 'terrain').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const folderName  = `TERLAB_images_${safeCommune}`;
+      const folder      = zip.folder(folderName);
+
+      const MIME_EXT = {
+        'image/jpeg':    'jpg',
+        'image/jpg':     'jpg',
+        'image/png':     'png',
+        'image/webp':    'webp',
+        'image/svg+xml': 'svg',
+      };
+
+      const added = new Set();
+      const addDataURL = (name, dataUrl) => {
+        if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) return;
+        const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+        if (!m) return;
+        const ext = MIME_EXT[m[1].toLowerCase()] ?? 'bin';
+        const safe = String(name).replace(/[^a-zA-Z0-9_-]/g, '_');
+        let fname = `${safe}.${ext}`;
+        let i = 2;
+        while (added.has(fname)) fname = `${safe}_${i++}.${ext}`;
+        added.add(fname);
+        folder.file(fname, m[2], { base64: true });
+      };
+
+      for (const [k, v] of Object.entries(mapCaptures ?? {})) addDataURL(`map_${k}`, v);
+
+      for (const [k, v] of Object.entries(lidarCaptures ?? {})) addDataURL(`lidar_${k}`, v);
+
+      for (const [k, v] of Object.entries(visuals ?? {})) {
+        if (!v) continue;
+        if (typeof v === 'string') {
+          addDataURL(k, v);
+        } else if (typeof v === 'object' && !Array.isArray(v)) {
+          for (const [sk, sv] of Object.entries(v)) {
+            if (typeof sv === 'string') addDataURL(`${k}_${sk}`, sv);
+          }
+        }
+      }
+
+      const manifest = {
+        commune: terrain.commune,
+        parcelle: terrain.parcelle ?? null,
+        lat: terrain.lat ?? null,
+        lng: terrain.lng ?? null,
+        date: new Date().toISOString(),
+        nb_images: added.size,
+        fichiers: [...added].sort(),
+      };
+      folder.file('manifest.json', JSON.stringify(manifest, null, 2));
+
+      this._setProgress(92, 'Compression...');
+      const blob = await zip.generateAsync(
+        { type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } },
+        (meta) => { this._setProgress(92 + Math.round(meta.percent * 0.07), `Compression ${Math.round(meta.percent)}%...`); }
+      );
+
+      const url   = URL.createObjectURL(blob);
+      const fname = `${folderName}_${new Date().toISOString().slice(0,10)}.zip`;
+      const a     = document.createElement('a');
+      a.href      = url;
+      a.download  = fname;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      session?.saveExport?.('zip-images', fname);
+      window.TerlabToast?.show(`ZIP images exporte — ${added.size} fichiers`, 'success');
+      window.TerlabUploadService?.uploadExport?.('zip-images', blob, fname)?.catch(() => {});
+    } catch (e) {
+      console.error('[Export ZIP]', e);
+      window.TerlabToast?.show(`Erreur ZIP : ${e.message}`, 'error');
+    }
+    this._hideProgress();
+  },
+
+  _loadJSZip() {
+    if (window.JSZip) return Promise.resolve(window.JSZip);
+    return new Promise((resolve) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+      s.onload  = () => resolve(window.JSZip ?? null);
+      s.onerror = () => resolve(null);
+      document.head.appendChild(s);
+    });
+  },
+
+  /** Force la couche cadastre visible (full opacity) avant capture, retourne fn restore. */
+  _forceCadastreVisible() {
+    const map = window.MapViewer?.getMap?.() ?? window.TerlabMap?._map;
+    if (!map || !map.getLayer?.('cadastre')) return null;
+    let prevVis = 'visible', prevOp = 0.7;
+    try {
+      prevVis = map.getLayoutProperty('cadastre', 'visibility') ?? 'visible';
+      prevOp  = map.getPaintProperty('cadastre', 'raster-opacity') ?? 0.7;
+      map.setLayoutProperty('cadastre', 'visibility', 'visible');
+      map.setPaintProperty('cadastre',  'raster-opacity', 0.95);
+    } catch (e) { console.warn('[ZIP] cadastre force:', e?.message); }
+    return () => {
+      try {
+        map.setLayoutProperty('cadastre', 'visibility', prevVis);
+        map.setPaintProperty('cadastre',  'raster-opacity', prevOp);
+      } catch { /* noop */ }
+    };
+  },
+
+  /**
+   * Capture les 4 modes de Terrain3DViewer (elevation/slope/ortho/satellite)
+   * + la vue courante. Ne dure que si P01 a deja initialise le viewer.
+   */
+  async _captureLidarTerrainModes() {
+    const out = {};
+    const viewer = window.Terrain3DViewer ?? window.Terrain3D;
+    if (!viewer?.capture) return out;
+
+    const modes      = ['ortho', 'satellite', 'elevation', 'slope'];
+    const prevMode   = viewer.getTextureMode?.() ?? null;
+
+    try {
+      for (const mode of modes) {
+        try {
+          viewer.setTextureMode?.(mode);
+          await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+          const snap = viewer.capture({ reframe: false });
+          if (snap && snap.length > 500) out[`terrain_3d_${mode}`] = snap;
+        } catch (e) { console.warn(`[ZIP] mode ${mode}:`, e?.message); }
+      }
+    } finally {
+      if (prevMode) { try { viewer.setTextureMode?.(prevMode); } catch { /* noop */ } }
+    }
+
+    // Snapshot session fallback (si viewer mort)
+    const p7snap = window.SessionManager?.getPhase?.(7)?.data?.snapshot_3d;
+    if (p7snap && !Object.keys(out).length) out.terrain_3d_snapshot = p7snap;
+
+    return out;
   }
 };
 

@@ -625,6 +625,8 @@
       <button class="t3d-btn" id="t3d-btn-tex-slope" onclick="window.P07?.setTexture('slope')">Pente</button>
       <div style="height:4px"></div>
       <button class="t3d-btn" onclick="window.P07?.exportGLB3D()">Export GLB</button>
+      <div style="height:4px"></div>
+      <button class="t3d-btn" id="t3d-btn-bimshow" onclick="window.P07?.openBimshowBrowser()">+ BIMSHOW</button>
     </div>
 
     <!-- Info terrain -->
@@ -897,15 +899,40 @@
   <!-- ═══ RÉSULTATS ÉTUDE DE CAPACITÉ (top priority) ═══ -->
   <div class="rp-section" id="pmc-metrics-section">
     <div class="rp-head">Étude de capacité</div>
+    <!-- Table capacite par typo — INDEPENDANTE du mix -->
+    <div id="pmc-typo-table" style="margin-bottom:6px;font-size:8.5px;line-height:1.6;border:1px solid var(--border);border-radius:4px;padding:4px 6px;background:var(--raised)">
+      <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:2px;margin-bottom:2px">
+        <span style="color:var(--faint);font-family:var(--font-mono)">CAPACITE MAX</span>
+        <span style="color:var(--faint);font-family:var(--font-mono)">lgts · emprise · limitant</span>
+      </div>
+      <div id="pmc-typo-maison" style="display:flex;justify-content:space-between"><span>Maison</span><span style="font-family:var(--font-mono)">—</span></div>
+      <div id="pmc-typo-bande" style="display:flex;justify-content:space-between"><span>Bande</span><span style="font-family:var(--font-mono)">—</span></div>
+      <div id="pmc-typo-collectif" style="display:flex;justify-content:space-between"><span>Collectif</span><span style="font-family:var(--font-mono)">—</span></div>
+    </div>
     <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">
       <span style="font-size:9px;color:var(--muted)">Cap. max PLU</span>
       <span id="pmc-maxlgts" style="font:700 22px var(--font-mono);color:var(--accent)">—</span>
       <span style="font-size:8px;color:var(--faint)" id="pmc-maxniv">—</span>
     </div>
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
       <span id="pmc-status" class="pmc-pill ok" style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font:600 9px var(--font-mono)">Conforme</span>
       <span id="pmc-lgts" style="font:700 24px var(--font-mono);color:var(--text)">0</span>
       <span id="pmc-lgts-sub" style="font-size:9px;color:var(--muted)">logements</span>
+    </div>
+    <div id="pmc-limiting" style="display:none;margin-bottom:5px;padding:4px 8px;border-radius:4px;background:rgba(139,42,58,.08);border-left:3px solid #8b2a3a;font-size:8px;color:#8b2a3a;line-height:1.4"></div>
+    <!-- Slider Logements : 1 → max stratégie (pilote emprCiblePct) -->
+    <div style="margin-bottom:5px">
+      <div style="display:flex;align-items:center;gap:4px;margin-bottom:2px">
+        <span style="font-size:9px;color:var(--muted);flex:1">Logements cible</span>
+        <span id="pmc-gv-lgts" style="font:600 9px var(--font-mono);color:var(--accent)">—</span>
+      </div>
+      <input type="range" id="pmc-sl-lgts" min="1" max="10" value="2" step="1"
+             style="width:100%;accent-color:var(--accent,#9a7820);height:6px;cursor:pointer"
+             oninput="window._p07LgtsSliderInput?.(+this.value)"/>
+      <div style="display:flex;justify-content:space-between;font-size:7px;color:var(--faint)">
+        <span>1</span>
+        <span id="pmc-gl-lgts">MAX — strat.</span>
+      </div>
     </div>
     <!-- Slider Emprise : 0 → (100 - permMin)% PLU -->
     <div style="margin-bottom:5px">
@@ -935,6 +962,8 @@
         <span>100%</span>
       </div>
     </div>
+    <!-- Conseil mitoyen -->
+    <div id="pmc-mitoyen-hint" style="display:none;margin-bottom:5px;padding:4px 8px;border-radius:4px;background:rgba(154,120,32,.08);border:1px solid rgba(154,120,32,.18);font-size:8px;color:var(--accent)"></div>
     <div style="font-size:9px">
       <div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">SP totale</span><span id="pmc-sp" style="font:600 9px var(--font-mono);color:var(--text)">—</span></div>
       <div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">Niveaux</span><span id="pmc-nv" style="font:600 9px var(--font-mono);color:var(--text)">—</span></div>
@@ -1347,6 +1376,7 @@ import { AutoPlanEngine }        from '../services/auto-plan-engine.js';
 import { ExistingBuildings }     from '../services/existing-buildings.js';
 import { CapacityStudyRenderer } from '../services/capacity-study-renderer.js';
 import { PlanMasseCanvas }       from '../services/plan-masse-canvas.js';
+import CapacityModel             from '../services/capacity-model.js';
 import { SdisChecker }           from '../services/sdis-checker.js';
 
 const pluAdapter     = new PLUP07Adapter();
@@ -2637,6 +2667,24 @@ Object.assign(P07, {
   // Export GLB terrain 3D
   exportGLB3D() {
     Terrain3D.exportGLB();
+  },
+
+  // Import BIMSHOW project GLB into terrain 3D
+  async openBimshowBrowser() {
+    const modal = window.BimshowProjectModal;
+    if (!modal) {
+      window.TerlabToast?.show('Module BIMSHOW non charg\u00e9', 'error');
+      return;
+    }
+    const result = await modal.open();
+    if (!result) return; // cancelled
+
+    // Load GLB into terrain viewer
+    Terrain3D.loadBimshowGLB(result.buffer, result.siteData);
+
+    // Highlight the button
+    const btn = document.getElementById('t3d-btn-bimshow');
+    if (btn) btn.classList.add('active');
   },
 
   // Changer le mode texture (ortho / elevation / slope)
@@ -4127,20 +4175,90 @@ document.getElementById('pmc-btn-svg')?.addEventListener('click', () => window.P
     if (glPerm) glPerm.textContent = `MIN ${permMin}% PLU`;
   };
 
-  // Emprise slider → met à jour espace vert + PMC
+  const slLgts = document.getElementById('pmc-sl-lgts');
+
+  // ── Logements slider → pilote TOUT : niveaux, parking, emprise ──
+  // Logique simple :
+  //   - Niveaux : si lgts > capacité R+0, passer en R+1 (max PLU)
+  //   - Parking : si ext ne passe pas → RdC → SS
+  //   - Emprise : emprCiblePct = lgtsVal / maxLgts × 100
+  window._p07LgtsSliderInput = function(lgtsVal) {
+    if (_suppressSync) return;
+    _suppressSync = true;
+
+    const pmc = window.PlanMasseCanvas;
+    if (!pmc?._terrain) { _suppressSync = false; return; }
+
+    const maxLgts = +slLgts.max || 1;
+    const nvMaxPLU = pmc.nvMaxPLU();
+    const area = pmc._terrain.area ?? 990;
+    const permMin = pmc._terrain.plu?.permMin ?? 70;
+    const budget = area * (1 - permMin / 100);
+    const emprMax = pmc._terrain.plu?.emprMax ?? 60;
+    const SP_MOY = 57;
+
+    // 1. Niveaux auto : combien de niveaux faut-il pour lgtsVal ?
+    //    lgtsParNiv ≈ budget × emprMax/100 × eff / SP_MOY
+    const eff = pmc.curSc()?.eff ?? 0.82;
+    const maxEmpr = Math.min(budget, area * emprMax / 100);
+    const lgtsParNiv = Math.max(1, Math.floor(maxEmpr * eff / SP_MOY));
+    const nvNeeded = Math.min(nvMaxPLU, Math.max(1, Math.ceil(lgtsVal / lgtsParNiv)));
+
+    // Forcer niveaux si différent
+    if ((pmc.S.prog.nvMax ?? 1) !== nvNeeded) {
+      pmc.setProg('nvMax', nvNeeded);
+      // Sync le slider niveaux UI
+      const nvSlider = document.getElementById('pm-nvmax');
+      if (nvSlider) {
+        nvSlider.value = String(nvNeeded);
+        const nvLbl = document.getElementById('pm-nvmax-lbl');
+        if (nvLbl) nvLbl.textContent = ['', 'R+0', 'R+1', 'R+2', 'R+3'][nvNeeded] ?? `R+${nvNeeded - 1}`;
+      }
+    }
+
+    // 2. Parking auto : emprise estimée pour lgtsVal
+    const emprEst = (lgtsVal * SP_MOY) / (eff * nvNeeded);
+    const parkReq = lgtsVal * 2;
+    const parkExtM2 = parkReq * 25;
+
+    let bestPark;
+    if (emprEst + parkExtM2 <= budget) {
+      bestPark = 'ext';
+    } else {
+      const parkRdcPlaces = Math.floor(emprEst * 0.80 / 25);
+      bestPark = parkRdcPlaces >= parkReq ? 'rdc' : 'ss';
+    }
+
+    // Switcher parking
+    if (pmc.S.prog.parkMode !== bestPark) {
+      pmc.S.prog.parkMode = bestPark;
+      ['ext', 'rdc', 'ss'].forEach(m => {
+        document.getElementById(`pm-park-${m}`)?.classList.toggle('active', m === bestPark);
+      });
+      window.P07?.setProg?.('parkMode', bestPark);
+    }
+
+    // 3. Emprise cible
+    const emprCiblePct = Math.round((lgtsVal / maxLgts) * 100);
+    pmc.setProg('emprCiblePct', Math.max(1, Math.min(100, emprCiblePct)));
+
+    _suppressSync = false;
+  };
+
+  // ── Emprise slider → met à jour espace vert + PMC ──
   window._p07EmprSliderInput = function(empVal) {
     if (_suppressSync) return;
     _suppressSync = true;
     const permVal = Math.max(+slPerm.min, 100 - empVal);
     slPerm.value = String(permVal);
-    // Convertir en emprCiblePct (0-100% de la capacité dispo)
     const emprMax = +slEmp.max || 30;
     const emprCiblePct = emprMax > 0 ? Math.round((empVal / emprMax) * 100) : 0;
-    window.PlanMasseCanvas?.setProg?.('emprCiblePct', emprCiblePct);
+    window.PlanMasseCanvas?.setProg?.('emprCiblePct', Math.max(1, Math.min(100, emprCiblePct)));
     _suppressSync = false;
   };
 
-  // Espace vert slider → met à jour emprise + PMC
+  // ── Espace vert slider → recalcule emprise + PMC ──
+  // "si je bouge espace vert, on recalcule pour rester dans la nouvelle limite"
   window._p07PermSliderInput = function(permVal) {
     if (_suppressSync) return;
     _suppressSync = true;
@@ -4148,27 +4266,60 @@ document.getElementById('pmc-btn-svg')?.addEventListener('click', () => window.P
     slEmp.value = String(Math.max(0, empVal));
     const emprMax = +slEmp.max || 30;
     const emprCiblePct = emprMax > 0 ? Math.round((empVal / emprMax) * 100) : 0;
-    window.PlanMasseCanvas?.setProg?.('emprCiblePct', emprCiblePct);
+    window.PlanMasseCanvas?.setProg?.('emprCiblePct', Math.max(1, Math.min(100, emprCiblePct)));
     _suppressSync = false;
   };
 
-  // Sync read-only : met à jour les valeurs affichées et positions sliders
-  // depuis les métriques réelles (après render PMC).
+  // ── Sync complet : met à jour TOUS les sliders + labels depuis les métriques ──
   window._p07SyncEmprPermFromMetrics = function() {
     const pmc = window.PlanMasseCanvas;
     if (!pmc?._ready) return;
     const m = pmc.metrics?.();
     if (!m) return;
-    // Affichage valeurs réelles
+
+    _suppressSync = true;
+
+    // Slider logements : max = maxLgts, valeur = nbLgts RÉEL (ne pas écraser le slider)
+    if (slLgts) {
+      slLgts.max = String(Math.max(1, m.maxLgts));
+      // Ne PAS écraser la position du slider — laisser l'utilisateur la piloter.
+      // On met à jour seulement le label d'affichage.
+      const glLgts = document.getElementById('pmc-gl-lgts');
+      const parkInfo = pmc.S?.prog?.parkMode === 'ss' ? 'SS' :
+                       pmc.S?.prog?.parkMode === 'rdc' ? 'RdC' : 'ext';
+      if (glLgts) glLgts.textContent = `MAX ${m.maxLgts} ${m.sc?.short ?? ''} · PK ${parkInfo}`;
+      const gvLgts = document.getElementById('pmc-gv-lgts');
+      if (gvLgts) gvLgts.textContent = `${m.nbLgts} / ${m.maxLgts}`;
+    }
+
+    // Slider emprise : sync position
+    const empMax = +slEmp.max || 30;
+    slEmp.value = String(Math.min(empMax, Math.max(0, m.empPct)).toFixed(1));
+
+    // Slider espace vert : sync position
+    slPerm.value = String(Math.max(+slPerm.min, Math.min(100, m.permPct)).toFixed(1));
+
+    _suppressSync = false;
+
+    // Labels valeurs réelles
     const gvEmp = document.getElementById('pmc-gv-emp');
     if (gvEmp) {
       gvEmp.textContent = m.empPct.toFixed(1) + '%';
-      gvEmp.style.color = m.empPct > (+slEmp.max || 60) ? 'var(--svg-voie)' : 'var(--accent)';
+      gvEmp.style.color = m.empPct > empMax ? 'var(--svg-voie)' : 'var(--accent)';
     }
     const gvPerm = document.getElementById('pmc-gv-perm');
     if (gvPerm) {
       gvPerm.textContent = m.permPct.toFixed(1) + '%';
       gvPerm.style.color = m.permPct < (+slPerm.min || 25) ? 'var(--svg-voie)' : 'var(--success)';
+    }
+
+    // Conseil mitoyen : si prendre un côté en mitoyen augmente > 15% le max
+    const hint = document.getElementById('pmc-mitoyen-hint');
+    if (hint && m._mitoyenAdvice) {
+      hint.style.display = 'block';
+      hint.textContent = m._mitoyenAdvice;
+    } else if (hint) {
+      hint.style.display = 'none';
     }
   };
 
@@ -4237,6 +4388,11 @@ const P07Cellules = {
     });
 
     CelluleGenerator.renderPlateauSVG(_plateau, 'cg-plateau-canvas', 32);
+
+    // Projeter le plateau sur le plan masse SVG
+    if (window.PlanMasseCanvas) {
+      window.PlanMasseCanvas.setPlateau(_plateau);
+    }
 
     // Note noyau
     const noyauDef = CelluleGenerator._rules?.noyau_circulation?.types?.[noyau_type];

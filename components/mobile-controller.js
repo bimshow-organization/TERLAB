@@ -2,6 +2,7 @@
  * TERLAB · mobile-controller.js
  * Logique UI mobile : bottom sheet, tab bar, phase navigation
  * Pattern: HOUSEG-SPEECH mobile (single breakpoint 800px)
+ * v2 : reparenting via MobileStepper (plus de clone)
  * ═══════════════════════════════════════════════════════════════ */
 
 const MobileController = {
@@ -11,7 +12,7 @@ const MobileController = {
   _isMobile:    false,
   _touchStartY: 0,
 
-  // ── Détection mobile ─────────────────────────────────────────
+  // ── Detection mobile ─────────────────────────────────────────
   get isMobile() {
     return window.innerWidth <= 800;
   },
@@ -19,7 +20,11 @@ const MobileController = {
   // ── Init ─────────────────────────────────────────────────────
   init() {
     this._isMobile = this.isMobile;
-    if (!this._isMobile) return; // rien à faire sur desktop
+    // Sources button : bind inconditionnel (le CSS le cache sur desktop,
+    // mais l'utilisateur peut resize vers mobile sans rechargement)
+    this._bindSourcesButton();
+
+    if (!this._isMobile) return; // rien a faire sur desktop
 
     this._bindSheetToggle();
     this._bindPhaseNav();
@@ -44,8 +49,10 @@ const MobileController = {
     btn?.classList.add('sheet-open');
     btn?.setAttribute('aria-expanded', 'true');
 
-    // Déplacer le contenu du left-panel dans le sheet
-    this._syncSheetContent();
+    // Reparenter le contenu via MobileStepper (pas de clone)
+    if (this._activeTab === 'form') {
+      window.MobileStepper?.reparentToSheet();
+    }
   },
 
   closeSheet() {
@@ -58,66 +65,13 @@ const MobileController = {
     sheet.setAttribute('aria-hidden', 'true');
     btn?.classList.remove('sheet-open');
     btn?.setAttribute('aria-expanded', 'false');
+
+    // Remettre le contenu a sa place desktop
+    window.MobileStepper?.reparentToDesktop();
   },
 
   toggleSheet() {
     this._isOpen ? this.closeSheet() : this.openSheet();
-  },
-
-  // ── Synchroniser le contenu du left-panel → sheet ────────────
-  _syncSheetContent() {
-    const formContent  = document.getElementById('mob-sheet-form-content');
-    const leftPanel    = document.querySelector('.left-panel');
-    if (!formContent || !leftPanel) return;
-
-    // Cloner le contenu (ne pas déplacer — le left-panel reste dans le DOM desktop)
-    formContent.innerHTML = '';
-    const clone = leftPanel.cloneNode(true);
-    // Enlever les éléments non utiles dans le sheet
-    clone.querySelectorAll('.lp-head .phase-label').forEach(el => el.remove());
-    // Ajouter tout le contenu
-    Array.from(clone.children).forEach(child => formContent.appendChild(child.cloneNode(true)));
-
-    // Re-bind les événements de validation sur les clones
-    this._rebindClonedEvents(formContent);
-
-    // Synchroniser le bouton next
-    const nextBtn   = leftPanel.querySelector('.next-btn');
-    const mobNextBtn = document.getElementById('mob-next-phase-btn');
-    if (nextBtn && mobNextBtn) {
-      mobNextBtn.textContent = nextBtn.textContent;
-      mobNextBtn.disabled    = !nextBtn.classList.contains('enabled');
-      mobNextBtn.onclick     = () => { nextBtn.click(); this.closeSheet(); };
-    }
-  },
-
-  // Re-bind click events on cloned check-items (since cloneNode doesn't copy event listeners)
-  _rebindClonedEvents(container) {
-    container.querySelectorAll('.check-item').forEach(clone => {
-      const idx = clone.dataset.idx;
-      if (idx == null) return;
-      clone.addEventListener('click', () => {
-        // Find the original check-item and click it
-        const originals = document.querySelectorAll('.left-panel .check-item');
-        const original = originals[parseInt(idx)];
-        if (original) original.click();
-        // Re-sync after a tick
-        setTimeout(() => this._syncSheetContent(), 100);
-      });
-    });
-
-    // Re-bind field inputs to sync back to original
-    container.querySelectorAll('.field-input, .field-select, .field-textarea').forEach(clone => {
-      const name = clone.name || clone.id;
-      if (!name) return;
-      clone.addEventListener('change', () => {
-        const original = document.querySelector(`.left-panel [name="${name}"], .left-panel #${name}`);
-        if (original) {
-          original.value = clone.value;
-          original.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-      });
-    });
   },
 
   // ── Tabs du sheet ─────────────────────────────────────────────
@@ -133,17 +87,40 @@ const MobileController = {
       this._activeTab = target;
 
       // Activer l'onglet
-      tabs.querySelectorAll('.mob-sheet-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === target));
+      tabs.querySelectorAll('.mob-sheet-tab').forEach(t =>
+        t.classList.toggle('active', t.dataset.tab === target)
+      );
 
-      // Afficher le contenu
-      ['form', 'risks', 'actors'].forEach(name => {
-        const el = document.getElementById(`mob-sheet-${name}-content`);
-        if (el) el.style.display = name === target ? 'block' : 'none';
+      // Gerer visibilite des contenus
+      const stepperBody = document.getElementById('mob-stepper-body');
+      const tipsEl      = document.getElementById('mob-stepper-tips');
+      const progressEl  = document.getElementById('mob-stepper-progress');
+      const indicatorEl = document.getElementById('mob-stepper-indicator');
+      const navEl       = document.getElementById('mob-stepper-nav');
+      const risksEl     = document.getElementById('mob-sheet-risks-content');
+      const actorsEl    = document.getElementById('mob-sheet-actors-content');
+
+      // Hide all
+      [stepperBody, tipsEl, risksEl, actorsEl].forEach(el => {
+        if (el) el.style.display = 'none';
+      });
+      // Hide stepper chrome
+      [progressEl, indicatorEl, navEl].forEach(el => {
+        if (el) el.style.display = 'none';
       });
 
-      // Peupler risks et actors si besoin
-      if (target === 'risks')  this._populateRisks();
-      if (target === 'actors') this._populateActors();
+      if (target === 'form') {
+        // Show stepper
+        window.MobileStepper?.reparentToSheet();
+        if (stepperBody) stepperBody.style.display = '';
+        window.MobileStepper?._showStepperUI(true);
+      } else if (target === 'risks') {
+        if (risksEl) risksEl.style.display = '';
+        this._populateRisks();
+      } else if (target === 'actors') {
+        if (actorsEl) actorsEl.style.display = '';
+        this._populateActors();
+      }
     });
   },
 
@@ -153,12 +130,11 @@ const MobileController = {
     const dest = document.getElementById('mob-sheet-risks-content');
     if (!rightPanel || !dest) return;
 
-    // Find risk cards in right panel
     const riskSection = rightPanel.querySelector('.rp-section');
     if (riskSection) {
       dest.innerHTML = riskSection.innerHTML;
     } else {
-      dest.innerHTML = '<p style="font-size:11px;color:var(--faint);padding:16px;text-align:center">Aucun risque identifié pour cette phase</p>';
+      dest.innerHTML = '<p style="font-size:11px;color:var(--faint);padding:16px;text-align:center">Aucun risque identifie pour cette phase</p>';
     }
   },
 
@@ -167,7 +143,6 @@ const MobileController = {
     const dest = document.getElementById('mob-sheet-actors-content');
     if (!rightPanel || !dest) return;
 
-    // Find actor cards in right panel
     const sections = rightPanel.querySelectorAll('.rp-section');
     let actorHtml = '';
     sections.forEach(s => {
@@ -193,34 +168,57 @@ const MobileController = {
   },
 
   _navigatePhase(delta) {
-    // Utiliser le router existant de TERLAB
     const current = window.TERLAB?.currentPhaseId ?? window.TerlabRouter?.currentPhase ?? 0;
     const target  = Math.max(0, Math.min(12, current + delta));
     if (target === current) return;
 
     this.closeSheet();
 
-    // Déléguer au router existant
     if (window.TerlabRouter?.goto) {
       window.TerlabRouter.goto(target);
     }
   },
 
-  // ── Mettre à jour l'indicateur de phase ──────────────────────
+  // ── Mettre a jour l'indicateur de phase ──────────────────────
   updatePhaseIndicator(phaseId, phaseName) {
     const id   = phaseId   ?? window.TerlabRouter?.currentPhase ?? 0;
-    const name = phaseName ?? '';
+    let   name = phaseName ?? '';
 
+    // Fallback : recuperer le titre depuis phases-meta.json (deja charge)
+    if (!name) {
+      const meta = window.TerlabRouter?._phasesMeta?.[id]
+                ?? window.PHASES_META?.[id]
+                ?? null;
+      name = meta?.title ?? meta?.name ?? '';
+    }
+
+    const phaseTag = `P${String(id).padStart(2, '0')}`;
+
+    // Tab bar indicator
     const indicator = document.getElementById('mob-phase-indicator');
     const nameEl    = document.getElementById('mob-phase-name');
-    if (indicator) indicator.textContent = `P${String(id).padStart(2, '0')}`;
+    if (indicator) indicator.textContent = phaseTag;
     if (nameEl)    nameEl.textContent = name;
 
-    // Activer/désactiver les boutons prev/next
+    // Topbar phase label (mobile uniquement via CSS)
+    const tbNum   = document.querySelector('#tb-phase-label .tb-phase-num');
+    const tbTitle = document.querySelector('#tb-phase-label .tb-phase-title');
+    if (tbNum)   tbNum.textContent   = phaseTag;
+    if (tbTitle) tbTitle.textContent = name || '—';
+
     const prevBtn = document.getElementById('mob-prev-btn');
     const nextBtn = document.getElementById('mob-next-btn');
     if (prevBtn) prevBtn.disabled = (id <= 0);
     if (nextBtn) nextBtn.disabled = (id >= 12);
+  },
+
+  // ── Bouton Sources dans le mob-sheet (deplace depuis topbar) ──
+  _bindSourcesButton() {
+    document.getElementById('mob-sources-btn')
+      ?.addEventListener('click', () => {
+        const phase = window.TerlabRouter?.currentPhase ?? 0;
+        window.TerlabSources?.open?.(phase);
+      });
   },
 
   // ── Drag-to-close sur le handle ──────────────────────────────
@@ -257,13 +255,14 @@ const MobileController = {
       });
   },
 
-  // ── Resize observer (passage desktop↔mobile) ─────────────────
+  // ── Resize observer (passage desktop/mobile) ─────────────────
   _bindResizeObserver() {
     const mql = window.matchMedia('(max-width: 800px)');
     mql.addEventListener('change', (e) => {
       const wasMobile = this._isMobile;
       this._isMobile  = e.matches;
       if (wasMobile && !this._isMobile) {
+        // Mobile → desktop : remettre le contenu
         this.closeSheet();
       }
       if (!wasMobile && this._isMobile) {
@@ -272,23 +271,26 @@ const MobileController = {
     });
   },
 
-  // ── Appelé par index.js après injection d'une nouvelle phase ─
+  // ── Appele par index.js apres injection d'une nouvelle phase ─
   onPhaseInjected(phaseId, phaseName) {
     if (!this.isMobile) return;
     this.updatePhaseIndicator(phaseId, phaseName);
-    // Vider le cache du sheet
-    const formContent = document.getElementById('mob-sheet-form-content');
-    if (formContent) formContent.innerHTML = '';
+
+    // Vider les onglets risks/actors
     ['risks','actors'].forEach(t => {
       const el = document.getElementById(`mob-sheet-${t}-content`);
       if (el) el.innerHTML = '';
     });
+
+    // Notifier le stepper
+    window.MobileStepper?.onPhaseReady(phaseId);
+
     // Fermer le sheet si ouvert
     this.closeSheet();
   },
 
   destroy() {
-    // Cleanup si nécessaire
+    // Cleanup si necessaire
   }
 };
 

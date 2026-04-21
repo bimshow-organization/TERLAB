@@ -434,5 +434,248 @@
       { "cond": { "annual_mm_gte": 1000, "annual_mm_lt": 2500 }, "short": "Pluviometrie moyenne — gestion alternative des EP a integrer." },
       { "cond": { "annual_mm_gte": 2500 }, "short": "Pluviometrie elevee — dimensionnement GIEP renforce.", "text": "La pluviometrie annuelle ({annual_mm} mm) est elevee. Le dimensionnement des ouvrages de gestion des eaux pluviales (noues, bassins, drains) doit etre majore. Les fortes pluies cycloniques imposent par ailleurs un ouvrage de surverse securise vers la ravine ou le reseau." }
     ]
+  },
+
+  "plu_synthese": {
+    "_description": "Phrases de synthese et de presentation du projet au regard du reglement PLU. Variables de conformite derivees par l'engine (booleens *_conforme, compteur plu_non_conformites).",
+
+    "conformite_globale": [
+      { "cond": { "plu_all_conforme": true }, "short": "Le projet respecte en tout point les prescriptions du PLU en vigueur.", "text": "Le projet respecte l'ensemble des prescriptions du Plan Local d'Urbanisme de {commune} applicables a la zone {zone_plu} : implantation, gabarit, emprise au sol, permeabilite et stationnement. Aucune derogation n'est necessaire pour le depot du permis de construire." },
+      { "cond": { "plu_non_conformites_lte": 2, "plu_non_conformites_gt": 0 }, "short": "Le projet presente {plu_non_conformites} non-conformite(s) mineure(s) au PLU.", "text": "Le projet presente {plu_non_conformites} point(s) de non-conformite au reglement de zone {zone_plu} de {commune}. Ces ecarts devront etre corriges ou faire l'objet d'une demande de derogation motivee aupres du service instructeur avant le depot du permis." },
+      { "cond": { "plu_non_conformites_gt": 2 }, "short": "Plusieurs non-conformites PLU identifiees — revision du projet necessaire.", "text": "Le projet presente {plu_non_conformites} non-conformites au reglement de zone {zone_plu}. Une revision substantielle de l'esquisse est necessaire avant tout depot de permis. Les points critiques sont detailles ci-apres." },
+      { "cond": { "missing": "zone_plu" }, "short": "Conformite PLU non evaluable — zone reglementaire non identifiee.", "text": "En l'absence d'identification de la zone PLU, la conformite reglementaire du projet ne peut pas etre evaluee. Consulter le reglement graphique sur le Geoportail de l'Urbanisme ou aupres du service urbanisme de {commune}." }
+    ],
+
+    "implantation_voie": [
+      { "cond": { "recul_voie_conforme": true, "recul_voie_m": 0 }, "short": "Implantation a l'alignement — conforme au reglement de zone.", "text": "Le projet est implante a l'alignement de la voie publique, conformement a la regle d'implantation de la zone {zone_plu}. Cette disposition optimise l'emprise constructible et participe a la continuite du front bati urbain." },
+      { "cond": { "recul_voie_conforme": true, "recul_voie_m_gt": 0 }, "short": "Recul voie de {recul_voie_projet_m} m — conforme (min. {recul_voie_m} m).", "text": "Le recul de {recul_voie_projet_m} m par rapport a la voie publique respecte le minimum reglementaire de {recul_voie_m} m impose par l'article 6 du reglement de zone {zone_plu}." },
+      { "cond": { "recul_voie_conforme": false }, "short": "Recul voie de {recul_voie_projet_m} m — non conforme (min. {recul_voie_m} m).", "text": "Le recul de {recul_voie_projet_m} m par rapport a la voie est inferieur au minimum reglementaire de {recul_voie_m} m (article 6, zone {zone_plu}). Le batiment doit etre recule pour atteindre la conformite." },
+      { "cond": { "missing": "recul_voie_projet_m" }, "short": "Recul voie du projet non mesure — conformite non verifiable." }
+    ],
+
+    "implantation_lat": [
+      { "cond": { "recul_lat_conforme": true, "recul_lat_m": 0 }, "short": "Implantation en limite separative — conforme au reglement.", "text": "Le projet est implante sur la limite separative laterale, ce qui est autorise par le reglement de zone {zone_plu}. La mitoyennete est conforme." },
+      { "cond": { "recul_lat_conforme": true, "recul_lat_m_gt": 0 }, "short": "Retrait lateral de {recul_lat_projet_m} m — conforme (min. {recul_lat_m} m).", "text": "Le retrait lateral de {recul_lat_projet_m} m respecte la distance minimale de {recul_lat_m} m aux limites separatives imposee par l'article 7 du reglement de zone {zone_plu}." },
+      { "cond": { "recul_lat_conforme": false }, "short": "Retrait lateral de {recul_lat_projet_m} m — non conforme (min. {recul_lat_m} m).", "text": "Le retrait lateral de {recul_lat_projet_m} m est inferieur au minimum de {recul_lat_m} m prescrit par l'article 7 de la zone {zone_plu}. L'emprise ou la position du batiment doit etre ajustee." },
+      { "cond": { "missing": "recul_lat_projet_m" }, "short": "Retrait lateral du projet non mesure — conformite non verifiable." }
+    ],
+
+    "implantation_fond": [
+      { "cond": { "recul_fond_conforme": true, "recul_fond_m": 0 }, "short": "Implantation en fond de parcelle autorisee — conforme.", "text": "Le projet est implante au droit de la limite de fond de parcelle, ce que le reglement de zone {zone_plu} autorise." },
+      { "cond": { "recul_fond_conforme": true, "recul_fond_m_gt": 0 }, "short": "Retrait fond de {recul_fond_projet_m} m — conforme (min. {recul_fond_m} m).", "text": "Le retrait de {recul_fond_projet_m} m par rapport a la limite de fond de parcelle respecte le minimum de {recul_fond_m} m impose par le reglement de zone {zone_plu}." },
+      { "cond": { "recul_fond_conforme": false }, "short": "Retrait fond de {recul_fond_projet_m} m — non conforme (min. {recul_fond_m} m).", "text": "Le retrait de {recul_fond_projet_m} m en fond de parcelle est insuffisant au regard du minimum reglementaire de {recul_fond_m} m. Le batiment doit etre avance vers la voie ou son emprise reduite." },
+      { "cond": { "missing": "recul_fond_projet_m" }, "short": "Retrait fond du projet non mesure — conformite non verifiable." }
+    ],
+
+    "gabarit": [
+      { "cond": { "hauteur_conforme": true }, "short": "Hauteur de {hauteur_projet_m} m — conforme (max. {hauteur_max_m} m).", "text": "La hauteur du projet ({hauteur_projet_m} m a l'egout) est conforme a la hauteur maximale de {hauteur_max_m} m autorisee en zone {zone_plu}. Le gabarit permet {niveaux} niveau(x) dans le respect du reglement." },
+      { "cond": { "hauteur_conforme": false }, "short": "Hauteur de {hauteur_projet_m} m — depasse le maximum de {hauteur_max_m} m.", "text": "La hauteur du projet ({hauteur_projet_m} m) depasse la hauteur maximale de {hauteur_max_m} m autorisee en zone {zone_plu}. Le nombre de niveaux doit etre reduit ou la hauteur d'etage optimisee pour atteindre la conformite." },
+      { "cond": { "hauteur_conforme": true, "pente_pct_gte": 10 }, "text": "La hauteur est conforme ({hauteur_projet_m} m vs {hauteur_max_m} m max), mais sur un terrain en pente ({pente_pct}%) la mesure s'effectue au droit de chaque facade incluant deblais/remblais. La conformite devra etre verifiee facade par facade." },
+      { "cond": { "missing": "hauteur_projet_m" }, "short": "Hauteur du projet non definie — conformite non evaluable." }
+    ],
+
+    "emprise_synth": [
+      { "cond": { "ces_conforme": true }, "short": "Emprise au sol de {ces_pct}% — conforme (max. {emprise_sol_max_pct}%).", "text": "Le coefficient d'emprise au sol du projet ({ces_pct}%) est inferieur ou egal au maximum de {emprise_sol_max_pct}% autorise en zone {zone_plu}. L'emprise restante laisse une marge de {ces_marge_pct}% exploitable pour des amenagements complementaires." },
+      { "cond": { "ces_conforme": false }, "short": "Emprise au sol de {ces_pct}% — depasse le maximum de {emprise_sol_max_pct}%.", "text": "Le coefficient d'emprise au sol du projet ({ces_pct}%) depasse le maximum reglementaire de {emprise_sol_max_pct}% en zone {zone_plu}. L'emprise batie doit etre reduite, soit en diminuant la surface au sol, soit en reportant de la SDP sur des niveaux supplementaires (si la hauteur le permet)." },
+      { "cond": { "missing": "ces_pct" }, "short": "Emprise au sol du projet non calculee — completer le plan masse." }
+    ],
+
+    "permeabilite_synth": [
+      { "cond": { "permeable_conforme": true }, "short": "Permeabilite de {permeable_pct}% — conforme (min. {permeable_min_pct}%).", "text": "Le taux de surface permeable du projet ({permeable_pct}%) respecte le minimum de {permeable_min_pct}% impose par le reglement de zone {zone_plu}. La gestion des eaux pluviales par infiltration naturelle est favorisee." },
+      { "cond": { "permeable_conforme": false }, "short": "Permeabilite de {permeable_pct}% — insuffisante (min. {permeable_min_pct}%).", "text": "Le taux de surface permeable ({permeable_pct}%) est inferieur au minimum de {permeable_min_pct}% exige en zone {zone_plu}. Le plan masse doit etre revise pour augmenter les espaces de pleine terre, reduire les surfaces impermeabilisees, ou recourir a des solutions compensatoires (toitures vegetalisees, chaussees reservoirs)." },
+      { "cond": { "missing": "permeable_pct" }, "short": "Surface permeable non calculee — completer le plan masse." },
+      { "cond": { "missing": "permeable_min_pct" }, "short": "Seuil de permeabilite PLU non renseigne — verifier le reglement de zone." }
+    ],
+
+    "stationnement_synth": [
+      { "cond": { "statio_conforme": true }, "short": "Stationnement conforme — {statio_places_projet} places pour {statio_places_requises} requises.", "text": "Le projet prevoit {statio_places_projet} places de stationnement, soit un nombre egal ou superieur aux {statio_places_requises} places exigees par le reglement de zone {zone_plu}. La conformite est acquise." },
+      { "cond": { "statio_conforme": false }, "short": "Deficit de stationnement — {statio_places_projet} places pour {statio_places_requises} requises.", "text": "Le projet ne prevoit que {statio_places_projet} places de stationnement alors que le reglement de zone {zone_plu} en exige {statio_places_requises}. Le deficit de {statio_deficit} places doit etre comble, soit par des places supplementaires sur la parcelle, soit par une concession de voirie (si le reglement le permet)." },
+      { "cond": { "missing": "statio_places_projet" }, "short": "Stationnement du projet non dimensionne — a definir en esquisse." }
+    ],
+
+    "vegetation_plu": [
+      { "cond": { "vegetation_plu_conforme": true }, "short": "Obligations de plantation respectees — {arbres_count} arbres prevus.", "text": "Le plan de plantation prevoit {arbres_count} arbres, conformement aux prescriptions de l'article 13 du reglement de zone {zone_plu}. Le choix d'essences endemiques ou indigenes est recommande pour favoriser la biodiversite locale." },
+      { "cond": { "vegetation_plu_conforme": false }, "short": "Plantation insuffisante au regard de l'article 13 du PLU.", "text": "Le nombre d'arbres prevu ({arbres_count}) est insuffisant au regard des prescriptions de l'article 13 du reglement de zone {zone_plu}. Le plan de plantation doit etre enrichi, en privilegiant les essences endemiques reunionnaises." },
+      { "cond": { "missing": "arbres_count" }, "short": "Plan de plantation non defini — obligation reglementaire article 13." }
+    ],
+
+    "presentation_projet": [
+      { "cond": { "plu_all_conforme": true, "zone_plu_type": "U" }, "text": "Le projet s'inscrit pleinement dans le cadre reglementaire de la zone {zone_plu} du PLU de {commune}, approuve le {plu_date_approbation}. L'implantation, le gabarit, l'emprise au sol et la gestion des espaces libres sont conformes aux prescriptions du reglement de zone. Le projet contribue a la densification maitrisee du tissu urbain existant, en coherence avec les objectifs du SCoT." },
+      { "cond": { "plu_all_conforme": true, "zone_plu_type": "AU" }, "text": "Le projet s'inscrit dans le cadre de l'ouverture a l'urbanisation de la zone {zone_plu} du PLU de {commune}. L'ensemble des prescriptions reglementaires applicables sont respectees. L'operation d'amenagement d'ensemble repond aux conditions d'ouverture a l'urbanisation definies par le reglement." },
+      { "cond": { "plu_all_conforme": false, "plu_non_conformites_lte": 2 }, "text": "Le projet s'inscrit dans le cadre reglementaire de la zone {zone_plu} du PLU de {commune}, avec {plu_non_conformites} point(s) d'ecart mineur(s) a corriger. Ces ajustements sont realisables sans remettre en cause l'economie generale du projet. Une fois corrigees, les dispositions du permis de construire seront pleinement respectees." },
+      { "cond": { "plu_all_conforme": false, "plu_non_conformites_gt": 2 }, "text": "Le projet necessite des ajustements significatifs pour atteindre la conformite avec le reglement de zone {zone_plu} du PLU de {commune}. Les {plu_non_conformites} points de non-conformite identifies portent sur des prescriptions opposables au permis de construire. Une reprise de l'esquisse est recommandee avant le depot du dossier." },
+
+      { "cond": { "plu_all_conforme": true, "programme": "collectif_aide" }, "text": "L'operation de logements collectifs sociaux est compatible avec le reglement de zone {zone_plu}. Le programme beneficie des bonifications eventuelles prevues pour les operations de logement social (majoration de hauteur, reduction du stationnement). La conformite PLU est un atout pour l'instruction du permis et la mobilisation des financements." },
+      { "cond": { "plu_all_conforme": true, "programme": "collectif_libre" }, "text": "Le programme de logements en accession libre est conforme au reglement de zone {zone_plu}. L'equilibre entre densite et qualite des espaces exterieurs temoigne d'une optimisation fonciere maitrisee, dans le respect des prescriptions du PLU." },
+      { "cond": { "plu_all_conforme": true, "programme": "individuel" }, "text": "Le projet d'habitat individuel respecte les prescriptions du reglement de zone {zone_plu}. L'implantation et le gabarit sont compatibles avec le caractere residentiel du quartier." },
+      { "cond": { "plu_all_conforme": true, "programme": "mixte" }, "text": "Le programme mixte (logements et activites) est conforme au reglement de zone {zone_plu}. La mixite fonctionnelle contribue a l'animation du rez-de-chaussee et repond aux objectifs du PLU en matiere de diversite urbaine." }
+    ],
+
+    "article_par_article": [
+      { "cond": { "always": true }, "short": "Synthese article par article du reglement de zone {zone_plu} :" },
+      { "cond": { "zone_plu_type_in": ["U", "AU"] }, "text": "Verification de la conformite du projet aux articles du reglement de zone {zone_plu} du PLU de {commune} :" },
+      { "cond": { "recul_voie_conforme": true }, "short": "Art. 6 (implantation / voie) : CONFORME — recul de {recul_voie_projet_m} m (min. {recul_voie_m} m)." },
+      { "cond": { "recul_voie_conforme": false }, "short": "Art. 6 (implantation / voie) : NON CONFORME — recul de {recul_voie_projet_m} m (min. {recul_voie_m} m)." },
+      { "cond": { "recul_lat_conforme": true }, "short": "Art. 7 (limites separatives) : CONFORME — retrait de {recul_lat_projet_m} m (min. {recul_lat_m} m)." },
+      { "cond": { "recul_lat_conforme": false }, "short": "Art. 7 (limites separatives) : NON CONFORME — retrait de {recul_lat_projet_m} m (min. {recul_lat_m} m)." },
+      { "cond": { "hauteur_conforme": true }, "short": "Art. 10 (hauteur) : CONFORME — {hauteur_projet_m} m (max. {hauteur_max_m} m)." },
+      { "cond": { "hauteur_conforme": false }, "short": "Art. 10 (hauteur) : NON CONFORME — {hauteur_projet_m} m (max. {hauteur_max_m} m)." },
+      { "cond": { "ces_conforme": true }, "short": "Art. 9 (emprise au sol) : CONFORME — {ces_pct}% (max. {emprise_sol_max_pct}%)." },
+      { "cond": { "ces_conforme": false }, "short": "Art. 9 (emprise au sol) : NON CONFORME — {ces_pct}% (max. {emprise_sol_max_pct}%)." },
+      { "cond": { "permeable_conforme": true }, "short": "Art. 13 (espaces libres) : CONFORME — {permeable_pct}% permeable (min. {permeable_min_pct}%)." },
+      { "cond": { "permeable_conforme": false }, "short": "Art. 13 (espaces libres) : NON CONFORME — {permeable_pct}% permeable (min. {permeable_min_pct}%)." },
+      { "cond": { "statio_conforme": true }, "short": "Art. 12 (stationnement) : CONFORME — {statio_places_projet} places (min. {statio_places_requises})." },
+      { "cond": { "statio_conforme": false }, "short": "Art. 12 (stationnement) : NON CONFORME — {statio_places_projet} places (min. {statio_places_requises})." }
+    ],
+
+    "derogation": [
+      { "cond": { "plu_all_conforme": true }, "short": "Aucune derogation necessaire — conformite integrale au PLU." },
+      { "cond": { "plu_non_conformites_lte": 1, "plu_non_conformites_gt": 0 }, "short": "Une derogation mineure peut etre sollicitee au titre de l'article L.152-6 du code de l'urbanisme.", "text": "Le projet presente un ecart mineur au reglement de zone. Une derogation peut etre sollicitee au titre de l'article L.152-6 du code de l'urbanisme, sous reserve de motivation architecturale et d'absence de prejudice pour le voisinage. L'avis de l'architecte des batiments de France peut etre requis en secteur ABF." },
+      { "cond": { "plu_non_conformites_gt": 1 }, "short": "Derogations multiples — correction du projet preferable a la voie derogatoire.", "text": "Le nombre de non-conformites ({plu_non_conformites}) rend la voie derogatoire delicate. La jurisprudence est stricte sur les derogations cumulees. Il est preferable de corriger le projet pour atteindre la conformite integrale plutot que de solliciter plusieurs derogations." },
+      { "cond": { "plu_en_revision": true }, "short": "PLU en revision — le futur reglement peut modifier les regles applicables.", "text": "Le PLU de {commune} est actuellement en cours de revision. Les regles applicables pourraient evoluer. Il est recommande de consulter le service urbanisme pour connaitre l'etat d'avancement de la revision et les eventuelles dispositions transitoires (sursis a statuer possible)." }
+    ],
+
+    "bonification": [
+      { "cond": { "programme": "collectif_aide", "zone_plu_type": "U" }, "short": "Bonification logement social applicable — majoration de hauteur possible.", "text": "Le projet de logements sociaux peut beneficier de la bonification prevue par le reglement de zone {zone_plu} : majoration de la hauteur maximale (generalement +3 m ou +20%) et reduction du nombre de places de stationnement (1 place/logement au lieu de 2). Ces bonifications ameliorent sensiblement l'equilibre economique de l'operation." },
+      { "cond": { "programme": "collectif_aide", "permeable_conforme": true }, "short": "L'operation aidee respecte la permeabilite — bonification CES envisageable.", "text": "Certains PLU reunionnais autorisent une majoration de l'emprise au sol (CES) pour les operations de logement social, sous reserve du respect des seuils de permeabilite. La conformite du projet sur ce critere ouvre la possibilite de cette bonification." },
+      { "cond": { "zone_plu_type": "AU" }, "short": "Zone AU — regles specifiques d'amenagement d'ensemble applicables.", "text": "En zone a urbaniser ({zone_plu}), les regles d'implantation et de gabarit peuvent etre adaptees dans le cadre de l'operation d'amenagement d'ensemble (OAP). Les prescriptions de l'OAP, plus souples ou plus strictes que le reglement general, priment sur celui-ci." }
+    ]
+  },
+
+  "pc4_notice": {
+    "_description": "Phrases pour la notice de presentation du projet (piece PC4 du CERFA). Structure en 6 points reglementaires. Variables interpolees depuis session + proposal. Utiliser pickAll() pour assembler les paragraphes.",
+
+    "a_etat_initial_terrain": [
+      { "cond": { "surface_m2_lt": 1000 }, "text": "Le terrain concerne est la parcelle {section}/{parcelle}, d'une contenance de {surface_m2} m2, situee {adresse} sur la commune de {commune}." },
+      { "cond": { "surface_m2_gte": 1000, "surface_m2_lt": 10000 }, "text": "Le terrain d'assiette du projet correspond a la parcelle cadastrale {section}/{parcelle}, d'une contenance de {surface_m2} m2, situee {adresse} sur la commune de {commune}, a une altitude de {altitude} m NGR." },
+      { "cond": { "surface_m2_gte": 10000 }, "text": "L'unite fonciere d'une contenance de {surface_m2} m2 ({surface_ha} ha), constituee de la parcelle {section}/{parcelle}, est situee {adresse} sur la commune de {commune}. Le terrain s'inscrit dans un contexte paysager ouvert, a {altitude} m d'altitude." },
+      { "cond": { "pente_pct_lt": 5 }, "text": "Le terrain presente une topographie sensiblement plane (pente inferieure a 5%), facilitant l'implantation des constructions sans terrassement majeur." },
+      { "cond": { "pente_pct_gte": 5, "pente_pct_lt": 15 }, "text": "Le terrain accuse une declivite moderee de l'ordre de {pente_pct}%, orientee globalement vers le {exposition}. Cette pente conditionne l'organisation des niveaux du projet." },
+      { "cond": { "pente_pct_gte": 15 }, "text": "Le terrain presente une pente marquee de {pente_pct}%, orientee {exposition}. Cette topographie prononcee impose une conception en gradins et des terrassements adaptes." },
+      { "cond": { "has_constructions_existantes": true }, "text": "Le terrain comporte actuellement {constructions_existantes_desc}. Ces constructions existantes sont maintenues dans le cadre du projet." },
+      { "cond": { "has_constructions_existantes": false }, "text": "Le terrain est actuellement libre de toute construction." },
+      { "cond": { "has_constructions_a_demolir": true }, "text": "Le projet prevoit la demolition de {constructions_a_demolir_desc}. Un permis de demolir est depose conjointement." }
+    ],
+
+    "a_etat_initial_abords": [
+      { "cond": { "quartier_type": "residentiel" }, "text": "Les abords immediats du terrain s'inscrivent dans un tissu residentiel pavillonnaire, constitue principalement de maisons individuelles en rez-de-chaussee ou R+1. L'environnement bati est homogene et de faible densite." },
+      { "cond": { "quartier_type": "residentiel_dense" }, "text": "Le terrain est situe dans un quartier d'habitat dense, melant immeubles collectifs et maisons de ville. Le tissu urbain environnant est structure et les constructions voisines presentent des gabarits de R+2 a R+3." },
+      { "cond": { "quartier_type": "mixte" }, "text": "Le contexte urbain est mixte, associant habitat et activites de proximite (commerces, services). Le quartier presente une morphologie variee, avec des gabarits allant du rez-de-chaussee commercial au petit collectif." },
+      { "cond": { "quartier_type": "periurbain" }, "text": "Le terrain se situe en frange periurbaine, a la transition entre le tissu urbanise et les espaces agricoles ou naturels environnants. Le voisinage est compose de constructions recentes a dominante residentielle." },
+      { "cond": { "quartier_type": "rural" }, "text": "Le terrain est implante dans un contexte rural, avec un habitat disperse et une predominance d'espaces agricoles. Le bati voisin est constitue de constructions traditionnelles a faible gabarit." },
+      { "cond": { "always": true }, "text": "L'acces au terrain s'effectue depuis {adresse}." }
+    ],
+
+    "a_etat_initial_vegetation": [
+      { "cond": { "vegetation_existante": "aucune" }, "text": "Le terrain ne presente pas de vegetation significative ni d'arbres a haute tige. Le couvert vegetal se limite a une strate herbacee rase." },
+      { "cond": { "vegetation_existante": "herbacee" }, "text": "Le terrain est couvert d'une vegetation herbacee (gazon, adventices) sans arbre notable. Aucun specimen protege n'a ete recense." },
+      { "cond": { "vegetation_existante": "arbustive" }, "text": "Le terrain presente une vegetation arbustive moderee et quelques plantations d'ornement. Aucun arbre remarquable au sens de l'article L.350-3 du code de l'environnement n'a ete identifie." },
+      { "cond": { "vegetation_existante": "arboree" }, "text": "Le terrain comporte des arbres de haute tige ({arbres_existants_desc}). Un releve precis des sujets est joint au dossier. Les essences endemiques ou protegees sont identifiees et preservees dans le cadre du projet." },
+      { "cond": { "vegetation_existante": "dense" }, "text": "Le terrain presente une couverture vegetale dense, avec une canopee arboree significative ({arbres_existants_desc}). Le projet s'attache a preserver les sujets les plus remarquables et a integrer la vegetation existante dans l'amenagement paysager." },
+      { "cond": { "missing": "vegetation_existante" }, "text": "L'etat de la vegetation existante n'a pas ete releve. Un inventaire phytosanitaire est recommande prealablement au depot du permis." }
+    ],
+
+    "a_etat_initial_paysage": [
+      { "cond": { "has_vue_mer": true }, "text": "Le terrain beneficie d'ouvertures visuelles sur l'ocean, notamment depuis la partie {exposition} du terrain. Cette qualite paysagere constitue un atout pour le projet et sera valorisee par l'orientation des espaces de vie." },
+      { "cond": { "has_vue_montagne": true }, "text": "Les vues vers le grand paysage montagneux (cirques, remparts) constituent un element paysager remarquable. Le projet s'attache a preserver ces perspectives depuis les espaces collectifs et les logements." },
+      { "cond": { "pente_pct_gte": 5 }, "text": "La topographie du terrain offre des vues degagees vers le paysage lointain. L'organisation du projet tire parti de cette situation en belvedere pour orienter les espaces de vie principaux." },
+      { "cond": { "always": true }, "text": "L'environnement paysager immediat est caracteristique du contexte reunionnais, avec une vegetation tropicale abondante sur les parcelles voisines et un traitement vegetal des limites separatives." }
+    ],
+
+    "b_insertion_modifications": [
+      { "cond": { "pente_pct_lt": 5 }, "text": "Le terrain naturel est conserve dans sa topographie d'ensemble. Les terrassements se limitent au strict necessaire pour l'assise des fondations et l'amenagement des abords immediats du batiment." },
+      { "cond": { "pente_pct_gte": 5, "pente_pct_lt": 15 }, "text": "Le projet s'adapte a la pente naturelle du terrain ({pente_pct}%) par un jeu de niveaux decales. Les deblais sont reutilises en remblais sur la parcelle afin de limiter les mouvements de terres. Les murs de soutenement necessaires respectent la hauteur maximale reglementaire." },
+      { "cond": { "pente_pct_gte": 15 }, "text": "La forte pente ({pente_pct}%) impose des terrassements significatifs. Le projet est concu en gradins pour limiter les hauteurs de soutenement. Le bilan deblais/remblais est optimise pour eviter l'evacuation de materiaux hors site." },
+      { "cond": { "has_constructions_a_demolir": false }, "text": "Aucune demolition n'est prevue. L'ensemble des constructions et amenagements existants est conserve." },
+      { "cond": { "has_constructions_a_demolir": true }, "text": "Les constructions a demolir ({constructions_a_demolir_desc}) seront deconstruites selectivement. Les materiaux recyclables seront tries et valorises conformement a la reglementation." },
+      { "cond": { "arbres_conserves_count_gt": 0 }, "text": "Les arbres existants identifies comme remarquables sont conserves et proteges durant le chantier par des dispositifs adaptes (palissades de protection, perimetre de non-intervention autour du pied)." }
+    ],
+
+    "b_insertion_implantation": [
+      { "cond": { "recul_voie_projet_m": 0 }, "text": "Le batiment est implante a l'alignement de la voie publique, en continuite du front bati existant. Cette implantation affirme la presence urbaine du projet et participe a la qualite de l'espace public." },
+      { "cond": { "recul_voie_projet_m_gt": 0, "recul_voie_projet_m_lt": 5 }, "text": "Le batiment est implante en retrait de {recul_voie_projet_m} m par rapport a la voie, menageant un espace de transition vegetalise entre l'espace public et la construction. Ce recul est conforme a l'article 6 du reglement de zone {zone_plu}." },
+      { "cond": { "recul_voie_projet_m_gte": 5 }, "text": "Le recul de {recul_voie_projet_m} m par rapport a la voie degage un espace de pleine terre genereux en facade, permettant l'amenagement d'un jardin d'accueil et d'aires de stationnement paysagees." },
+      { "cond": { "recul_lat_projet_m": 0 }, "text": "La construction s'implante en limite separative laterale, conformement aux dispositions du reglement de zone {zone_plu} qui autorise la mitoyennete." },
+      { "cond": { "recul_lat_projet_m_gt": 0 }, "text": "Le retrait lateral de {recul_lat_projet_m} m par rapport aux limites separatives assure un prospect suffisant pour le voisinage et permet la ventilation naturelle des facades laterales." },
+      { "cond": { "recul_fond_projet_m": 0 }, "text": "L'implantation en fond de parcelle est retenue pour optimiser l'emprise constructible et liberer l'espace cote voie pour les acces et le stationnement." },
+      { "cond": { "recul_fond_projet_m_gt": 0 }, "text": "Le retrait de {recul_fond_projet_m} m en fond de parcelle preserve un espace tampon vegetalise avec les parcelles voisines et facilite l'entretien des facades arrieres." }
+    ],
+
+    "b_insertion_volume": [
+      { "cond": { "niveaux_lte": 1 }, "text": "La construction se deploie sur un seul niveau (RDC), avec une hauteur a l'egout de {hauteur_projet_m} m. Ce gabarit bas s'insere naturellement dans le contexte pavillonnaire environnant et ne cree aucun impact visuel disproportionne." },
+      { "cond": { "niveaux": 2 }, "text": "Le projet se developpe sur deux niveaux (RDC + R+1), pour une hauteur totale de {hauteur_projet_m} m a l'egout. Ce gabarit modere est en harmonie avec les constructions voisines et permet d'optimiser la surface de plancher tout en limitant l'emprise au sol." },
+      { "cond": { "niveaux": 3 }, "text": "La construction s'eleve sur trois niveaux (RDC + R+2) pour une hauteur de {hauteur_projet_m} m a l'egout. La volumetrie est fragmentee par des decrochements de facade et des jeux de toiture qui attentuent la perception de la hauteur depuis l'espace public." },
+      { "cond": { "niveaux_gte": 4 }, "text": "Le batiment se developpe sur {niveaux} niveaux pour une hauteur de {hauteur_projet_m} m. La volumetrie est travaillee par des retraits d'etage, des variations de teintes et des terrasses plantees qui rythment les facades et facilitent l'integration dans le paysage urbain." },
+      { "cond": { "programme": "collectif_aide" }, "text": "L'organisation interieure privilegia les logements traversants pour la ventilation naturelle, avec des cellules orientees selon l'axe des alizes dominants. Les circulations communes sont naturellement ventilees par des coursives ouvertes." },
+      { "cond": { "programme": "collectif_libre" }, "text": "Les volumes sont composes pour offrir a chaque logement une double orientation et une varangue profonde. Les espaces communs sont genereux et traites comme des prolongements du logement." },
+      { "cond": { "programme": "individuel" }, "text": "Chaque unite est concue comme un volume simple a toiture monopente ou bipente, ancre dans la tradition architecturale reunionnaise. La varangue, prolongement naturel du sejour, constitue l'espace de vie principal en climat tropical." },
+      { "cond": { "programme": "erp" }, "text": "Le volume du batiment recevant du public est concu pour offrir des espaces interieurs genereux, naturellement ventiles et eclaires. L'acces du public est clairement identifiable depuis la voie et repond aux exigences d'accessibilite PMR." },
+      { "cond": { "pente_pct_gte": 10 }, "text": "Le jeu de niveaux decales s'appuie sur la pente naturelle pour creer une architecture en gradins. La partie basse du batiment est semi-enterree, permettant une integration paysagere discrete et une optimisation du bilan deblais/remblais." }
+    ],
+
+    "c_traitement_limites_constructions": [
+      { "cond": { "recul_lat_projet_m": 0 }, "text": "La facade en limite separative est traitee en mur coupe-feu, enduit lisse et peint dans une teinte neutre. Aucune ouverture n'est creee sur cette facade conformement au code civil (art. 675-680) et au reglement d'urbanisme." },
+      { "cond": { "recul_lat_projet_m_gt": 0, "recul_lat_projet_m_lte": 3 }, "text": "La facade laterale, en retrait de {recul_lat_projet_m} m de la limite separative, est traitee avec un enduit lisse. Les ouvertures eventuelles respectent les distances de vue droite (1,90 m) et de vue oblique (0,60 m) prescrites par le code civil." },
+      { "cond": { "recul_fond_projet_m": 0 }, "text": "La construction positionnee en limite de fond de parcelle presente un traitement soigne : enduit peint dans une teinte similaire aux facades principales, avec un mur de soutenement integre d'une hauteur maximale de {soutenement_h_m} m sur le lineaire de cloture." },
+      { "cond": { "pente_pct_gte": 10 }, "text": "Les murs de soutenement necessaires sont limites a 2,50 m de hauteur apparente (3 m si pente superieure a 20%). Ils sont habilles de pierre volcanique locale ou d'un enduit harmonise avec les facades du batiment." }
+    ],
+
+    "c_traitement_limites_clotures": [
+      { "cond": { "cloture_type": "mur_enduit" }, "text": "La cloture sur voie est composee d'un muret maconnerie enduit d'une hauteur de {cloture_h_m} m, surmonte d'une grille ou d'un barreaudage metallique ajour. La hauteur totale de la cloture n'excede pas 1,80 m conformement au reglement de zone." },
+      { "cond": { "cloture_type": "palissade_alu" }, "text": "La cloture sur rue est composee d'une palissade aluminium a lames horizontales ajourees, d'une hauteur de {cloture_h_m} m, positionnee sur un soubassement maconnerie s'adaptant a la pente. L'ensemble est traite dans une teinte sobre (gris anthracite)." },
+      { "cond": { "cloture_type": "haie_vive" }, "text": "Les limites separatives sont materialisees par une haie vive d'essences locales, doublee d'un grillage rigide. Cette cloture vegetale assure l'intimite tout en participant a la trame verte du quartier." },
+      { "cond": { "cloture_type": "grillage" }, "text": "Les clotures laterales et de fond sont constituees d'un grillage rigide sur poteaux metalliques, double d'une haie vive plantee cote parcelle. La hauteur totale n'excede pas 2 m." },
+      { "cond": { "always": true }, "text": "Les clotures seront autant que possible doublees d'une haie vive composee d'essences locales adaptees au climat reunionnais, favorisant la biodiversite et la continuite ecologique." }
+    ],
+
+    "d_materiaux": [
+      { "cond": { "materiaux_structure": "maconnerie" }, "text": "La structure porteuse est en maconnerie traditionnelle (blocs beton), conforme aux regles parasismiques et paracycloniques en vigueur a La Reunion (Eurocode 8, zone 2 et Eurocode 1, zone 4)." },
+      { "cond": { "materiaux_structure": "beton_arme" }, "text": "La structure porteuse est en beton arme coule en place, dimensionnee selon les Eurocodes applicables a La Reunion (zones sismique 2 et cyclonique 4). Ce mode constructif offre une inertie thermique adaptee au climat tropical." },
+      { "cond": { "materiaux_structure": "bois" }, "text": "La structure porteuse est en bois (ossature ou poteaux-poutres), materiau a faible empreinte carbone et bien adapte au climat reunionnais. Le traitement anti-termites et anti-fongique est assure par classe d'emploi 3 minimum." },
+      { "cond": { "materiaux_structure": "mixte" }, "text": "La structure est mixte : soubassement en beton arme et superstructure en ossature bois ou metallique. Cette solution allie l'inertie du beton en partie basse et la legerete des niveaux superieurs." },
+      { "cond": { "always": true }, "text": "Les facades sont traitees en enduit lisse, dans des teintes claires (blanc casse, beige, gris perle) favorisant la reflexion du rayonnement solaire et limitant les apports thermiques. Des elements de bardage (type Trespa, zinc pre-patine ou bois) viennent ponctuer les facades pour creer des jeux de matiere et de couleur." },
+      { "cond": { "materiaux_toiture": "tole" }, "text": "La toiture est en tole ondulee ou bac acier, teinte gris clair ou galvanise. La pente de toiture est comprise entre 15 et 30% pour assurer l'evacuation des eaux pluviales tout en limitant la prise au vent cyclonique. La faitage est ventilee pour favoriser la surventilation du comble." },
+      { "cond": { "materiaux_toiture": "tuiles" }, "text": "La couverture est en tuiles beton, teinte terre cuite ou gris. La sous-toiture ventilee assure l'evacuation de la chaleur accumulee sous la couverture, conformement aux preconisations RTAA DOM." },
+      { "cond": { "always": true }, "text": "Les menuiseries exterieures sont en aluminium laque, teinte gris anthracite, equippees de vitrages securises (feuillete 44.2 minimum) et de volets coulissants ou persiennes permettant le controle de la ventilation et de l'ensoleillement." }
+    ],
+
+    "d_couleurs": [
+      { "cond": { "couleur_facade": "claire" }, "text": "La palette chromatique retenue privilegie les teintes claires et lumineuses pour les facades principales : blanc casse (RAL 9010), beige sable (RAL 1015) ou gris perle (RAL 7035). Ces teintes participent au confort thermique en limitant l'absorption du rayonnement solaire." },
+      { "cond": { "couleur_facade": "terre" }, "text": "Les facades sont traitees dans une palette de teintes naturelles (ocre, terre de Sienne, brun roux) en reference aux couleurs de la terre volcanique reunionnaise. Ces teintes chaudes facilitent l'integration du batiment dans le paysage vegetal environnant." },
+      { "cond": { "always": true }, "text": "Les elements de modénature (encadrements, bandeaux, acroteres) et les bardages rapportes sont traites dans des teintes contrastantes (gris anthracite, brun fonce) pour rythmer les facades et souligner la composition architecturale." },
+      { "cond": { "always": true }, "text": "La palette chromatique globale respecte les dispositions du reglement de zone {zone_plu} et s'harmonise avec le contexte bati environnant." }
+    ],
+
+    "e_espaces_libres": [
+      { "cond": { "permeable_conforme": true }, "text": "Les espaces libres representent {permeable_pct}% de la superficie du terrain, soit un taux superieur au minimum de {permeable_min_pct}% impose par le reglement de zone {zone_plu}. Ils sont traites en espaces vegetalises de pleine terre, favorisant l'infiltration naturelle des eaux pluviales." },
+      { "cond": { "permeable_conforme": false }, "text": "Les espaces libres representent {permeable_pct}% de la superficie du terrain. Ce taux etant inferieur au minimum de {permeable_min_pct}% exige par le reglement, des dispositions compensatoires sont mises en oeuvre : toitures vegetalisees, revetements permeables sur les aires de stationnement, noues paysageres." },
+      { "cond": { "ces_conforme": true }, "text": "L'emprise au sol des constructions represente {ces_pct}% de la superficie de la parcelle, dans la limite des {emprise_sol_max_pct}% autorises par le PLU. Le solde est amenage en espaces verts, cheminements et aires fonctionnelles." },
+      { "cond": { "programme": "erp" }, "text": "Les espaces exterieurs accessibles au public sont traites en revetements stabilises et vegetalises, conformes aux normes d'accessibilite PMR. Les cheminements sont clairement identifies et eclaires." },
+      { "cond": { "arbres_count_gt": 0 }, "text": "Le projet prevoit la plantation de {arbres_count} arbres, en privilegiant les essences endemiques et indigenes reunionnaises : bois de fer (Sideroxylon majus), bois d'olive (Olea europaea subsp. africana), benjoin (Terminalia bentzoe), mapou (Pisonia grandis). Les arbres d'alignement sont implantes a une distance minimale de 2 m des limites de propriete et des reseaux enterres." },
+      { "cond": { "missing": "arbres_count" }, "text": "Un plan de plantation sera elabore en phase PRO, en privilegiant les essences endemiques et indigenes reunionnaises adaptees a l'altitude et a l'exposition du terrain." },
+      { "cond": { "always": true }, "text": "Les espaces de pleine terre non plantes sont engazonnes (Cynodon dactylon ou Zoysia tenuifolia) et entretenus pour limiter le developpement des especes invasives. Les limites de propriete sont doublees de haies vives." }
+    ],
+
+    "f_acces_terrain": [
+      { "cond": { "acces_type": "rue" }, "text": "L'acces au terrain s'effectue directement depuis la voie publique ({adresse}). Le portail d'entree, d'une largeur de {portail_largeur_m} m, permet le passage des vehicules et des engins de secours. La visibilite en sortie sur la voie est assuree." },
+      { "cond": { "acces_type": "impasse" }, "text": "L'acces au terrain se fait depuis une impasse desservant la parcelle. La largeur de l'impasse ({voie_largeur_m} m) et sa configuration permettent l'acces des vehicules de secours (echelle et fourgon pompe-tonne)." },
+      { "cond": { "acces_type": "chemin" }, "text": "L'acces s'effectue par un chemin prive depuis {adresse}. La servitude de passage est etablie et la largeur du chemin ({voie_largeur_m} m) est compatible avec les exigences SDIS pour les engins de secours." },
+      { "cond": { "always": true }, "text": "L'amenagement de l'acces integre un traitement de sol differencie (beton desactive, pave drainant ou stabilise renforce) signalant clairement la transition entre l'espace public et la parcelle privee." }
+    ],
+
+    "f_acces_constructions": [
+      { "cond": { "programme": "individuel" }, "text": "L'acces pieton au logement s'effectue depuis un cheminement beton ou dalle sur plot, en pente douce (< 5%) pour l'accessibilite PMR. La varangue d'entree constitue un sas de transition couvert entre l'exterieur et l'interieur." },
+      { "cond": { "programme_in": ["collectif_aide", "collectif_libre"] }, "text": "L'acces principal au batiment collectif est marque par un hall d'entree couvert et eclaire, directement visible depuis la voie. Les circulations verticales (escalier et ascenseur si R+3 ou plus) desservent l'ensemble des niveaux. Les coursives ouvertes assurent la distribution des logements tout en favorisant la ventilation naturelle." },
+      { "cond": { "programme": "erp" }, "text": "L'acces du public a l'etablissement se fait depuis la limite {acces_public_direction} de la parcelle, par un cheminement accessible PMR de {acces_public_largeur_m} m de large minimum. Un acces de service distinct est prevu pour le personnel et les livraisons." },
+      { "cond": { "always": true }, "text": "L'ensemble des cheminements piétons est conforme aux dispositions relatives a l'accessibilité des personnes handicapées (arrete du 20 avril 2017) : pente inferieure a 5%, paliers de repos, largeur minimale de 1,40 m, absence de ressaut superieur a 2 cm." }
+    ],
+
+    "f_acces_stationnement": [
+      { "cond": { "statio_places_projet_gt": 0 }, "text": "Le projet prevoit {statio_places_projet} places de stationnement, dont {statio_pmr} place(s) adaptee(s) aux personnes a mobilite reduite. Les places PMR sont situees au plus pres de l'acces principal du batiment, sur un sol stabilise et horizontal." },
+      { "cond": { "statio_conforme": true }, "text": "Le nombre de places ({statio_places_projet}) est conforme aux exigences du reglement de zone {zone_plu} ({statio_places_requises} places requises)." },
+      { "cond": { "statio_conforme": false }, "text": "Le nombre de places ({statio_places_projet}) est inferieur aux {statio_places_requises} places requises par le PLU. Le deficit de {statio_deficit} places doit etre comble ou faire l'objet d'une concession de stationnement public." },
+      { "cond": { "programme": "individuel" }, "text": "Chaque lot dispose de 2 places de stationnement minimum, implantees sur la parcelle individuelle. Une place supplementaire peut etre amenagee dans la bande de recul lorsque le reglement l'autorise." },
+      { "cond": { "always": true }, "text": "Les aires de stationnement sont traitees en revetement drainant (pave a joint enherbee, beton desactive ou stabilise renforce) afin de limiter l'impermeabilisation et de contribuer a la gestion des eaux pluviales a la parcelle." }
+    ]
   }
 }

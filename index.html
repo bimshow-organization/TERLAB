@@ -212,6 +212,11 @@
     <div class="tb-brand" id="tb-brand">
       <span class="tb-name">TERLAB</span>
       <span class="tb-terrain-name" id="tb-terrain-name"></span>
+      <!-- Phase label visible uniquement en responsive (cf. mobile.css) -->
+      <span id="tb-phase-label" aria-live="polite">
+        <span class="tb-phase-num">P00</span>
+        <span class="tb-phase-title">Identification</span>
+      </span>
     </div>
 
     <!-- Navigation phases -->
@@ -425,24 +430,54 @@
       <div class="mob-sheet-handle-bar"></div>
     </div>
 
-    <!-- Tabs (Formulaire / Risques / Acteurs) -->
+    <!-- Tabs (Formulaire / Risques / Acteurs) + bouton Sources (deplace depuis topbar) -->
     <div class="mob-sheet-tabs" id="mob-sheet-tabs">
       <button class="mob-sheet-tab active" data-tab="form">Formulaire</button>
       <button class="mob-sheet-tab" data-tab="risks">Risques</button>
       <button class="mob-sheet-tab" data-tab="actors">Acteurs</button>
+      <button class="mob-sheet-action" id="mob-sources-btn" type="button" aria-label="Sources et references">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <path d="M3 3h12v12H3z" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M6 7h6M6 9.5h6M6 12h4" stroke="currentColor" stroke-width="1" opacity=".6"/>
+        </svg>
+        <span>Sources</span>
+      </button>
+    </div>
+
+    <!-- Stepper progress bar -->
+    <div class="mob-stepper-progress" id="mob-stepper-progress" style="display:none"></div>
+
+    <!-- Step indicator -->
+    <div class="mob-stepper-indicator" id="mob-stepper-indicator" style="display:none">
+      <span class="mob-step-num"></span>
+      <span class="mob-step-title"></span>
     </div>
 
     <!-- Corps scrollable -->
     <div class="mob-sheet-body" id="mob-sheet-body">
-      <div id="mob-sheet-form-content"></div>
+      <!-- Stepper body : form-sections reparentees ici -->
+      <div id="mob-stepper-body" class="mob-stepper-body"></div>
+      <!-- Tips contextuels -->
+      <div id="mob-stepper-tips" class="mob-stepper-tips" style="display:none"></div>
+      <!-- Autres onglets -->
       <div id="mob-sheet-risks-content" style="display:none;padding:12px 16px"></div>
       <div id="mob-sheet-actors-content" style="display:none;padding:12px 16px"></div>
     </div>
 
-    <!-- Pied : bouton phase suivante -->
+    <!-- Pied : navigation stepper + phase suivante -->
     <div class="mob-sheet-footer" id="mob-sheet-footer">
-      <button class="mob-next-btn" id="mob-next-phase-btn" disabled>
-        Chargement…
+      <div class="mob-stepper-nav" id="mob-stepper-nav" style="display:none">
+        <button class="mob-step-prev" id="mob-step-prev" disabled>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          Precedent
+        </button>
+        <button class="mob-step-next" id="mob-step-next">
+          Suivant
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+      <button class="mob-next-btn" id="mob-next-phase-btn" disabled style="display:none">
+        Phase suivante
       </button>
     </div>
 
@@ -569,6 +604,11 @@
           <span class="export-icon">📦</span>
           <span class="export-label">JSON</span>
           <span class="export-desc">Session complète</span>
+        </button>
+        <button class="export-btn" data-format="zip-images" onclick="TerlabExport.generateImagesZIP()">
+          <span class="export-icon">🖼️</span>
+          <span class="export-label">ZIP Images</span>
+          <span class="export-desc">Cartes HD — cadastre, situation, PPR, 3D, coupes</span>
         </button>
       </div>
       <p class="modal-hint" style="font-size:10px;color:var(--text-dim);margin-top:8px">

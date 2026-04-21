@@ -149,6 +149,15 @@ const PlanMasseCanvas = {
   _terrain: null,    // { poly, edgeTypes, reculs, area, plu, parcelGeo, geoOrigin }
   _ready: false,
 
+  // ── Plateau cellules (projeté depuis CelluleGenerator) ───────────
+  _plateau: null,
+
+  /** Injecte un plateau généré par CelluleGenerator pour l'afficher sur le plan masse */
+  setPlateau(plateau) {
+    this._plateau = plateau;
+    this.render();
+  },
+
   // ── BIL : contours + NGR aux sommets ─────────────────────────────
   _contourData: null,   // { lines, linesLocal:[{level,pts}], interval, minAlt, maxAlt }
   _cornerAlts:  null,   // [{ kind, coord, alt, local:{x,y} }]
@@ -167,7 +176,7 @@ const PlanMasseCanvas = {
     edgeTypes: [],
     mitoyen: [],
     zoom: 1, panX: 0, panY: 0, wcx: 15, wcy: 15,
-    layers: { reculs: true, env: true, veg: true, parking: true, dims: true, pir: false, contours: true, ngr: true, emprise: false, circ: false, prog: false },
+    layers: { reculs: true, env: true, veg: true, parking: true, dims: true, pir: false, contours: true, ngr: true, emprise: false, circ: false, prog: false, cellules: true },
     view: 'plan',  // 'plan' | 'coupe'
     _insetWarn: null,
     // Dirty flag : user a édité manuellement (drag/resize/rotate/split/addNode/delNode).
@@ -522,6 +531,38 @@ const PlanMasseCanvas = {
 
   // ── ENVELOPPE ─────────────────────────────────────────────────────
 
+  // ── Cap. max PLU : délégué au CapacityModel (calcul pur) ────────
+  _computeMaxLgts(currentEnvArea, plu, nvEffMax, currentSc) {
+    const CM = window.CapacityModel;
+    if (!CM) {
+      // Fallback simple si CapacityModel pas chargé
+      const budget = (this._terrain?.area ?? 0) * (1 - (plu.permMin ?? 25) / 100);
+      const maxEmpr = Math.min(currentEnvArea * (plu.emprMax ?? 60) / 100, budget);
+      return Math.max(1, Math.floor(maxEmpr * (currentSc.eff ?? 0.82) * nvEffMax / SP_MOY));
+    }
+
+    const env = this.computeEnv();
+    const FH = window.FootprintHelpers;
+    let obbW = 20, obbL = 30;
+    try {
+      const obb = FH?.obb?.(env.poly.map(p => FH.toXY(p)));
+      if (obb) { obbW = obb.w; obbL = obb.l; }
+    } catch { /* obb failed */ }
+
+    const table = CM.compute(
+      { area: this._terrain.area, envelopeArea: currentEnvArea, obbW, obbL },
+      plu,
+      { eff: currentSc.eff ?? 0.82, profMax: this.S?.prog?.profMax ?? 15, type: this.S?.prog?.type ?? 'collectif' }
+    );
+
+    // Stocker la table et l'explication pour l'UI
+    this._capacityTable = table;
+    this._mitoyenAdvice = null;
+    this._maxParkMode = table.max?.parkMode ?? 'ss';
+
+    return table.max?.lgts ?? 1;
+  },
+
   // Recul effectif d'une arête. Latéral = BINAIRE (0 mitoyen, sinon Lmin).
   // Voie / fond : valeur PLU directe.
   edgeRecul(i) {
@@ -537,14 +578,23 @@ const PlanMasseCanvas = {
     const t = this._terrain;
     const R = this.S.edgeTypes.map((_, i) => this.edgeRecul(i));
 
-    // Chemin principal : _insetPoly préserve N sommets (1:1 avec parcelle)
-    // → nécessaire pour lostCorners(), bandes de recul, et edgeTypes mapping.
-    let env = _insetPoly(t.poly, R);
+    // Chemin principal : GeomInlet.inletPolyline avec arcs ronds aux coins concaves
+    const GI = window.GeomInlet;
+    if (GI?.inletPolyline) {
+      try {
+        const inlet = GI.inletPolyline(t.poly, R, { arcSteps: 8 });
+        if (inlet.length >= 3 && polyArea(inlet) > 5) {
+          this.S._insetWarn = null;
+          this.S._inletHasArcs = inlet.length > t.poly.length; // plus de sommets = arcs generes
+          return inlet;
+        }
+      } catch (e) {
+        console.warn('[PMC] GeomInlet.inletPolyline failed:', e.message);
+      }
+    }
 
-    // Filet : si l'inset principal produit une self-intersection (arête courte +
-    // recul asymétrique), tenter FH.buildZone (v4h) comme fallback sûr.
-    // buildZone peut retourner un nombre de sommets différent → on l'utilise
-    // UNIQUEMENT si l'inset principal a échoué (area ≤ 5 ou self-intersect).
+    // Fallback legacy : _insetPoly lineaire (N sommets 1:1)
+    let env = _insetPoly(t.poly, R);
     const area = polyArea(env);
     if (area <= 5) {
       // Tentative 1 : buildZone (convexe half-plane / concave raster)
@@ -749,37 +799,101 @@ const PlanMasseCanvas = {
     const nbLgts = p.type === 'maison' ? 1 : Math.floor(spTot / SP_MOY);
     const nbAide = p.type === 'maison' ? 0 : Math.round(nbLgts * sc.aide);
     const parkReq = p.type === 'maison' ? 2 : (nbLgts - nbAide) * 2 + nbAide + Math.ceil(nbLgts / 5);
-    let parkExt = 0, parkSS = 0, empPark = 0;
-    if (p.parkMode === 'ss') { parkSS = parkReq; }
-    else if (p.parkMode === 'rdc') { parkExt = Math.floor(emprise * 0.25 / 25); if (p.parkSS) parkSS = Math.max(0, parkReq - parkExt); }
-    else { parkExt = parkReq; empPark = parkExt * 25; if (p.parkSS) { parkExt = 0; parkSS = parkReq; empPark = 0; } }
+
+    // ── Parking : auto-escalade ext → RdC → SS si le budget perméable ne suffit pas ──
+    let parkExt = 0, parkSS = 0, parkRdc = 0, empPark = 0;
+    let effectiveParkMode = p.parkMode ?? 'ext';
+    if (effectiveParkMode === 'ss') {
+      parkSS = parkReq;
+    } else if (effectiveParkMode === 'rdc') {
+      parkRdc = Math.floor(emprise * 0.80 / 25);
+      parkSS = Math.max(0, parkReq - parkRdc);
+    } else {
+      // Mode ext : vérifier si le budget perméable le permet
+      const maxImperm = t.area * (1 - (plu.permMin ?? 25) / 100);
+      const parkExtM2 = parkReq * 25;
+      if (emprise + parkExtM2 <= maxImperm) {
+        // Ext OK
+        parkExt = parkReq;
+        empPark = parkExtM2;
+      } else {
+        // Ext ne passe pas → le calcul bascule en SS pour les métriques
+        // MAIS on ne mute PAS this.S.prog.parkMode (choix utilisateur respecté)
+        effectiveParkMode = 'ss';
+        parkSS = parkReq;
+      }
+    }
     const impermeab = emprise + empPark;
     const permPct = Math.max(0, (1 - impermeab / t.area) * 100);
     const dens = nbLgts / (t.area / 10000);
     const rtaaW = plu.rtaaZone === 1 ? 10 : 12;
-    const inEnv = [[b.x, b.y], [b.x + b.w, b.y], [b.x + b.w, b.y + b.l], [b.x, b.y + b.l]].every(([px, py]) => ptInPoly(px, py, env.poly));
+    // Vérif. dans enveloppe : tester les sommets de chaque bloc (multi-blocs)
+    // ou les 4 coins du S.bat (mono legacy)
+    let inEnv;
+    if (this.S.blocs?.length) {
+      inEnv = this.S.blocs.every(bl =>
+        (bl.polygon || []).every(pt => ptInPoly(pt.x ?? pt[0], pt.y ?? pt[1], env.poly))
+      );
+    } else {
+      inEnv = [[b.x, b.y], [b.x + b.w, b.y], [b.x + b.w, b.y + b.l], [b.x, b.y + b.l]].every(([px, py]) => ptInPoly(px, py, env.poly));
+    }
     const gapMin = Math.max(plu.interBatMin || 4, nvEff * H_NIV / 2);
     const nbBlocs = (p.type === 'collectif' && p.maxUnits > 0 && nbLgts > p.maxUnits) ? Math.ceil(nbLgts / Math.max(1, p.maxUnits)) : 1;
     const envArea = polyArea(env.poly);
-    const maxLgts = Math.floor(envArea * plu.emprMax / 100 * sc.eff * nvEffMax / SP_MOY);
+    // Cap. max PLU : enveloppe optimale (meilleur mitoyen) × meilleur eff stratégie × niveaux max
+    const maxLgts = this._computeMaxLgts(envArea, plu, nvEffMax, sc);
     const Q = 0.9 * (80 / 3600) * impermeab;
 
+    // blocking = PLU opposable (fait échouer la conformité)
+    // info = recommandation (RTAA ventilation, densité SCoT) — affiché mais non bloquant
     const checks = [
-      { lbl: 'Constructible', ok: !!plu.constructible, proj: plu.zone, rule: 'U/AU', u: '' },
-      { lbl: 'Dans env.', ok: inEnv, proj: inEnv ? 'oui' : 'NON', rule: 'requis', u: '' },
-      { lbl: 'Larg. RTAA', ok: b.w <= rtaaW, proj: b.w.toFixed(1), rule: `≤${rtaaW}`, u: 'm' },
-      { lbl: 'Prof. N-S', ok: b.l <= (p.profMax ?? 25), proj: b.l.toFixed(1), rule: `≤${p.profMax ?? 25}`, u: 'm' },
-      { lbl: 'Niv. PLU', ok: nvEff <= nvEffMax, proj: NV[nvEff] || nvEff, rule: `≤${NV[nvEffMax] || nvEffMax}`, u: '' },
-      { lbl: 'Emprise', ok: empPct <= plu.emprMax, proj: empPct.toFixed(1), rule: `≤${plu.emprMax}`, u: '%' },
-      { lbl: 'Perméab.', ok: permPct >= plu.permMin, proj: permPct.toFixed(1), rule: `≥${plu.permMin}`, u: '%' },
-      { lbl: 'Densité SCoT', ok: dens >= 30, proj: dens.toFixed(0), rule: '≥30', u: 'l/ha' },
+      { lbl: 'Constructible', ok: !!plu.constructible, proj: plu.zone, rule: 'U/AU', u: '', blocking: true },
+      { lbl: 'Dans env.',     ok: inEnv, proj: inEnv ? 'oui' : 'NON', rule: 'requis', u: '', blocking: true },
+      { lbl: 'Larg. RTAA',   ok: b.w <= rtaaW, proj: b.w.toFixed(1), rule: `≤${rtaaW}`, u: 'm', blocking: false },
+      { lbl: 'Prof. N-S',    ok: b.l <= (p.profMax ?? 25), proj: b.l.toFixed(1), rule: `≤${p.profMax ?? 25}`, u: 'm', blocking: false },
+      { lbl: 'Niv. PLU',     ok: nvEff <= nvEffMax, proj: NV[nvEff] || nvEff, rule: `≤${NV[nvEffMax] || nvEffMax}`, u: '', blocking: true },
+      { lbl: 'Emprise',      ok: empPct <= plu.emprMax, proj: empPct.toFixed(1), rule: `≤${plu.emprMax}`, u: '%', blocking: true },
+      { lbl: 'Perméab.',     ok: permPct >= plu.permMin, proj: permPct.toFixed(1), rule: `≥${plu.permMin}`, u: '%', blocking: true },
+      { lbl: 'Densité SCoT', ok: dens >= 30, proj: dens.toFixed(0), rule: '≥30', u: 'l/ha', blocking: false },
     ];
+    const allOk = checks.filter(c => c.blocking).every(c => c.ok);
+
+    // ── Facteur limitant : CapacityModel ou fallback simple ──
+    const CM = window.CapacityModel;
+    let limitingFactor = null;
+    if (!plu.constructible) {
+      limitingFactor = 'Zone non constructible';
+    } else if (empPct > plu.emprMax) {
+      limitingFactor = `Emprise depasse PLU (${empPct.toFixed(0)}% > ${plu.emprMax}%)`;
+    } else if (permPct < plu.permMin) {
+      limitingFactor = empPark > 0
+        ? `Espace vert insuffisant : PK ext (${empPark.toFixed(0)}m2) + emprise — passer en SS/RdC`
+        : `Espace vert insuffisant (${permPct.toFixed(1)}% < ${plu.permMin}%)`;
+    } else if (this._capacityTable && CM) {
+      // Explication depuis le CapacityModel
+      limitingFactor = CM.explain(this._capacityTable);
+      // Enrichir avec la table par parking
+      const bp = this._capacityTable.byPark;
+      if (bp) {
+        const parts = [];
+        if (bp.ext > 0) parts.push(`ext:${bp.ext}`);
+        if (bp.rdc > 0) parts.push(`RdC:${bp.rdc}`);
+        if (bp.ss > 0) parts.push(`SS:${bp.ss}`);
+        limitingFactor += ` [${parts.join(' · ')}]`;
+      }
+    } else {
+      const maxImpermeab = t.area * (1 - (plu.permMin ?? 25) / 100);
+      limitingFactor = `Cap. ${maxLgts} lgts · budget perm. ${maxImpermeab.toFixed(0)}m2`;
+    }
 
     return {
       sc, nvEff, nvEffMax, emprise, empPct, spTot, nbLgts, nbAide, nbLibre: nbLgts - nbAide,
-      parkExt, parkSS, parkReq, empPark, impermeab, permPct, dens, Q,
+      parkExt, parkSS, parkRdc: parkRdc ?? 0, parkReq, empPark,
+      effectiveParkMode, impermeab, permPct, dens, Q,
       vGiep: Q * 600, sNoue: Q * 600 / 0.30, inEnv, checks,
-      allOk: checks.every(c => c.ok), nbBlocs, gapMin, rtaaW, maxLgts, envArea,
+      allOk, nbBlocs, gapMin, rtaaW, maxLgts, envArea,
+      _mitoyenAdvice: this._mitoyenAdvice,
+      _limitingFactor: limitingFactor,
     };
   },
 
@@ -1043,9 +1157,13 @@ const PlanMasseCanvas = {
 
     // Enveloppe
     if (this.S.layers.env && this._terrain.plu.constructible) {
-      parts.push(`<polygon points="${this._polyPts(env.poly)}" fill="rgba(34,197,94,.07)" stroke="var(--svg-fond)" stroke-width="1.2" stroke-dasharray="8,4"/>`);
-      const ebb = polyAABB(env.poly);
-      parts.push(this._tx((ebb.x + ebb.x1) / 2, ebb.y1 + 1.5, `env. ${polyArea(env.poly).toFixed(0)} m² · max ${this._terrain.plu.emprMax}% = ${(polyArea(env.poly) * this._terrain.plu.emprMax / 100).toFixed(0)} m²`, 7.5, 'rgba(34,197,94,.75)'));
+      // Inlet : fond vert leger + contour vert bien visible
+      parts.push(`<polygon points="${this._polyPts(env.poly)}" fill="rgba(34,197,94,.10)" stroke="rgba(22,163,74,.6)" stroke-width="2" stroke-dasharray="6,3"/>`);
+      // Label inlet
+      const envCx = env.poly.reduce((s, p) => s + p[0], 0) / env.poly.length;
+      const envCyTop = Math.min(...env.poly.map(p => p[1]));
+      const _plu = this._terrain.plu;
+      parts.push(this._tx(envCx, envCyTop - 1.5, `env. ${polyArea(env.poly).toFixed(0)} m\u00b2 \u00b7 max ${(_plu.emprMax ?? 60)}% = ${(polyArea(env.poly) * (_plu.emprMax ?? 60) / 100).toFixed(0)} m\u00b2`, 7, 'rgba(22,163,74,.55)'));
     }
 
     // Végétation
@@ -1055,23 +1173,59 @@ const PlanMasseCanvas = {
     }
 
     // Parking — clippé contre la PARCELLE et l'enveloppe pour ne pas déborder
-    if (this.S.layers.parking && this.S.prog.parkMode === 'ext' && !this.S.prog.parkSS && m.parkReq > 0 && this._terrain.plu.constructible) {
-      const GAP = 1.0, totalArea = m.parkReq * 25;
-      const env2 = this.computeEnv();
-      let pkx, pkl, pkw, pkbb;
-      if (this.S.parkSide === 'est') { const av = env2.x1 - (b.x + b.w) - GAP; pkw = Math.max(4, Math.min(13, av)); pkl = Math.min(env2.h, Math.max(5, totalArea / pkw)); pkx = Math.min(b.x + b.w + GAP, env2.x1 - pkw); pkbb = Math.max(env2.y, Math.min(b.y, env2.y1 - pkl)); }
-      else if (this.S.parkSide === 'ouest') { const av = b.x - env2.x - GAP; pkw = Math.max(4, Math.min(13, av)); pkl = Math.min(env2.h, Math.max(5, totalArea / pkw)); pkx = Math.max(env2.x, b.x - pkw - GAP); pkbb = Math.max(env2.y, Math.min(b.y, env2.y1 - pkl)); }
-      else if (this.S.parkSide === 'nord') { const av = env2.y1 - (b.y + b.l) - GAP; pkl = Math.max(4, Math.min(13, av)); pkw = Math.min(env2.w, Math.max(5, totalArea / pkl)); pkx = Math.max(env2.x, Math.min(b.x, env2.x1 - pkw)); pkbb = Math.min(b.y + b.l + GAP, env2.y1 - pkl); }
-      else { const av = b.y - env2.y - GAP; pkl = Math.max(4, Math.min(13, av)); pkw = Math.min(env2.w, Math.max(5, totalArea / pkl)); pkx = Math.max(env2.x, Math.min(b.x, env2.x1 - pkw)); pkbb = Math.max(env2.y, b.y - pkl - GAP); }
-      const pkRect = [[pkx, pkbb], [pkx + pkw, pkbb], [pkx + pkw, pkbb + pkl], [pkx, pkbb + pkl]];
-      const pkClipped = clipSH(clipSH(pkRect, env.poly), t.poly);
-      if (pkClipped.length >= 3) {
-        const pkPts = pkClipped.map(([x, y]) => this._w2s(x, y).map(v => this._dd(v)).join(',')).join(' ');
-        parts.push(`<polygon points="${pkPts}" fill="rgba(172,164,140,.32)" stroke="rgba(120,112,90,.45)" stroke-width="1"/>`);
-        parts.push(`<polygon points="${pkPts}" fill="url(#pmc-hatch)" opacity=".4"/>`);
-        const cx = pkClipped.reduce((s, p) => s + p[0], 0) / pkClipped.length;
-        const cy = pkClipped.reduce((s, p) => s + p[1], 0) / pkClipped.length;
-        parts.push(this._tx(cx, cy, `${m.parkReq} PK`, 9, 'rgba(70,60,50,.7)'));
+    // Parking geometrique — rendu selon mode effectif
+    if (this.S.layers.parking && m.parkReq > 0 && this._terrain.plu.constructible) {
+      const epm = m.effectiveParkMode ?? this.S.prog.parkMode;
+      if (epm === 'ext' && m.parkExt > 0) {
+        // Parking exterieur : rectangle hachure cote voie
+        const PK = window.Parking;
+        const pkResult = PK?.placeParkingExt?.(t.poly, this.S.edgeTypes, m.parkExt * 25, this.S.blocs);
+        if (pkResult?.polygon) {
+          const pkClipped = clipSH(pkResult.polygon, t.poly);
+          if (pkClipped.length >= 3) {
+            const pkPts = pkClipped.map(([x, y]) => this._w2s(x, y).map(v => this._dd(v)).join(',')).join(' ');
+            parts.push(`<polygon points="${pkPts}" fill="rgba(172,164,140,.32)" stroke="rgba(120,112,90,.45)" stroke-width="1"/>`);
+            parts.push(`<polygon points="${pkPts}" fill="url(#pmc-hatch)" opacity=".4"/>`);
+            const cx = pkClipped.reduce((s, p) => s + p[0], 0) / pkClipped.length;
+            const cy = pkClipped.reduce((s, p) => s + p[1], 0) / pkClipped.length;
+            parts.push(this._tx(cx, cy, pkResult.label, 9, 'rgba(70,60,50,.7)'));
+          }
+        } else {
+          // Fallback legacy placement
+          const GAP = 1.0, totalArea = m.parkExt * 25;
+          const env2 = this.computeEnv();
+          let pkx, pkl, pkw, pkbb;
+          if (this.S.parkSide === 'est') { const av = env2.x1 - (b.x + b.w) - GAP; pkw = Math.max(4, Math.min(13, av)); pkl = Math.min(env2.h, Math.max(5, totalArea / pkw)); pkx = Math.min(b.x + b.w + GAP, env2.x1 - pkw); pkbb = Math.max(env2.y, Math.min(b.y, env2.y1 - pkl)); }
+          else { const av = b.y - env2.y - GAP; pkl = Math.max(4, Math.min(13, av)); pkw = Math.min(env2.w, Math.max(5, totalArea / pkl)); pkx = Math.max(env2.x, Math.min(b.x, env2.x1 - pkw)); pkbb = Math.max(env2.y, b.y - pkl - GAP); }
+          const pkRect = [[pkx, pkbb], [pkx + pkw, pkbb], [pkx + pkw, pkbb + pkl], [pkx, pkbb + pkl]];
+          const pkClipped2 = clipSH(clipSH(pkRect, env.poly), t.poly);
+          if (pkClipped2.length >= 3) {
+            const pkPts = pkClipped2.map(([x, y]) => this._w2s(x, y).map(v => this._dd(v)).join(',')).join(' ');
+            parts.push(`<polygon points="${pkPts}" fill="rgba(172,164,140,.32)" stroke="rgba(120,112,90,.45)" stroke-width="1"/>`);
+            parts.push(`<polygon points="${pkPts}" fill="url(#pmc-hatch)" opacity=".4"/>`);
+            const cx = pkClipped2.reduce((s, p) => s + p[0], 0) / pkClipped2.length;
+            const cy = pkClipped2.reduce((s, p) => s + p[1], 0) / pkClipped2.length;
+            parts.push(this._tx(cx, cy, `${m.parkExt} PK`, 9, 'rgba(70,60,50,.7)'));
+          }
+        }
+      } else if (epm === 'rdc') {
+        // Parking RdC : overlay dashed sur l'emprise du batiment
+        const blocs = this.getBlocRects(m);
+        for (const bl of blocs) {
+          const [sx, sy] = this._w2s(bl.x, bl.y + bl.l);
+          const sw = this._px(bl.w), sh = this._px(bl.l);
+          const vaH = Math.min(this._px(1.5), sh * 0.18);
+          parts.push(`<rect x="${this._dd(sx)}" y="${this._dd(sy)}" width="${this._dd(sw)}" height="${this._dd(vaH)}" fill="rgba(172,164,140,.25)" stroke="rgba(120,112,90,.35)" stroke-width="0.6" stroke-dasharray="4,2" pointer-events="none"/>`);
+        }
+        const bCx = b.x + b.w / 2, bCy = b.y + b.l + 1.5;
+        parts.push(this._tx(bCx, bCy, `${m.parkRdc ?? m.parkReq} PK RdC${m.parkSS > 0 ? ` + ${m.parkSS} SS` : ''}`, 7.5, 'rgba(100,90,70,.65)'));
+      } else if (epm === 'ss') {
+        // Parking SS : icone P dans un coin du batiment
+        const [sx, sy] = this._w2s(b.x + b.w - 2, b.y + b.l - 2);
+        parts.push(`<circle cx="${this._dd(sx)}" cy="${this._dd(sy)}" r="8" fill="rgba(59,130,246,.15)" stroke="rgba(59,130,246,.5)" stroke-width="1" pointer-events="none"/>`);
+        parts.push(`<text x="${this._dd(sx)}" y="${this._dd(sy + 3.5)}" text-anchor="middle" font-size="9" font-weight="700" fill="rgba(59,130,246,.8)" font-family="'Inconsolata',monospace" pointer-events="none">P</text>`);
+        const bCx = b.x + b.w / 2, bCy = b.y + b.l + 1.5;
+        parts.push(this._tx(bCx, bCy, `${m.parkReq} PK SS`, 7.5, 'rgba(59,130,246,.6)'));
       }
     }
 
@@ -1156,27 +1310,40 @@ const PlanMasseCanvas = {
           parts.push(`<polygon points="${insPts}" fill="rgba(76,168,112,0.08)" fill-rule="evenodd" stroke="#4ca870" stroke-width="0.9" stroke-dasharray="5,3"/>`);
           parts.push(`</g>`);
         }
-        // Label
+        // Label — toujours visible, taille adaptée au bloc
         const cxBloc = bl.cx ?? (bl.x + bl.w / 2);
         const cyBloc = bl.cy ?? (bl.y + bl.l / 2);
         const [sx, sy] = this._w2s(cxBloc, cyBloc);
+        const blocPx = Math.min(this._px(bl.w), this._px(bl.l));
+        const fz = Math.max(10, Math.min(22, blocPx * 0.12)); // taille adaptée
         if (bi === 0 && !isMulti) {
           const nvL = NV[m.nvEff] || `R+${m.nvEff - 1}`;
           const sub = `${bl.w.toFixed(1)}\u00d7${bl.l.toFixed(1)}m`;
-          parts.push(`<text x="${this._dd(sx)}" y="${this._dd(sy - 10)}" text-anchor="middle" font-size="16" fill="${col}" font-weight="700" font-family="'Playfair Display',sans-serif" pointer-events="none">${this.S.prog.type === 'maison' ? 'Maison' : `${m.nbLgts} lgts`}</text>`);
-          parts.push(`<text x="${this._dd(sx)}" y="${this._dd(sy + 6)}" text-anchor="middle" font-size="9.5" fill="${col}" opacity=".85" font-family="'Inconsolata',monospace" pointer-events="none">${sub}</text>`);
-          parts.push(`<text x="${this._dd(sx)}" y="${this._dd(sy + 19)}" text-anchor="middle" font-size="9" fill="${col}" opacity=".65" font-family="'Inconsolata',monospace" pointer-events="none">${nvL} \u00b7 h\u2264${m.nvEff * H_NIV}m</text>`);
+          const title = this.S.prog.type === 'maison' ? 'Maison' : `${m.nbLgts} lgts`;
+          // Titre principal
+          parts.push(`<text x="${this._dd(sx)}" y="${this._dd(sy - fz * 1.2)}" text-anchor="middle" font-size="${fz + 4}" fill="${col}" font-weight="700" font-family="'Playfair Display',sans-serif" pointer-events="none">${title}</text>`);
+          // Dimensions
+          parts.push(`<text x="${this._dd(sx)}" y="${this._dd(sy - 1)}" text-anchor="middle" font-size="${fz * 0.7}" fill="${col}" opacity=".85" font-family="'Inconsolata',monospace" pointer-events="none">${sub}</text>`);
+          // SP + niveaux
+          parts.push(`<text x="${this._dd(sx)}" y="${this._dd(sy + fz * 0.8)}" text-anchor="middle" font-size="${fz * 0.65}" fill="${col}" opacity=".75" font-family="'Inconsolata',monospace" pointer-events="none">SP ${m.spTot.toFixed(0)}m\u00b2 \u00b7 ${nvL}</text>`);
+          // Parking + avertissements
+          const warns = [];
+          if (this.S.prog.parkMode === 'ss') warns.push('PK sous-sol');
+          else if (this.S.prog.parkMode === 'rdc') warns.push(`PK RdC${m.parkSS > 0 ? '+SS' : ''}`);
+          else warns.push(`${m.parkExt} PK ext`);
+          if (m.nvEff > 1) warns.push(`h\u2264${m.nvEff * H_NIV}m`);
+          parts.push(`<text x="${this._dd(sx)}" y="${this._dd(sy + fz * 1.5)}" text-anchor="middle" font-size="${fz * 0.55}" fill="${col}" opacity=".6" font-family="'Inconsolata',monospace" pointer-events="none">${warns.join(' \u00b7 ')}</text>`);
         } else if (isMulti) {
           const nv = srcBl?.niveaux ?? m.nvEff;
           const nvStr = nv <= 1 ? 'R+0' : `R+${nv - 1}`;
           const SHORT = { logement: 'log', commerce: 'com', bureau: 'bur', parking: 'park', mixte: 'mix' };
           const uShort = SHORT[usg] ?? usg;
-          // Affichage empilement : "com/log R+2" si RdC a un usage différent
           const stackStr = (rdcU && rdcU !== usg)
             ? `${SHORT[rdcU] ?? rdcU}+${uShort} ${nvStr}`
             : `${nvStr} \u00b7 ${uShort}`;
-          parts.push(`<text x="${this._dd(sx)}" y="${this._dd(sy - 4)}" text-anchor="middle" font-size="11" fill="${col}" font-weight="700" font-family="'Inconsolata',monospace" pointer-events="none">B${bi + 1}</text>`);
-          parts.push(`<text x="${this._dd(sx)}" y="${this._dd(sy + 8)}" text-anchor="middle" font-size="8.5" fill="${col}" opacity=".85" font-family="'Inconsolata',monospace" pointer-events="none">${stackStr}</text>`);
+          const blocArea = bl._isPoly && bl.polygon ? polyArea(bl.polygon.map(p => [p.x, p.y])) : bl.w * bl.l;
+          parts.push(`<text x="${this._dd(sx)}" y="${this._dd(sy - 6)}" text-anchor="middle" font-size="${Math.max(10, fz * 0.8)}" fill="${col}" font-weight="700" font-family="'Inconsolata',monospace" pointer-events="none">B${bi + 1}</text>`);
+          parts.push(`<text x="${this._dd(sx)}" y="${this._dd(sy + 6)}" text-anchor="middle" font-size="${Math.max(8, fz * 0.6)}" fill="${col}" opacity=".85" font-family="'Inconsolata',monospace" pointer-events="none">${blocArea.toFixed(0)}m\u00b2 ${stackStr}</text>`);
         }
         if (isActive) activeBBox = { x: bl.x, y: bl.y, w: bl.w, l: bl.l };
       });
@@ -1244,25 +1411,42 @@ const PlanMasseCanvas = {
     // Programme COLL/BANDE/INDIV + split JOUR/NUIT (via FH.clipToBand)
     if (this.S.layers.prog && this._terrain.plu.constructible) this._drawProgramme(parts, m);
 
-    // Arêtes colorées épaisses — dessinées EN DERNIER pour rester visibles
-    // par-dessus bâtiment/parking/végétation (demande utilisateur).
+    // Cellules — typologies T1-T4 + coursive + noyaux projetées dans les blocs
+    if (this.S.layers.cellules && this._plateau && this._terrain.plu.constructible) {
+      this._drawCellules(parts, m);
+    }
+
+    // Arêtes limites — traits fins transparents + labels compacts
     { const n = t.poly.length;
+      const EDGE_LABELS = { voie: 'VOIE', lat: 'LAT', fond: 'FOND' };
+      const EDGE_COL_LIGHT = { voie: 'rgba(193,101,43,.35)', lat: 'rgba(100,116,139,.30)', fond: 'rgba(120,113,108,.30)' };
+      const EDGE_BG = { voie: 'rgba(193,101,43,.75)', lat: 'rgba(100,116,139,.70)', fond: 'rgba(120,113,108,.70)' };
       for (let i = 0; i < n; i++) {
         const [p1x, p1y] = t.poly[i], [p2x, p2y] = t.poly[(i + 1) % n];
         const [sx1, sy1] = this._w2s(p1x, p1y), [sx2, sy2] = this._w2s(p2x, p2y);
         const type = this.S.edgeTypes[i];
-        const col = COL[type];
         const isMit = type === 'lat' && this.S.mitoyen[i];
-        const sw = isMit ? 7 : 4;
-        const op = isMit ? 0.95 : 0.85;
-        parts.push(`<line x1="${this._dd(sx1)}" y1="${this._dd(sy1)}" x2="${this._dd(sx2)}" y2="${this._dd(sy2)}" stroke="${col}" stroke-width="${sw}" opacity="${op}" stroke-linecap="round" pointer-events="none"/>`);
+        // Traits fins et transparents pour ne pas masquer l'inlet
+        const col = isMit ? 'rgba(59,130,246,.55)' : (EDGE_COL_LIGHT[type] ?? 'rgba(100,100,100,.25)');
+        const sw = isMit ? 4 : 2;
+        parts.push(`<line x1="${this._dd(sx1)}" y1="${this._dd(sy1)}" x2="${this._dd(sx2)}" y2="${this._dd(sy2)}" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" pointer-events="none"/>`);
+
+        // Label arête compact
+        const mx = (p1x + p2x) / 2, my = (p1y + p2y) / 2;
+        const dx = p2x - p1x, dy = p2y - p1y, len = Math.hypot(dx, dy) || 1;
+        const nxu = -dy / len, nyu = dx / len;
+        const recul = this.edgeRecul(i);
+        const [slx, sly] = this._w2s(mx + nxu * 1.2, my + nyu * 1.2);
+
         if (isMit) {
-          const mx = (p1x + p2x) / 2, my = (p1y + p2y) / 2;
-          const dx = p2x - p1x, dy = p2y - p1y, len = Math.hypot(dx, dy) || 1;
-          const nxu = -dy / len, nyu = dx / len;
-          const [slx, sly] = this._w2s(mx + nxu * 1.0, my + nyu * 1.0);
-          parts.push(`<rect x="${this._dd(slx - 30)}" y="${this._dd(sly - 9)}" width="60" height="13" fill="rgba(59,130,246,.92)" rx="2" pointer-events="none"/>`);
-          parts.push(`<text x="${this._dd(slx)}" y="${this._dd(sly + 1)}" text-anchor="middle" font-size="9" font-weight="700" fill="white" font-family="'Inconsolata',monospace" pointer-events="none">MITOYEN 0m</text>`);
+          parts.push(`<rect x="${this._dd(slx - 30)}" y="${this._dd(sly - 8)}" width="60" height="12" fill="rgba(59,130,246,.80)" rx="2" pointer-events="none"/>`);
+          parts.push(`<text x="${this._dd(slx)}" y="${this._dd(sly + 1)}" text-anchor="middle" font-size="8" font-weight="600" fill="white" font-family="'Inconsolata',monospace" pointer-events="none">MITOYEN 0m</text>`);
+        } else {
+          const lbl = `${EDGE_LABELS[type] ?? type} ${recul.toFixed(1)}m`;
+          const bg = EDGE_BG[type] ?? 'rgba(100,100,100,.65)';
+          const tw = lbl.length * 5 + 6;
+          parts.push(`<rect x="${this._dd(slx - tw / 2)}" y="${this._dd(sly - 8)}" width="${tw}" height="12" fill="${bg}" rx="2" pointer-events="none"/>`);
+          parts.push(`<text x="${this._dd(slx)}" y="${this._dd(sly + 1)}" text-anchor="middle" font-size="7.5" font-weight="500" fill="white" font-family="'Inconsolata',monospace" pointer-events="none">${lbl}</text>`);
         }
       }
     }
@@ -1457,20 +1641,73 @@ const PlanMasseCanvas = {
     sv('pmc-sp', m.spTot.toFixed(0) + ' m²');
     sv('pmc-nv', `${NV[m.nvEff] || m.nvEff} (max ${NV[m.nvEffMax] || m.nvEffMax})`);
     sv('pmc-envarea', m.envArea.toFixed(0) + ' m²');
-    sv('pmc-park', this.S.prog.parkMode === 'ss' ? `${m.parkReq}↓SS` : `${m.parkExt} PK ext`);
+    const epm = m.effectiveParkMode ?? this.S.prog.parkMode;
+    const parkLabel = epm === 'ss' ? `${m.parkReq} PK SS`
+      : epm === 'rdc' ? `${(m.parkRdc || 0)} PK RdC${m.parkSS > 0 ? ` + ${m.parkSS} SS` : ''}`
+      : `${m.parkExt} PK ext`;
+    sv('pmc-park', parkLabel);
     sv('pmc-dens', m.dens.toFixed(0) + ' l/ha');
     sv('pmc-maxlgts', m.maxLgts);
     sv('pmc-maxniv', `${NV[m.nvMaxPLU] || 'R+' + (this.nvMaxPLU() - 1)} PLU · ${plu.heMax}m`);
 
+    // Table capacite par typo (independante du mix)
+    if (this._capacityTable?.byTypo) {
+      const LIMIT_LABELS = { permMin: 'perm.', emprMax: 'empr.', height: 'haut.', 'permMin+parking': 'perm.+PK', type: '' };
+      for (const [typo, cell] of Object.entries(this._capacityTable.byTypo)) {
+        const el = g(`pmc-typo-${typo}`);
+        if (!el) continue;
+        const lgts = cell.lgts ?? 0;
+        const empr = cell.emprise ?? 0;
+        const lim = LIMIT_LABELS[cell.limiting] ?? cell.limiting ?? '';
+        el.querySelector('span:last-child').textContent = lgts > 0
+          ? `${lgts} lgts · ${empr}m² · ${lim}`
+          : 'non faisable';
+        el.querySelector('span:last-child').style.color = lgts > 0 ? 'var(--text2)' : 'var(--faint)';
+      }
+    }
+
     // Sliders emprise/espace vert : valeurs actualisées via pmc:metrics (p07-esquisse.html)
     // Les labels des bornes (MAX PLU / MIN PLU) sont aussi mis à jour côté p07.
 
-    // Checks table
+    // Checks table — bloquant = rouge/vert, informatif = gris/orange
     const ckBody = g('pmc-ck-body');
     if (ckBody) {
-      ckBody.innerHTML = m.checks.map(c =>
-        `<tr style="color:${c.ok ? '#3d6b2e' : '#8b2a3a'}"><td>${c.lbl}</td><td style="text-align:right">${c.proj}${c.u}</td><td style="text-align:right">${c.rule}${c.u}</td><td style="text-align:center;font-weight:700">${c.ok ? '✓' : '✗'}</td></tr>`
-      ).join('');
+      ckBody.innerHTML = m.checks.map(c => {
+        let color, icon;
+        if (c.ok) {
+          color = c.blocking ? '#3d6b2e' : '#6b7b5c';
+          icon = '✓';
+        } else if (c.blocking) {
+          color = '#8b2a3a';
+          icon = '✗';
+        } else {
+          color = '#9a7820'; // informatif non-ok = warning orange
+          icon = '⚠';
+        }
+        const lbl = c.blocking ? c.lbl : `${c.lbl} <span style="font-size:7px;opacity:.6">info</span>`;
+        return `<tr style="color:${color}"><td>${lbl}</td><td style="text-align:right">${c.proj}${c.u}</td><td style="text-align:right">${c.rule}${c.u}</td><td style="text-align:center;font-weight:700">${icon}</td></tr>`;
+      }).join('');
+    }
+
+    // Facteur limitant (affiché sous le pill conformité)
+    const lfEl = g('pmc-limiting');
+    if (lfEl) {
+      if (m._limitingFactor) {
+        lfEl.textContent = m._limitingFactor;
+        lfEl.style.display = 'block';
+        // Rouge si non conforme, ambre si conforme mais plafonné
+        if (m.allOk) {
+          lfEl.style.background = 'rgba(154,120,32,.08)';
+          lfEl.style.borderLeftColor = '#9a7820';
+          lfEl.style.color = '#6b5c3e';
+        } else {
+          lfEl.style.background = 'rgba(139,42,58,.08)';
+          lfEl.style.borderLeftColor = '#8b2a3a';
+          lfEl.style.color = '#8b2a3a';
+        }
+      } else {
+        lfEl.style.display = 'none';
+      }
     }
 
     // GIEP
@@ -1684,6 +1921,97 @@ const PlanMasseCanvas = {
       };
       if (mix.c > 0.005 && (mix.b > 0.005 || mix.i > 0.005)) drawDiv(tColl);
       if (mix.b > 0.005 && mix.i > 0.005) drawDiv(tBand);
+    }
+  },
+
+  // ── CELLULES typologies T1-T4 + coursive + noyaux ──────────────────
+  // Projette le plateau CelluleGenerator dans le footprint du bloc principal.
+  // Le plateau est en coordonnées locales (x_m, y_m depuis le coin 0,0 du bloc).
+  // On mappe : x plateau → axe largeur du bloc, y plateau → axe profondeur.
+  _drawCellules(parts, m) {
+    const plateau = this._plateau;
+    if (!plateau?.cellules?.length) return;
+    const bl = this.S.blocs?.[0];
+    if (!bl?.polygon?.length) return;
+
+    // Repère du bloc : on utilise la bbox
+    const b = this.S.bat;
+    const bx = b.x, by = b.y, bw = b.w, bl_ = b.l;
+    const dims = plateau.dimensions;
+    if (!dims?.longueur_m || !dims?.profondeur_m) return;
+
+    // Facteurs d'échelle plateau → bloc
+    const scaleX = bw / dims.longueur_m;
+    const scaleY = bl_ / (dims.profondeur_totale_m ?? dims.profondeur_m);
+
+    const TYPO_COLORS = {
+      T1a: 'rgba(59,130,246,.25)',  T1bis: 'rgba(99,102,241,.25)',
+      T2: 'rgba(34,197,94,.25)',    T3: 'rgba(245,158,11,.25)',
+      T4: 'rgba(239,68,68,.25)',    T4_DUPLEX: 'rgba(168,85,247,.25)',
+    };
+    const TYPO_STROKE = {
+      T1a: 'rgba(59,130,246,.6)',   T1bis: 'rgba(99,102,241,.6)',
+      T2: 'rgba(34,197,94,.6)',     T3: 'rgba(245,158,11,.6)',
+      T4: 'rgba(239,68,68,.6)',     T4_DUPLEX: 'rgba(168,85,247,.6)',
+    };
+
+    // Coursive en haut (y=0 dans le plateau)
+    const coursiveH = 0.80; // m
+    const [csx, csy] = this._w2s(bx, by);
+    const csw = this._px(bw);
+    const csh = this._px(coursiveH * scaleY);
+    parts.push(`<rect x="${this._dd(csx)}" y="${this._dd(csy)}" width="${this._dd(csw)}" height="${this._dd(csh)}" fill="rgba(211,209,199,.4)" stroke="rgba(150,148,140,.5)" stroke-width="0.6" pointer-events="none"/>`);
+    parts.push(this._tx(bx + bw / 2, by + coursiveH * scaleY * 0.5, 'coursive', 7, 'rgba(100,100,90,.7)'));
+
+    // Cellules
+    for (const c of plateau.cellules) {
+      const cx = bx + c.plateau_x_m * scaleX;
+      const cy = by + (c.plateau_y_m + coursiveH) * scaleY;
+      const cw = c.width_m * scaleX;
+      const ch = c.depth_total_m * scaleY;
+
+      const fill = TYPO_COLORS[c.type] ?? 'rgba(200,200,200,.2)';
+      const stroke = TYPO_STROKE[c.type] ?? 'rgba(100,100,100,.4)';
+      const [sx, sy] = this._w2s(cx, cy);
+      const sw = this._px(cw);
+      const sh = this._px(ch);
+
+      parts.push(`<rect x="${this._dd(sx)}" y="${this._dd(sy)}" width="${this._dd(sw)}" height="${this._dd(sh)}" fill="${fill}" stroke="${stroke}" stroke-width="0.8" pointer-events="none"/>`);
+
+      // Label typology au centre
+      const lbl = c.type.replace('_DUPLEX', 'D').replace('bis', 'b');
+      const [tx, ty] = this._w2s(cx + cw / 2, cy + ch / 2);
+      const fz = Math.max(7, Math.min(11, sw * 0.12));
+      parts.push(`<text x="${this._dd(tx)}" y="${this._dd(ty - 2)}" text-anchor="middle" font-size="${fz}" font-weight="700" fill="${stroke.replace(/,[\d.]+\)/, ',1)')}" font-family="'Inconsolata',monospace" pointer-events="none">${lbl}</text>`);
+      parts.push(`<text x="${this._dd(tx)}" y="${this._dd(ty + fz * 0.7)}" text-anchor="middle" font-size="${fz * 0.7}" fill="${stroke.replace(/,[\d.]+\)/, ',.8)')}" font-family="'Inconsolata',monospace" pointer-events="none">${c.surface_utile_m2}m\u00b2</text>`);
+    }
+
+    // Noyaux (escalier + ascenseur)
+    for (const n of (plateau.noyaux ?? [])) {
+      const nx = bx + n.x_m * scaleX;
+      const nw = Math.max(n.width_m, 1.4) * scaleX;
+      let ny, nh;
+      if (n.position === 'SAILLIE_COURSIVE') {
+        // Saillie au-dessus du bâtiment — on le dessine dans la coursive
+        ny = by;
+        nh = coursiveH * scaleY;
+      } else {
+        ny = by + coursiveH * scaleY;
+        nh = bl_ - coursiveH * scaleY;
+      }
+      const [snx, sny] = this._w2s(nx, ny);
+      const snw = this._px(nw);
+      const snh = this._px(nh);
+      parts.push(`<rect x="${this._dd(snx)}" y="${this._dd(sny)}" width="${this._dd(snw)}" height="${this._dd(snh)}" fill="rgba(160,144,112,.35)" stroke="rgba(90,70,40,.6)" stroke-width="0.8" pointer-events="none"/>`);
+      // Hachures
+      const step = 4;
+      for (let d = step; d < snw + snh; d += step) {
+        const x1 = snx + Math.min(d, snw), y1 = sny + Math.max(0, d - snw);
+        const x2 = snx + Math.max(0, d - snh), y2 = sny + Math.min(d, snh);
+        parts.push(`<line x1="${this._dd(x1)}" y1="${this._dd(y1)}" x2="${this._dd(x2)}" y2="${this._dd(y2)}" stroke="rgba(90,70,40,.25)" stroke-width="0.5" pointer-events="none"/>`);
+      }
+      const lbl = n.avec_asc ? 'ESC+A' : 'ESC';
+      parts.push(this._tx(nx + nw / (2 * scaleX), ny + nh / (2 * scaleY), lbl, 7, 'rgba(70,55,30,.8)'));
     }
   },
 
@@ -2101,7 +2429,12 @@ const PlanMasseCanvas = {
       this._reApplyIfClean('setProg(profMax)');
     } else if (key === 'parkMode') {
       this.S.prog.parkMode = val;
+      // Parking = programmatique → forcer le recalcul géométrique
+      // même si _manualEdit (le bâtiment change de taille car le budget perméable change)
+      const wasManual = this.S._manualEdit;
+      this.S._manualEdit = false;
       this._reApplyIfClean('setProg(parkMode)');
+      this.S._manualEdit = wasManual;
     } else if (key === 'maxUnits') {
       this.S.prog.maxUnits = Math.max(this.S.prog.minUnits ?? 1, val);
       this._reApplyIfClean('setProg(maxUnits)');
@@ -2113,6 +2446,9 @@ const PlanMasseCanvas = {
       this._reApplyIfClean('setProg(minUnits)');
     } else if (key === 'emprCiblePct') {
       this.S.prog.emprCiblePct = Math.max(0, Math.min(100, val));
+      // debug: console.info(`[PMC] setProg emprCiblePct=${this.S.prog.emprCiblePct}`);
+      // Slider logements = programmatique → forcer le recalcul
+      this.S._manualEdit = false;
       this._reApplyIfClean('setProg(emprCiblePct)');
     }
     this.render();
@@ -2679,23 +3015,22 @@ const PlanMasseCanvas = {
     const vegMin     = parcelArea * ((plu.permMin ?? 25) / 100);
     const isANC      = (this._session?.terrain?.assainissement === 'ANC');
     const ancArea    = isANC ? 40 : 0;
-    const parkExt    = this.S.prog.parkMode === 'ext' ? Math.min(50, parcelArea * 0.05) : 0;
-    const empriseDispo = Math.max(20, Math.min(cesMaxM2, parcelArea - vegMin - ancArea - parkExt));
+    // Pas de déduction parking — la géométrie calcule toujours l'emprise max possible
+    // Le parking est géré dans metrics() (auto-escalade ext→ss si nécessaire)
+    const empriseDispo = Math.max(20, Math.min(cesMaxM2, parcelArea - vegMin - ancArea));
     const emprCibleFrac = Math.max(0, Math.min(1, (this.S.prog.emprCiblePct ?? 100) / 100));
-    let cibleM2 = Math.max(MIN_W * MIN_L, empriseDispo * emprCibleFrac * fac);
+    // emprFac ne réduit PAS quand le slider est à 100% — le user veut le max
+    const effFac = emprCibleFrac >= 0.95 ? 1.0 : fac;
+    let cibleM2 = Math.max(MIN_W * MIN_L, empriseDispo * emprCibleFrac * effFac);
 
-    // ── Hard cap permMin PLU : perméabilité est un plafond absolu à l'emprise ──
-    // permPct = 100 - (emprise + parkingExt) / parcelArea * 100.
-    // On ne doit JAMAIS descendre sous permMin → cap emprise en conséquence.
-    // Estimation parking réaliste (1 pass) basée sur cibleM2 pré-cap.
-    const nvEstPerm = Math.min(this.S.prog.nvMax ?? sc.nv, this.nvMaxPLU());
-    const spEst = cibleM2 * 0.82 * nvEstPerm;
-    const lgtsEst = this.S.prog.type === 'maison' ? 1 : Math.max(1, Math.floor(spEst / SP_MOY));
-    const parkReqEst = this.S.prog.type === 'maison' ? 2 : lgtsEst * 2;
-    const parkExtPerm = this.S.prog.parkMode === 'ext' ? parkReqEst * 25 : 0;
+    // ── Hard cap permMin PLU : emprise ≤ budget impermeable ──
+    // La géométrie est TOUJOURS calculée en mode SS (emprise max possible).
+    // Le parking n'affecte pas l'emprise au sol — il est sous le bâtiment ou en sous-sol.
+    // Le facteur limitant dans metrics() informe du mode parking nécessaire.
     const maxImpermeab = parcelArea * (1 - (plu.permMin ?? 25) / 100);
-    const maxEmprFromPerm = Math.max(MIN_W * MIN_L, maxImpermeab - parkExtPerm - ancArea);
-    if (cibleM2 > maxEmprFromPerm) cibleM2 = maxEmprFromPerm;
+    const budgetPerm = maxImpermeab - ancArea;
+    cibleM2 = Math.min(cibleM2, budgetPerm);
+    // debug: console.info(`[PMC] geom: empriseDispo=${empriseDispo.toFixed(0)} cibleM2=${cibleM2.toFixed(0)} budget=${budgetPerm.toFixed(0)}`);
 
     // ── Contraintes lgts min/max : clamp cibleM2 sur la plage de logements ──
     // lgts = cibleFootprint × nvEff × eff / SP_MOY (≈57 m²/logement pondéré).
@@ -2723,71 +3058,86 @@ const PlanMasseCanvas = {
 
     // Escalade densité MAX : si mono-bloc capé par RTAA/profMax ne peut pas
     // atteindre cibleM2, bascule sur multiRect pour saturer vers l'emprMax PLU.
-    // Critère : cibleM2 > 85% du cap mono-bloc (marge pour que le multi
-    // démarre AVANT que le mono-bloc sature à 100%). Parcelle assez longue
-    // pour ≥2 blocs alignés (profMax + gap interBat minimum).
+    // Critère : cibleM2 > 70% du cap mono-bloc.
+    // Parcelle assez longue pour ≥2 blocs : profMax + gap + MIN_L suffit.
     const monoBloc = ['rect', 'oblique', 'isohypses'].includes(sc.strategy);
-    const monoCapM2 = Math.min(rtaaW, envOBB.w * 0.95) * Math.min(profMax, envOBB.l * 0.95);
+    const wCapMono = Math.min(rtaaW, envOBB.w * 0.95);
+    const lCapMono = Math.min(profMax, envOBB.l * 0.95);
+    const monoCapM2 = wCapMono * lCapMono;
     const gapInter = Math.max(plu.interBatMin || 4, sc.nv * H_NIV / 2);
-    const canMultiFit = envOBB.l >= (Math.min(profMax, envOBB.l * 0.45) * 2 + gapInter);
-    const escaladeMulti = monoBloc && cibleM2 > monoCapM2 * 0.85 && canMultiFit;
+    // Taille min d'un bloc secondaire : MIN_L (4m)
+    const canMultiFit = envOBB.l >= (MIN_L + gapInter + MIN_L);
+    const escaladeMulti = monoBloc && cibleM2 > monoCapM2 * 0.70 && canMultiFit;
     const effStrategy = escaladeMulti ? 'multi' : sc.strategy;
     const effMono = ['rect', 'oblique', 'isohypses'].includes(effStrategy);
 
     // Dimensions cibles dans le repère OBB (respecte la rotation parcelle)
     let wTarget, lTarget;
     if (escaladeMulti) {
-      // Multi escaladé : bloc = cap RTAA × cap profMax, multiRect tuile obb.l
-      wTarget = Math.min(rtaaW, envOBB.w * 0.95);
-      lTarget = Math.min(profMax, (envOBB.l - gapInter) / 2);
-    } else {
-      wTarget = envOBB.w * linearScale;
-      lTarget = envOBB.l * linearScale;
-      // Caps RTAA DOM (largeur ventilation) : uniquement mono-bloc.
-      // Multi-blocs / zone distribuent la surface : chaque bloc reste dans RTAA.
-      if (effMono) {
-        const wCap = Math.min(rtaaW, envOBB.w * 0.95);
-        const lCap = Math.min(profMax, envOBB.l * 0.95);
-        if (wTarget > wCap) { lTarget *= (wCap / wTarget); wTarget = wCap; }
-        if (lTarget > lCap) { wTarget *= (lCap / lTarget); lTarget = lCap; }
-      }
-    }
-
-    // Réorienter si l'enveloppe est plus étroite côté l que w
-    if (envOBB.l < lTarget * 0.7 && envOBB.w > wTarget) [wTarget, lTarget] = [lTarget, wTarget];
-
-    // Filet final : le rect d'UN bloc ne doit pas dépasser cibleM2.
-    // Exception : multi escaladé → cibleM2 se répartit sur N blocs,
-    // le cap par bloc n'a pas de sens.
-    if (!escaladeMulti) {
+      // Multi escaladé : combien de blocs tiennent dans l'OBB ?
+      const lBloc = Math.min(profMax, (envOBB.l - gapInter) / 2);
+      wTarget = wCapMono;
+      lTarget = Math.max(MIN_L, lBloc);
+    } else if (effMono) {
+      // Mono-bloc : caps RTAA + profMax
+      wTarget = Math.min(envOBB.w * linearScale, rtaaW, envOBB.w * 0.95);
+      lTarget = Math.min(envOBB.l * linearScale, profMax, envOBB.l * 0.95);
+      // Si le cap empêche d'atteindre > 50% de cibleM2, on ne réduit PAS
+      // proportionnellement — le bloc reste au cap et le reste se distribue
+      // sur d'éventuels blocs supplémentaires via escalade.
       const cur = wTarget * lTarget;
       if (cur > cibleM2) {
         const k = Math.sqrt(cibleM2 / cur);
         wTarget *= k; lTarget *= k;
       }
+    } else {
+      // Stratégie non-mono (zone, multi, lshape...) : pas de cap RTAA,
+      // la stratégie elle-même distribue la surface.
+      wTarget = envOBB.w * linearScale;
+      lTarget = envOBB.l * linearScale;
     }
+
+    // Réorienter si l'enveloppe est plus étroite côté l que w
+    if (envOBB.l < lTarget * 0.7 && envOBB.w > wTarget) [wTarget, lTarget] = [lTarget, wTarget];
     wTarget = Math.max(MIN_W, wTarget);
     lTarget = Math.max(MIN_L, lTarget);
 
     // Exposer pour hints UI
     this.S._empriseDispo = empriseDispo;
     this.S._cibleM2 = cibleM2;
-    this.S._deductions = { vegMin, ancArea, parkExt, isANC };
+    this.S._deductions = { vegMin, ancArea, isANC };
     this.S._escaladeMulti = escaladeMulti;
 
+    // Strategie via StrategyRegistry (degeneration/mutation/fallback integres)
+    const SR = window.StrategyRegistry;
     const AS = window.AutoPlanStrategies;
     let rawBlocs = [];
-    if (AS && typeof AS[effStrategy] === 'function') {
+    const nvEst = Math.min(this.S.prog.nvMax ?? sc.nv, this.nvMaxPLU());
+    const azimut = this.S.prog?._topoConstraints?.azimut_deg;
+    const gapMin = Math.max(plu.interBatMin || 4, sc.nv * H_NIV / 2);
+    const progCtx = {
+      wTarget, lTarget, rtaaW, profMax, eff: sc.eff ?? 0.82,
+      nvMax: nvEst, spMoy: SP_MOY, cibleM2,
+      parcelPoly: this._terrain.poly, edgeTypes: this._terrain.edgeTypes,
+      interBat: gapMin, azimut,
+    };
+
+    if (SR?.executeStrategy) {
+      const result = SR.executeStrategy(effStrategy, env.poly, Math.max(1, Math.floor(cibleM2 * (sc.eff ?? 0.82) * nvEst / SP_MOY)), progCtx);
+      rawBlocs = result.blocs ?? [];
+      if (result.warnings?.length) {
+        this.S._strategyWarnings = result.warnings;
+      }
+    } else if (AS) {
+      // Fallback legacy : appel direct sans registry
       try {
         const pir = poleOfInaccessibility(env.poly, 1.5);
         const pirXY = { x: pir[0], y: pir[1] };
-        const gapMin = Math.max(plu.interBatMin || 4, sc.nv * H_NIV / 2);
-        const azimut = this.S.prog?._topoConstraints?.azimut_deg;
         switch (effStrategy) {
           case 'rect':       rawBlocs = AS.rect(env.poly, wTarget, lTarget, pirXY); break;
           case 'oblique':    rawBlocs = AS.oblique(env.poly, this._terrain.poly, this._terrain.edgeTypes, wTarget, lTarget); break;
-          case 'zone':       rawBlocs = AS.zone(env.poly, 0.5, wTarget * lTarget); break;
-          case 'zoneHull':   rawBlocs = AS.zoneHull(env.poly, wTarget * lTarget); break;
+          case 'zone':       rawBlocs = AS.zone(env.poly, 0.5, cibleM2); break;
+          case 'zoneHull':   rawBlocs = AS.zoneHull(env.poly, cibleM2); break;
           case 'multi':      rawBlocs = AS.multiRect(env.poly, wTarget, lTarget, gapMin, 4); break;
           case 'lshape':     rawBlocs = AS.lShape(env.poly, wTarget, lTarget, pirXY); break;
           case 'trapezoid':  rawBlocs = AS.trapezoid(env.poly, this._terrain.poly, this._terrain.edgeTypes, wTarget, lTarget); break;
@@ -2799,18 +3149,13 @@ const PlanMasseCanvas = {
           case 'isohypses':
             if (Number.isFinite(azimut)) {
               rawBlocs = AS.isohypses(env.poly, wTarget, lTarget, pirXY, azimut, profMax);
-              // v4h : clampProf applique la contrainte profondeur relative à la pente
               rawBlocs = (rawBlocs || []).map(bl => bl?.polygon
                 ? { ...bl, polygon: FH.clampProf(bl.polygon, azimut, profMax) }
                 : bl);
             }
             break;
-        }
-        // Si escalade multi échoue (fallback requis) : retomber sur mono-rect capé
-        if (escaladeMulti && !rawBlocs.length) {
-          const wCap = Math.min(rtaaW, envOBB.w * 0.95);
-          const lCap = Math.min(profMax, envOBB.l * 0.95);
-          rawBlocs = AS.rect(env.poly, wCap, lCap, pirXY);
+          default:
+            rawBlocs = AS.rect(env.poly, wTarget, lTarget, pirXY); break;
         }
       } catch (e) {
         console.warn('[PMC] scenario geometry failed', sc.id, e);
@@ -2828,9 +3173,23 @@ const PlanMasseCanvas = {
         const expanded = FH.expandToMit(batPolys, this._terrain.poly, reculsArr, this._terrain.edgeTypes, env.poly);
         if (expanded?.length === rawBlocs.length) {
           // Remplace polygones en conservant theta/w/l/metadata
-          rawBlocs = rawBlocs.map((bl, i) => expanded[i]?.length >= 3
-            ? { ...bl, polygon: expanded[i] }
-            : bl);
+          // Post-check : chaque bloc ne doit pas dépasser RTAA en largeur
+          rawBlocs = rawBlocs.map((bl, i) => {
+            if (!expanded[i] || expanded[i].length < 3) return bl;
+            const ePoly = expanded[i];
+            // Mesurer la largeur du bloc expandu dans son repère principal
+            const xs = ePoly.map(p => p.x ?? p[0]);
+            const ys = ePoly.map(p => p.y ?? p[1]);
+            const bw = Math.max(...xs) - Math.min(...xs);
+            const bl_ = Math.max(...ys) - Math.min(...ys);
+            const minDim = Math.min(bw, bl_);
+            // RTAA : la dimension la plus courte (largeur ventilation) ≤ rtaaW
+            if (minDim > rtaaW) {
+              // Bloc trop large après expansion — garder l'original
+              return bl;
+            }
+            return { ...bl, polygon: ePoly };
+          });
         }
         // Mesure de contact mitoyenneté (métrique exposée pour validation PLU)
         this.S._lMitFacade = FH.lMitFacade(
@@ -2848,6 +3207,7 @@ const PlanMasseCanvas = {
     const defaultNiveaux = Math.min(sc.nv, this.nvMaxPLU());
 
     // Normalise en S.blocs[{polygon:[{x,y}],theta,w,l,cx,cy,niveaux,usage}]
+    // + guard : emprise totale de tous les blocs ne doit pas dépasser cibleM2
     const blocs = (rawBlocs || []).filter(bl => bl?.polygon?.length >= 3).map((bl, i) => {
       const poly = bl.polygon.map(p => ({ x: p.x ?? p[0], y: p.y ?? p[1] }));
       let cx = 0, cy = 0;
@@ -2859,7 +3219,30 @@ const PlanMasseCanvas = {
         niveaux: defaultNiveaux, usage: defaultUsage,
       };
     });
+    // Guard emprise totale : si les blocs dépassent cibleM2, retirer les plus petits
+    if (blocs.length > 1) {
+      let totalArea = blocs.reduce((s, bl) => s + (FH.area(bl.polygon) || 0), 0);
+      if (totalArea > cibleM2 * 1.15) {
+        // Trier par aire décroissante, garder les plus grands jusqu'à la cible
+        const sorted = [...blocs].sort((a, b) => (FH.area(b.polygon) || 0) - (FH.area(a.polygon) || 0));
+        const kept = [];
+        let acc = 0;
+        for (const bl of sorted) {
+          const a = FH.area(bl.polygon) || 0;
+          if (acc + a <= cibleM2 * 1.15 || kept.length === 0) {
+            kept.push(bl);
+            acc += a;
+          }
+        }
+        // Réassigner si on a réduit
+        if (kept.length < blocs.length) {
+          blocs.length = 0;
+          kept.forEach((bl, i) => { bl.id = `bl${i}`; blocs.push(bl); });
+        }
+      }
+    }
 
+    // debug: console.info(`[PMC] final blocs=${blocs.length}`);
     if (blocs.length) {
       this.S.blocs = blocs;
       this.S.shapePreset = effStrategy === 'lshape' ? 'L' :
@@ -2890,7 +3273,10 @@ const PlanMasseCanvas = {
 
   autoPlace() {
     if (!this._terrain.plu.constructible) return;
+    this.S._manualEdit = false;
     this._initBatFromPIR();
+    try { this._applyScenarioGeometry(this.curSc()); }
+    catch (e) { console.warn('[PMC] autoPlace scenario failed:', e.message); }
     this.render();
   },
 
