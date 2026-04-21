@@ -5,12 +5,14 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
 import SlopesService from '../services/slopes-service.js';
 import SunCalcService from '../services/sun-calc-service.js';
 import GeoStatusBar from './geo-status-bar.js';
 import GLBExporter from '../utils/glb-exporter.js';
 import ContourService from '../services/contour-service.js';
 import BILTerrain from '../services/bil-terrain.js';
+import BdTopoService from '../services/bdtopo-service.js';
 
 // Exposer THREE globalement pour compatibilité scripts inline
 if (typeof window !== 'undefined' && !window.THREE) {
@@ -62,6 +64,9 @@ const Terrain3D = {
   _orthoLoaded:  false,
   _vegetationGroup: null,      // THREE.Group contenant InstancedMesh par espece
   _vegetationMats:  [],        // ShaderMaterial[] pour update uniform camera par frame
+  _cadastreGroup:   null,      // THREE.Group bâtiments BD TOPO wireframe
+  _cadastreShift:   null,      // {dx, dz} décalage cadastre→LiDAR en scene units
+  _pointCloudGroup: null,      // THREE.Points nuage LiDAR texturé
 
   // ─── INIT ─────────────────────────────────────────────────────
   async init(canvasId, sessionData) {
@@ -83,12 +88,16 @@ const Terrain3D = {
     this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this._renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this._renderer.toneMappingExposure = 1.1;
-    this._renderer.setClearColor(0x080e18, 1);
+    // Fond selon thème TERLAB
+    const theme = document.documentElement.dataset.theme ?? 'ivory';
+    const bgColor = theme === 'ivory' ? 0xede8dc : 0x080e18;
+    const fogColor = theme === 'ivory' ? 0xd8d0c0 : 0x080e18;
+    this._renderer.setClearColor(bgColor, 1);
     this._updateSize();
 
     // Scène
     this._scene = new THREE.Scene();
-    this._scene.fog = new THREE.Fog(0x080e18, 80, 400);
+    this._scene.fog = new THREE.Fog(fogColor, 80, 400);
 
     // Caméra
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -113,6 +122,15 @@ const Terrain3D = {
 
     // Construire le terrain depuis la session
     await this._buildTerrain();
+
+    // Bâtiments : BD TOPO cadastre (ligne 129 ci-dessous) — LiDAR roof-edge désactivé
+    // await this._buildBuildingsRoofEdge(); // TODO: réactiver quand pipeline stabilisé
+
+    // Bâtiments cadastre BD TOPO (wireframe pour comparaison + auto-alignement)
+    this.buildCadastreBuildings().catch(e => console.warn('[Terrain3D] Cadastre3D:', e.message));
+
+    // Détection arbres LiDAR → impostors (remplace le point cloud plat)
+    this._detectAndPlaceTrees().catch(e => console.warn('[Terrain3D] TreeDetect:', e.message));
 
     // Courbes de niveau 3D (BIL)
     this._buildContours();
@@ -326,8 +344,54 @@ const Terrain3D = {
 
       console.log(`[Terrain3D] BIL mesh OK — ${meshW.toFixed(0)}×${meshH.toFixed(0)}m, pixel ${ud.pixelSizeM}m`);
     } catch (err) {
-      console.warn('[Terrain3D] BIL indisponible, fallback ShapeGeometry:', err?.stack ?? err);
-      topMesh = this._buildFallbackTerrain(coords, center, LAT_SCALE, LNG_SCALE, localPts, minX, maxX, minZ, maxZ);
+      console.warn('[Terrain3D] BIL indisponible:', err?.stack ?? err);
+
+      // ── Fallback #2 : LiDAR TIN mesh from P01 (IndexedDB cache) ──
+      const LC = window.LidarCache;
+      const parcelGeoJSON = this._parcelData?.parcelle_geojson;
+      const sessionId = window.SessionManager?._sessionId ?? 'anon';
+      if (LC && parcelGeoJSON) {
+        try {
+          const record = await LC.getMesh({ sessionId, geojson: parcelGeoJSON });
+          if (record?.position && record?.index) {
+            topMesh = LC.rebuildMesh(record);
+            if (topMesh) {
+              // TerrainMeshBuilder : x=east(centered), y=alt-zMin, z=-north(centered) — already Y-up
+              const bb = topMesh.geometry.boundingBox;
+              const meshW = bb.max.x - bb.min.x;
+              const meshD = bb.max.z - bb.min.z;
+              const meshSpan = Math.max(meshW, meshD);
+              const sf = this.SCALE_FACTOR / meshSpan;
+
+              topMesh.scale.set(sf, sf * this.VERTICAL_EXAG, sf);
+              this._terrainSF = sf;
+
+              const altMin = bb.min.y * sf * this.VERTICAL_EXAG;
+              topMesh.position.y = this.EXTRUDE_DEPTH - altMin;
+
+              const scaledPts = localPts.map(p => {
+                const sx = (p.x - (minX + maxX) / 2) / meshSpan * this.SCALE_FACTOR;
+                const sz = (p.z - (minZ + maxZ) / 2) / meshSpan * this.SCALE_FACTOR;
+                return { x: sx, z: sz, y: this.EXTRUDE_DEPTH + 2, lng: p.lng, lat: p.lat };
+              });
+              this._scaledPts = scaledPts;
+
+              // Store TIN metadata for building coordinate alignment
+              this._tinMeta = record.metadata;
+              this._tinMeshSpan = meshSpan;
+
+              console.log(`[Terrain3D] LiDAR TIN cache OK — ${record.metadata?.nVertices ?? '?'} vertices, ${record.metadata?.nTriangles ?? '?'} triangles`);
+            }
+          }
+        } catch (e) {
+          console.warn('[Terrain3D] LidarCache fallback échoué:', e?.message);
+        }
+      }
+
+      // ── Fallback #3 : ShapeGeometry plate ─────────────────────────
+      if (!topMesh) {
+        topMesh = this._buildFallbackTerrain(coords, center, LAT_SCALE, LNG_SCALE, localPts, minX, maxX, minZ, maxZ);
+      }
     }
 
     topMesh.castShadow    = true;
@@ -747,26 +811,7 @@ const Terrain3D = {
   },
 
   _makeGabaritLabel(scL, scH, scW, L, W, H) {
-    const cv  = document.createElement('canvas');
-    cv.width  = 256; cv.height = 64;
-    const ctx = cv.getContext('2d');
-    ctx.fillStyle = 'rgba(0,10,20,0.85)';
-    ctx.fillRect(0, 0, 256, 64);
-    ctx.strokeStyle = '#9a7820';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(1, 1, 254, 62);
-    ctx.fillStyle = '#9a7820';
-    ctx.font = 'bold 14px Inconsolata, monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`${L}m \u00d7 ${W}m \u00d7 H${H}m`, 128, 32);
-    const sp = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: new THREE.CanvasTexture(cv), depthTest: false,
-    }));
-    sp.position.set(0, this.EXTRUDE_DEPTH + scH + 2, 0);
-    sp.scale.set(8, 2.5, 1);
-    sp.name = 'gabarit-label';
-    this._scene.add(sp);
+    // Label dimensions bâtiment masqué (trop encombrant)
   },
 
   // ─── COURBES DE NIVEAU 3D ──────────────────────────────────────
@@ -900,8 +945,8 @@ const Terrain3D = {
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({
         map: new THREE.CanvasTexture(lv), depthTest: false, transparent: true, opacity: 0.92,
       }));
-      sp.position.set(mx, my + 1.5, -mz);
-      sp.scale.set(4.5, 1.8, 1);
+      sp.position.set(mx, my + 1, -mz);
+      sp.scale.set(2.2, 0.9, 1);
       sp.name = 'slope-label';
       this._scene.add(sp);
       this._slopeArrows.push(sp);
@@ -918,23 +963,19 @@ const Terrain3D = {
       const p   = scaledPts[i];
       const alt = alts[i] ?? '\u2014';
       const cv  = document.createElement('canvas');
-      cv.width  = 180; cv.height = 72;
+      cv.width  = 128; cv.height = 32;
       const ctx = cv.getContext('2d');
-      ctx.fillStyle = 'rgba(8,10,18,0.90)';
-      ctx.fillRect(0, 0, 180, 72);
-      ctx.strokeStyle = '#9a7820';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(1.5, 1.5, 177, 69);
-      ctx.fillStyle = '#9a7820';
-      ctx.font = 'bold 16px Inconsolata, monospace';
+      ctx.clearRect(0, 0, 128, 32);
+      ctx.fillStyle = 'rgba(154,120,32,0.7)';
+      ctx.font = '11px Inconsolata, monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(parseFloat(alt).toFixed(1) + ' m', 90, 36);
+      ctx.fillText(parseFloat(alt).toFixed(1) + 'm', 64, 16);
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: new THREE.CanvasTexture(cv), depthTest: false,
+        map: new THREE.CanvasTexture(cv), depthTest: false, transparent: true,
       }));
-      sp.position.set(p.x, (p.y ?? this.EXTRUDE_DEPTH) + 3, -(p.z ?? 0));
-      sp.scale.set(5, 2.2, 1);
+      sp.position.set(p.x, (p.y ?? this.EXTRUDE_DEPTH) + 0.8, -(p.z ?? 0));
+      sp.scale.set(1.4, 0.4, 1);
       sp.name = 'alt-label';
       this._scene.add(sp);
       this._dimLabels.push(sp);
@@ -989,7 +1030,7 @@ const Terrain3D = {
         map: new THREE.CanvasTexture(cv), depthTest: false, transparent: true, opacity: 0.85,
       }));
       sp.position.set(x, y, z);
-      sp.scale.set(4.5, 1.8, 1);
+      sp.scale.set(2.2, 0.9, 1);
       sp.name = 'dim-label';
       this._scene.add(sp);
       this._dimLabels.push(sp);
@@ -1179,7 +1220,7 @@ const Terrain3D = {
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({
       map: new THREE.CanvasTexture(cv), depthTest: false, transparent: true,
     }));
-    sp.scale.set(5 * scale, 2 * scale, 1);
+    sp.scale.set(2.5 * scale, 1 * scale, 1);
     return sp;
   },
 
@@ -1508,6 +1549,390 @@ const Terrain3D = {
     });
   },
 
+  // ── BUILDINGS ROOF-EDGE RECONSTRUCTION ───────────────────────────
+  async _buildBuildingsRoofEdge() {
+    const LC = window.LidarCache;
+    const BR = window.BuildingReconstruction;
+    const parcelGeoJSON = this._parcelData?.parcelle_geojson;
+    const sessionId = window.SessionManager?._sessionId ?? 'anon';
+    if (!LC)             { console.log('[Terrain3D] Buildings: LidarCache absent'); return; }
+    if (!parcelGeoJSON)  { console.log('[Terrain3D] Buildings: parcelGeoJSON absent'); return; }
+
+    try {
+      // P01 caches with classes '2,3,4,5,6,9' — match that key
+      const cached = await LC.getPoints({ sessionId, geojson: parcelGeoJSON, classes: '2,3,4,5,6,9' });
+      if (!cached?.points?.length) {
+        console.log('[Terrain3D] Buildings: pas de points LiDAR en cache (clé:', sessionId, ')');
+        return;
+      }
+
+      const buildPts = cached.points.filter(p => p[6] === 6);
+      console.log(`[Terrain3D] Buildings: ${cached.points.length} pts total, ${buildPts.length} class=6`);
+      if (buildPts.length < 10) { console.log('[Terrain3D] Buildings: trop peu de class=6'); return; }
+
+      // Parcel centroid for local projection
+      const coords = parcelGeoJSON.type === 'Polygon'
+        ? parcelGeoJSON.coordinates[0]
+        : parcelGeoJSON.coordinates[0][0];
+      const cLng = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+      const cLat = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+      const LNG_M = 111320 * Math.cos(cLat * Math.PI / 180);
+      const LAT_M = 111320;
+
+      // Use SAME origin as TIN mesh for coordinate alignment
+      const tinMeta = this._tinMeta;
+      const M_LNG = 103900;  // TMB_CFG.M_PER_DEG_LNG (La Réunion lat -21)
+      const M_LAT = 111320;  // TMB_CFG.M_PER_DEG_LAT
+
+      // Compute TIN center from the actual mesh bbox (most reliable)
+      let tinCenterX = 0, tinCenterZ = 0, tinOriginLng, tinOriginLat;
+      if (this._topMesh) {
+        const bb = new THREE.Box3().setFromObject(this._topMesh);
+        // Mesh center in scene coords (after scale)
+        tinCenterX = (bb.min.x + bb.max.x) / 2;
+        tinCenterZ = (bb.min.z + bb.max.z) / 2;
+      }
+      tinOriginLng = tinMeta?.origin?.lng ?? cLng;
+      tinOriginLat = tinMeta?.origin?.lat ?? cLat;
+
+      const sf = this._terrainSF ?? 1;
+
+      // Project building points in SAME system as TIN, then to scene coords directly
+      const localBuildPts = buildPts.map(p => {
+        // To local meters (same formula as TerrainMeshBuilder._projectToLocal)
+        const mx = (p[0] - tinOriginLng) * M_LNG;
+        const mz = (p[1] - tinOriginLat) * M_LAT; // northing
+        // TerrainMeshBuilder centers then negates Z: pos_z = -(mz - centerMZ)
+        // Then scales by sf. The mesh bbox center in scene = tinCenterX/Z
+        // Direct to scene coords: match what the TIN mesh does
+        return {
+          x: mx,
+          y: p[2],       // altitude NGR
+          z: -mz,        // negate northing like TMB
+        };
+      });
+
+      // Compute bbox center of building points in local meters (same as TMB does on all points)
+      // Then the building positions in scene = (localPos - bboxCenter) * sf
+      // But we need them to match the TIN which is also (localPos - bboxCenter) * sf
+      // The bboxCenters differ because buildings are a subset.
+      // Fix: use TIN's bbox from metadata
+      const tinBounds = tinMeta?.bounds;
+      if (tinBounds) {
+        const cxLocal = (tinBounds.xMin + tinBounds.xMax) / 2;
+        const czLocal = -(tinBounds.yMin + tinBounds.yMax) / 2;
+        for (const p of localBuildPts) {
+          p.x -= cxLocal;
+          p.z -= czLocal;
+        }
+      } else {
+        // Fallback: compute from all cached points
+        const allLocalX = cached.points.map(p => (p[0] - tinOriginLng) * M_LNG);
+        const allLocalZ = cached.points.map(p => -(p[1] - tinOriginLat) * M_LAT);
+        const cxAll = (Math.min(...allLocalX) + Math.max(...allLocalX)) / 2;
+        const czAll = (Math.min(...allLocalZ) + Math.max(...allLocalZ)) / 2;
+        for (const p of localBuildPts) {
+          p.x -= cxAll;
+          p.z -= czAll;
+        }
+        console.log('[Terrain3D] Buildings: tinBounds null, fallback bbox from all points');
+      }
+
+      // Ground altitude from class=2 (sol)
+      const groundPts = cached.points.filter(p => p[6] === 2);
+      const groundAlts = groundPts.map(p => p[2]);
+      const globalGroundAlt = groundAlts.length
+        ? groundAlts.sort((a, b) => a - b)[Math.floor(groundAlts.length * 0.1)]
+        : localBuildPts.reduce((m, p) => Math.min(m, p.y), Infinity) - 3;
+
+      const groundAltFn = () => globalGroundAlt;
+
+      // Try roof-edge reconstruction (B1-B6)
+      if (BR && buildPts.length >= 20) {
+        try {
+          console.log(`[Terrain3D] Roof-edge: ${localBuildPts.length} pts, sol=${globalGroundAlt.toFixed(1)}m, TIN origin=${tinOriginLng.toFixed(5)},${tinOriginLat.toFixed(5)}, bounds=${tinBounds ? `x[${tinBounds.xMin.toFixed(0)}..${tinBounds.xMax.toFixed(0)}] y[${tinBounds.yMin.toFixed(0)}..${tinBounds.yMax.toFixed(0)}]` : 'NULL'}`);
+          const result = await BR.reconstruct(localBuildPts, groundAltFn, {
+            tensionThres: 25,
+            minSegLen: 1.5,
+            minBuildArea: 6,
+          });
+
+          if (result?.buildings?.length) {
+            // terrainYFn: raycast scene Y at given scene XZ coords
+            const terrainYFn = (cx, cz) => this._sampleTerrainY(cx, cz);
+            const group = BR.buildMeshes(result, THREE, terrainYFn, sf, this.VERTICAL_EXAG);
+            this._scene.add(group);
+            this._buildingsGroup = group;
+            console.log(`[Terrain3D] Bâtiments roof-edge : ${result.buildings.length} reconstruits`);
+            return;
+          }
+          console.log('[Terrain3D] Roof-edge: 0 bâtiments', result);
+        } catch (recoErr) {
+          console.warn('[Terrain3D] Roof-edge erreur:', recoErr?.stack ?? recoErr);
+        }
+      }
+
+      // Fallback to AABB extraction
+      console.log('[Terrain3D] Roof-edge indisponible, fallback AABB');
+      this._buildBuildingsFromLidarAABB(cached.points, cLng, cLat, LNG_M, LAT_M);
+    } catch (e) {
+      console.warn('[Terrain3D] Building reconstruction échouée:', e?.stack ?? e);
+    }
+  },
+
+  // ── BUILDINGS AABB FALLBACK (v1) ────────────────────────────────
+  _buildBuildingsFromLidarAABB(rawPoints, cLng, cLat, LNG_M, LAT_M) {
+      const buildPts = rawPoints.filter(p => p[6] === 6);
+      if (buildPts.length < 10) return;
+
+      // Project to local meters
+      const localPts = buildPts.map(p => ({
+        x: (p[0] - cLng) * LNG_M,
+        y: (p[1] - cLat) * LAT_M,
+        z: p[2],
+      }));
+
+      // Cluster by spatial proximity (grid 2m cells)
+      const CELL = 2;
+      const cells = new Map();
+      for (const p of localPts) {
+        const key = `${Math.floor(p.x / CELL)}_${Math.floor(p.y / CELL)}`;
+        if (!cells.has(key)) cells.set(key, []);
+        cells.get(key).push(p);
+      }
+
+      // Merge adjacent cells into building clusters (flood fill)
+      const visited = new Set();
+      const clusters = [];
+      for (const [key, pts] of cells) {
+        if (visited.has(key)) continue;
+        const cluster = [];
+        const stack = [key];
+        while (stack.length) {
+          const k = stack.pop();
+          if (visited.has(k)) continue;
+          visited.add(k);
+          if (!cells.has(k)) continue;
+          cluster.push(...cells.get(k));
+          const [cx, cy] = k.split('_').map(Number);
+          for (let dx = -1; dx <= 1; dx++)
+            for (let dy = -1; dy <= 1; dy++)
+              if (dx || dy) stack.push(`${cx + dx}_${cy + dy}`);
+        }
+        if (cluster.length >= 5) clusters.push(cluster);
+      }
+
+      if (!clusters.length) return;
+
+      const sf = this._terrainSF ?? 1;
+      const group = new THREE.Group();
+      group.name = 'lidar-buildings';
+
+      // Ground altitude reference from terrain
+      const groundZ = localPts.length
+        ? localPts.reduce((s, p) => s + p.z, 0) / localPts.length
+        : 0;
+
+      for (const cluster of clusters) {
+        // AABB footprint
+        let bxMin = Infinity, bxMax = -Infinity, byMin = Infinity, byMax = -Infinity;
+        let zSum = 0, zMax = -Infinity, zMin = Infinity;
+        for (const p of cluster) {
+          if (p.x < bxMin) bxMin = p.x;
+          if (p.x > bxMax) bxMax = p.x;
+          if (p.y < byMin) byMin = p.y;
+          if (p.y > byMax) byMax = p.y;
+          zSum += p.z;
+          if (p.z > zMax) zMax = p.z;
+          if (p.z < zMin) zMin = p.z;
+        }
+
+        const w = bxMax - bxMin;
+        const d = byMax - byMin;
+        if (w < 1.5 || d < 1.5) continue; // Skip tiny clusters
+
+        // Building height = max altitude - estimated ground
+        const roofAlt = zMax;
+        const groundAlt = zMin - 1; // approximate ground under building
+        const height = Math.max(2, roofAlt - groundAlt);
+
+        // Convert to scene coords
+        const cx = ((bxMin + bxMax) / 2) * sf;
+        const cz = -((byMin + byMax) / 2) * sf; // north→-Z
+
+        // Ground Y via raycast
+        const groundY = this._sampleTerrainY(cx, cz);
+
+        const geo = new THREE.BoxGeometry(w * sf, height * sf * this.VERTICAL_EXAG, d * sf);
+        const mat = new THREE.MeshStandardMaterial({
+          color: 0x8899aa,
+          roughness: 0.7,
+          metalness: 0.15,
+          transparent: true,
+          opacity: 0.75,
+        });
+        const box = new THREE.Mesh(geo, mat);
+        box.position.set(cx, groundY + (height * sf * this.VERTICAL_EXAG) / 2, cz);
+        box.castShadow = true;
+        box.receiveShadow = true;
+        box.name = `building-lidar-${clusters.indexOf(cluster)}`;
+        group.add(box);
+      }
+
+      if (group.children.length) {
+        this._scene.add(group);
+        this._buildingsGroup = group;
+        console.log(`[Terrain3D] Bâtiments AABB : ${group.children.length} extraits (${buildPts.length} points class=6)`);
+      }
+  },
+
+  // ── DÉTECTION ARBRES LiDAR → IMPOSTORS ──────────────────────────
+  // CHM peak detection sur class=4/5 → arbres individuels → setVegetation
+  async _detectAndPlaceTrees() {
+    const LC = window.LidarCache;
+    const parcelGeoJSON = this._parcelData?.parcelle_geojson;
+    const sessionId = window.SessionManager?._sessionId ?? 'anon';
+    if (!LC || !parcelGeoJSON) return;
+
+    const cached = await LC.getPoints({ sessionId, geojson: parcelGeoJSON, classes: '2,3,4,5,6,9' });
+    if (!cached?.points?.length) return;
+
+    // Points végétation haute (class=4 arbustes, class=5 arbres)
+    const vegPts = cached.points.filter(p => p[6] === 4 || p[6] === 5);
+    if (vegPts.length < 5) return;
+
+    // Points sol pour altitude de référence
+    const groundPts = cached.points.filter(p => p[6] === 2);
+    const groundAlts = groundPts.map(p => p[2]).sort((a, b) => a - b);
+    const groundBase = groundAlts.length ? groundAlts[Math.floor(groundAlts.length * 0.1)] : 0;
+
+    // TIN origin pour projection
+    const tinMeta = this._tinMeta;
+    const coords = parcelGeoJSON.type === 'Polygon'
+      ? parcelGeoJSON.coordinates[0] : parcelGeoJSON.coordinates[0][0];
+    const cLng = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+    const cLat = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+    const tinOriginLng = tinMeta?.origin?.lng ?? cLng;
+    const tinOriginLat = tinMeta?.origin?.lat ?? cLat;
+    const M_LNG = 103900, M_LAT = 111320;
+
+    // TIN bbox center pour centrage (même espace que terrain mesh)
+    const tinBounds = tinMeta?.bounds;
+    let cxLocal = 0, czLocal = 0;
+    if (tinBounds) {
+      cxLocal = (tinBounds.xMin + tinBounds.xMax) / 2;
+      czLocal = (tinBounds.yMin + tinBounds.yMax) / 2;
+    }
+
+    // Projeter en mètres locaux CENTRÉS (même espace que le TIN mesh)
+    const localVeg = vegPts.map(p => ({
+      x: (p[0] - tinOriginLng) * M_LNG - cxLocal,
+      z: (p[1] - tinOriginLat) * M_LAT - czLocal,  // northing centré
+      alt: p[2],
+      h: p[2] - groundBase,
+      cls: p[6],
+    }));
+
+    // Grille d'exclusion bâtiments (class=6)
+    const BUILD_CELL = 3;
+    const buildGrid = new Set();
+    for (const p of cached.points.filter(q => q[6] === 6)) {
+      const bx = (p[0] - tinOriginLng) * M_LNG - cxLocal;
+      const bz = (p[1] - tinOriginLat) * M_LAT - czLocal;
+      buildGrid.add(`${Math.floor(bx / BUILD_CELL)}_${Math.floor(bz / BUILD_CELL)}`);
+    }
+
+    // CHM grid 2m — garder le point le plus haut par cellule
+    const CELL = 2;
+    const grid = new Map();
+    for (const p of localVeg) {
+      const key = `${Math.floor(p.x / CELL)}_${Math.floor(p.z / CELL)}`;
+      if (!grid.has(key) || p.alt > grid.get(key).alt) grid.set(key, p);
+    }
+
+    // Local maximum detection (3×3) + exclusion bâtiments
+    const sf = this._terrainSF ?? 1;
+    const trees = [];
+    for (const [key, p] of grid) {
+      const [gx, gz] = key.split('_').map(Number);
+      // Exclure si dans emprise bâtiment
+      if (buildGrid.has(`${Math.floor(p.x / BUILD_CELL)}_${Math.floor(p.z / BUILD_CELL)}`)) continue;
+      let isPeak = true;
+      for (let dx = -1; dx <= 1 && isPeak; dx++)
+        for (let dz = -1; dz <= 1 && isPeak; dz++) {
+          if (!dx && !dz) continue;
+          const nb = grid.get(`${gx + dx}_${gz + dz}`);
+          if (nb && nb.alt > p.alt) isPeak = false;
+        }
+      if (isPeak && p.h > 2) trees.push(p);
+    }
+    if (!trees.length) return;
+
+    // Placer directement en scene coords avec raycast terrain
+    const SPECIES = ['palm_coconut','mango','flamboyant','tamarind','pandanus','terminalia_catappa','latania','plumeria'];
+
+    // Nettoyer végétation existante
+    if (this._vegetationGroup) { this._disposeGroup(this._vegetationGroup); this._vegetationGroup = null; }
+    this._vegetationMats = [];
+    if (!window.ImpostorLoader) { console.warn('[Terrain3D] ImpostorLoader absent'); return; }
+
+    const group = new THREE.Group();
+    group.name = 'vegetation';
+    this._vegetationGroup = group;
+    this._scene.add(group);
+
+    // Regrouper par espèce
+    const bySpecies = {};
+    for (const t of trees) {
+      let sp;
+      if (t.h > 10) sp = t.cls === 5 ? 'mango' : 'flamboyant';
+      else if (t.h > 6) sp = 'palm_coconut';
+      else if (t.h > 4) sp = 'tamarind';
+      else sp = SPECIES[Math.floor(Math.abs(Math.sin(t.x * 100)) * SPECIES.length)];
+
+      const wx = t.x * sf;
+      const wz = -t.z * sf;  // northing → -Z
+      const wy = this._sampleTerrainY(wx, wz); // SOL du terrain mesh
+
+      if (!bySpecies[sp]) bySpecies[sp] = [];
+      bySpecies[sp].push({ wx, wy, wz, h: t.h, r: Math.max(1.5, Math.min(5, t.h * 0.35)) });
+    }
+
+    for (const [speciesKey, list] of Object.entries(bySpecies)) {
+      const tex = await window.ImpostorLoader.getTexture(speciesKey);
+      if (!tex) continue;
+
+      const mat = this._buildImpostorMaterial(tex);
+      this._vegetationMats.push(mat);
+
+      const geo = new THREE.PlaneGeometry(1, 1);
+      geo.translate(0, 0.5, 0);
+      const inst = new THREE.InstancedMesh(geo, mat, list.length);
+      inst.name = `veg-${speciesKey}`;
+      inst.frustumCulled = false;
+
+      const tmpMat = new THREE.Matrix4();
+      const tmpQuat = new THREE.Quaternion();
+      const tmpScale = new THREE.Vector3();
+      const tmpPos = new THREE.Vector3();
+
+      for (let i = 0; i < list.length; i++) {
+        const p = list[i];
+        tmpPos.set(p.wx, p.wy, p.wz);  // directement sur le terrain
+        const sw = p.r * 2 * sf;
+        const sh = p.r * 2.2 * sf;
+        tmpScale.set(sw, sh, 1);
+        tmpQuat.set(0, 0, 0, 1);
+        tmpMat.compose(tmpPos, tmpQuat, tmpScale);
+        inst.setMatrixAt(i, tmpMat);
+      }
+      inst.instanceMatrix.needsUpdate = true;
+      group.add(inst);
+    }
+
+    console.log(`[Terrain3D] Arbres LiDAR : ${trees.length} détectés, ${buildGrid.size} cellules bâti exclues, ${Object.keys(bySpecies).length} espèces`);
+  },
+
   _sampleTerrainY(x, z) {
     // Raycast vertical sur topMesh / terrainTIN pour trouver l'altitude du sol
     const base = this.EXTRUDE_DEPTH + 0.5;
@@ -1521,6 +1946,397 @@ const Terrain3D = {
     const hits = ray.intersectObjects(meshes, false);
     if (hits.length) return hits[0].point.y;
     return base;
+  },
+
+  // ── CADASTRE BDTOPO 3D (wireframe comparison) ──────────────────
+  // Charge les bâtiments BD TOPO et les affiche en wireframe cyan
+  // pour comparaison avec les bâtiments LiDAR reconstruits
+  async buildCadastreBuildings() {
+    const parcelGeoJSON = this._parcelData?.parcelle_geojson;
+    if (!parcelGeoJSON) { console.log('[Terrain3D] Cadastre3D: pas de parcelGeoJSON'); return; }
+
+    // Centroid parcelle
+    const coords = parcelGeoJSON.type === 'Polygon'
+      ? parcelGeoJSON.coordinates[0]
+      : parcelGeoJSON.coordinates[0][0];
+    const cLng = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+    const cLat = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+
+    // Charger Delaunator pour les toits LiDAR
+    const BR = window.BuildingReconstruction;
+    if (BR) { try { await BR._ensureDelaunator(); } catch (_) {} }
+
+    const geojson = await BdTopoService.fetchBatiments(cLat, cLng, 300);
+    if (!geojson?.features?.length) {
+      console.log('[Terrain3D] Cadastre3D: 0 bâtiments BD TOPO');
+      return;
+    }
+
+    const M_LNG = 103900;
+    const M_LAT = 111320;
+    const tinMeta = this._tinMeta;
+    const tinOriginLng = tinMeta?.origin?.lng ?? cLng;
+    const tinOriginLat = tinMeta?.origin?.lat ?? cLat;
+    const tinBounds = tinMeta?.bounds;
+    const sf = this._terrainSF ?? 1;
+    const VE = this.VERTICAL_EXAG;
+
+    // Même centrage que les bâtiments LiDAR
+    let cxLocal = 0, czLocal = 0;
+    if (tinBounds) {
+      cxLocal = (tinBounds.xMin + tinBounds.xMax) / 2;
+      czLocal = -(tinBounds.yMin + tinBounds.yMax) / 2;
+    }
+
+    const group = new THREE.Group();
+    group.name = 'cadastre-buildings';
+
+    const wallMat = new THREE.MeshStandardMaterial({
+      color: 0xd4c8a0, roughness: 0.75, transparent: true, opacity: 0.8,
+      side: THREE.DoubleSide,
+    });
+    const roofMat = new THREE.MeshStandardMaterial({
+      color: 0x8b5e3c, roughness: 0.55, transparent: true, opacity: 0.85,
+      side: THREE.DoubleSide,
+    });
+
+    // Charger les points LiDAR class=6 pour estimer hauteur réelle à l'égout
+    const LC = window.LidarCache;
+    const sessionId = window.SessionManager?._sessionId ?? 'anon';
+    let lidarBuildPts = null;
+    if (LC) {
+      try {
+        const cached = await LC.getPoints({ sessionId, geojson: parcelGeoJSON, classes: '2,3,4,5,6,9' });
+        if (cached?.points?.length) {
+          // Points class=6 (bâtiments) et class=2 (sol) en coords scene
+          const all = cached.points;
+          const groundAlts = all.filter(p => p[6] === 2).map(p => p[2]).sort((a, b) => a - b);
+          const globalGround = groundAlts.length ? groundAlts[Math.floor(groundAlts.length * 0.1)] : null;
+
+          lidarBuildPts = all.filter(p => p[6] === 6).map(p => {
+            const mx = (p[0] - tinOriginLng) * M_LNG;
+            const mz = -(p[1] - tinOriginLat) * M_LAT;
+            return {
+              sx: (mx - cxLocal) * sf, sz: (mz - czLocal) * sf,
+              alt: p[2], groundAlt: globalGround,
+            };
+          });
+          console.log(`[Terrain3D] Cadastre3D: ${lidarBuildPts.length} pts LiDAR class=6 pour hauteurs`);
+        }
+      } catch (_) { /* LiDAR indisponible, on utilise BD TOPO hauteur */ }
+    }
+
+    // Point-in-polygon 2D (scene XZ)
+    const pip = (px, pz, poly) => {
+      let inside = false;
+      for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        const zi = poly[i].z, zj = poly[j].z, xi = poly[i].x, xj = poly[j].x;
+        if ((zi > pz) !== (zj > pz) && px < (xj - xi) * (pz - zi) / (zj - zi) + xi)
+          inside = !inside;
+      }
+      return inside;
+    };
+
+    const cadastreCentroids = [];
+
+    for (const feat of geojson.features) {
+      const geom = feat.geometry;
+      const bdtopoH = feat.properties?.hauteur || 6;
+      if (!geom) continue;
+
+      const rings = geom.type === 'Polygon'
+        ? [geom.coordinates[0]]
+        : geom.type === 'MultiPolygon'
+          ? geom.coordinates.map(p => p[0])
+          : [];
+
+      for (const ring of rings) {
+        if (ring.length < 4) continue;
+
+        // Projeter en local meters (même pipeline que LiDAR)
+        const pts2d = ring.map(c => {
+          const mx = (c[0] - tinOriginLng) * M_LNG;
+          const mz = -(c[1] - tinOriginLat) * M_LAT;
+          return { x: (mx - cxLocal) * sf, z: (mz - czLocal) * sf };
+        });
+
+        // Centroid
+        const cx = pts2d.reduce((s, p) => s + p.x, 0) / pts2d.length;
+        const cz = pts2d.reduce((s, p) => s + p.z, 0) / pts2d.length;
+
+        // Estimer hauteur à l'égout depuis LiDAR si dispo
+        let hauteur = bdtopoH;
+        let heightSource = 'bdtopo';
+        if (lidarBuildPts?.length) {
+          // Points LiDAR qui tombent dans le footprint cadastre
+          const inside = lidarBuildPts.filter(p => pip(p.sx, p.sz, pts2d));
+          if (inside.length >= 5) {
+            const alts = inside.map(p => p.alt).sort((a, b) => a - b);
+            const eaveAlt = alts[Math.floor(alts.length * 0.15)]; // P15 = égout
+            const ground = inside[0].groundAlt ?? (eaveAlt - bdtopoH);
+            hauteur = Math.max(2, eaveAlt - ground);
+            heightSource = 'lidar';
+          }
+        }
+
+        cadastreCentroids.push({ x: cx, z: cz, hauteur, heightSource });
+
+        // Ground Y par raycast
+        const groundY = this._sampleTerrainY(cx, cz);
+        const h = hauteur * sf * VE;
+
+        // Shape Three.js depuis footprint 2D
+        // ExtrudeGeometry travaille en plan XY, extrude en +Z
+        // rotateX(-PI/2) transforme (x, y, z) → (x, z, -y)
+        // Donc shapeY → scene -Z : il faut néger pour compenser le flip
+        const shape = new THREE.Shape();
+        shape.moveTo(pts2d[0].x - cx, cz - pts2d[0].z);
+        for (let i = 1; i < pts2d.length; i++) {
+          shape.lineTo(pts2d[i].x - cx, cz - pts2d[i].z);
+        }
+        shape.closePath();
+
+        const extGeo = new THREE.ExtrudeGeometry(shape, {
+          depth: h, bevelEnabled: false,
+        });
+        // Extrude Z → Y (hauteur), et le flip Z est déjà compensé dans le Shape
+        extGeo.rotateX(-Math.PI / 2);
+
+        const bldMesh = new THREE.Mesh(extGeo, wallMat.clone());
+        bldMesh.position.set(cx, groundY, cz);
+        bldMesh.castShadow = true;
+        bldMesh.receiveShadow = true;
+        bldMesh.name = 'cadastre-building';
+        group.add(bldMesh);
+
+        // Toit LiDAR : Delaunay des points class=6 à l'intérieur du footprint
+        const DlnyClass = window.BuildingReconstruction?.getDelaunator?.() ?? window.TerrainMeshBuilder?._delaunator;
+        if (lidarBuildPts?.length && DlnyClass) {
+          const insidePts = lidarBuildPts.filter(p => pip(p.sx, p.sz, pts2d));
+          if (insidePts.length >= 4) {
+            const Dlny = DlnyClass;
+            if (Dlny) {
+              try {
+                const coords2d = new Float64Array(insidePts.length * 2);
+                const altsR = [];
+                for (let k = 0; k < insidePts.length; k++) {
+                  coords2d[k * 2]     = insidePts[k].sx;
+                  coords2d[k * 2 + 1] = insidePts[k].sz;
+                  altsR.push(insidePts[k].alt);
+                }
+                const d = new Dlny(coords2d);
+                const ground = insidePts[0].groundAlt ?? (Math.min(...altsR) - 3);
+
+                // Eave clamp: P20 de l'altitude comme plancher
+                altsR.sort((a, b) => a - b);
+                const eaveAlt = altsR[Math.floor(altsR.length * 0.2)];
+
+                const rVerts = new Float32Array(insidePts.length * 3);
+                for (let k = 0; k < insidePts.length; k++) {
+                  const alt = Math.max(insidePts[k].alt, eaveAlt);
+                  rVerts[k * 3]     = insidePts[k].sx - cx;
+                  rVerts[k * 3 + 1] = (alt - ground) * sf * VE;
+                  rVerts[k * 3 + 2] = insidePts[k].sz - cz;
+                }
+                const rGeo = new THREE.BufferGeometry();
+                rGeo.setAttribute('position', new THREE.BufferAttribute(rVerts, 3));
+                rGeo.setIndex(new THREE.BufferAttribute(new Uint32Array(d.triangles), 1));
+                rGeo.computeVertexNormals();
+                const rMesh = new THREE.Mesh(rGeo, roofMat.clone());
+                rMesh.position.set(cx, groundY, cz);
+                rMesh.castShadow = true;
+                rMesh.receiveShadow = true;
+                rMesh.name = 'cadastre-roof-lidar';
+                group.add(rMesh);
+              } catch (_) { /* Delaunay fail pour ce bâtiment */ }
+            }
+          }
+        }
+      }
+    }
+
+    if (group.children.length) {
+      this._scene.add(group);
+      this._cadastreGroup = group;
+      const lidarCount = cadastreCentroids.filter(c => c.heightSource === 'lidar').length;
+      console.log(`[Terrain3D] Cadastre BD TOPO : ${geojson.features.length} bâtiments, ${group.children.length / 2} extrusions, ${lidarCount} hauteurs LiDAR`);
+
+      // Auto-alignement : comparer centroids cadastre vs LiDAR
+      this._autoAlignCadastre(cadastreCentroids);
+    }
+  },
+
+  // ── AUTO-ALIGNEMENT CADASTRE ↔ LIDAR ──────────────────────────
+  // Compare les centroïdes des bâtiments LiDAR et cadastre
+  // pour calculer le décalage systématique (souvent 1-3m à La Réunion)
+  _autoAlignCadastre(cadastreCentroids) {
+    if (!this._buildingsGroup || !cadastreCentroids?.length) return;
+
+    // Collecter les centroïdes des bâtiments LiDAR
+    const lidarCentroids = [];
+    this._buildingsGroup.traverse(o => {
+      if (o.isMesh && o.name === 'roof') {
+        const bb = new THREE.Box3().setFromObject(o);
+        const c = new THREE.Vector3();
+        bb.getCenter(c);
+        lidarCentroids.push({ x: c.x, z: c.z });
+      }
+    });
+
+    if (!lidarCentroids.length) return;
+
+    // Pour chaque bâtiment LiDAR, trouver le cadastre le plus proche
+    const shifts = [];
+    for (const lc of lidarCentroids) {
+      let bestDist = Infinity, bestCad = null;
+      for (const cc of cadastreCentroids) {
+        const d = Math.hypot(lc.x - cc.x, lc.z - cc.z);
+        if (d < bestDist) { bestDist = d; bestCad = cc; }
+      }
+      // Seulement si appariement raisonnable (< 15m en scene units)
+      if (bestCad && bestDist < 15) {
+        shifts.push({ dx: lc.x - bestCad.x, dz: lc.z - bestCad.z });
+      }
+    }
+
+    if (!shifts.length) {
+      console.log('[Terrain3D] Alignement: aucun appariement LiDAR↔cadastre');
+      return;
+    }
+
+    // Médiane des décalages (robuste aux outliers)
+    const medianOf = arr => { arr.sort((a, b) => a - b); return arr[Math.floor(arr.length / 2)]; };
+    const dx = medianOf(shifts.map(s => s.dx));
+    const dz = medianOf(shifts.map(s => s.dz));
+    const sf = this._terrainSF ?? 1;
+    const distM = Math.hypot(dx, dz) / sf;
+
+    this._cadastreShift = { dx, dz };
+    console.log(`[Terrain3D] Décalage cadastre→LiDAR : dx=${(dx/sf).toFixed(2)}m dz=${(dz/sf).toFixed(2)}m (${distM.toFixed(2)}m) — ${shifts.length} paires`);
+
+    // Appliquer le shift au groupe cadastre pour les superposer
+    if (this._cadastreGroup && distM > 0.3) {
+      this._cadastreGroup.position.x += dx;
+      this._cadastreGroup.position.z += dz;
+      console.log(`[Terrain3D] Cadastre recalé de ${distM.toFixed(2)}m vers LiDAR`);
+    }
+  },
+
+  toggleCadastre(on) {
+    if (!this._cadastreGroup) return;
+    this._cadastreGroup.visible = on ?? !this._cadastreGroup.visible;
+  },
+
+  // Bascule toit brut LiDAR ↔ toit décimé (plans dominants colorés)
+  toggleDecimatedRoof(on) {
+    if (!this._buildingsGroup) return;
+    const show = on ?? true;
+    this._buildingsGroup.traverse(o => {
+      if (o.name === 'roof') o.visible = !show;
+      if (o.name === 'roof-decimated') o.visible = show;
+    });
+  },
+
+  // ── NUAGE DE POINTS LiDAR TEXTURÉ ──────────────────────────────
+  // Affiche tous les points LiDAR en cache avec vertex colors (RGB du scan)
+  // Même pipeline de coordonnées que _buildBuildingsRoofEdge
+  async buildPointCloud(opts = {}) {
+    const LC = window.LidarCache;
+    const parcelGeoJSON = this._parcelData?.parcelle_geojson;
+    const sessionId = window.SessionManager?._sessionId ?? 'anon';
+    if (!LC || !parcelGeoJSON) return;
+
+    const cached = await LC.getPoints({ sessionId, geojson: parcelGeoJSON, classes: '2,3,4,5,6,9' });
+    if (!cached?.points?.length) return;
+
+    const pointSize = opts.pointSize ?? 2.0;
+    const M_LNG = 103900, M_LAT = 111320;
+    const tinMeta = this._tinMeta;
+    const coords = parcelGeoJSON.type === 'Polygon'
+      ? parcelGeoJSON.coordinates[0]
+      : parcelGeoJSON.coordinates[0][0];
+    const cLng = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+    const cLat = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+    const tinOriginLng = tinMeta?.origin?.lng ?? cLng;
+    const tinOriginLat = tinMeta?.origin?.lat ?? cLat;
+    const tinBounds = tinMeta?.bounds;
+    const sf = this._terrainSF ?? 1;
+    const VE = this.VERTICAL_EXAG;
+
+    let cxLocal = 0, czLocal = 0;
+    if (tinBounds) {
+      cxLocal = (tinBounds.xMin + tinBounds.xMax) / 2;
+      czLocal = -(tinBounds.yMin + tinBounds.yMax) / 2;
+    }
+
+    // Altitude sol P10 pour référence
+    const groundPts = cached.points.filter(p => p[6] === 2);
+    const groundAlts = groundPts.map(p => p[2]).sort((a, b) => a - b);
+    const altMin = groundAlts.length ? groundAlts[Math.floor(groundAlts.length * 0.1)] : 0;
+
+    // Filtrer : class 4+5 (arbustes + arbres) — pas class 3 (herbe au sol)
+    const vegPts = cached.points.filter(p => p[6] === 4 || p[6] === 5);
+    if (!vegPts.length) { console.log('[Terrain3D] PointCloud: 0 points végétation'); return; }
+
+    const n = vegPts.length;
+    const positions = new Float32Array(n * 3);
+    const colors = new Float32Array(n * 3);
+
+    // Altitude range pour gradient de couleur
+    const vegAlts = vegPts.map(p => p[2]);
+    const vegAltMin = Math.min(...vegAlts);
+    const vegAltMax = Math.max(...vegAlts);
+    const vegAltRange = vegAltMax - vegAltMin || 1;
+
+    for (let i = 0; i < n; i++) {
+      const p = vegPts[i];
+      const mx = (p[0] - tinOriginLng) * M_LNG;
+      const mz = -(p[1] - tinOriginLat) * M_LAT;
+
+      positions[i * 3]     = (mx - cxLocal) * sf;
+      positions[i * 3 + 1] = (p[2] - altMin) * sf * VE + this.EXTRUDE_DEPTH;
+      positions[i * 3 + 2] = (mz - czLocal) * sf;
+
+      // Couleur forêt tropicale — variation par hauteur + pseudo-random
+      const t = (p[2] - vegAltMin) / vegAltRange;
+      const hash = Math.abs(Math.sin(p[0] * 78.233 + p[1] * 45.164)) * 0.15;
+      // Vert foncé tropical : canopée haute = plus foncé, bas = plus clair
+      colors[i * 3]     = 0.08 + (1 - t) * 0.15 + hash * 0.5;  // R
+      colors[i * 3 + 1] = 0.22 + (1 - t) * 0.20 + hash;        // G dominant
+      colors[i * 3 + 2] = 0.03 + (1 - t) * 0.08;               // B très faible
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const mat = new THREE.PointsMaterial({
+      size: pointSize * 0.4,
+      vertexColors: true,
+      sizeAttenuation: true,
+      transparent: true,
+      opacity: 0.8,
+    });
+
+    const cloud = new THREE.Points(geo, mat);
+    cloud.name = 'lidar-point-cloud';
+
+    // Grouper pour toggle
+    if (this._pointCloudGroup) this._scene.remove(this._pointCloudGroup);
+    this._pointCloudGroup = cloud;
+    this._scene.add(cloud);
+    console.log(`[Terrain3D] Point cloud: ${n} points, size=${pointSize}`);
+  },
+
+  togglePointCloud(on) {
+    if (!this._pointCloudGroup) return;
+    this._pointCloudGroup.visible = on ?? !this._pointCloudGroup.visible;
+  },
+
+  setPointCloudSize(size) {
+    if (!this._pointCloudGroup?.material) return;
+    this._pointCloudGroup.material.size = size;
+    this._pointCloudGroup.material.needsUpdate = true;
   },
 
   toggleVegetation(on) {
@@ -1592,6 +2408,110 @@ const Terrain3D = {
       console.log(`[Terrain3D] Végétation aléatoire : ${plants.length} arbres générés`);
       await this.setVegetation(plants);
     }
+  },
+
+  // ══════════════════════════════════════════════════════════════
+  // BIMSHOW PROJECT GLB — import into terrain scene
+  // ══════════════════════════════════════════════════════════════
+
+  _bimshowGroup: null,
+
+  /**
+   * Load a BIMSHOW project GLB (ArrayBuffer) into the terrain scene.
+   * Scales the model by the terrain scale factor and positions it
+   * on top of the terrain mesh.
+   *
+   * @param {ArrayBuffer} buffer   GLB file contents
+   * @param {Object|null} siteData BIMSHOW siteData { latitude, longitude, offsetX/Y/Z, rotate }
+   */
+  loadBimshowGLB(buffer, siteData) {
+    if (!this._scene) {
+      console.warn('[Terrain3D] Scene not ready — cannot load BIMSHOW GLB');
+      return;
+    }
+
+    // Remove previous BIMSHOW model
+    if (this._bimshowGroup) {
+      this._bimshowGroup.traverse(o => {
+        o.geometry?.dispose();
+        if (o.material) {
+          if (Array.isArray(o.material)) o.material.forEach(m => m.dispose());
+          else o.material.dispose();
+        }
+      });
+      this._scene.remove(this._bimshowGroup);
+      this._bimshowGroup = null;
+    }
+
+    const loader = new GLTFLoader();
+    loader.parse(buffer, '', (gltf) => {
+      const model = gltf.scene;
+      model.name = 'bimshow-project';
+
+      // Measure model bounding box in original units (metres)
+      const box = new THREE.Box3().setFromObject(model);
+      const size = new THREE.Vector3();
+      const center = new THREE.Vector3();
+      box.getSize(size);
+      box.getCenter(center);
+
+      // Scale to match terrain.
+      // Horizontal axes use the terrain scale factor.
+      // Vertical axis also uses sf (no VEXAG on the building — we want true
+      // proportions, not the terrain's exaggerated relief).
+      const sf = this._terrainSF ?? 1;
+      model.scale.setScalar(sf);
+
+      // Position: center horizontally on scene origin, plant the model's
+      // bottom (box.min.y) flush with the terrain surface.
+      // The terrain surface sits at approximately EXTRUDE_DEPTH (same as
+      // the gabarit box placement). We strip the model's absolute altitude
+      // so that its ground floor sits on the terrain.
+      const terrainY = this.EXTRUDE_DEPTH;
+      model.position.set(
+        -center.x * sf,
+        terrainY - box.min.y * sf,
+        center.z * sf
+      );
+
+      // If siteData has offsets, apply them (in meters → scene units)
+      if (siteData) {
+        if (siteData.offsetX) model.position.x += siteData.offsetX * sf;
+        if (siteData.offsetY) model.position.z -= siteData.offsetY * sf;
+        // offsetZ: typically the IFC site elevation — we deliberately
+        // ignore it because the terrain viewer already has its own
+        // altitude reference. Only apply a small manual tweak if any.
+        if (siteData.rotate)  model.rotation.y = -siteData.rotate * Math.PI / 180;
+      }
+
+      // Enable shadows on all meshes
+      model.traverse(child => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      // Wrap in a group for easy removal
+      const group = new THREE.Group();
+      group.name = 'bimshow-group';
+      group.add(model);
+      this._scene.add(group);
+      this._bimshowGroup = group;
+
+      // Fit camera to see the model
+      const worldBox = new THREE.Box3().setFromObject(group);
+      const worldCenter = new THREE.Vector3();
+      worldBox.getCenter(worldCenter);
+      if (this._controls) {
+        this._controls.target.copy(worldCenter);
+        this._controls.update();
+      }
+
+      console.info(`[Terrain3D] BIMSHOW GLB loaded: ${size.x.toFixed(1)}×${size.y.toFixed(1)}×${size.z.toFixed(1)}m, sf=${sf.toFixed(4)}, terrainY=${terrainY.toFixed(2)}`);
+    }, (err) => {
+      console.error('[Terrain3D] BIMSHOW GLB parse error:', err);
+    });
   },
 };
 

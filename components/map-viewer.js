@@ -847,6 +847,10 @@ const MapViewer = {
     await m.setStyle('mapbox://styles/mapbox/outdoors-v12');
     await new Promise(r => m.once('styledata', r));
 
+    // Terrain 3D (DEM) pour relief visible
+    m.addSource('mapbox-dem', { type: 'raster-dem', url: 'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize: 512, maxzoom: 14 });
+    m.setTerrain({ source: 'mapbox-dem', exaggeration: 1.2 });
+
     m.addSource('parc-national', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     m.addLayer({ id: 'parc-fill', type: 'fill', source: 'parc-national',
       paint: { 'fill-color': '#3d6b2e', 'fill-opacity': 0.12 } });
