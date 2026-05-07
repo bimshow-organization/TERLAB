@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>TerlabGift Saint-Leu - Multi-couches</title>
+<style>
+  :root {
+    --bg: #0e0e10;
+    --panel: #1a1a1c;
+    --text: #e6e3da;
+    --muted: #888076;
+    --accent: #d4a574;
+    --hover: #2a2a2e;
+    --border: #2a2a2e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  #viewer { position: absolute; inset: 0; }
+  .panel {
+    position: fixed; top: 16px; left: 16px; z-index: 10;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px 16px;
+    width: 300px; max-width: 300px; max-height: 92vh;
+    overflow-y: auto; overflow-x: hidden;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+    box-sizing: border-box;
+  }
+  .panel * { box-sizing: border-box; }
+  .panel img { max-width: 100%; height: auto; display: block; }
+  .panel h1 { font-size: 14px; font-weight: 600; letter-spacing: 0.3px; }
+  .panel .sub { font-size: 11px; color: var(--muted); margin: 2px 0 12px; }
+  h2 { font-size: 10px; font-weight: 600; letter-spacing: 0.6px; text-transform: uppercase;
+       color: var(--muted); margin: 14px 0 6px; }
+  .zone-btn, .layer-toggle {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 7px 10px; font-size: 12px; text-align: left;
+    cursor: pointer; transition: all 0.15s; width: 100%;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .zone-btn:hover, .layer-toggle:hover { background: var(--hover); border-color: var(--accent); }
+  .zone-btn.active { background: var(--accent); color: #1a1411; border-color: var(--accent); font-weight: 600; }
+  .zones, .layers { display: flex; flex-direction: column; gap: 4px; }
+  .zone-btn .meta { display: block; font-size: 10px; opacity: 0.7; margin-top: 2px; }
+  .layer-toggle .check { width: 14px; height: 14px; border: 1px solid var(--muted); border-radius: 3px;
+                          flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+                          color: var(--accent); font-size: 11px; font-weight: 700; }
+  .layer-toggle.on .check { background: var(--accent); color: #1a1411; border-color: var(--accent); }
+  .layer-row { display: flex; flex-direction: column; gap: 2px; }
+  .layer-slider { display: none; width: 100%; height: 14px; padding: 0 4px; }
+  .layer-row.on .layer-slider { display: block; }
+  .layer-slider input[type=range] { width: 100%; height: 4px; -webkit-appearance: none;
+    background: #2a2a2e; border-radius: 2px; cursor: pointer; }
+  .layer-slider input[type=range]::-webkit-slider-thumb { -webkit-appearance: none;
+    width: 10px; height: 10px; background: var(--accent); border-radius: 50%; }
+  .stats { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
+  .stats div { margin: 2px 0; }
+  .stats span { color: var(--text); }
+  .help {
+    position: fixed; bottom: 16px; left: 16px; z-index: 10;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px;
+    font-size: 11px; color: var(--muted); line-height: 1.6;
+  }
+  .help kbd { background: #2a2a2e; color: var(--text); padding: 1px 6px; border-radius: 3px;
+              font-family: monospace; font-size: 10px; }
+  #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+             background: rgba(14,14,16,0.9); z-index: 100; font-size: 13px; color: var(--accent); }
+  #loading.hidden { display: none; }
+  .spinner { border: 2px solid var(--border); border-top-color: var(--accent);
+             border-radius: 50%; width: 24px; height: 24px;
+             animation: spin 0.8s linear infinite; margin-right: 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .typology-legend { display: grid; grid-template-columns: 12px 1fr; gap: 4px 8px;
+                      font-size: 10.5px; padding: 6px 0; }
+  .typology-legend .sw { width: 12px; height: 12px; border-radius: 2px; align-self: center; }
+</style>
+</head>
+<body>
+
+<div id="viewer"></div>
+
+<div class="panel">
+  <h1>TerlabGift Saint-Leu</h1>
+  <div class="sub">Pipeline SOTA 2026 - LiDAR HD + DINOv2 + 3DGS</div>
+
+  <h2>Zone notable</h2>
+  <div class="zones" id="zones"></div>
+
+  <h2>Couches</h2>
+  <div class="layers" id="layers"></div>
+
+  <h2>Typologie communale</h2>
+  <div class="typology-legend" id="typo-legend"></div>
+
+  <h2>Outils</h2>
+  <button id="btn-cut-tool" class="layer-toggle"
+          style="background:transparent;color:var(--text);border:1px solid var(--border);
+                  border-radius:6px;padding:7px 10px;font-size:12px;cursor:pointer;
+                  width:100%;text-align:left;">
+    Coupe transversale (A-B)
+  </button>
+
+  <h2>Facades collection</h2>
+  <div id="facades-panel"></div>
+
+  <div class="stats" id="stats"></div>
+</div>
+
+<div class="help">
+  <kbd>L click</kbd> pivot &nbsp; <kbd>R click</kbd> pan &nbsp; <kbd>scroll</kbd> zoom<br>
+  <kbd>1-5</kbd> zone &nbsp; <kbd>R</kbd> reset cam
+</div>
+
+<div id="loading"><div class="spinner"></div><span id="loading-text">Initialisation...</span></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+    "@mkkellogg/gaussian-splats-3d": "https://unpkg.com/@mkkellogg/gaussian-splats-3d@0.4.7/build/gaussian-splats-3d.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import * as GaussianSplats3D from '@mkkellogg/gaussian-splats-3d';
+import { ATLAS_CATALOG, loadImpostorAtlas } from './impostor-vegetation.js';
+import { buildIgnContours } from './ign-contours.js';
+import { buildWmsOverlay, disposeWmsOverlay } from './wms-overlay.js';
+import { LAYERS_REGISTRY, LAYER_GROUPS, registryStats } from './layers-registry.js';
+import { loadBuildings3D, loadRoads3D, loadCadastre3D } from './bdtopo-3d.js';
+import { loadRoadsProfile } from './roads-profile.js';
+import { loadVehiclesData, buildVehiclesGroup, disposeVehiclesGroup } from './vehicles-3d.js';
+import { getMntGrid, lookupAltAt } from './mnt-grid.js';
+import { buildHeroTreesGroup, disposeHeroTreesGroup } from './bpf-trees.js';
+import { loadTreesV2, buildTreesV2Group, disposeTreesV2Group } from './trees-v2-splat.js';
+import { loadTreesV3Mesh, buildTreesV3MeshGroup, disposeTreesV3MeshGroup } from './trees-v3-mesh.js';
+import { mountFacadesPanel } from './facades-collector.js';
+import { createCutTool } from './cut-tool.js';
+import { mountCutPanel } from './cut-panel.js';
+
+// ─── Configuration zones notables ───
+const ZONES = [
+  { slug: 'centre_st_leu',       name: 'Centre St-Leu',       desc: 'Bati dense cotier' },
+  { slug: 'pointe_au_sel',       name: 'Pointe au Sel',       desc: 'Falaise cotiere' },
+  { slug: 'plage_souris_chaude', name: 'Plage Souris Chaude', desc: 'Sable + cocotiers' },
+  { slug: 'ravine_du_cap',       name: 'Ravine du Cap',       desc: 'Ravine encaissee' },
+  { slug: 'bois_de_sans_souci',  name: 'Bois de Sans-Souci',  desc: 'Foret des Hauts' },
+  { slug: 'stella_canne',        name: 'Stella canne',        desc: 'Plaine de canne' },
+  { slug: 'la_chaloupe_centre',  name: 'La Chaloupe centre',  desc: 'Bourg interieur' },
+  { slug: 'piton_saint_leu',     name: 'Piton Saint-Leu',     desc: 'Volcan dormant' },
+];
+
+// Couleurs typologie (depuis sota/extract_procedural_zones.py LABEL_COLORS)
+const TYPO_COLORS = {
+  foret:              '#3F7A4D',
+  canne_broussailles: '#E8D26E',
+  urbain_dense:       '#D34E2D',
+  pavillonnaire:      '#F5B989',
+  sol_nu:             '#C2B280',
+  mer:                '#5B8FA8',
+  mixte:              '#A8A8A8',
+};
+
+// ─── State ───
+const state = {
+  currentZone: null,
+  layers: Object.fromEntries(
+    LAYERS_REGISTRY.map(l => [l.id, !!l.defaultOn])
+  ),
+  layerOpacities: Object.fromEntries(
+    LAYERS_REGISTRY.map(l => [l.id, l.params?.opacity ?? 1.0])
+  ),
+  contoursInterval: 5,  // metres
+};
+
+let contoursGroup = null;
+const contoursCache = {};  // zoneSlug -> {interval -> THREE.Group}
+const wmsOverlayMeshes = {}; // layerId -> THREE.Mesh courant
+const bdtopoGroups = {};   // {bdtopo_buildings, bdtopo_roads, cadastre} -> Group
+let currentMntInfo = null; // grille IGN RGE ALTI courante (zone active)
+let currentOrthoCanvas = null; // canvas ortho HD 2048 zone active
+let currentOrthoTexture = null; // THREE.CanvasTexture wrappant le canvas (drapage toits)
+let heroTreesGroup = null; // arbres BPF low-poly courants
+let treesV2Group = null;   // arbres V2 ellipsoid courants
+const treesV2DataByZone = {}; // slug -> {n_trees, trees} (cache JSON v2)
+let treesV3Group = null;   // arbres V3 mesh ConvexHull courants
+const treesV3DataByZone = {}; // slug -> {n_trees, trees} (cache JSON v3)
+let vehiclesGroup = null;  // vehicules YOLO courants
+const vehiclesDataByZone = {}; // slug -> {n_vehicles, vehicles}
+
+let viewer = null;
+let renderer3 = null;
+let scene3 = null;
+let camera3 = null;
+let controls3 = null;
+let facadesPanel = null;  // controle facades-collector (refresh galerie)
+let cutTool = null;       // outil de coupe (handles 3D + drag)
+let cutPanel = null;      // bottom panel SVG
+let proceduralData = null;
+let manifest = null;
+let lidarTrees = null;     // {n_trees, trees: [{lat,lng,alt,h,tile_label}]}
+let impostorAtlases = {};  // species -> atlas
+const impostorMeshes = []; // tree groups currently in scene
+const typologyTiles = [];  // typology grid quads
+
+// ─── Load shared data ───
+async function loadShared() {
+  const [m, p, l] = await Promise.all([
+    fetch('../../sota/splats/_manifest.json').then(r => r.json()),
+    fetch('../../sota/procedural/terlab_saintleu_procedural.json').then(r => r.json()),
+    fetch('../../sota/procedural/lidar_trees.json').then(r => r.json()).catch(() => null),
+  ]);
+  manifest = m;
+  proceduralData = p;
+  lidarTrees = l;
+  console.log(`[load] manifest ${m.length} zones, procedural ${p.n_tiles} tuiles, lidar_trees ${l?.n_trees ?? 'N/A'}`);
+}
+
+// ─── UI ───
+function renderZones() {
+  const root = document.getElementById('zones');
+  ZONES.forEach((z, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'zone-btn';
+    btn.dataset.slug = z.slug;
+    btn.innerHTML = `<div><strong>${i+1}.</strong> ${z.name}<span class="meta">${z.desc}</span></div>`;
+    btn.onclick = () => loadZone(z.slug);
+    root.appendChild(btn);
+  });
+}
+
+function renderLayers() {
+  const root = document.getElementById('layers');
+  // Group by group key, sorted
+  const groups = {};
+  for (const l of LAYERS_REGISTRY) {
+    const g = l.group ?? 'other';
+    (groups[g] ??= []).push(l);
+  }
+  const groupKeys = Object.keys(groups).sort((a, b) =>
+    (LAYER_GROUPS[a]?.order ?? 99) - (LAYER_GROUPS[b]?.order ?? 99));
+
+  for (const gk of groupKeys) {
+    const gLabel = LAYER_GROUPS[gk]?.label ?? gk;
+    const hd = document.createElement('div');
+    hd.style.cssText = 'font-size:9px;color:var(--muted);text-transform:uppercase;'
+      + 'letter-spacing:0.6px;margin:8px 0 3px;';
+    hd.textContent = gLabel;
+    root.appendChild(hd);
+    for (const l of groups[gk]) {
+      const wrap = document.createElement('div');
+      wrap.className = 'layer-row' + (state.layers[l.id] ? ' on' : '');
+      wrap.dataset.layer = l.id;
+      const pending = l.status !== 'implemented';
+      const btn = document.createElement('button');
+      btn.className = 'layer-toggle' + (state.layers[l.id] ? ' on' : '')
+        + (pending ? ' pending' : '');
+      btn.style.opacity = pending ? '0.45' : '';
+      btn.disabled = pending;
+      btn.innerHTML = `<span class="check">${state.layers[l.id] ? '✓' : ''}</span>`
+        + `<span style="flex:1">${l.label}`
+        + `${pending ? ' <span style=\"font-size:9px;color:#888\">(TODO)</span>' : ''}</span>`;
+      btn.title = `${l.desc ?? ''}\nSource: ${l.source ?? '-'}`;
+      btn.onclick = () => toggleLayer(l.id, btn);
+      wrap.appendChild(btn);
+      // Slider opacity (visible quand layer ON)
+      if (!pending) {
+        const slider = document.createElement('div');
+        slider.className = 'layer-slider';
+        const initOp = state.layerOpacities?.[l.id]
+          ?? l.params?.opacity ?? 1.0;
+        slider.innerHTML = `<input type="range" min="0" max="1" step="0.05" value="${initOp}">`;
+        const inp = slider.querySelector('input');
+        inp.oninput = () => setLayerOpacity(l.id, parseFloat(inp.value));
+        wrap.appendChild(slider);
+      }
+      root.appendChild(wrap);
+    }
+  }
+  const s = registryStats();
+  const stats = document.createElement('div');
+  stats.style.cssText = 'font-size:10px;color:var(--muted);margin-top:8px';
+  stats.textContent = `${s.implemented}/${s.total} couches actives, ${s.pending} TODO`;
+  root.appendChild(stats);
+}
+
+function renderTypoLegend() {
+  const root = document.getElementById('typo-legend');
+  if (!proceduralData) return;
+  const dist = proceduralData.label_distribution;
+  const total = proceduralData.n_tiles;
+  Object.entries(dist).sort((a, b) => b[1] - a[1]).forEach(([lbl, n]) => {
+    const sw = document.createElement('div');
+    sw.className = 'sw';
+    sw.style.background = TYPO_COLORS[lbl] || '#888';
+    const txt = document.createElement('div');
+    txt.innerHTML = `${lbl} <span style="color:#888076">(${n}, ${(100*n/total).toFixed(0)}%)</span>`;
+    root.appendChild(sw);
+    root.appendChild(txt);
+  });
+}
+
+function renderStats(zoneSlug) {
+  const root = document.getElementById('stats');
+  if (!manifest) return;
+  if (!zoneSlug) {
+    const total = manifest.reduce((s, r) => s + (r.size_mb || 0), 0);
+    root.innerHTML = `<div>5 zones splat : <span>${total.toFixed(1)} MB</span></div>
+                      <div>Tuiles procedural : <span>${proceduralData?.n_tiles ?? '-'}</span></div>`;
+    return;
+  }
+  const z = manifest.find(r => r.slug === zoneSlug);
+  if (!z) return;
+  root.innerHTML = `
+    <div>Splats : <span>${z.n_splats.toLocaleString()}</span></div>
+    <div>Taille : <span>${z.size_mb} MB</span></div>
+    <div>Centre : <span>${z.lat_c}, ${z.lng_c}</span></div>
+    <div>Cote : <span>${z.side_m} m</span></div>
+    <div>Z min : <span>${z.z_min_alt} m alt</span></div>
+  `;
+}
+
+// ─── Helper fetch ortho IGN HD en HTMLCanvasElement (pour pixel sampling) ───
+async function fetchOrthoCanvas(lat, lng, sideM, pix = 2048) {
+  // EPSG:4326 : meme systeme que conversion locale m_per_deg ->
+  // alignement parfait entre footprint BDTOPO et UVs ortho.
+  // WMS 1.3.0 + EPSG:4326 : ordre BBOX = lat_min,lng_min,lat_max,lng_max
+  const dLat = (sideM / 2) / 111320.0;
+  const dLng = (sideM / 2) / (103900.0 * Math.cos(lat * Math.PI / 180));
+  const bbox = `${lat-dLat},${lng-dLng},${lat+dLat},${lng+dLng}`;
+  const params = new URLSearchParams({
+    SERVICE: 'WMS', VERSION: '1.3.0', REQUEST: 'GetMap',
+    LAYERS: 'HR.ORTHOIMAGERY.ORTHOPHOTOS', STYLES: '',
+    CRS: 'EPSG:4326', BBOX: bbox,
+    WIDTH: pix.toString(), HEIGHT: pix.toString(),
+    FORMAT: 'image/jpeg',
+  });
+  const url = `https://data.geopf.fr/wms-r/wms?${params.toString()}`;
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas);
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+// ─── Three.js scene secondaire pour overlays (typology grid + arbres impostor) ───
+function initOverlayScene() {
+  // mkkellogg viewer expose threeScene (root scene). Fallbacks au cas ou.
+  scene3 = viewer.threeScene || viewer.scene || viewer.splatMesh?.parent;
+  camera3 = viewer.camera;
+  renderer3 = viewer.renderer;
+  console.log('[overlay] scene3:', scene3?.constructor?.name,
+              'children:', scene3?.children?.length,
+              'camera:', camera3?.position?.toArray?.());
+  if (!scene3) {
+    console.error('[overlay] FAIL : scene Three.js introuvable');
+  }
+}
+
+// ─── Splat loading ───
+let _splatLoaded = false;
+
+async function loadZone(slug) {
+  if (state.currentZone === slug) return;
+  document.querySelectorAll('.zone-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.slug === slug);
+  });
+  showLoading(`Chargement ${slug}...`);
+  try {
+    // Pre-fetch MNT IGN pour cette zone (source de verite altimetrique)
+    const zoneInfo = manifest.find(r => r.slug === slug);
+    if (zoneInfo) {
+      try {
+        currentMntInfo = await getMntGrid({
+          slug, lat: zoneInfo.lat_c, lng: zoneInfo.lng_c,
+          sideM: zoneInfo.side_m, gridN: 65,
+        });
+      } catch (e) {
+        console.warn('[mnt] FAIL :', e.message);
+        currentMntInfo = null;
+      }
+      // Pre-fetch ortho HD 2048 et wrap en CanvasTexture pour drapage toits
+      // (chaque toit BDTOPO a UVs vers la texture ortho a sa position)
+      try {
+        if (currentOrthoTexture) currentOrthoTexture.dispose();
+        currentOrthoCanvas = await fetchOrthoCanvas(
+          zoneInfo.lat_c, zoneInfo.lng_c, zoneInfo.side_m, 2048);
+        if (currentOrthoCanvas) {
+          currentOrthoTexture = new THREE.CanvasTexture(currentOrthoCanvas);
+          currentOrthoTexture.colorSpace = THREE.SRGBColorSpace;
+          currentOrthoTexture.minFilter = THREE.LinearFilter;
+          currentOrthoTexture.magFilter = THREE.LinearFilter;
+          currentOrthoTexture.generateMipmaps = false;
+          // ClampToEdge : pas de wrap si UV depasse [0,1] (eviter moire bord)
+          currentOrthoTexture.wrapS = THREE.ClampToEdgeWrapping;
+          currentOrthoTexture.wrapT = THREE.ClampToEdgeWrapping;
+        }
+      } catch (e) {
+        console.warn('[ortho-texture] FAIL :', e.message);
+        currentOrthoCanvas = null;
+        currentOrthoTexture = null;
+      }
+    }
+    // Remove only if a splat is actually loaded (avoid visitLeaves null bug)
+    if (_splatLoaded) {
+      try { await viewer.removeSplatScene(0, false); } catch (e) { console.warn('remove:', e.message); }
+      _splatLoaded = false;
+    }
+    if (state.layers.splats) {
+      await viewer.addSplatScene(`../../sota/splats/${slug}.splat`, {
+        'splatAlphaRemovalThreshold': 5,
+        'showLoadingUI': false,
+        'position': [0, 0, 0],
+        'rotation': [0, 0, 0, 1],
+        'scale': [1, 1, 1],
+      });
+      _splatLoaded = true;
+    }
+    if (!viewer.isLoadingOrUnloading()) viewer.start();
+    state.currentZone = slug;
+    renderStats(slug);
+    if (state.layers.impostors) await rebuildImpostors();
+    if (state.layers.typology_grid) rebuildTypologyGrid();
+    if (state.layers.contours) await rebuildContours();
+    // Re-build WMS overlays actifs sur la nouvelle zone
+    clearAllWmsOverlays();
+    for (const def of LAYERS_REGISTRY) {
+      if (def.type === '2d-wms-overlay' && state.layers[def.id]) {
+        await addWmsOverlay(def);
+      }
+    }
+    // Re-build BDTOPO 3D actifs
+    clearAllBdtopoLayers();
+    for (const k of ['bdtopo_buildings', 'bdtopo_roads',
+                     'bdtopo_roads_profile', 'cadastre']) {
+      if (state.layers[k]) await addBdtopoLayer(k);
+    }
+    // Re-build arbres-heros 3D si actif
+    if (state.layers.trees_3d_heros) addHeroTrees();
+    // Re-build arbres V2 ellipsoid si actif
+    if (state.layers.trees_v2_splat) await addTreesV2();
+    // Re-build arbres V3 mesh si actif
+    if (state.layers.trees_v3_mesh) await addTreesV3();
+    // Re-build vehicules si actif
+    if (state.layers.vehicles_yolo) await addVehicles();
+    // Refresh galerie facades pour la nouvelle zone
+    if (facadesPanel) await facadesPanel.refresh();
+    // Reset le cut-tool sur la nouvelle zone (positions/contexte)
+    if (cutTool) {
+      const wasVisible = cutTool.isVisible();
+      cutTool.dispose();
+      cutTool = null;
+      initCutTool();
+      if (wasVisible && cutTool) cutTool.start();
+    }
+  } catch (e) {
+    console.error(e);
+    document.getElementById('loading-text').textContent = `Erreur: ${e.message}`;
+    return;
+  }
+  hideLoading();
+}
+
+// ─── Impostors arbres procedural ───
+async function ensureAtlasesLoaded() {
+  if (Object.keys(impostorAtlases).length > 0) return;
+  showLoading('Chargement atlases vegetation...');
+  try {
+    for (const a of ATLAS_CATALOG) {
+      impostorAtlases[a.id] = await loadImpostorAtlas(a.id);
+    }
+    console.log('[impostors] atlases loaded:', Object.keys(impostorAtlases));
+  } finally {
+    hideLoading();
+  }
+}
+
+function disposeNode(node) {
+  if (!node) return;
+  if (node.traverse) {
+    node.traverse(child => {
+      if (child.geometry?.dispose) child.geometry.dispose();
+      const mat = child.material;
+      if (Array.isArray(mat)) mat.forEach(m => m.dispose?.());
+      else if (mat?.dispose) mat.dispose();
+    });
+  } else {
+    node.geometry?.dispose?.();
+    node.material?.dispose?.();
+  }
+}
+
+function clearImpostors() {
+  for (const g of impostorMeshes) {
+    if (g.sideMesh) { scene3.remove(g.sideMesh); disposeNode(g.sideMesh); }
+    if (g.topMesh)  { scene3.remove(g.topMesh);  disposeNode(g.topMesh); }
+  }
+  impostorMeshes.length = 0;
+}
+
+// Espece par label de tuile : palm_coconut RARE (ornement),
+// mango majoritaire (manguier = arbre tropical le plus commun a Saint-Leu).
+// Choix deterministe par hash(slug+lat+lng) pour eviter la randomness
+// runtime non-reproductible.
+function chooseSpecies(tree) {
+  const lbl = tree.tile_label;
+  if (lbl === 'sol_nu' || lbl === 'mer') return null;
+  // Hash deterministe lat+lng pour palm 10% sur urbain, 5% sur pavillonnaire
+  const hash = Math.abs(Math.floor((tree.lat * 1e5 + tree.lng * 1e3) % 100));
+  if (lbl === 'urbain_dense' && hash < 10) return 'palm_coconut';
+  if (lbl === 'pavillonnaire' && hash < 5) return 'palm_coconut';
+  return 'mango';
+}
+
+// Ratio largeur/hauteur par espece (palmier haut+fin, manguier large rond)
+const SPECIES_ASPECT = {
+  palm_coconut: 0.45,
+  mango:        0.85,
+  flamboyant:   0.95,
+};
+
+// LiDAR cls 5 = hauteur cime reelle. SCALE_BOOST 1.0 = pas d'agrandissement.
+// (L'atlas WebP a un peu de padding interne mais on compense via center.y).
+const SPRITE_SCALE_BOOST = 1.0;
+
+// Cache des SpriteMaterials (clones) par espece
+const spriteMaterialCache = {};
+
+function getSpriteMaterialForSpecies(speciesId) {
+  if (spriteMaterialCache[speciesId]) return spriteMaterialCache[speciesId];
+  const atlas = impostorAtlases[speciesId];
+  if (!atlas) return null;
+  // Atlas 4 cols x 2 rows = 8 vues. On utilise le slot 0 (vue azimut 0).
+  // SpriteMaterial.map.repeat/offset clip 1 slot du atlas.
+  const map = atlas.side.clone();
+  map.needsUpdate = true;
+  map.colorSpace = THREE.SRGBColorSpace;
+  map.repeat.set(0.25, 0.5);   // 1/4 x 1/2 = 1 slot sur 8
+  map.offset.set(0, 0.5);      // slot 0 = top-left
+  const mat = new THREE.SpriteMaterial({
+    map, transparent: true, alphaTest: 0.4,
+    depthWrite: false,
+    depthTest: true,  // occlucion correcte par bati opaque + terrain
+  });
+  spriteMaterialCache[speciesId] = mat;
+  return mat;
+}
+
+async function rebuildImpostors() {
+  clearImpostors();
+  if (!state.layers.impostors) return;
+  if (!lidarTrees || !manifest) return;
+  await ensureAtlasesLoaded();
+
+  const zoneInfo = manifest.find(r => r.slug === state.currentZone);
+  if (!zoneInfo) return;
+  const zoneCenterLat = zoneInfo.lat_c;
+  const zoneCenterLng = zoneInfo.lng_c;
+  const zoneSide = zoneInfo.side_m;
+
+  const m_per_deg_lat = 111320.0;
+  const m_per_deg_lng = 103900.0 * Math.cos(zoneCenterLat * Math.PI / 180);
+  const halfZone = zoneSide / 2;
+
+  // Pre-pass : collecter les arbres dans la zone + recaler zoneAltRef
+  // sur le min des MNT au pied (cache_commune), pas sur z_min_splat manifest
+  // (les 2 viennent de pipelines differents -> offset constant).
+  const inZone = [];
+  for (const tree of lidarTrees.trees) {
+    const dx = (tree.lng - zoneCenterLng) * m_per_deg_lng;
+    const dy = (tree.lat - zoneCenterLat) * m_per_deg_lat;
+    if (Math.abs(dx) > halfZone || Math.abs(dy) > halfZone) continue;
+    inZone.push({ tree, dx, dy });
+  }
+  if (inZone.length === 0) {
+    console.log(`[impostors] 0 arbres dans la zone ${state.currentZone}`);
+    return;
+  }
+  // Reference altitude : prefer MNT IGN (source de verite), sinon min arbres
+  const zoneAltRef = currentMntInfo
+    ? currentMntInfo.mntMin
+    : Math.min(...inZone.map(o => o.tree.alt));
+  console.log(`[impostors] ${inZone.length} arbres in-zone, alt_ref=${zoneAltRef.toFixed(1)}m `
+              + `(source=${currentMntInfo ? 'IGN' : 'tree.alt'})`);
+
+  // Group containing all sprites (1 sprite per detected LiDAR tree)
+  const treesGroup = new THREE.Group();
+  let nTrees = 0;
+
+  let nPalm = 0, nMango = 0;
+  for (const { tree, dx, dy } of inZone) {
+
+    const speciesId = chooseSpecies(tree);
+    if (!speciesId) continue;
+    const mat = getSpriteMaterialForSpecies(speciesId);
+    if (!mat) continue;
+
+    const sprite = new THREE.Sprite(mat);
+    sprite.center.set(0.5, 0); // pivot au bas du sprite (pied au sol)
+    const aspect = SPECIES_ASPECT[speciesId] ?? 0.7;
+    const h = tree.h * SPRITE_SCALE_BOOST;
+    const w = h * aspect;
+    sprite.scale.set(w, h, 1);
+    // renderOrder par defaut : Z-tested via depthTest:true pour occlusion correcte
+    // Position : x = lng_local, z = -lat_local (Y-up world).
+    // Y = lookup MNT IGN a la position de l'arbre (source de verite),
+    // soustraire zoneAltRef (= mntMin si IGN dispo) pour aligner au splat.
+    const altIgn = currentMntInfo ? lookupAltAt(currentMntInfo, dx, -dy) : tree.alt;
+    const yLocal = Math.max(0, altIgn - zoneAltRef);
+    sprite.position.set(dx, yLocal, -dy);
+    treesGroup.add(sprite);
+    if (speciesId === 'palm_coconut') nPalm++;
+    else nMango++;
+    nTrees++;
+  }
+
+  if (nTrees > 0) {
+    scene3.add(treesGroup);
+    impostorMeshes.push({ sideMesh: treesGroup, topMesh: null });
+  }
+  console.log(`[impostors] ${nTrees} arbres (mango:${nMango} palm:${nPalm}) zone ${state.currentZone}`);
+}
+
+// ─── Carte typologique grid (overlay 500m) ───
+function clearTypologyGrid() {
+  for (const m of typologyTiles) {
+    scene3.remove(m);
+    m.geometry.dispose();
+    m.material.dispose();
+  }
+  typologyTiles.length = 0;
+}
+
+function rebuildTypologyGrid() {
+  clearTypologyGrid();
+  if (!state.layers.typology_grid || !proceduralData) return;
+  const zoneInfo = manifest.find(r => r.slug === state.currentZone);
+  if (!zoneInfo) return;
+  const zoneCenterLat = zoneInfo.lat_c;
+  const zoneCenterLng = zoneInfo.lng_c;
+  const m_per_deg_lat = 111320.0;
+  const m_per_deg_lng = 103900.0 * Math.cos(zoneCenterLat * Math.PI / 180);
+
+  for (const t of proceduralData.tiles) {
+    const dx = (t.lng - zoneCenterLng) * m_per_deg_lng;
+    const dy = (t.lat - zoneCenterLat) * m_per_deg_lat;
+    if (Math.abs(dx) > 1500 || Math.abs(dy) > 1500) continue; // limit overlay 1.5km
+    const colHex = TYPO_COLORS[t.label] || '#888';
+    const c = new THREE.Color(colHex);
+    const geom = new THREE.PlaneGeometry(t.side_m * 0.95, t.side_m * 0.95);
+    const mat = new THREE.MeshBasicMaterial({
+      color: c, transparent: true, opacity: 0.45, side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const mesh = new THREE.Mesh(geom, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(dx, -1.0, -dy);  // sous le terrain pour pas masquer splat
+    scene3.add(mesh);
+    typologyTiles.push(mesh);
+  }
+}
+
+// ─── Layer toggle ───
+async function toggleLayer(key, btnEl) {
+  state.layers[key] = !state.layers[key];
+  btnEl.classList.toggle('on', state.layers[key]);
+  btnEl.querySelector('.check').textContent = state.layers[key] ? '✓' : '';
+  // Update parent .layer-row pour afficher/cacher le slider
+  const row = btnEl.closest('.layer-row');
+  if (row) row.classList.toggle('on', state.layers[key]);
+
+  // Couches built-in custom
+  if (key === 'impostors') {
+    if (state.layers.impostors) await rebuildImpostors();
+    else clearImpostors();
+    return;
+  }
+  if (key === 'typology_grid') {
+    if (state.layers.typology_grid) rebuildTypologyGrid();
+    else clearTypologyGrid();
+    return;
+  }
+  if (key === 'contours') {
+    if (state.layers.contours) await rebuildContours();
+    else clearContours();
+    return;
+  }
+  if (key === 'splats') {
+    const z = state.currentZone;
+    state.currentZone = null;
+    if (z) await loadZone(z);
+    return;
+  }
+
+  // Couches WMS overlay generique (PPRN, PLU PEIGEO, BRGM, COSIA, ...)
+  const def = LAYERS_REGISTRY.find(l => l.id === key);
+  if (def && def.type === '2d-wms-overlay') {
+    if (state.layers[key]) await addWmsOverlay(def);
+    else removeWmsOverlay(key);
+    return;
+  }
+  // Couches BDTOPO 3D
+  if (key === 'bdtopo_buildings' || key === 'bdtopo_roads'
+      || key === 'bdtopo_roads_profile' || key === 'cadastre') {
+    if (state.layers[key]) await addBdtopoLayer(key);
+    else removeBdtopoLayer(key);
+    return;
+  }
+  // Arbres-heros 3D low-poly BPF
+  if (key === 'trees_3d_heros') {
+    if (state.layers[key]) addHeroTrees();
+    else removeHeroTrees();
+    return;
+  }
+  // Arbres V2 ellipsoid splat-fit
+  if (key === 'trees_v2_splat') {
+    if (state.layers[key]) await addTreesV2();
+    else removeTreesV2();
+    return;
+  }
+  // Arbres V3 mesh ConvexHull
+  if (key === 'trees_v3_mesh') {
+    if (state.layers[key]) await addTreesV3();
+    else removeTreesV3();
+    return;
+  }
+  // Vehicules YOLO
+  if (key === 'vehicles_yolo') {
+    if (state.layers[key]) await addVehicles();
+    else removeVehicles();
+    return;
+  }
+}
+
+async function addVehicles() {
+  removeVehicles();
+  if (!manifest || !state.currentZone) return;
+  const zone = manifest.find(r => r.slug === state.currentZone);
+  if (!zone) return;
+  let data = vehiclesDataByZone[state.currentZone];
+  if (!data) {
+    showLoading(`Vehicules YOLO ${state.currentZone}...`);
+    try {
+      data = await loadVehiclesData(state.currentZone);
+    } catch (e) {
+      console.warn('[vehicles] load FAIL :', e.message);
+    } finally {
+      hideLoading();
+    }
+    if (!data) {
+      console.warn(`[vehicles] pas de JSON pour ${state.currentZone} (run sota/extract_ortho_vehicles.py --zones ${state.currentZone})`);
+      return;
+    }
+    vehiclesDataByZone[state.currentZone] = data;
+  }
+  vehiclesGroup = buildVehiclesGroup({
+    vehicles: data.vehicles,
+    lat: zone.lat_c, lng: zone.lng_c, sideM: zone.side_m,
+    mntInfo: currentMntInfo, lookupAltAt,
+  });
+  if (vehiclesGroup) {
+    if (!scene3.userData.heroLight) {
+      const ambient = new THREE.AmbientLight(0xffffff, 0.65);
+      const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+      dir.position.set(50, 100, 50);
+      scene3.add(ambient);
+      scene3.add(dir);
+      scene3.userData.heroLight = { ambient, dir };
+    }
+    scene3.add(vehiclesGroup);
+    const ud = vehiclesGroup.userData;
+    console.log(`[vehicles] ${ud.n_vehicles} (${ud.n_small} small, ${ud.n_large} large) zone ${state.currentZone}`);
+  } else {
+    console.log('[vehicles] aucun vehicule dans la zone');
+  }
+}
+
+function removeVehicles() {
+  if (!vehiclesGroup) return;
+  scene3.remove(vehiclesGroup);
+  disposeVehiclesGroup(vehiclesGroup);
+  vehiclesGroup = null;
+}
+
+async function addTreesV3() {
+  removeTreesV3();
+  if (!manifest || !state.currentZone) return;
+  const zone = manifest.find(r => r.slug === state.currentZone);
+  if (!zone) return;
+  let data = treesV3DataByZone[state.currentZone];
+  if (!data) {
+    showLoading(`Trees V3 mesh ${state.currentZone}...`);
+    try {
+      data = await loadTreesV3Mesh(state.currentZone);
+    } catch (e) {
+      console.warn('[treesV3] load FAIL :', e.message);
+    } finally {
+      hideLoading();
+    }
+    if (!data) {
+      console.warn(`[treesV3] pas de JSON v3 pour ${state.currentZone} (run extract_lidar_trees_v3_mesh.py --zones ${state.currentZone})`);
+      return;
+    }
+    treesV3DataByZone[state.currentZone] = data;
+  }
+  treesV3Group = buildTreesV3MeshGroup({
+    trees: data.trees,
+    lat: zone.lat_c, lng: zone.lng_c, sideM: zone.side_m,
+    mntInfo: currentMntInfo, lookupAltAt,
+    hMin: 5,
+  });
+  if (treesV3Group) {
+    if (!scene3.userData.heroLight) {
+      const ambient = new THREE.AmbientLight(0xffffff, 0.65);
+      const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+      dir.position.set(50, 100, 50);
+      scene3.add(ambient);
+      scene3.add(dir);
+      scene3.userData.heroLight = { ambient, dir };
+    }
+    scene3.add(treesV3Group);
+    const ud = treesV3Group.userData;
+    console.log(`[treesV3] ${ud.n_trees} meshes, ${ud.n_tris} tris zone ${state.currentZone}`);
+  } else {
+    console.log('[treesV3] aucun mesh (h>=5m) dans la zone');
+  }
+}
+
+function removeTreesV3() {
+  if (!treesV3Group) return;
+  scene3.remove(treesV3Group);
+  disposeTreesV3MeshGroup(treesV3Group);
+  treesV3Group = null;
+}
+
+async function addTreesV2() {
+  removeTreesV2();
+  if (!manifest || !state.currentZone) return;
+  const zone = manifest.find(r => r.slug === state.currentZone);
+  if (!zone) return;
+  let data = treesV2DataByZone[state.currentZone];
+  if (!data) {
+    showLoading(`Trees V2 ${state.currentZone}...`);
+    try {
+      data = await loadTreesV2(state.currentZone);
+    } catch (e) {
+      console.warn('[treesV2] load FAIL :', e.message);
+    } finally {
+      hideLoading();
+    }
+    if (!data) {
+      console.warn(`[treesV2] pas de JSON v2 pour ${state.currentZone}`);
+      return;
+    }
+    treesV2DataByZone[state.currentZone] = data;
+  }
+  treesV2Group = buildTreesV2Group({
+    trees: data.trees,
+    lat: zone.lat_c, lng: zone.lng_c, sideM: zone.side_m,
+    mntInfo: currentMntInfo, lookupAltAt,
+    hMin: 5,
+  });
+  if (treesV2Group) {
+    // Lumiere ambiante mutualisee avec heroTrees (cree une fois)
+    if (!scene3.userData.heroLight) {
+      const ambient = new THREE.AmbientLight(0xffffff, 0.65);
+      const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+      dir.position.set(50, 100, 50);
+      scene3.add(ambient);
+      scene3.add(dir);
+      scene3.userData.heroLight = { ambient, dir };
+    }
+    scene3.add(treesV2Group);
+    console.log(`[treesV2] ${treesV2Group.userData.n_trees} ellipsoids zone ${state.currentZone}`);
+  } else {
+    console.log('[treesV2] aucun ellipsoid (h>=5m) dans la zone');
+  }
+}
+
+function removeTreesV2() {
+  if (!treesV2Group) return;
+  scene3.remove(treesV2Group);
+  disposeTreesV2Group(treesV2Group);
+  treesV2Group = null;
+}
+
+function addHeroTrees() {
+  removeHeroTrees();
+  if (!lidarTrees || !manifest || !state.currentZone) return;
+  const zone = manifest.find(r => r.slug === state.currentZone);
+  if (!zone) return;
+  // Avenir : exposer hMin/lodLevel via UI
+  heroTreesGroup = buildHeroTreesGroup({
+    trees: lidarTrees.trees,
+    lat: zone.lat_c, lng: zone.lng_c, sideM: zone.side_m,
+    mntInfo: currentMntInfo, lookupAltAt,
+    hMin: 5, lodLevel: 1,
+  });
+  if (heroTreesGroup) {
+    // Lumiere ambiante minimale pour materiaux Lambert
+    if (!scene3.userData.heroLight) {
+      const ambient = new THREE.AmbientLight(0xffffff, 0.65);
+      const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+      dir.position.set(50, 100, 50);
+      scene3.add(ambient);
+      scene3.add(dir);
+      scene3.userData.heroLight = { ambient, dir };
+    }
+    scene3.add(heroTreesGroup);
+    console.log(`[trees3D] ${heroTreesGroup.userData.n_trees} arbres-heros LOD ${heroTreesGroup.userData.lodLevel}`);
+  } else {
+    console.log('[trees3D] aucun arbre-heros (h>=10m) dans la zone');
+  }
+}
+
+function removeHeroTrees() {
+  if (!heroTreesGroup) return;
+  scene3.remove(heroTreesGroup);
+  disposeHeroTreesGroup(heroTreesGroup);
+  heroTreesGroup = null;
+}
+
+async function addBdtopoLayer(key) {
+  removeBdtopoLayer(key);
+  if (!manifest || !state.currentZone) return;
+  const zone = manifest.find(r => r.slug === state.currentZone);
+  if (!zone) return;
+  const args = {
+    lat: zone.lat_c, lng: zone.lng_c, sideM: zone.side_m, yRef: 0,
+    mntInfo: currentMntInfo,
+    orthoTexture: currentOrthoTexture,  // drape texture sur toits BDTOPO
+  };
+  showLoading(`BDTOPO ${key} ...`);
+  try {
+    let group;
+    if (key === 'bdtopo_buildings') group = await loadBuildings3D(args);
+    else if (key === 'bdtopo_roads') group = await loadRoads3D(args);
+    else if (key === 'bdtopo_roads_profile') group = await loadRoadsProfile(args);
+    else if (key === 'cadastre')     group = await loadCadastre3D(args);
+    if (group && group.children.length > 0) {
+      scene3.add(group);
+      bdtopoGroups[key] = group;
+      console.log(`[bdtopo ${key}] OK (${group.children.length} elements)`);
+    }
+    // Refresh cut tool context si bati BDTOPO change (impacte sampling coupe)
+    if (key === 'bdtopo_buildings') refreshCutToolContext();
+  } catch (e) {
+    console.error(`[bdtopo ${key}] FAIL :`, e);
+  } finally {
+    hideLoading();
+  }
+}
+
+function removeBdtopoLayer(key) {
+  const group = bdtopoGroups[key];
+  if (!group) return;
+  scene3.remove(group);
+  group.traverse(c => {
+    c.geometry?.dispose?.();
+    if (Array.isArray(c.material)) c.material.forEach(m => m.dispose?.());
+    else c.material?.dispose?.();
+  });
+  delete bdtopoGroups[key];
+  if (key === 'bdtopo_buildings') refreshCutToolContext();
+}
+
+function clearAllBdtopoLayers() {
+  for (const k of Object.keys(bdtopoGroups)) removeBdtopoLayer(k);
+}
+
+// ─── Slider opacity dispatcher ───
+function setLayerOpacity(layerId, op) {
+  state.layerOpacities[layerId] = op;
+  // 1. WMS overlays
+  if (wmsOverlayMeshes[layerId]) {
+    const m = wmsOverlayMeshes[layerId].material;
+    m.opacity = op;
+    const newTrans = op < 0.95;
+    if (m.transparent !== newTrans) {
+      m.transparent = newTrans;
+      m.depthWrite = !newTrans;
+      m.needsUpdate = true;
+    }
+    return;
+  }
+  // 2. BDTOPO 3D groups (bati / routes / cadastre)
+  if (bdtopoGroups[layerId]) {
+    bdtopoGroups[layerId].traverse(c => {
+      if (!c.material) return;
+      c.material.opacity = op;
+      const newTrans = op < 0.95;
+      if (c.material.transparent !== newTrans) {
+        c.material.transparent = newTrans;
+        c.material.depthWrite = !newTrans;
+        c.material.needsUpdate = true;
+      }
+    });
+    return;
+  }
+  // 3. Sprites arbres impostors
+  if (layerId === 'impostors') {
+    for (const sm of impostorMeshes) {
+      sm.sideMesh?.traverse?.(c => {
+        if (c.material) c.material.opacity = op;
+      });
+    }
+    // Aussi les SpriteMaterials caches (partagees)
+    for (const m of Object.values(spriteMaterialCache)) {
+      m.opacity = op;
+    }
+    return;
+  }
+  // 4. Contours
+  if (layerId === 'contours' && contoursGroup) {
+    contoursGroup.traverse(c => {
+      if (c.material) c.material.opacity = op;
+    });
+    return;
+  }
+  // 5. Splats : opacite globale via splatAlphaRemovalThreshold ou similaire
+  // Non controlable directement par mkkellogg API, on log juste.
+  if (layerId === 'splats') {
+    console.log('[opacity] splats opacity slider non supporte par API mkkellogg');
+    return;
+  }
+  // 6. Typology grid
+  if (layerId === 'typology_grid') {
+    for (const m of typologyTiles) {
+      if (m.material) m.material.opacity = op * 0.45;
+    }
+  }
+}
+
+async function addWmsOverlay(def) {
+  removeWmsOverlay(def.id);
+  if (!manifest || !state.currentZone) return;
+  const zone = manifest.find(r => r.slug === state.currentZone);
+  if (!zone) return;
+  showLoading(`WMS ${def.layer} ...`);
+  try {
+    // Drape sur le MNT IGN (toutes les couches reference IGN RGE ALTI).
+    // yOffset : leger anti-z-fighting + empile par couche pour eviter
+    // que 2 overlays soient strictement co-plans sur les pentes plates.
+    const idxStack = Object.keys(wmsOverlayMeshes).length;
+    const yOffset = 0.2 + idxStack * 0.15;
+    const mesh = await buildWmsOverlay({
+      wmsUrl: def.wmsUrl,
+      layer:  def.layer,
+      lat: zone.lat_c, lng: zone.lng_c, sideM: zone.side_m,
+      pix: 1024,
+      yOffset,
+      opacity: def.params?.opacity ?? 0.5,
+      mntInfo: currentMntInfo,  // drape sur le terrain
+    });
+    scene3.add(mesh);
+    wmsOverlayMeshes[def.id] = mesh;
+    console.log(`[wms ${def.id}] OK (${def.layer}) draped=${!!currentMntInfo}`);
+  } catch (e) {
+    console.error(`[wms ${def.id}] FAIL :`, e);
+  } finally {
+    hideLoading();
+  }
+}
+
+function removeWmsOverlay(id) {
+  const mesh = wmsOverlayMeshes[id];
+  if (!mesh) return;
+  scene3.remove(mesh);
+  disposeWmsOverlay(mesh);
+  delete wmsOverlayMeshes[id];
+}
+
+function clearAllWmsOverlays() {
+  for (const id of Object.keys(wmsOverlayMeshes)) removeWmsOverlay(id);
+}
+
+// ─── Contours IGN RGE ALTI ───
+function clearContours() {
+  if (contoursGroup && scene3) {
+    scene3.remove(contoursGroup);
+    contoursGroup.traverse(c => {
+      c.geometry?.dispose?.();
+      c.material?.dispose?.();
+    });
+    contoursGroup = null;
+  }
+}
+
+async function rebuildContours() {
+  clearContours();
+  if (!state.layers.contours || !manifest) return;
+  const zoneInfo = manifest.find(r => r.slug === state.currentZone);
+  if (!zoneInfo) return;
+  const cacheKey = `${state.currentZone}_${state.contoursInterval}`;
+  let group;
+  if (contoursCache[cacheKey]) {
+    group = contoursCache[cacheKey];
+    console.log(`[contours] cache hit ${cacheKey}`);
+  } else {
+    showLoading(`Fetch IGN RGE ALTI grid 33x33...`);
+    try {
+      group = await buildIgnContours({
+        lat: zoneInfo.lat_c, lng: zoneInfo.lng_c,
+        sideM: zoneInfo.side_m, gridN: 33,
+        intervalM: state.contoursInterval,
+        majorEvery: 5,
+        yRef: zoneInfo.z_min_alt,
+      });
+      const ud = group.userData;
+      console.log(`[contours] alt ${ud.altMin.toFixed(1)}-${ud.altMax.toFixed(1)}m, `
+                  + `${ud.nLevels} levels, interval ${ud.intervalM}m`);
+      contoursCache[cacheKey] = group;
+    } catch (e) {
+      console.error('[contours] FAIL :', e);
+      hideLoading();
+      return;
+    }
+    hideLoading();
+  }
+  scene3.add(group);
+  contoursGroup = group;
+}
+
+// ─── UI bootstrap ───
+function showLoading(t) {
+  document.getElementById('loading-text').textContent = t;
+  document.getElementById('loading').classList.remove('hidden');
+}
+function hideLoading() {
+  document.getElementById('loading').classList.add('hidden');
+}
+
+document.addEventListener('keydown', (e) => {
+  const idx = parseInt(e.key) - 1;
+  if (idx >= 0 && idx < ZONES.length) loadZone(ZONES[idx].slug);
+  if (e.key === 'r' || e.key === 'R') viewer?.controls?.reset();
+});
+
+async function initViewer() {
+  viewer = new GaussianSplats3D.Viewer({
+    'cameraUp': [0, 1, 0],
+    'initialCameraPosition': [0, 80, 200],
+    'initialCameraLookAt': [0, 20, 0],
+    'rootElement': document.getElementById('viewer'),
+    'sphericalHarmonicsDegree': 0,
+    'sceneRevealMode': GaussianSplats3D.SceneRevealMode.Instant,
+    'antialiased': true,
+    'webXRMode': GaussianSplats3D.WebXRMode.None,
+    'sharedMemoryForWorkers': false,
+    'gpuAcceleratedSort': false,
+  });
+  initOverlayScene();
+  // Tonemapping ACES + exposure 0.95 + sRGB output : donne plus de contraste
+  // aux splats (le shader mkkellogg ignore les lumieres mais respecte le
+  // tone mapping du WebGLRenderer) et ameliore les materiaux Lambert.
+  if (renderer3) {
+    renderer3.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer3.toneMappingExposure = 0.95;
+    renderer3.outputColorSpace = THREE.SRGBColorSpace;
+  }
+}
+
+// ─── Cut tool ───
+function initCutTool() {
+  if (!scene3 || !camera3 || !renderer3) return;
+  cutPanel = mountCutPanel({ container: document.body, height: 200 });
+  const zone = manifest?.find(r => r.slug === state.currentZone);
+  if (!zone) return;
+  cutTool = createCutTool({
+    scene: scene3, camera: camera3, renderer: renderer3,
+    domElement: renderer3.domElement,
+    mntInfo: currentMntInfo, lookupAltAt,
+    bdtopoBuildingsGroup: bdtopoGroups['bdtopo_buildings'] ?? null,
+    lidarTreesData: lidarTrees,
+    splatViewer: viewer,  // pour acces splatMesh.getSplatCenter()
+    zoneCenterLat: zone.lat_c, zoneCenterLng: zone.lng_c, sideM: zone.side_m,
+    onProfileUpdate: (profile) => cutPanel.render(profile),
+  });
+  const btn = document.getElementById('btn-cut-tool');
+  btn.onclick = () => {
+    if (cutTool.isVisible()) {
+      cutTool.stop();
+      cutPanel.hide();
+      btn.classList.remove('on');
+      btn.style.background = 'transparent';
+      btn.style.color = 'var(--text)';
+    } else {
+      cutTool.start();
+      cutPanel.show(() => {
+        cutTool.stop();
+        btn.classList.remove('on');
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--text)';
+      });
+      btn.classList.add('on');
+      btn.style.background = 'var(--accent)';
+      btn.style.color = '#1a1411';
+    }
+  };
+}
+
+function refreshCutToolContext() {
+  // A appeler quand bdtopo_buildings ou lidar_trees change
+  if (!cutTool) return;
+  cutTool.refreshContext({
+    bdtopoBuildingsGroup: bdtopoGroups['bdtopo_buildings'] ?? null,
+    lidarTreesData: lidarTrees,
+  });
+}
+
+
+// ─── Boot ───
+(async () => {
+  await loadShared();
+  renderZones();
+  renderLayers();
+  renderTypoLegend();
+  renderStats();
+  facadesPanel = mountFacadesPanel({
+    parentEl: document.getElementById('facades-panel'),
+    getCurrentZone: () => state.currentZone,
+  });
+  await initViewer();
+  await loadZone(ZONES[0].slug);
+  initCutTool();
+})();
+</script>
+
+</body>
+</html>

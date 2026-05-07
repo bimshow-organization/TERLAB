@@ -213,10 +213,13 @@ async def get_stats(
 # ── Point d'entree ──────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    # reload=False : evite le crash multiprocess WatchFiles sur Windows.
+    # Pour developpement, mettre LIDAR_DEV=1 pour reactiver le reload.
+    reload_flag = os.getenv("LIDAR_DEV", "0") == "1"
     uvicorn.run(
         "server:app",
         host=HOST,
         port=PORT,
-        reload=True,
+        reload=reload_flag,
         log_level="info",
     )

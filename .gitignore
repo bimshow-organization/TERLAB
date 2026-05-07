@@ -36,3 +36,13 @@ output/
 # OS
 .DS_Store
 Thumbs.db
+
+# Test / SOTA assets lourds (ne pas embarquer)
+*.pt
+scripts/.venv-sota/
+sota/
+docs/voxel-patterns/
+
+# Scratch
+Untitled-*.txt
+c:GITHUBTERLAB*
