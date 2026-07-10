@@ -2,10 +2,37 @@
 <html lang="fr" data-theme="ivory">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
 <meta name="theme-color" content="#161614"/>
+
+<script>
+// Capture précoce des erreurs (bêta) — avant le chargement des modules ES.
+// La file est consommée par components/error-monitor.js (dédup + push RTDB).
+window.__terlabErrors = [];
+window.addEventListener('error', function (e) {
+  if (window.__terlabErrors.length >= 50) return;
+  window.__terlabErrors.push({
+    type: 'error',
+    message: e.message || String(e.error || 'erreur inconnue'),
+    source: e.filename || null,
+    line: e.lineno || null,
+    stack: e.error && e.error.stack ? String(e.error.stack) : null,
+    ts: new Date().toISOString(),
+  });
+});
+window.addEventListener('unhandledrejection', function (e) {
+  if (window.__terlabErrors.length >= 50) return;
+  var r = e.reason;
+  window.__terlabErrors.push({
+    type: 'unhandledrejection',
+    message: (r && (r.message || String(r))) || 'promesse rejetee',
+    stack: r && r.stack ? String(r.stack) : null,
+    ts: new Date().toISOString(),
+  });
+});
+</script>
 <meta name="description" content="TERLAB — Laboratoire d'analyse de terrain · ENSA La Réunion · Île de La Réunion"/>
 <title>TERLAB · Analyse de Terrain · ENSA La Réunion</title>
 <link rel="icon" type="image/png" href="assets/logo-giep.png"/>
@@ -278,6 +305,15 @@
       <!-- BIMSHOW / 3D Viewer -->
       <button class="tb-btn btn-bimshow" id="btn-bimshow" onclick="Terlab3DToggle()" title="Ouvrir le viewer 3D" aria-label="Ouvrir le viewer 3D intégré">
         3D ☀
+      </button>
+
+      <!-- Signaler un problème (bêta) — rapport pré-rempli par error-monitor -->
+      <button class="tb-btn" id="tb-feedback" onclick="TerlabErrorMonitor?.openFeedback()" title="Signaler un problème" aria-label="Signaler un problème">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="8" cy="8" r="6.4" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M8 4.8v4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          <circle cx="8" cy="11.2" r=".9" fill="currentColor"/>
+        </svg>
       </button>
 
       <!-- Login (placeholder) -->

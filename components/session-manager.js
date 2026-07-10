@@ -8,11 +8,14 @@ const SYNC_INTERVAL  = 60_000; // 60s
 
 const SessionManager = {
 
-  _data:         null,
-  _sessionId:    null,
-  _syncTimer:    null,
-  _dirty:        false,
-  _lastThumbAt:  0,
+  _data:             null,
+  _sessionId:        null,
+  _syncTimer:        null,
+  _dirty:            false,
+  _lastThumbAt:      0,
+  _lastCloudUpdated: null,   // lastUpdated de la derniere version cloud vue (garde anti-ecrasement)
+  _quotaWarnedAt:    0,      // throttle de l'alerte quota localStorage
+  _conflictWarnedAt: 0,      // throttle de l'alerte conflit multi-appareils
 
   // ── INIT ──────────────────────────────────────────────────────
   init() {
@@ -22,8 +25,34 @@ const SessionManager = {
     // Sync Firebase en arrière-plan
     this._startSyncLoop();
 
+    // Multi-onglets : avertir si un autre onglet du même navigateur écrit
+    // la même session (l'event storage ne se déclenche que dans les AUTRES onglets)
+    window.addEventListener('storage', (e) => {
+      if (e.key !== DATA_KEY || !e.newValue) return;
+      try {
+        const other = JSON.parse(e.newValue);
+        if (other.sessionId !== this._sessionId) return;
+        if (other.lastUpdated === this._data?.lastUpdated) return;
+        this._warnConflict(
+          'Cette session est modifiee dans un autre onglet. '
+          + 'Evitez de travailler dans deux onglets a la fois — rechargez celui-ci pour recuperer les changements.');
+      } catch { /* payload illisible : ignorer */ }
+    });
+
     console.info(`[Session] ID: ${this._sessionId}`);
     return this._sessionId;
+  },
+
+  // Avertissement conflit (throttle 2 min, partagé onglets/appareils)
+  _warnConflict(message) {
+    if (Date.now() - this._conflictWarnedAt < 120_000) return;
+    this._conflictWarnedAt = Date.now();
+    if (window.TerlabNotification?.notify) {
+      window.TerlabNotification.notify({ severity: 'AVERTISSEMENT', rule: message, phase: 'session' });
+    } else {
+      window.TerlabToast?.show(message, 'warning', 8000);
+    }
+    console.warn('[Session] Conflit:', message);
   },
 
   // ── UUID ANONYME ──────────────────────────────────────────────
@@ -126,12 +155,40 @@ const SessionManager = {
   },
 
   _saveLocal() {
+    this._data.lastUpdated = new Date().toISOString();
+    // _dirty AVANT setItem : si le quota localStorage saute, la sync cloud
+    // doit quand meme partir au prochain tick (sinon perte totale silencieuse)
+    this._dirty = true;
     try {
-      this._data.lastUpdated = new Date().toISOString();
-      localStorage.setItem(DATA_KEY, JSON.stringify(this._data));
-      this._dirty = true;
+      // Les snapshots carte (snap_*, JPEG base64 ~60-100 Ko chacun) restent
+      // en memoire dans _data (exports PDF) mais ne sont PAS persistes en
+      // localStorage : ils saturaient le quota de 5 Mo. Regeneres au idle carte.
+      const slim = { ...this._data };
+      if (slim.terrain) {
+        slim.terrain = { ...slim.terrain };
+        Object.keys(slim.terrain).forEach(k => {
+          if (k.startsWith('snap_')) delete slim.terrain[k];
+        });
+      }
+      localStorage.setItem(DATA_KEY, JSON.stringify(slim));
     } catch (e) {
       console.warn('[Session] localStorage plein:', e.message);
+      // Alerte visible (throttle 2 min) : l'etudiant doit savoir que la
+      // sauvegarde locale ne passe plus et exporter son .terlab
+      if (Date.now() - this._quotaWarnedAt > 120_000) {
+        this._quotaWarnedAt = Date.now();
+        if (window.TerlabNotification?.notify) {
+          window.TerlabNotification.notify({
+            severity: 'CRITIQUE',
+            rule: 'Stockage local sature — la sauvegarde hors-ligne ne fonctionne plus. '
+                + 'Exportez votre session (.terlab) par securite. La sync cloud reste active.',
+            phase: 'session',
+          });
+        } else {
+          window.TerlabToast?.show(
+            'Stockage local sature — exportez votre session (.terlab)', 'error', 8000);
+        }
+      }
     }
   },
 
@@ -157,8 +214,30 @@ const SessionManager = {
 
       if (isBimshowUser) {
         data.ownerUid = uid;
+
+        // Garde anti-écrasement : le SET est un remplacement complet. Si un
+        // AUTRE appareil (téléphone/desktop) a poussé une version plus récente
+        // que notre état local, on n'écrase pas — on avertit. Une édition
+        // locale ultérieure rendra notre lastUpdated plus récent → le push
+        // repartira (last-write-wins par timestamp de contenu, pas par horloge
+        // de SET). L'onglet idle qui n'édite rien ne clobber donc plus jamais.
+        try {
+          const luRef  = window.TERLAB_FB_REF(window.TERLAB_DB, `terlab/projects/${this._sessionId}/lastUpdated`);
+          const luSnap = await window.TERLAB_FB_GET(luRef);
+          const remoteLu = luSnap.exists() ? luSnap.val() : null;
+          if (remoteLu && remoteLu !== this._lastCloudUpdated
+              && new Date(remoteLu) > new Date(data.lastUpdated)) {
+            this._warnConflict(
+              'Ce projet a ete modifie sur un autre appareil apres votre derniere synchronisation. '
+              + 'Rechargez le projet pour recuperer ces changements (vos modifications locales non envoyees seraient perdues), '
+              + 'ou continuez a editer ici pour que cette version reprenne la main.');
+            return; // _dirty reste true : nouvelle tentative au prochain tick
+          }
+        } catch { /* lecture lastUpdated impossible (offline ?) : SET normal */ }
+
         const projRef = window.TERLAB_FB_REF(window.TERLAB_DB, `terlab/projects/${this._sessionId}`);
         await window.TERLAB_FB_SET(projRef, data);
+        this._lastCloudUpdated = data.lastUpdated;
 
         const idxRef = window.TERLAB_FB_REF(
           window.TERLAB_DB,
@@ -456,8 +535,10 @@ const SessionManager = {
       const data = snap.val();
       this._data = data;
       this._sessionId = sessionId;
+      this._lastCloudUpdated = data.lastUpdated ?? null;
       localStorage.setItem(UUID_KEY, sessionId);
       this._saveLocal();
+      this._dirty = false; // fraichement charge du cloud : rien a re-pousser
       return data;
     } catch (e) {
       console.warn('[Session] Restore Firebase failed:', e.message);

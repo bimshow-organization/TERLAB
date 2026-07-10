@@ -7,6 +7,7 @@
 //   ✅ Topbar redesignée : phase-cards avec numéro + icône + label
 
 import SessionManager    from './components/session-manager.js';
+import ErrorMonitor      from './components/error-monitor.js';
 import TerlabNotification from './components/terlab-notification.js';
 import DecisionJournal   from './services/decision-journal-service.js';
 import TerlabStorage     from './components/terlab-storage.js';
@@ -246,6 +247,8 @@ async function init() {
     window.BimshowViewer    = BimshowViewer;
     window.TerlabNotification = TerlabNotification;
     window.DecisionJournal    = DecisionJournal;
+    window.TerlabErrorMonitor = ErrorMonitor;
+    ErrorMonitor.init();
 
     // Aliases namespace (nouveau standard — utiliser window.TERLAB.* dans le nouveau code)
     window.TERLAB.Session         = SessionManager;
