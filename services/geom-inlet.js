@@ -24,6 +24,13 @@ function segIntersectPt(x1, y1, x2, y2, x3, y3, x4, y4) {
 }
 
 // ── Clean auto-intersections (boucles) ────────────────────────────
+// Scanne TOUTES les paires de segments du ring, fermeture comprise — une
+// boucle parasite peut chevaucher la fermeture (ex. bevel d'une pointe aiguë
+// en fin de tableau, jamais coupé par l'ancien scan borné à m-2).
+// À chaque croisement, deux polygones candidats : section médiane coupée ou
+// conservée — on garde celui de plus grande aire (la boucle parasite est la
+// petite ; l'ancien code jetait systématiquement la section médiane, quitte à
+// jeter le corps principal).
 function removeOffsetSelfIntersections(pts) {
   let p = pts.slice();
   const MAX = pts.length * 2;
@@ -32,14 +39,16 @@ function removeOffsetSelfIntersections(pts) {
     if (m < 4) break;
     let found = false;
     outer:
-    for (let i = 0; i < m - 1; i++) {
-      for (let j = m - 2; j > i + 1; j--) {
-        if (i === 0 && j === m - 2) continue;
+    for (let i = 0; i < m; i++) {
+      for (let j = i + 2; j < m; j++) {
+        if (i === 0 && j === m - 1) continue; // adjacents via la fermeture
         const P = segIntersectPt(
-          p[i][0], p[i][1], p[i + 1][0], p[i + 1][1],
-          p[j][0], p[j][1], p[j + 1][0], p[j + 1][1]);
+          p[i][0], p[i][1], p[(i + 1) % m][0], p[(i + 1) % m][1],
+          p[j][0], p[j][1], p[(j + 1) % m][0], p[(j + 1) % m][1]);
         if (P) {
-          p = [...p.slice(0, i + 1), P, ...p.slice(j + 1)];
+          const candA = [...p.slice(0, i + 1), P, ...p.slice(j + 1)];
+          const candB = [P, ...p.slice(i + 1, j + 1)];
+          p = Math.abs(signedArea(candA)) >= Math.abs(signedArea(candB)) ? candA : candB;
           found = true; break outer;
         }
       }

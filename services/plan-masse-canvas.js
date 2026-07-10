@@ -8,6 +8,9 @@ import FH from './footprint-helpers.js';
 
 const SVG_W = 860, SVG_H = 600, SCX = SVG_W / 2, SCY = SVG_H / 2 + 15, BS = 10;
 const SNAP = 0.5, MIN_W = 4, MIN_L = 5, H_NIV = 3.0;
+// Extension des bandes de recul au-delà d'un sommet convexe gagné par
+// priorité (ou voisin sans recul) — le clip parcelle borde à la limite réelle.
+const RECUL_EXT = 25;
 
 // Hauteur par niveau selon l'usage (m) — alignée pratiques Réunion
 const HEIGHT_BY_USAGE = {
@@ -100,6 +103,62 @@ function clipSH(subject, clip) {
 }
 function distPtSeg(px, py, x1, y1, x2, y2) { const dx = x2 - x1, dy = y2 - y1, l2 = dx * dx + dy * dy; if (l2 < 1e-10) return Math.hypot(px - x1, py - y1); const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / l2)); return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy)); }
 
+function _isConvexArr(p) {
+  const n = p.length;
+  if (n < 4) return true;
+  let sign = 0;
+  for (let i = 0; i < n; i++) {
+    const [ax, ay] = p[i], [bx, by] = p[(i + 1) % n], [cx, cy] = p[(i + 2) % n];
+    const cr = (bx - ax) * (cy - by) - (by - ay) * (cx - bx);
+    if (Math.abs(cr) < 1e-9) continue; // quasi-colinéaire (micro-arêtes cadastre)
+    const s = cr > 0 ? 1 : -1;
+    if (sign === 0) sign = s;
+    else if (s !== sign) return false;
+  }
+  return true;
+}
+
+// Intersection a∩b via SH en choisissant le polygone CONVEXE comme clip —
+// SH est faux si le clip est concave (triangles parasites). Si les deux sont
+// concaves (rare), best effort avec l'ordre d'origine.
+function interPoly(a, b) {
+  if (!a || a.length < 3 || !b || b.length < 3) return [];
+  if (_isConvexArr(b)) return clipSH(a, b);
+  if (_isConvexArr(a)) return clipSH(b, a);
+  return clipSH(a, b);
+}
+
+// Clip d'un polygone par UN demi-plan (garde n·(P-p) ≥ 0) — SH mono-plan.
+function clipHalfPlaneArr(poly, px, py, nx, ny) {
+  const m = poly.length;
+  if (!m) return [];
+  const out = [];
+  const dist = (x, y) => nx * (x - px) + ny * (y - py);
+  for (let i = 0; i < m; i++) {
+    const [ax, ay] = poly[i], [bx, by] = poly[(i + 1) % m];
+    const da = dist(ax, ay), db = dist(bx, by);
+    if (da >= 0) {
+      out.push([ax, ay]);
+      if (db < 0) { const t = da / (da - db); out.push([ax + t * (bx - ax), ay + t * (by - ay)]); }
+    } else if (db >= 0) {
+      const t = da / (da - db);
+      out.push([ax + t * (bx - ax), ay + t * (by - ay)]);
+    }
+  }
+  return out;
+}
+
+// Trim d'un segment [a,b] par un demi-plan (garde n·(P-p) ≥ 0) ; null si dehors.
+function trimSegHP(a, b, px, py, nx, ny) {
+  const da = nx * (a[0] - px) + ny * (a[1] - py);
+  const db = nx * (b[0] - px) + ny * (b[1] - py);
+  if (da < 0 && db < 0) return null;
+  if (da >= 0 && db >= 0) return [a, b];
+  const t = da / (da - db);
+  const p = [a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1])];
+  return da >= 0 ? [a, p] : [p, b];
+}
+
 // Coins perdus : quand deux reculs se croisent à un angle aigu, la zone
 // constructible perd un quadrilatère entre [parc[i-1], parc[i], zone[i-1], zone[i]].
 // Détection : si dist(parc[i], zone[i]) > seuil (en mètres), le coin est perdu.
@@ -141,6 +200,10 @@ function h1(n) { return Math.abs(Math.sin(n * 127.1 + 311.7) * 43758.5453) % 1; 
 // ═════════════════════════════════════════════════════════════════════
 
 const PlanMasseCanvas = {
+
+  // Primitives géométriques du module exposées pour tests/harnais headless
+  // (scratch render des cas de parcelles) — ne pas utiliser dans l'app.
+  _geom: { clipSH, clipHalfPlaneArr, trimSegHP, interPoly, lostCorners, polyArea },
 
   // ── ÉTAT ──────────────────────────────────────────────────────────
   _el: null,         // conteneur <div>
@@ -342,7 +405,7 @@ const PlanMasseCanvas = {
     this._bindEvents();
 
     // Re-render on theme change (dark/ivory/earth) — var(--svg-*) values change
-    this._themeListener = () => { if (this._ready) this.render(); };
+    this._themeListener = () => { this._colorCache = null; if (this._ready) this.render(); };
     window.addEventListener('terlab-theme-change', this._themeListener);
 
     this._ready = true;
@@ -563,6 +626,147 @@ const PlanMasseCanvas = {
     return table.max?.lgts ?? 1;
   },
 
+  // Groupes d'arêtes consécutives de même (type, recul, mitoyen). Les limites
+  // courbes du cadastre arrivent découpées en micro-arêtes : sans regroupement,
+  // chaque segment reçoit son propre label (10× « LAT 3.0m » sur une courbe).
+  // labelIdx = arête la plus longue du run, porteuse de l'unique label.
+  _edgeRuns() {
+    const poly = this._terrain.poly, n = poly.length;
+    const key = i => `${this.S.edgeTypes[i]}|${this.edgeRecul(i).toFixed(2)}|${this.S.edgeTypes[i] === 'lat' && this.S.mitoyen[i] ? 1 : 0}`;
+    const edgeLen = i => { const [x1, y1] = poly[i], [x2, y2] = poly[(i + 1) % n]; return Math.hypot(x2 - x1, y2 - y1); };
+    // Démarrer sur une frontière de run (gère la circularité du polygone)
+    let start = 0;
+    for (let i = 0; i < n; i++) { if (key(i) !== key((i - 1 + n) % n)) { start = i; break; } }
+    const runs = [];
+    let cur = null;
+    for (let k = 0; k < n; k++) {
+      const i = (start + k) % n;
+      const ki = key(i);
+      if (cur && ki === cur.key) cur.idxs.push(i);
+      else { cur = { key: ki, idxs: [i] }; runs.push(cur); }
+    }
+    for (const r of runs) {
+      r.type = this.S.edgeTypes[r.idxs[0]];
+      r.recul = this.edgeRecul(r.idxs[0]);
+      r.isMit = r.type === 'lat' && !!this.S.mitoyen[r.idxs[0]];
+      r.labelIdx = r.idxs.reduce((a, b) => (edgeLen(b) > edgeLen(a) ? b : a));
+    }
+    return runs;
+  },
+
+  // Normale rentrante unitaire par arête (winding évalué une seule fois) ;
+  // null pour les arêtes dégénérées (< 0.1 m).
+  _edgeNormals(poly) {
+    const n = poly.length;
+    const orient = _signedAreaArr(poly) >= 0 ? 1 : -1;
+    return poly.map((p, i) => {
+      const [x1, y1] = p, [x2, y2] = poly[(i + 1) % n];
+      const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy);
+      return len < 0.1 ? null : [-dy / len * orient, dx / len * orient];
+    });
+  },
+
+  // Partition des zones de recul aux sommets (entre arête i-1 « prev » et
+  // arête i « cur », toutes deux à recul > 0).
+  // Règle métier : la zone VOIE court d'une limite à l'autre (pleine largeur),
+  // le FOND de même face aux latérales — l'arête PRIORITAIRE garde son quad
+  // entier, la bande voisine démarre au-delà de sa ligne offset. Entre arêtes
+  // de même priorité, couture au point de miter (intersection des lignes
+  // offset) : raccord exact quel que soit l'angle ou les reculs.
+  // Retourne par sommet { prev, cur } : demi-plan de clip {px,py,nx,ny} à
+  // appliquer à la bande correspondante (null = pas de clip de ce côté), ou
+  // null (voisin sans recul / dégénéré).
+  _reculPartitions(poly, N) {
+    const PRIO = { voie: 3, fond: 2, lat: 1 };
+    const n = poly.length;
+    const orient = _signedAreaArr(poly) >= 0 ? 1 : -1;
+    const out = new Array(n).fill(null);
+    for (let i = 0; i < n; i++) {
+      const iPrev = (i - 1 + n) % n;
+      if (!N[iPrev] || !N[i]) continue;
+      const [vx, vy] = poly[i];
+      const [pax, pay] = poly[iPrev];
+      const [pbx, pby] = poly[(i + 1) % n];
+      const cr = ((vx - pax) * (pby - vy) - (vy - pay) * (pbx - vx)) * orient;
+      const convex = cr >= -1e-9;
+      const rA = this.edgeRecul(iPrev), rB = this.edgeRecul(i);
+      if (rA <= 0 || rB <= 0) {
+        // Voisin sans recul : pas de clip, mais on garde la convexité pour
+        // l'extension « jusqu'aux limites » des bandes.
+        out[i] = { prev: null, cur: null, convex };
+        continue;
+      }
+      const [nax, nay] = N[iPrev], [nbx, nby] = N[i];
+      const pA = PRIO[this.S.edgeTypes[iPrev]] ?? 1;
+      const pB = PRIO[this.S.edgeTypes[i]] ?? 1;
+      if (pA !== pB && convex) {
+        // Coin convexe entre types différents : l'arête prioritaire garde le
+        // coin (sa bande, étendue, file jusqu'à la limite) ; l'autre bande
+        // démarre au-delà de sa ligne offset. Au coin RENTRANT ce trim serait
+        // faux (les bandes ne se chevauchent pas) → miter ci-dessous.
+        out[i] = pA > pB
+          ? { prev: null, cur: { px: vx + nax * rA, py: vy + nay * rA, nx: nax, ny: nay }, convex }
+          : { prev: { px: vx + nbx * rB, py: vy + nby * rB, nx: nbx, ny: nby }, cur: null, convex };
+        continue;
+      }
+      // Même priorité ou coin rentrant : couture sommet → point de miter
+      const m = lineIsect(
+        pax + nax * rA, pay + nay * rA, vx + nax * rA, vy + nay * rA,
+        vx + nbx * rB, vy + nby * rB, pbx + nbx * rB, pby + nby * rB,
+      );
+      let hx = -(m[1] - vy), hy = m[0] - vx;
+      if (Math.hypot(hx, hy) < 1e-6) continue;
+      // Orienter le demi-plan vers l'arête i (celle qui démarre au sommet)
+      const dot = hx * (pbx - vx) / 2 + hy * (pby - vy) / 2;
+      if (Math.abs(dot) < 1e-9) continue;
+      if (dot < 0) { hx = -hx; hy = -hy; }
+      out[i] = { prev: { px: vx, py: vy, nx: -hx, ny: -hy }, cur: { px: vx, py: vy, nx: hx, ny: hy }, convex };
+    }
+    return out;
+  },
+
+  // Arcs de recul aux sommets CONCAVES (rentrants) : la zone ≤ r du sommet
+  // n'est couverte par aucun quad perpendiculaire (camembert manquant) — même
+  // géométrie d'arc que GeomInlet. Deux moitiés colorées par l'arête prev/cur,
+  // rayon interpolé rA→rB. Sommets à voisin sans recul (P[i] null) : ignorés.
+  _concaveReculArcs(poly, N, P) {
+    const n = poly.length;
+    const orient = _signedAreaArr(poly) >= 0 ? 1 : -1;
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      if (!P[i]) continue;
+      const iPrev = (i - 1 + n) % n, iNext = (i + 1) % n;
+      const rA = this.edgeRecul(iPrev), rB = this.edgeRecul(i);
+      if (rA <= 0 || rB <= 0) continue; // voisin sans recul : pas d'arc
+      const [vx, vy] = poly[i];
+      const [ax, ay] = poly[iPrev], [bx, by] = poly[iNext];
+      const cr = ((vx - ax) * (by - vy) - (vy - ay) * (bx - vx)) * orient;
+      if (cr >= -1e-9) continue; // convexe ou plat : les quads couvrent déjà
+      const [nax, nay] = N[iPrev], [nbx, nby] = N[i];
+      const a0 = Math.atan2(nay, nax);
+      let da = Math.atan2(nby, nbx) - a0;
+      while (da > Math.PI) da -= 2 * Math.PI;
+      while (da < -Math.PI) da += 2 * Math.PI;
+      const arc = (t0, t1) => {
+        const pts = [];
+        for (let s = 0; s <= 6; s++) {
+          const tt = t0 + (t1 - t0) * s / 6;
+          const aa = a0 + da * tt, rr = rA + (rB - rA) * tt;
+          pts.push([vx + rr * Math.cos(aa), vy + rr * Math.sin(aa)]);
+        }
+        return pts;
+      };
+      out.push({
+        v: [vx, vy],
+        arcs: [
+          { type: this.S.edgeTypes[iPrev], pts: arc(0, 0.5) },
+          { type: this.S.edgeTypes[i],     pts: arc(0.5, 1) },
+        ],
+      });
+    }
+    return out;
+  },
+
   // Recul effectif d'une arête. Latéral = BINAIRE (0 mitoyen, sinon Lmin).
   // Voie / fond : valeur PLU directe.
   edgeRecul(i) {
@@ -583,10 +787,15 @@ const PlanMasseCanvas = {
     if (GI?.inletPolyline) {
       try {
         const inlet = GI.inletPolyline(t.poly, R, { arcSteps: 8 });
+        // Guards empilés (modes de défaillance distincts) : dégénéré / effondré /
+        // débordement hors parcelle (jogs offset sur micro-arêtes, mitoyen 0m).
         if (inlet.length >= 3 && polyArea(inlet) > 5) {
-          this.S._insetWarn = null;
-          this.S._inletHasArcs = inlet.length > t.poly.length; // plus de sommets = arcs generes
-          return inlet;
+          if (this._inletContained(inlet, t.poly)) {
+            this.S._insetWarn = null;
+            this.S._inletHasArcs = inlet.length > t.poly.length; // plus de sommets = arcs generes
+            return inlet;
+          }
+          console.warn('[PMC] inlet hors parcelle — fallback legacy/buildZone');
         }
       } catch (e) {
         console.warn('[PMC] GeomInlet.inletPolyline failed:', e.message);
@@ -624,6 +833,24 @@ const PlanMasseCanvas = {
       this.S._insetWarn = null;
     }
     return env;
+  },
+
+  // Guard confinement : l'inlet doit être ⊆ parcelle (tolérance 5 cm pour les
+  // sommets sur le bord — mitoyen recul 0). Mode de défaillance distinct des
+  // guards aire/self-intersect : ne pas fusionner (défense en profondeur).
+  _inletContained(inlet, parc) {
+    if (polyArea(inlet) > polyArea(parc) * 1.001) return false;
+    const n = parc.length;
+    for (const [x, y] of inlet) {
+      if (ptInPoly(x, y, parc)) continue;
+      let d = Infinity;
+      for (let i = 0; i < n && d >= 0.05; i++) {
+        const [x1, y1] = parc[i], [x2, y2] = parc[(i + 1) % n];
+        d = Math.min(d, distPtSeg(x, y, x1, y1, x2, y2));
+      }
+      if (d >= 0.05) return false;
+    }
+    return true;
   },
 
   computeEnv() {
@@ -767,11 +994,24 @@ const PlanMasseCanvas = {
   // ── HELPERS SVG ────────────────────────────────────────────────────
 
   _ra(hex, a) {
-    // CSS var() fallback: si on reçoit var(--x), on renvoie la même var() (opacité gérée par le CSS token).
-    if (typeof hex === 'string' && hex.startsWith('var(')) return hex;
+    // CSS var() : résolu en couleur concrète via cache — les tokens --svg-* sont
+    // des couleurs pleines, renvoyer le var() tel quel perdrait l'opacité demandée.
+    if (typeof hex === 'string' && hex.startsWith('var(')) hex = this._cssColor(hex);
     if (typeof hex !== 'string' || hex[0] !== '#' || hex.length < 7) return hex;
     const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
     return `rgba(${r},${g},${b},${a})`;
+  },
+  // Cache var(--x) → valeur calculée ; jamais de getComputedStyle dans la boucle
+  // de draw, invalidé sur terlab-theme-change (cf. _themeListener).
+  _colorCache: null,
+  _cssColor(v) {
+    this._colorCache ??= {};
+    if (this._colorCache[v]) return this._colorCache[v];
+    const m = /^var\((--[^,)]+)/.exec(v);
+    if (!m) return v;
+    const resolved = getComputedStyle(this._el ?? document.documentElement).getPropertyValue(m[1]).trim();
+    if (resolved) this._colorCache[v] = resolved;
+    return resolved || v;
   },
   _polyPts(pts) { return pts.map(([x, y]) => this._w2s(x, y).join(',')).join(' '); },
   _tx(wx, wy, str, sz, fill, anch = 'middle') { const [sx, sy] = this._w2s(wx, wy); return `<text x="${sx.toFixed(1)}" y="${sy.toFixed(1)}" text-anchor="${anch}" font-size="${sz}" fill="${fill}" font-family="'Inconsolata',monospace">${str}</text>`; },
@@ -1083,29 +1323,54 @@ const PlanMasseCanvas = {
     // pour éviter les triangles d'overlap aux sommets aigus (diagonales).
     if (this.S.layers.reculs) {
       const n = t.poly.length;
+      const N = this._edgeNormals(t.poly);
+      const P = this._reculPartitions(t.poly, N);
       for (let i = 0; i < n; i++) {
         const type = this.S.edgeTypes[i];
         const r = this.edgeRecul(i);
-        if (r <= 0) continue;
+        if (r <= 0 || !N[i]) continue;
         const col = COL[type];
         const [p1x, p1y] = t.poly[i], [p2x, p2y] = t.poly[(i + 1) % n];
-        const dx = p2x - p1x, dy = p2y - p1y, len = Math.hypot(dx, dy);
-        if (len < 0.1) continue;
-        // Normale rentrante (vers l'intérieur du polygone) — orientation via signedArea
-        const sa = _signedAreaArr(t.poly);
-        const orient = sa >= 0 ? 1 : -1;
-        const nxu = -dy / len * orient, nyu = dx / len * orient;
+        const [nxu, nyu] = N[i];
+        const iNext = (i + 1) % n;
+        const cs = P[i]?.cur, ce = P[iNext]?.prev;
+        // Extension « jusqu'aux limites » : au sommet convexe gagné par
+        // priorité (pas de clip pour cette bande) ou à voisin sans recul,
+        // le quad file au-delà du sommet — la parcelle le borde à la limite.
+        // Jamais au rentrant (le quad étendu traverserait l'intérieur).
+        const lenE = Math.hypot(p2x - p1x, p2y - p1y);
+        const ux = (p2x - p1x) / lenE, uy = (p2y - p1y) / lenE;
+        const extS = (P[i] && P[i].convex && !P[i].cur) ? RECUL_EXT : 0;
+        const extE = (P[iNext] && P[iNext].convex && !P[iNext].prev) ? RECUL_EXT : 0;
+        const q1x = p1x - ux * extS, q1y = p1y - uy * extS;
+        const q2x = p2x + ux * extE, q2y = p2y + uy * extE;
         // Quad perpendiculaire de largeur r (pas dérivé du env polygon)
         const band = [
-          [p1x, p1y],
-          [p2x, p2y],
-          [p2x + nxu * r, p2y + nyu * r],
-          [p1x + nxu * r, p1y + nyu * r],
+          [q1x, q1y],
+          [q2x, q2y],
+          [q2x + nxu * r, q2y + nyu * r],
+          [q1x + nxu * r, q1y + nyu * r],
         ];
-        const clipped = clipSH(band, t.poly);
-        if (clipped.length < 3) continue;
-        const pts = clipped.map(([x, y]) => this._w2s(x, y).map(v => this._dd(v)).join(',')).join(' ');
+        // SH exige un polygone de CLIP convexe : clip = quad de bande (toujours
+        // convexe), sujet = parcelle (concave OK). L'inverse générait des
+        // triangles parasites sur parcelles concaves (clip concave non supporté).
+        let bp = clipSH(t.poly, band);
+        // Partition aux sommets partagés avec une arête voisine à recul > 0 :
+        // sans elle, les quads adjacents se chevauchent aux coins (coutures
+        // sombres triangulaires en double-alpha) ou laissent des vides.
+        if (bp.length >= 3 && cs) bp = clipHalfPlaneArr(bp, cs.px, cs.py, cs.nx, cs.ny);
+        if (bp.length >= 3 && ce) bp = clipHalfPlaneArr(bp, ce.px, ce.py, ce.nx, ce.ny);
+        if (bp.length < 3) continue;
+        const pts = bp.map(([x, y]) => this._w2s(x, y).map(v => this._dd(v)).join(',')).join(' ');
         parts.push(`<polygon points="${pts}" fill="${this._ra(col, .08)}" stroke="none"/>`);
+      }
+      // Camemberts concaves — zone ≤ r du sommet rentrant, hors de tout quad
+      for (const c of this._concaveReculArcs(t.poly, N, P)) {
+        for (const a of c.arcs) {
+          const pie = [c.v, ...a.pts];
+          const pts = pie.map(([x, y]) => this._w2s(x, y).map(v => this._dd(v)).join(',')).join(' ');
+          parts.push(`<polygon points="${pts}" fill="${this._ra(COL[a.type], .08)}" stroke="none" clip-path="url(#pmc-tc)"/>`);
+        }
       }
     }
 
@@ -1116,28 +1381,55 @@ const PlanMasseCanvas = {
     // NB : les arêtes colorées épaisses sont dessinées en fin de renderPlan
     // (après bâtiment/parking/végétation) pour rester toujours lisibles.
 
-    // Inset lines + labels
+    // Inset lines + labels — ligne pointillée par arête, trimée au point de
+    // miter des voisins (sinon les segments offset débordent et se croisent
+    // aux angles aigus) ; un seul label par run d'arêtes de même type/recul.
     if (this.S.layers.reculs) {
       const n = t.poly.length;
+      const N = this._edgeNormals(t.poly);
+      const P = this._reculPartitions(t.poly, N);
+      const labelIdxs = new Set(this._edgeRuns().filter(r => r.recul > 0).map(r => r.labelIdx));
       for (let i = 0; i < n; i++) {
         const type = this.S.edgeTypes[i];
         const r = this.edgeRecul(i);
         const col = COL[type];
+        if (r <= 0 || !N[i]) continue;
         const [p1x, p1y] = t.poly[i], [p2x, p2y] = t.poly[(i + 1) % n];
-        const dx = p2x - p1x, dy = p2y - p1y, len = Math.hypot(dx, dy);
-        if (len < 0.1) continue;
-        const nxu = -dy / len, nyu = dx / len;
-        if (r > 0) {
-          const ix1 = p1x + nxu * r, iy1 = p1y + nyu * r, ix2 = p2x + nxu * r, iy2 = p2y + nyu * r;
-          const [si1x, si1y] = this._w2s(ix1, iy1), [si2x, si2y] = this._w2s(ix2, iy2);
+        const [nxu, nyu] = N[i];
+        const iNext = (i + 1) % n;
+        const ts = P[i]?.cur, te = P[iNext]?.prev;
+        // Extension aux sommets convexes gagnés (cf. bandes) — le clip-path
+        // parcelle borde la ligne à la limite réelle.
+        const lenE = Math.hypot(p2x - p1x, p2y - p1y);
+        const ux = (p2x - p1x) / lenE, uy = (p2y - p1y) / lenE;
+        const extS = (P[i] && P[i].convex && !P[i].cur) ? RECUL_EXT : 0;
+        const extE = (P[iNext] && P[iNext].convex && !P[iNext].prev) ? RECUL_EXT : 0;
+        let seg = [
+          [p1x - ux * extS + nxu * r, p1y - uy * extS + nyu * r],
+          [p2x + ux * extE + nxu * r, p2y + uy * extE + nyu * r],
+        ];
+        if (ts)        seg = trimSegHP(seg[0], seg[1], ts.px, ts.py, ts.nx, ts.ny);
+        if (seg && te) seg = trimSegHP(seg[0], seg[1], te.px, te.py, te.nx, te.ny);
+        if (seg && Math.hypot(seg[1][0] - seg[0][0], seg[1][1] - seg[0][1]) > 0.05) {
+          const [si1x, si1y] = this._w2s(seg[0][0], seg[0][1]), [si2x, si2y] = this._w2s(seg[1][0], seg[1][1]);
           parts.push(`<line x1="${this._dd(si1x)}" y1="${this._dd(si1y)}" x2="${this._dd(si2x)}" y2="${this._dd(si2y)}" stroke="${col}" stroke-width="1.1" stroke-dasharray="${DASH[type]}" opacity=".88" clip-path="url(#pmc-tc)"/>`);
-          // Label
+        }
+        // Label — uniquement sur l'arête la plus longue du run
+        if (labelIdxs.has(i)) {
           const mx = (p1x + p2x) / 2 + nxu * r * 0.5, my = (p1y + p2y) / 2 + nyu * r * 0.5;
           const [slx, sly] = this._w2s(mx, my);
           const tLabel = { voie: 'voie', fond: 'fond', lat: 'lat.' }[type];
           const tw = (tLabel.length + r.toFixed(1).length + 2) * 4.6;
           parts.push(`<rect x="${this._dd(slx - tw / 2)}" y="${this._dd(sly - 9)}" width="${this._dd(tw)}" height="12" fill="rgba(240,237,225,.8)" rx="2" clip-path="url(#pmc-tc)"/>`);
           parts.push(`<text x="${this._dd(slx)}" y="${this._dd(sly)}" text-anchor="middle" font-size="8.5" fill="${col}" font-family="'Inconsolata',monospace" font-weight="600" clip-path="url(#pmc-tc)">${tLabel} ${r}m</text>`);
+        }
+      }
+      // Arcs pointillés aux sommets concaves — continuité de la ligne de recul
+      // entre les deux segments trimés (mêmes arcs que les camemberts de fill)
+      for (const c of this._concaveReculArcs(t.poly, N, P)) {
+        for (const a of c.arcs) {
+          const d = 'M' + a.pts.map(([x, y]) => { const [sx, sy] = this._w2s(x, y); return `${this._dd(sx)},${this._dd(sy)}`; }).join(' L');
+          parts.push(`<path d="${d}" fill="none" stroke="${COL[a.type]}" stroke-width="1.1" stroke-dasharray="${DASH[a.type]}" opacity=".88" clip-path="url(#pmc-tc)"/>`);
         }
       }
     }
@@ -1181,7 +1473,7 @@ const PlanMasseCanvas = {
         const PK = window.Parking;
         const pkResult = PK?.placeParkingExt?.(t.poly, this.S.edgeTypes, m.parkExt * 25, this.S.blocs);
         if (pkResult?.polygon) {
-          const pkClipped = clipSH(pkResult.polygon, t.poly);
+          const pkClipped = interPoly(pkResult.polygon, t.poly);
           if (pkClipped.length >= 3) {
             const pkPts = pkClipped.map(([x, y]) => this._w2s(x, y).map(v => this._dd(v)).join(',')).join(' ');
             parts.push(`<polygon points="${pkPts}" fill="rgba(172,164,140,.32)" stroke="rgba(120,112,90,.45)" stroke-width="1"/>`);
@@ -1198,7 +1490,7 @@ const PlanMasseCanvas = {
           if (this.S.parkSide === 'est') { const av = env2.x1 - (b.x + b.w) - GAP; pkw = Math.max(4, Math.min(13, av)); pkl = Math.min(env2.h, Math.max(5, totalArea / pkw)); pkx = Math.min(b.x + b.w + GAP, env2.x1 - pkw); pkbb = Math.max(env2.y, Math.min(b.y, env2.y1 - pkl)); }
           else { const av = b.y - env2.y - GAP; pkl = Math.max(4, Math.min(13, av)); pkw = Math.min(env2.w, Math.max(5, totalArea / pkl)); pkx = Math.max(env2.x, Math.min(b.x, env2.x1 - pkw)); pkbb = Math.max(env2.y, b.y - pkl - GAP); }
           const pkRect = [[pkx, pkbb], [pkx + pkw, pkbb], [pkx + pkw, pkbb + pkl], [pkx, pkbb + pkl]];
-          const pkClipped2 = clipSH(clipSH(pkRect, env.poly), t.poly);
+          const pkClipped2 = interPoly(interPoly(pkRect, env.poly), t.poly);
           if (pkClipped2.length >= 3) {
             const pkPts = pkClipped2.map(([x, y]) => this._w2s(x, y).map(v => this._dd(v)).join(',')).join(' ');
             parts.push(`<polygon points="${pkPts}" fill="rgba(172,164,140,.32)" stroke="rgba(120,112,90,.45)" stroke-width="1"/>`);
@@ -1239,13 +1531,13 @@ const PlanMasseCanvas = {
       const blPoly = bl.polygon?.length >= 3
         ? bl.polygon.map(p => [p.x ?? p[0], p.y ?? p[1]])
         : [[bl.x, bl.y], [bl.x + bl.w, bl.y], [bl.x + bl.w, bl.y + bl.l], [bl.x, bl.y + bl.l]];
-      const blClipped = clipSH(blPoly, t.poly);
+      const blClipped = interPoly(blPoly, t.poly);
       if (blClipped.length >= 3) batTotalArea += polyArea(blClipped);
     }
     // Fallback legacy : test AABB si blocs absents
     if (!this.S.blocs?.length) {
       const batRect = [[b.x, b.y], [b.x + b.w, b.y], [b.x + b.w, b.y + b.l], [b.x, b.y + b.l]];
-      const batClipped = clipSH(clipSH(batRect, env.poly), t.poly);
+      const batClipped = interPoly(interPoly(batRect, env.poly), t.poly);
       batTotalArea = batClipped.length >= 3 ? polyArea(batClipped) : 0;
     }
     const batSafe = batTotalArea >= SURFACE_MIN_M2;
@@ -1416,11 +1708,14 @@ const PlanMasseCanvas = {
       this._drawCellules(parts, m);
     }
 
-    // Arêtes limites — traits fins transparents + labels compacts
+    // Arêtes limites — traits fins transparents + labels compacts.
+    // Trait par arête, mais une seule puce par run d'arêtes consécutives de
+    // même type/recul (les limites courbes du cadastre = dizaines de micro-arêtes).
     { const n = t.poly.length;
       const EDGE_LABELS = { voie: 'VOIE', lat: 'LAT', fond: 'FOND' };
       const EDGE_COL_LIGHT = { voie: 'rgba(193,101,43,.35)', lat: 'rgba(100,116,139,.30)', fond: 'rgba(120,113,108,.30)' };
       const EDGE_BG = { voie: 'rgba(193,101,43,.75)', lat: 'rgba(100,116,139,.70)', fond: 'rgba(120,113,108,.70)' };
+      const chipIdxs = new Set(this._edgeRuns().map(r => r.labelIdx));
       for (let i = 0; i < n; i++) {
         const [p1x, p1y] = t.poly[i], [p2x, p2y] = t.poly[(i + 1) % n];
         const [sx1, sy1] = this._w2s(p1x, p1y), [sx2, sy2] = this._w2s(p2x, p2y);
@@ -1431,7 +1726,8 @@ const PlanMasseCanvas = {
         const sw = isMit ? 4 : 2;
         parts.push(`<line x1="${this._dd(sx1)}" y1="${this._dd(sy1)}" x2="${this._dd(sx2)}" y2="${this._dd(sy2)}" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" pointer-events="none"/>`);
 
-        // Label arête compact
+        // Label arête compact — uniquement sur l'arête la plus longue du run
+        if (!chipIdxs.has(i)) continue;
         const mx = (p1x + p2x) / 2, my = (p1y + p2y) / 2;
         const dx = p2x - p1x, dy = p2y - p1y, len = Math.hypot(dx, dy) || 1;
         const nxu = -dy / len, nyu = dx / len;
@@ -1750,7 +2046,7 @@ const PlanMasseCanvas = {
         [Math.max(...xs) + PAD, Math.max(...ys) + PAD],
         [Math.min(...xs) - PAD, Math.max(...ys) + PAD],
       ];
-      emp = clipSH(bbox, env.poly);
+      emp = interPoly(bbox, env.poly);
       if (!emp || emp.length < 3) emp = bbox;
     }
     const pts = emp.map(([x, y]) => this._w2s(x, y).map(v => this._dd(v)).join(',')).join(' ');
