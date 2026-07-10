@@ -2,7 +2,7 @@
 <html lang="fr" data-theme="ivory">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <meta name="description" content="TERLAB — Accueil · Gestion des projets terrain · ENSA La Réunion"/>
 <title>TERLAB · Accueil · ENSA La Réunion</title>
 
@@ -122,7 +122,7 @@ html, body { overflow: auto; }
   border-radius: 4px;
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 0.95rem;
+  font-size: 1rem; /* ≥16px : évite le zoom auto iOS au focus */
   padding: 8px 12px;
   outline: none;
   transition: border-color 0.2s;
@@ -133,6 +133,14 @@ html, body { overflow: auto; }
 }
 .accueil-field input::placeholder {
   color: var(--faint);
+}
+.accueil-form-hint {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--warning, #b8860b);
+  margin-top: 8px;
+  text-align: center;
+  min-height: 1em;
 }
 
 /* ── Grille projets ──────────────────────────────────────── */
@@ -237,6 +245,26 @@ html, body { overflow: auto; }
   opacity: 0.12;
   background-image:
     repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(255,255,255,.15) 8px, rgba(255,255,255,.15) 9px);
+}
+.pc-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pc-cloud-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: rgba(0,0,0,0.4);
+  color: rgba(255,255,255,0.9);
+  backdrop-filter: blur(2px);
 }
 .pc-thumb-progress {
   position: absolute;
@@ -478,7 +506,7 @@ html, body { overflow: auto; }
   border-radius: 4px;
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 0.9rem;
+  font-size: 1rem; /* ≥16px : évite le zoom auto iOS au focus */
   padding: 8px 12px;
   outline: none;
   box-sizing: border-box;
@@ -507,6 +535,25 @@ html, body { overflow: auto; }
   font-style: italic;
   font-family: var(--font-body);
   grid-column: 1 / -1;
+}
+
+/* ── Mobile (portrait ≤600px) ─────────────────────────────── */
+@media (max-width: 600px) {
+  .accueil-app { padding: 24px 14px calc(24px + env(safe-area-inset-bottom)); }
+  .accueil-header { margin-bottom: 24px; }
+  .accueil-logo-giep { width: 90px; }
+  .accueil-title { font-size: 1.6rem; }
+  .accueil-form { padding: 18px 16px; }
+  /* Labels au-dessus des champs (plus de colonne 80px) */
+  .accueil-field { flex-direction: column; align-items: stretch; gap: 4px; }
+  .accueil-field label { min-width: 0; text-align: left; }
+  .accueil-field input, .accueil-field select { padding: 12px; }
+  .accueil-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .project-card-new { min-height: 160px; }
+  /* Cibles tactiles ≥44px */
+  .pc-btn, .accueil-footer-btn, .auth-btn { min-height: 44px; }
+  .tl-modal { padding: 20px 18px 16px; }
+  .tl-modal-btn { min-height: 44px; padding: 10px 18px; }
 }
 </style>
 </head>
@@ -580,6 +627,7 @@ html, body { overflow: auto; }
         <option value="D">Groupe D</option>
       </select>
     </div>
+    <p class="accueil-form-hint" id="form-hint" role="status"></p>
   </section>
 
   <!-- Projets existants -->
@@ -626,6 +674,7 @@ html, body { overflow: auto; }
 <script type="module">
 import TerlabStorage from './components/terlab-storage.js';
 import { initializeApp }   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getDatabase, ref as fbRef, get as fbGet } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 import {
   getAuth,
   signInWithEmailAndPassword,
@@ -660,6 +709,10 @@ if (firebaseConfig?.apiKey) {
     // Persistance localStorage (par défaut, mais on l'explicite)
     await setPersistence(auth, browserLocalPersistence);
     window.TERLAB_AUTH = auth;
+    // RTDB : nécessaire pour lister/ouvrir les projets cloud depuis l'accueil
+    window.TERLAB_DB     = getDatabase(app);
+    window.TERLAB_FB_REF = fbRef;
+    window.TERLAB_FB_GET = fbGet;
   } catch (e) {
     console.error('TERLAB: init Firebase échoué', e);
   }
@@ -706,7 +759,20 @@ if (auth) {
     }
     updateAuthUI();
     render();
+    refreshCloudProjects();
   });
+}
+
+// ── Projets cloud (index /users/{uid}/terlabProjects) ─────
+let _cloudSessions = [];
+
+async function refreshCloudProjects() {
+  if (!isLoggedIn()) {
+    if (_cloudSessions.length) { _cloudSessions = []; render(); }
+    return;
+  }
+  _cloudSessions = await TerlabStorage.listCloudSessions();
+  render();
 }
 
 // ── Login modal ───────────────────────────────────────────
@@ -794,9 +860,19 @@ document.getElementById('login-email')?.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') document.getElementById('login-password').focus();
 });
 
+// ── Hint inline (l'accueil n'a pas de TerlabToast) ──────────
+let _hintTimer = null;
+function showFormHint(msg) {
+  const el = document.getElementById('form-hint');
+  if (!el) return;
+  el.textContent = msg;
+  clearTimeout(_hintTimer);
+  _hintTimer = setTimeout(() => { el.textContent = ''; }, 4000);
+}
+
 // ── État ────────────────────────────────────────────────────
 const PREFS_KEY   = 'terlab_accueil_prefs';
-const MAX_PROJETS = 8;
+const MAX_PROJETS = 15;
 
 function loadPrefs() {
   try {
@@ -867,15 +943,21 @@ function projectDisplayName(s) {
   return `Projet du ${dateStr}`;
 }
 
+// ── Échappement HTML (XSS : noms de projets / communes saisis librement,
+//    métadonnées venant de RTDB) — toute interpolation innerHTML passe par là
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function safeUrl(u) {
+  return /^(https:|data:image\/)/i.test(String(u ?? '')) ? esc(u) : '';
+}
+
 // ── Rendu grille ────────────────────────────────────────────
 function render() {
   const grid = document.getElementById('accueil-grid');
   const sessions = TerlabStorage.listSessions();
   const atLimit = sessions.length >= MAX_PROJETS;
-
-  // Compteur
-  document.getElementById('projects-count').textContent =
-    `${sessions.length} / ${MAX_PROJETS}`;
 
   let html = '';
 
@@ -886,21 +968,21 @@ function render() {
          aria-label="Créer un nouveau projet terrain">
       <div class="pc-new-icon">+</div>
       <div class="pc-new-label">Nouveau terrain</div>
-      ${atLimit ? '<div class="pc-new-limit">Maximum 8 projets atteint</div>' : ''}
+      ${atLimit ? `<div class="pc-new-limit">Maximum ${MAX_PROJETS} projets atteint</div>` : ''}
     </div>`;
 
   // Sessions existantes
   for (const s of sessions) {
-    const commune = s.terrain?.commune || '';
-    const name    = projectDisplayName(s);
+    const commune = esc(s.terrain?.commune || '');
+    const name    = esc(projectDisplayName(s));
     const pct     = s.completion ?? TerlabStorage._computeCompletion(s);
     const col     = pct < 30 ? 'var(--danger)' : pct < 60 ? 'var(--warning)' : 'var(--success)';
     const ago     = timeAgo(s.updatedAt);
     const [bg1, bg2] = thumbColor(s.id);
-    const initials = thumbInitials(s);
+    const initials = esc(thumbInitials(s));
 
     html += `
-    <div class="project-card" data-id="${s.id}" tabindex="0" role="button" aria-label="Ouvrir ${name}">
+    <div class="project-card" data-id="${esc(s.id)}" tabindex="0" role="button" aria-label="Ouvrir ${name}">
       <div class="pc-thumb" style="background:linear-gradient(135deg,${bg1},${bg2})">
         <div class="pc-thumb-pattern"></div>
         <span class="pc-thumb-initials">${initials}</span>
@@ -914,15 +996,58 @@ function render() {
           <span>${ago}</span>
         </div>
         <div class="pc-actions">
-          <button class="pc-btn pc-btn-open" data-id="${s.id}">Continuer</button>
-          <button class="pc-btn pc-btn-export" data-id="${s.id}" title="Exporter .terlab">Export</button>
-          <button class="pc-btn pc-btn-danger pc-btn-delete" data-id="${s.id}" title="Supprimer">✕</button>
+          <button class="pc-btn pc-btn-open" data-id="${esc(s.id)}">Continuer</button>
+          <button class="pc-btn pc-btn-export" data-id="${esc(s.id)}" title="Exporter .terlab">Export</button>
+          <button class="pc-btn pc-btn-danger pc-btn-delete" data-id="${esc(s.id)}" title="Supprimer">✕</button>
         </div>
       </div>
     </div>`;
   }
 
-  if (sessions.length === 0) {
+  // Projets cloud absents du localStorage (autre navigateur / autre port)
+  const localIds  = new Set(sessions.map(s => s.id));
+  const cloudOnly = _cloudSessions.filter(s => !localIds.has(s.id));
+
+  for (const s of cloudOnly) {
+    const rawName = s.name || `Projet ${String(s.id).slice(0, 6)}`;
+    const name = esc(rawName);
+    const pct  = s.completion ?? 0;
+    const col  = pct < 30 ? 'var(--danger)' : pct < 60 ? 'var(--warning)' : 'var(--success)';
+    const ago  = timeAgo(s.updatedAt);
+    const [bg1, bg2] = thumbColor(s.id);
+    const initials = esc(rawName.slice(0, 2).toUpperCase());
+    const thumbUrl = safeUrl(s.thumbnailUrl);
+    const thumb = thumbUrl
+      ? `<img src="${thumbUrl}" alt="" loading="lazy"/>`
+      : `<div class="pc-thumb-pattern"></div><span class="pc-thumb-initials">${initials}</span>`;
+
+    html += `
+    <div class="project-card" data-cloud-id="${esc(s.id)}" tabindex="0" role="button" aria-label="Ouvrir ${name} (cloud)">
+      <div class="pc-thumb" style="background:linear-gradient(135deg,${bg1},${bg2})">
+        ${thumb}
+        <span class="pc-cloud-badge">☁ cloud</span>
+        <div class="pc-thumb-progress" style="width:${pct}%;background:${col}"></div>
+      </div>
+      <div class="pc-body">
+        <div class="pc-name" title="${name}">${name}</div>
+        <div class="pc-meta">
+          <span>${pct}%</span>
+          <span>${ago}</span>
+        </div>
+        <div class="pc-actions">
+          <button class="pc-btn pc-btn-open-cloud" data-cloud-id="${esc(s.id)}">Continuer</button>
+          <button class="pc-btn pc-btn-danger pc-btn-delete-cloud" data-cloud-id="${esc(s.id)}" title="Supprimer du cloud">✕</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // Compteur : local / max + cloud
+  document.getElementById('projects-count').textContent =
+    `${sessions.length} / ${MAX_PROJETS}` +
+    (cloudOnly.length ? ` · ${cloudOnly.length} cloud` : '');
+
+  if (sessions.length === 0 && cloudOnly.length === 0) {
     html += `<div class="accueil-empty">Aucun projet terrain. Créez-en un pour commencer.</div>`;
   }
 
@@ -950,7 +1075,7 @@ let _deleteResolve = null;
 function showDeleteModal(projectName) {
   const overlay = document.getElementById('delete-modal');
   document.getElementById('delete-modal-msg').innerHTML =
-    `Le projet <strong>${projectName}</strong> sera supprimé définitivement.<br>Cette action est irréversible.`;
+    `Le projet <strong>${esc(projectName)}</strong> sera supprimé définitivement.<br>Cette action est irréversible.`;
   overlay.classList.add('tl-modal-visible');
   return new Promise(resolve => { _deleteResolve = resolve; });
 }
@@ -995,6 +1120,32 @@ function attachEvents() {
     });
   });
 
+  // Ouvrir projet cloud (bouton + carte entière)
+  document.querySelectorAll('.pc-btn-open-cloud').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openCloudSession(btn.dataset.cloudId);
+    });
+  });
+  document.querySelectorAll('.project-card[data-cloud-id]').forEach(card => {
+    card.addEventListener('click', () => openCloudSession(card.dataset.cloudId));
+  });
+
+  // Supprimer projet cloud — modal TERLAB
+  document.querySelectorAll('.pc-btn-delete-cloud').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const meta = _cloudSessions.find(s => s.id === btn.dataset.cloudId);
+      const name = meta?.name || 'ce projet cloud';
+      const confirmed = await showDeleteModal(name);
+      if (confirmed) {
+        await TerlabStorage.deleteCloudSession(btn.dataset.cloudId);
+        _cloudSessions = _cloudSessions.filter(s => s.id !== btn.dataset.cloudId);
+        render();
+      }
+    });
+  });
+
   // Supprimer — modal TERLAB
   document.querySelectorAll('.pc-btn-delete').forEach(btn => {
     btn.addEventListener('click', async (e) => {
@@ -1021,7 +1172,8 @@ function createNew() {
     input.focus();
     input.style.borderColor = 'var(--warning)';
     setTimeout(() => { input.style.borderColor = ''; }, 2000);
-    window.TerlabToast?.show('Saisissez votre prénom avant de créer un projet', 'warning', 3500);
+    // Pas de TerlabToast sur l'accueil (chargé uniquement par index.js) → hint inline
+    showFormHint('Saisissez votre prénom avant de créer un projet');
     return;
   }
   const sess = TerlabStorage.createSession(prefs);
@@ -1033,11 +1185,35 @@ function openSession(id) {
   window.location.href = `index.html?session=${id}`;
 }
 
+// Ouvrir un projet cloud absent du localStorage : on rapatrie la session
+// complète (/terlab/projects/{id}, fallback /sessions/{id}) en local, puis
+// on passe par le flux d'ouverture normal — index.js ne lit que TerlabStorage.
+async function openCloudSession(id) {
+  const db = window.TERLAB_DB;
+  if (!db) return;
+  const card = document.querySelector(`.project-card[data-cloud-id="${id}"]`);
+  if (card) { card.style.opacity = '0.5'; card.style.pointerEvents = 'none'; }
+  try {
+    let snap = await fbGet(fbRef(db, `terlab/projects/${id}`));
+    if (!snap.exists()) snap = await fbGet(fbRef(db, `sessions/${id}`));
+    if (!snap.exists()) {
+      showFormHint('Projet cloud introuvable — il a peut-être été supprimé.');
+      return;
+    }
+    TerlabStorage._save({ ...snap.val(), id });
+    openSession(id);
+  } catch (e) {
+    showFormHint('Erreur de chargement cloud : ' + e.message);
+  } finally {
+    if (card) { card.style.opacity = ''; card.style.pointerEvents = ''; }
+  }
+}
+
 // ── Import .terlab ──────────────────────────────────────────
 document.getElementById('btn-import')?.addEventListener('click', () => {
   const sessions = TerlabStorage.listSessions();
   if (sessions.length >= MAX_PROJETS) {
-    showDeleteModal('import impossible — maximum 8 projets atteint');
+    showDeleteModal(`import impossible — maximum ${MAX_PROJETS} projets atteint`);
     return;
   }
   document.getElementById('file-import').click();

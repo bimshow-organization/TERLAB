@@ -3,7 +3,7 @@
 // Chaque session = un projet terrain indépendant avec son propre UUID
 
 const STORAGE_KEY   = 'terlab_sessions';
-const MAX_SESSIONS  = 8;
+const MAX_SESSIONS  = 15;
 
 const TerlabStorage = {
 
@@ -178,6 +178,14 @@ const TerlabStorage = {
   // ── INTERNAL ──────────────────────────────────────────────
   _save(sess) {
     try {
+      // Snapshots carte (snap_*, base64) exclus du localStorage — quota 5 Mo
+      // (même règle que SessionManager._saveLocal, régénérés au idle carte)
+      if (sess.terrain) {
+        sess = { ...sess, terrain: { ...sess.terrain } };
+        Object.keys(sess.terrain).forEach(k => {
+          if (k.startsWith('snap_')) delete sess.terrain[k];
+        });
+      }
       const sessions = this.listSessions().filter(s => s.id !== sess.id);
       sessions.unshift(sess);
       // Limiter le nombre de sessions
