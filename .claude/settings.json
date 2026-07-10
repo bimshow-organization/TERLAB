@@ -1,0 +1,51 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Agent",
+      "TodoWrite",
+      "NotebookEdit",
+      "WebFetch",
+      "WebSearch",
+      "Skill",
+      "Bash(*)",
+      "PowerShell(*)",
+      "Read(//c/GITHUB/**)",
+      "Read(C:\\GITHUB\\**)",
+      "Read(//tmp/**)",
+      "Read(//c/tmp/**)",
+      "Read(//c/Users/mathi/.claude/**)"
+    ],
+    "deny": [
+      "Bash(git push:*)",
+      "PowerShell(git push:*)",
+      "Bash(git reset --hard:*)",
+      "PowerShell(git reset --hard:*)",
+      "Bash(git rebase:*)",
+      "PowerShell(git rebase:*)",
+      "Bash(git checkout --:*)",
+      "PowerShell(git checkout --:*)",
+      "Bash(git clean -f:*)",
+      "PowerShell(git clean -f:*)",
+      "Bash(rm -rf:*)",
+      "PowerShell(rm -rf:*)",
+      "PowerShell(Remove-Item -Recurse -Force:*)",
+      "Bash(npm publish:*)",
+      "PowerShell(npm publish:*)",
+      "Bash(shutdown:*)",
+      "PowerShell(shutdown:*)",
+      "Bash(reboot:*)",
+      "Bash(format:*)",
+      "PowerShell(Format-Volume:*)",
+      "Bash(del /s /q:*)"
+    ],
+    "additionalDirectories": [
+      "C:\\GITHUB",
+      "C:\\Users\\mathi\\Downloads"
+    ]
+  }
+}

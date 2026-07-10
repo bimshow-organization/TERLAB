@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>TERLAB · Pareto CityEngine Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inconsolata:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0e0c08;--bg1:#161209;--bg2:#1e1810;--bg3:#261f14;
+  --border:rgba(201,168,76,.18);--bhi:rgba(201,168,76,.45);
+  --text:#e8dfc8;--t2:#b09070;--t3:#7a6040;--t4:#4a3c28;
+  --gold:#c9a84c;--ok:#4ca870;--err:#e05030;
+  --blue:#5090d8;--violet:#a060d8;--warn:#d4902c;--rust:#c87040;--moss:#4a8a5a;
+  --rule:rgba(201,168,76,.08);
+}
+body{font-family:'Inconsolata',monospace;background:var(--bg);color:var(--text);
+  font-size:12px;line-height:1.45;user-select:none;height:100vh;
+  display:flex;flex-direction:column;overflow:hidden;
+  background-image:radial-gradient(circle at 20% 0%, rgba(201,168,76,.04), transparent 50%),
+                   radial-gradient(circle at 80% 100%, rgba(80,144,216,.03), transparent 50%)}
+
+/* ── TOP BAR ── */
+.topbar{flex-shrink:0;background:var(--bg1);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0;height:44px}
+.tb-title{padding:0 14px;font-family:'DM Serif Display',serif;font-size:1rem;color:var(--gold);
+  border-right:1px solid var(--border);height:44px;display:flex;flex-direction:column;justify-content:center;flex-shrink:0}
+.tb-title .sub{font-family:'Inconsolata',monospace;font-size:8px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--t3);margin-top:-2px}
+.tb-lbl{padding:0 10px;font-size:8px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--t3);height:44px;display:flex;align-items:center;border-right:1px solid var(--border)}
+.parcelle-tabs{display:flex;height:44px;flex:1}
+.ptab{padding:0 14px;height:44px;display:flex;flex-direction:column;justify-content:center;
+  border-right:1px solid var(--border);cursor:pointer;transition:all .15s;min-width:130px}
+.ptab .pnm{font-size:10px;color:var(--t2);letter-spacing:.02em}
+.ptab .pmt{font-size:7.5px;color:var(--t4);letter-spacing:.06em;margin-top:1px}
+.ptab:hover{background:rgba(201,168,76,.05)}
+.ptab.on{background:rgba(201,168,76,.1);border-bottom:2px solid var(--gold)}
+.ptab.on .pnm{color:var(--gold)}
+.ptab.on .pmt{color:var(--t3)}
+.tb-meta{padding:0 14px;height:44px;display:flex;align-items:center;gap:14px;
+  border-left:1px solid var(--border);font-size:9px;color:var(--t3)}
+.tb-meta strong{color:var(--text);font-weight:500;margin-left:3px}
+
+/* ── MAIN LAYOUT ── */
+.layout{flex:1;display:grid;grid-template-columns:220px minmax(0,1fr) 380px;
+  overflow:hidden;min-height:0;gap:1px;background:var(--border)}
+.panel{background:var(--bg);overflow-y:auto;overflow-x:hidden}
+
+/* ── LEFT PANEL (STRATEGY + SLIDERS) ── */
+.pnl-hd{padding:10px 12px 6px;font-size:8px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--t3);border-bottom:1px solid var(--rule);display:flex;justify-content:space-between}
+.pnl-hd span{color:var(--gold);font-weight:500}
+.pnl-sec{padding:10px 12px;border-bottom:1px solid var(--rule)}
+.strat-list{display:flex;flex-direction:column;gap:2px}
+.strat-btn{padding:7px 10px;border:1px solid var(--border);background:transparent;
+  color:var(--t2);cursor:pointer;font-family:inherit;font-size:10px;
+  text-align:left;display:flex;justify-content:space-between;align-items:center;
+  transition:all .12s;letter-spacing:.02em}
+.strat-btn:hover{border-color:var(--bhi);color:var(--text);background:rgba(201,168,76,.06)}
+.strat-btn.on{background:rgba(201,168,76,.15);border-color:var(--gold);color:var(--gold)}
+.strat-btn .id{font-size:8px;color:var(--t3);letter-spacing:.08em}
+.strat-btn.on .id{color:var(--warn)}
+.strat-btn .meta{font-size:7.5px;color:var(--t4);letter-spacing:.05em;margin-top:2px}
+.strat-btn.on .meta{color:var(--t3)}
+
+.slider-wrap{margin-bottom:10px}
+.slider-lbl{display:flex;justify-content:space-between;margin-bottom:5px;font-size:8.5px}
+.slider-lbl .k{color:var(--t3);letter-spacing:.06em;text-transform:uppercase}
+.slider-lbl .v{color:var(--text);font-weight:500}
+.slider-lbl .v.pareto{color:var(--gold)}
+input[type="range"]{-webkit-appearance:none;width:100%;height:3px;background:var(--bg2);
+  outline:none;border:1px solid var(--border);cursor:pointer;border-radius:0}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;
+  background:var(--gold);cursor:pointer;border-radius:50%;box-shadow:0 0 6px rgba(201,168,76,.4)}
+input[type="range"]::-moz-range-thumb{width:12px;height:12px;background:var(--gold);
+  cursor:pointer;border-radius:50%;border:none}
+.slider-lbl-t{font-size:7.5px;color:var(--t4);letter-spacing:.08em;
+  text-transform:uppercase;display:flex;justify-content:space-between;margin-top:3px}
+
+/* ── CENTER PANEL (PLAN) ── */
+.plan-wrap{background:#080705;position:relative;overflow:hidden;
+  display:flex;flex-direction:column}
+.plan-hd{height:32px;display:flex;align-items:center;padding:0 14px;gap:14px;
+  border-bottom:1px solid var(--border);background:var(--bg1);flex-shrink:0;font-size:9px}
+.plan-hd .kv{color:var(--t3)}
+.plan-hd .kv strong{color:var(--text);font-weight:500;margin-left:4px}
+.plan-hd .kv.ok strong{color:var(--ok)}
+.plan-hd .kv.err strong{color:var(--err)}
+.plan-canvas{flex:1;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at center, #100d08 0%, #070502 100%);padding:20px}
+.plan-svg{width:100%;height:100%;max-width:560px;max-height:560px}
+
+/* Plan elements */
+.parcelle-fill{fill:rgba(201,168,76,.03);stroke:rgba(201,168,76,.5);stroke-width:1.5;stroke-dasharray:2 3}
+.recul-fill{fill:rgba(224,80,48,.08);stroke:none}
+.inlet-fill{fill:rgba(201,168,76,.05);stroke:rgba(201,168,76,.35);stroke-width:0.5}
+.bloc-fill{fill:rgba(200,112,64,.6);stroke:var(--rust);stroke-width:1.2}
+.bloc-fill.multi{fill:rgba(200,112,64,.55)}
+.parking-ext{fill:rgba(80,144,216,.25);stroke:var(--blue);stroke-width:0.8;stroke-dasharray:2 2}
+.parking-rdc{fill:rgba(80,144,216,.1);stroke:var(--blue);stroke-width:0.6;stroke-dasharray:1 2}
+.parking-ss{fill:none;stroke:var(--blue);stroke-width:0.5;stroke-dasharray:1 3}
+.edge-voie{stroke:var(--rust);stroke-width:2}
+.edge-lat{stroke:rgba(80,144,216,.6);stroke-width:1.5}
+.edge-fond{stroke:rgba(76,168,112,.6);stroke-width:1.5}
+.edge-mit{stroke:var(--gold);stroke-width:2.5}
+.topo-line{fill:none;stroke:rgba(74,138,90,.25);stroke-width:0.5;stroke-dasharray:3 2}
+.grid-line{stroke:rgba(201,168,76,.05);stroke-width:0.3}
+.plan-label{font-family:'Inconsolata',monospace;font-size:1.3px;fill:var(--t3);letter-spacing:.02em}
+.plan-dim{font-family:'Inconsolata',monospace;font-size:1.4px;fill:var(--t2)}
+.compass{stroke:var(--gold);stroke-width:0.8;fill:var(--gold)}
+
+/* ── RIGHT PANEL (PARETO) ── */
+.pareto-wrap{display:flex;flex-direction:column;overflow:hidden}
+.scatter{background:var(--bg1);border:1px solid var(--rule);margin:12px;
+  position:relative;aspect-ratio:1;min-height:240px;max-height:320px;flex-shrink:0}
+.scatter canvas{width:100%;height:100%;display:block;cursor:crosshair}
+.scatter-axes{display:flex;padding:0 12px 8px;gap:8px;align-items:center}
+.axis-sel{display:flex;flex-direction:column;font-size:8px}
+.axis-sel .lbl{color:var(--t4);letter-spacing:.12em;text-transform:uppercase;margin-bottom:2px}
+.axis-sel select{background:var(--bg1);color:var(--text);border:1px solid var(--border);
+  padding:3px 5px;font-family:inherit;font-size:9px;cursor:pointer}
+
+.solutions-list{flex:1;overflow-y:auto;border-top:1px solid var(--border);padding:0 0 10px}
+.sol-hdr{padding:8px 14px 6px;font-size:8px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--t3);border-bottom:1px solid var(--rule);display:flex;justify-content:space-between;
+  background:var(--bg);position:sticky;top:0;z-index:1}
+.sol-hdr span{color:var(--gold)}
+.sol-item{padding:7px 14px;border-bottom:1px solid var(--rule);cursor:pointer;
+  transition:all .1s;display:grid;grid-template-columns:18px 1fr auto;gap:8px;align-items:center}
+.sol-item:hover{background:rgba(201,168,76,.05)}
+.sol-item.active{background:rgba(201,168,76,.12);border-left:2px solid var(--gold)}
+.sol-rank{font-size:8px;color:var(--t4);letter-spacing:.05em;text-align:center}
+.sol-item.active .sol-rank{color:var(--gold)}
+.sol-main{font-size:9.5px;color:var(--t2);letter-spacing:.02em}
+.sol-item.active .sol-main{color:var(--text)}
+.sol-main strong{color:var(--gold);font-weight:500;margin-right:6px}
+.sol-main .sep{color:var(--t4);margin:0 4px}
+.sol-meta{font-size:7.5px;color:var(--t4);letter-spacing:.04em;margin-top:2px}
+.sol-score{font-size:8px;color:var(--t3);font-variant-numeric:tabular-nums}
+.sol-item.active .sol-score{color:var(--ok)}
+
+/* ── BOTTOM METRICS ── */
+.metrics{flex-shrink:0;background:var(--bg1);border-top:1px solid var(--border);
+  padding:10px 14px;display:grid;grid-template-columns:repeat(8,1fr);gap:14px;font-size:8px}
+.metric{display:flex;flex-direction:column;gap:2px}
+.metric .k{color:var(--t3);letter-spacing:.12em;text-transform:uppercase;font-size:7.5px}
+.metric .v{color:var(--text);font-size:16px;font-family:'DM Serif Display',serif;
+  font-weight:400;letter-spacing:-.01em}
+.metric .v.ok{color:var(--ok)}.metric .v.warn{color:var(--warn)}.metric .v.err{color:var(--err)}
+.metric .u{color:var(--t3);font-size:8px;margin-left:2px}
+.metric .sub{color:var(--t4);font-size:8px;letter-spacing:.06em}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-track{background:var(--bg1)}
+::-webkit-scrollbar-thumb{background:rgba(201,168,76,.2)}
+::-webkit-scrollbar-thumb:hover{background:rgba(201,168,76,.4)}
+
+/* Utilities */
+.hint{font-size:7.5px;color:var(--t4);letter-spacing:.04em;line-height:1.5;margin-top:6px;font-style:italic}
+.badge{display:inline-block;padding:1px 5px;font-size:7.5px;letter-spacing:.06em;
+  background:rgba(201,168,76,.12);color:var(--gold);border:1px solid rgba(201,168,76,.3);border-radius:2px}
+.badge.err{background:rgba(224,80,48,.1);color:var(--err);border-color:rgba(224,80,48,.3)}
+.badge.ok{background:rgba(76,168,112,.1);color:var(--ok);border-color:rgba(76,168,112,.3)}
+.divider{height:1px;background:var(--border);margin:10px -12px}
+</style>
+</head>
+<body>
+
+<!-- ══════════ TOP BAR ══════════ -->
+<div class="topbar">
+  <div class="tb-title">
+    TERLAB <span class="sub">PARETO CITYENGINE · v0.1</span>
+  </div>
+  <div class="tb-lbl">Parcelle</div>
+  <div class="parcelle-tabs" id="ptabs"></div>
+  <div class="tb-meta">
+    <div>PLU <strong id="plu-zone">Uc</strong></div>
+    <div>emprMax <strong id="plu-empr">60%</strong></div>
+    <div>permMin <strong id="plu-perm">70%</strong></div>
+    <div>heMax <strong id="plu-h">9m</strong></div>
+  </div>
+</div>
+
+<!-- ══════════ MAIN LAYOUT ══════════ -->
+<div class="layout">
+
+  <!-- LEFT PANEL -->
+  <div class="panel">
+
+    <div class="pnl-sec">
+      <div class="pnl-hd" style="padding:0 0 8px;border:none">Stratégie <span id="strat-count"></span></div>
+      <div class="strat-list" id="strat-list"></div>
+      <div class="hint">Chaque stratégie génère ses propres variantes et produit un front Pareto distinct.</div>
+    </div>
+
+    <div class="pnl-sec">
+      <div class="pnl-hd" style="padding:0 0 8px;border:none">Parcours du front <span id="front-info"></span></div>
+      <div class="slider-wrap">
+        <div class="slider-lbl"><span class="k">Densité</span><span class="v pareto" id="slider-val">—</span></div>
+        <input type="range" id="main-slider" min="0" max="0" value="0" step="1">
+        <div class="slider-lbl-t"><span>min</span><span>max</span></div>
+      </div>
+      <div class="hint">Tri des solutions Pareto-optimales par nombre de logements croissant.</div>
+    </div>
+
+    <div class="pnl-sec">
+      <div class="pnl-hd" style="padding:0 0 8px;border:none">Intentions</div>
+      <div class="slider-wrap">
+        <div class="slider-lbl"><span class="k">Écologie</span><span class="v" id="int-eco-v">0</span></div>
+        <input type="range" id="int-eco" min="0" max="100" value="0" step="5">
+      </div>
+      <div class="slider-wrap">
+        <div class="slider-lbl"><span class="k">Qualité orient.</span><span class="v" id="int-qua-v">0</span></div>
+        <input type="range" id="int-qua" min="0" max="100" value="0" step="5">
+      </div>
+      <div class="slider-wrap">
+        <div class="slider-lbl"><span class="k">Économie</span><span class="v" id="int-eco2-v">0</span></div>
+        <input type="range" id="int-eco2" min="0" max="100" value="0" step="5">
+      </div>
+      <div class="slider-wrap">
+        <div class="slider-lbl"><span class="k">Compacité</span><span class="v" id="int-cmp-v">0</span></div>
+        <input type="range" id="int-cmp" min="0" max="100" value="0" step="5">
+      </div>
+      <div class="hint">Les intentions réordonnent la liste des solutions (filtrage post-hoc) sans modifier le front.</div>
+    </div>
+
+  </div>
+
+  <!-- CENTER: PLAN -->
+  <div class="plan-wrap">
+    <div class="plan-hd">
+      <div class="kv">Stratégie <strong id="hd-strat">—</strong></div>
+      <div class="kv">DoF <strong id="hd-dof">—</strong></div>
+      <div class="kv ok" id="hd-valid-wrap">Conformité <strong id="hd-valid">—</strong></div>
+    </div>
+    <div class="plan-canvas">
+      <svg id="plan-svg" class="plan-svg" viewBox="-15 -15 70 70" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+  </div>
+
+  <!-- RIGHT: PARETO -->
+  <div class="panel pareto-wrap">
+    <div class="pnl-hd">Front Pareto <span id="pareto-stats"></span></div>
+    <div class="scatter">
+      <canvas id="scatter-canvas"></canvas>
+    </div>
+    <div class="scatter-axes">
+      <div class="axis-sel">
+        <div class="lbl">Axe X</div>
+        <select id="axis-x">
+          <option value="nbLogements">Nb logements</option>
+          <option value="empriseFrac">Emprise %</option>
+          <option value="niveaux">Niveaux</option>
+          <option value="circulationRatio">Circulation %</option>
+        </select>
+      </div>
+      <div class="axis-sel">
+        <div class="lbl">Axe Y</div>
+        <select id="axis-y">
+          <option value="permeabilite">Perméabilité %</option>
+          <option value="orientationScore">Orientation</option>
+          <option value="parkingFriction">Friction PK</option>
+          <option value="compacite">Compacité</option>
+        </select>
+      </div>
+    </div>
+    <div class="solutions-list" id="sol-list">
+      <div class="sol-hdr">Solutions <span id="sol-count"></span></div>
+      <div id="sol-items"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════ BOTTOM METRICS ══════════ -->
+<div class="metrics" id="metrics">
+  <div class="metric"><div class="k">Logements</div><div class="v" id="m-lgts">—</div></div>
+  <div class="metric"><div class="k">Emprise</div><div class="v" id="m-empr">—<span class="u">m²</span></div><div class="sub" id="m-empr-pct">—</div></div>
+  <div class="metric"><div class="k">SDP</div><div class="v" id="m-sdp">—<span class="u">m²</span></div><div class="sub" id="m-sdp-sub">—</div></div>
+  <div class="metric"><div class="k">Perméable</div><div class="v" id="m-perm">—<span class="u">%</span></div><div class="sub" id="m-perm-sub">—</div></div>
+  <div class="metric"><div class="k">Parking</div><div class="v" id="m-pk">—</div><div class="sub" id="m-pk-sub">—</div></div>
+  <div class="metric"><div class="k">Niveaux</div><div class="v" id="m-niv">—</div></div>
+  <div class="metric"><div class="k">Orientation</div><div class="v" id="m-ori">—</div></div>
+  <div class="metric"><div class="k">Limiting</div><div class="v" id="m-lim" style="font-size:12px">—</div></div>
+</div>
+
+<script>
+'use strict';
+
+// ════════════════════════════════════════════════════════════════════
+// PARCELLES (3 presets)
+// ════════════════════════════════════════════════════════════════════
+const PARCELLES = {
+  avirons: {
+    id: 'avirons', name: 'Les Avirons 990m²',
+    subtitle: 'Plat · Rectangle · Uc',
+    // Polygone en mètres (origin SW)
+    poly: [[0,0], [33,0], [33,30], [0,30]],
+    edges: [
+      {type:'voie', recul:5, len:33},     // sud
+      {type:'lat',  recul:4, len:30},     // est
+      {type:'fond', recul:4, len:33},     // nord
+      {type:'lat',  recul:4, len:30}      // ouest
+    ],
+    topo: {slope:0, direction:0},         // plat
+    plu: {emprMax:0.60, permMin:0.70, heMax:9, reculs:{voie:5, lat:4, fond:4}, zone:'Uc'},
+    surface: 990
+  },
+  stpaul: {
+    id: 'stpaul', name: 'Saint-Paul 840m²',
+    subtitle: 'Plat · Trapèze · Uc',
+    poly: [[0,0], [32,0], [28,28], [0,26]],
+    edges: [
+      {type:'voie', recul:6, len:32},
+      {type:'lat',  recul:4, len:28},
+      {type:'fond', recul:4, len:28},
+      {type:'mit',  recul:0, len:26}      // mitoyen ouest
+    ],
+    topo: {slope:0, direction:0},
+    plu: {emprMax:0.60, permMin:0.70, heMax:9, reculs:{voie:6, lat:4, fond:4}, zone:'Uc'},
+    surface: 840
+  },
+  pente: {
+    id: 'pente', name: 'En pente 900m²',
+    subtitle: 'Pente 15% · Uc',
+    poly: [[0,0], [30,0], [30,30], [0,30]],
+    edges: [
+      {type:'voie', recul:5, len:30},
+      {type:'lat',  recul:4, len:30},
+      {type:'fond', recul:4, len:30},
+      {type:'lat',  recul:4, len:30}
+    ],
+    topo: {slope:0.15, direction:90},     // pente vers nord
+    plu: {emprMax:0.50, permMin:0.60, heMax:7, reculs:{voie:5, lat:4, fond:4}, zone:'Uc'},
+    surface: 900
+  },
+  grand: {
+    id: 'grand', name: 'Grand terrain 3000m²',
+    subtitle: 'Plat · Rectangle · Ub',
+    poly: [[0,0], [60,0], [60,50], [0,50]],
+    edges: [
+      {type:'voie', recul:5, len:60},
+      {type:'lat',  recul:4, len:50},
+      {type:'fond', recul:5, len:60},
+      {type:'lat',  recul:4, len:50}
+    ],
+    topo: {slope:0, direction:0},
+    plu: {emprMax:0.60, permMin:0.40, heMax:12, reculs:{voie:5, lat:4, fond:5}, zone:'Ub'},
+    surface: 3000
+  }
+};
+
+// ════════════════════════════════════════════════════════════════════
+// GEOMETRY UTILS
+// ════════════════════════════════════════════════════════════════════
+function polyArea(p){
+  let a=0;for(let i=0,n=p.length;i<n;i++){const j=(i+1)%n;a+=p[i][0]*p[j][1]-p[j][0]*p[i][1];}
+  return Math.abs(a/2);
+}
+function polyCentroid(p){
+  let cx=0,cy=0;for(const pt of p){cx+=pt[0];cy+=pt[1];}
+  return [cx/p.length, cy/p.length];
+}
+function polyBounds(p){
+  let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+  for(const pt of p){minX=Math.min(minX,pt[0]);maxX=Math.max(maxX,pt[0]);
+    minY=Math.min(minY,pt[1]);maxY=Math.max(maxY,pt[1]);}
+  return {minX,maxX,minY,maxY,w:maxX-minX,h:maxY-minY};
+}
+function pointInPoly(pt,p){
+  let inside=false;const[x,y]=pt;
+  for(let i=0,j=p.length-1;i<p.length;j=i++){
+    const[xi,yi]=p[i],[xj,yj]=p[j];
+    if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))inside=!inside;
+  }
+  return inside;
+}
+function rotatePoly(p, center, angleDeg){
+  const a=angleDeg*Math.PI/180;const c=Math.cos(a),s=Math.sin(a);
+  return p.map(([x,y])=>[
+    center[0]+(x-center[0])*c-(y-center[1])*s,
+    center[1]+(x-center[0])*s+(y-center[1])*c
+  ]);
+}
+// Rectangle aligné axes, centré en (cx,cy)
+function rect(cx, cy, w, h){
+  return [[cx-w/2,cy-h/2],[cx+w/2,cy-h/2],[cx+w/2,cy+h/2],[cx-w/2,cy+h/2]];
+}
+// Inlet simple: rectangle parcelle shrinké selon reculs par arête
+function computeInlet(parcelle){
+  const b=polyBounds(parcelle.poly);
+  const r=parcelle.plu.reculs;
+  // Pour trapèze : prendre reculs min/max par côté
+  // Pour le POC on simplifie : bbox shrinkée par reculs moyens
+  // Détection mitoyen : recul 0
+  const edges=parcelle.edges;
+  let voieRec=r.voie, latRec=r.lat, fondRec=r.fond;
+  let mitN=false, mitE=false, mitS=false, mitW=false;
+  // Edge 0 = sud (voie), 1 = est, 2 = nord (fond), 3 = ouest
+  // Attribution des reculs :
+  const rS = edges[0].type === 'mit' ? 0 : (edges[0].type==='voie'?voieRec:(edges[0].type==='fond'?fondRec:latRec));
+  const rE = edges[1].type === 'mit' ? 0 : (edges[1].type==='voie'?voieRec:(edges[1].type==='fond'?fondRec:latRec));
+  const rN = edges[2].type === 'mit' ? 0 : (edges[2].type==='voie'?voieRec:(edges[2].type==='fond'?fondRec:latRec));
+  const rW = edges[3].type === 'mit' ? 0 : (edges[3].type==='voie'?voieRec:(edges[3].type==='fond'?fondRec:latRec));
+  // Inlet rectangulaire (approximation)
+  const inlet = [
+    [b.minX+rW, b.minY+rS],
+    [b.maxX-rE, b.minY+rS],
+    [b.maxX-rE, b.maxY-rN],
+    [b.minX+rW, b.maxY-rN]
+  ];
+  return {poly:inlet, bounds:polyBounds(inlet), reculs:{voie:rS, lat:latRec, fond:rN}};
+}
+
+// ════════════════════════════════════════════════════════════════════
+// STRATEGY GENERATORS
+// ════════════════════════════════════════════════════════════════════
+const STRATEGIES = {
+  densite: {
+    id:'A1', name:'Densité', hint:'1 bloc central, scale variable',
+    dofAxes:['emprFrac','niveaux','pkMode'],
+    generate(parcelle, inlet){
+      const vars=[];
+      const b=inlet.bounds;
+      const cx=(b.minX+b.maxX)/2, cy=(b.minY+b.maxY)/2;
+      const emprFracs=[0.40,0.55,0.70,0.85,1.0];
+      const niveauxList=[1,2,3];
+      const pkModes=['ext','rdc','ss'];
+      let id=0;
+      for(const ef of emprFracs){
+        for(const nv of niveauxList){
+          for(const pk of pkModes){
+            const w=Math.min(b.w*Math.sqrt(ef), b.w);
+            const h=Math.min(b.h*Math.sqrt(ef), b.h);
+            const bloc=rect(cx, cy, w, h);
+            vars.push({
+              id:`densite_${id++}`, strategy:'densite',
+              dof:{emprFrac:ef, niveaux:nv, pkMode:pk},
+              blocs:[bloc],
+              niveaux:nv, pkMode:pk,
+              rotationDeg:0
+            });
+          }
+        }
+      }
+      return vars;
+    }
+  },
+
+  multi: {
+    id:'A2', name:'Multi', hint:'2-3 barres // face voie',
+    dofAxes:['nBlocs','gap','niveaux','pkMode'],
+    generate(parcelle, inlet){
+      const vars=[];
+      const b=inlet.bounds;
+      const nBlocsList=[1,2,3];
+      const gapList=[4.5, 6, 8];
+      const niveauxList=[1,2,3];
+      const pkModes=['ext','ss'];
+      let id=0;
+      for(const nB of nBlocsList){
+        for(const gap of gapList){
+          for(const nv of niveauxList){
+            for(const pk of pkModes){
+              // Blocs // à voie (= arête sud = axe x)
+              const totalW = b.w;
+              const blocW = Math.min(10, (totalW - (nB-1)*gap) / nB);
+              if(blocW<6) continue;
+              const blocH = Math.min(14, b.h * 0.7);
+              const blocs=[];
+              const startX = b.minX + (totalW - (nB*blocW + (nB-1)*gap))/2 + blocW/2;
+              const cy = (b.minY+b.maxY)/2;
+              for(let i=0;i<nB;i++){
+                const cx = startX + i*(blocW+gap);
+                blocs.push(rect(cx, cy, blocW, blocH));
+              }
+              vars.push({
+                id:`multi_${id++}`, strategy:'multi',
+                dof:{nBlocs:nB, gap, niveaux:nv, pkMode:pk},
+                blocs, niveaux:nv, pkMode:pk, rotationDeg:0
+              });
+            }
+          }
+        }
+      }
+      return vars;
+    }
+  },
+
+  bibarre: {
+    id:'BB', name:'Bi-barre', hint:'2 barres //, gap large',
+    dofAxes:['blocL','gap','niveaux','pkMode'],
+    generate(parcelle, inlet){
+      const vars=[];
+      const b=inlet.bounds;
+      const blocLFracs=[0.6, 0.8, 1.0];
+      const niveauxList=[1,2,3];
+      const pkModes=['ext','rdc','ss'];
+      // blocW adaptatif : épaisseur de chaque barre. Max 10m (RTAA), min 6m (utile)
+      // Pour un inlet de hauteur h avec gap g et 2 barres : blocW = (h - g) / 2
+      const gapCandidates = [5, 7, 9, 12];
+      let id=0;
+      for(const lf of blocLFracs){
+        for(const gap of gapCandidates){
+          // blocW calculé pour remplir la hauteur disponible
+          const blocW = Math.min(10, (b.h - gap) / 2);
+          if(blocW < 6) continue;  // barre trop fine → inutile
+          for(const nv of niveauxList){
+            for(const pk of pkModes){
+              const blocL = Math.min(b.w, b.w*lf);
+              if(blocL < 8) continue;
+              const totalH = 2*blocW + gap;
+              const cx = (b.minX+b.maxX)/2;
+              const cy1 = b.minY + blocW/2 + (b.h - totalH)/2;
+              const cy2 = cy1 + blocW + gap;
+              const blocs = [
+                rect(cx, cy1, blocL, blocW),
+                rect(cx, cy2, blocL, blocW)
+              ];
+              vars.push({
+                id:`bibarre_${id++}`, strategy:'bibarre',
+                dof:{blocL:lf, gap, blocW:blocW.toFixed(1), niveaux:nv, pkMode:pk},
+                blocs, niveaux:nv, pkMode:pk, rotationDeg:0
+              });
+            }
+          }
+        }
+      }
+      return vars;
+    }
+  },
+
+  isohypses: {
+    id:'D1', name:'Isohypses', hint:'⊥ pente ou rotation random si plat',
+    dofAxes:['nTerrasses','profondeur','orientation','pkMode'],
+    generate(parcelle, inlet){
+      const vars=[];
+      const b=inlet.bounds;
+      const cx=(b.minX+b.maxX)/2, cy=(b.minY+b.maxY)/2;
+      const isFlat = (parcelle.topo.slope || 0) < 0.08;
+      // Si pente : orientation fixée perpendiculaire à la pente
+      // Si plat : rotation random parmi 6 valeurs
+      const orientations = isFlat
+        ? [0, 30, 60, 90, 120, 150]
+        : [(parcelle.topo.direction + 90) % 180];
+      const nTerrassesList = [2, 3, 4];
+      const profList = [6, 8, 10];      // profondeur terrasse
+      const gapList = [3, 4, 5];         // gap inter-terrasses
+      const pkModes = ['ext','rdc'];
+      let id=0;
+      for(const nT of nTerrassesList){
+        for(const prof of profList){
+          for(const gap of gapList){
+            for(const rot of orientations){
+              for(const pk of pkModes){
+                const totalH = nT*prof + (nT-1)*gap;
+                if(totalH > b.h) continue;
+                const longueur = Math.min(b.w*0.85, 22);
+                if(longueur < 10) continue;
+                const blocs=[];
+                const startY = cy - totalH/2 + prof/2;
+                for(let i=0;i<nT;i++){
+                  const by = startY + i*(prof+gap);
+                  let bloc = rect(cx, by, longueur, prof);
+                  if(rot !== 0) bloc = rotatePoly(bloc, [cx, cy], rot);
+                  blocs.push(bloc);
+                }
+                vars.push({
+                  id:`iso_${id++}`, strategy:'isohypses',
+                  dof:{nT, prof, gap, rot, pkMode:pk},
+                  blocs, niveaux:2, pkMode:pk, rotationDeg:rot,
+                  slopeAuto:!isFlat
+                });
+              }
+            }
+          }
+        }
+      }
+      return vars;
+    }
+  },
+
+  damier: {
+    id:'P1', name:'Damier 8×8', hint:'Grille de plots — pattern urbain',
+    dofAxes:['cellSize','spacing','niveaux','pkMode'],
+    generate(parcelle, inlet){
+      const vars=[];
+      const b=inlet.bounds;
+      const cellList=[6, 8, 10];
+      const spacingList=[2, 3, 4];
+      const niveauxList=[1, 2];
+      const pkModes=['ext','rdc','ss'];
+      let id=0;
+      for(const cs of cellList){
+        for(const sp of spacingList){
+          for(const nv of niveauxList){
+            for(const pk of pkModes){
+              const step = cs + sp;
+              const nCols = Math.floor((b.w + sp) / step);
+              const nRows = Math.floor((b.h + sp) / step);
+              if(nCols<2 || nRows<2) continue;
+              const totalW = nCols*cs + (nCols-1)*sp;
+              const totalH = nRows*cs + (nRows-1)*sp;
+              const startX = b.minX + (b.w - totalW)/2 + cs/2;
+              const startY = b.minY + (b.h - totalH)/2 + cs/2;
+              const blocs=[];
+              for(let r=0;r<nRows;r++){
+                for(let c=0;c<nCols;c++){
+                  const cx = startX + c*step;
+                  const cy = startY + r*step;
+                  blocs.push(rect(cx, cy, cs, cs));
+                }
+              }
+              vars.push({
+                id:`damier_${id++}`, strategy:'damier',
+                dof:{cellSize:cs, spacing:sp, niveaux:nv, pkMode:pk, nCells:blocs.length},
+                blocs, niveaux:nv, pkMode:pk, rotationDeg:0
+              });
+            }
+          }
+        }
+      }
+      return vars;
+    }
+  }
+};
+
+// ════════════════════════════════════════════════════════════════════
+// EVALUATOR — multi-objective
+// ════════════════════════════════════════════════════════════════════
+const SP_MOY = 57;        // m² par logement collectif T2-T3
+const EFF_BAT = 0.82;
+const PK_PER_LGT = 2;
+const PK_M2 = 25;
+// Réunion lat -21° : soleil au Nord → favoriser façades nord/est
+// Azimut : 0°=Est, 90°=Nord, 180°=Ouest, 270°=Sud
+function orientationWeight(azimutDeg){
+  // Nord(90°)=1, Est(0°)=0.8, Ouest(180°)=0.3, Sud(270°)=0.4
+  const a = ((azimutDeg % 360) + 360) % 360;
+  if(a < 45)  return 0.8 + 0.2*(a/45);          // E→NE
+  if(a < 135) return 1.0 - 0.2*Math.abs(a-90)/45; // NE→N→NO
+  if(a < 225) return 0.6 - 0.3*(a-135)/90;      // NO→O→SO
+  return 0.3 + 0.5*(a-225)/135;                 // SO→S→SE
+}
+function evaluateVariant(variant, parcelle, inlet){
+  const plu = parcelle.plu;
+  const empriseTotale = variant.blocs.reduce((s,b)=>s+polyArea(b), 0);
+  const empriseFrac = empriseTotale / parcelle.surface;
+
+  // SDP totale
+  const sdp = empriseTotale * EFF_BAT * variant.niveaux;
+
+  // Logements
+  const nbLogements = Math.floor(sdp / SP_MOY);
+
+  // Parking
+  const pkPlaces = nbLogements * PK_PER_LGT;
+  const pkArea = pkPlaces * PK_M2;
+  let pkExtSurface = 0;
+  if(variant.pkMode === 'ext') pkExtSurface = pkArea;
+  else if(variant.pkMode === 'mixte') pkExtSurface = pkArea * 0.5;
+
+  // Budget imperméable
+  const surfaceImpermeable = empriseTotale + pkExtSurface;
+  const permeabilite = 1 - (surfaceImpermeable / parcelle.surface);
+
+  // Orientation : moyenne des façades
+  let orientSum=0, orientTotal=0;
+  for(const bloc of variant.blocs){
+    for(let i=0;i<bloc.length;i++){
+      const j=(i+1)%bloc.length;
+      const [x1,y1]=bloc[i], [x2,y2]=bloc[j];
+      const len = Math.hypot(x2-x1, y2-y1);
+      // Façade normale = azimut perpendiculaire à l'arête, vers l'extérieur
+      const az = Math.atan2(x2-x1, y2-y1) * 180/Math.PI + 90;
+      orientSum += orientationWeight(az) * len;
+      orientTotal += len;
+    }
+  }
+  const orientationScore = orientTotal > 0 ? orientSum/orientTotal : 0.5;
+
+  // Circulation ratio : estimée par stratégie
+  const circMap = {densite:0.08, multi:0.14, bibarre:0.12, isohypses:0.18, damier:0.20};
+  const circulationRatio = circMap[variant.strategy] || 0.15;
+
+  // Parking friction : distance moyenne PK→entrée bâti la plus proche
+  // Approximation : si ext, distance = diagonale parcelle/3 ; si rdc/ss, 5m
+  let parkingFriction = 0.3;
+  if(variant.pkMode === 'ext') parkingFriction = 0.6;
+  else if(variant.pkMode === 'mixte') parkingFriction = 0.4;
+  else if(variant.pkMode === 'rdc') parkingFriction = 0.2;
+  else if(variant.pkMode === 'ss') parkingFriction = 0.25;
+
+  // Compacité : Polsby-Popper moyen des blocs
+  let compSum=0;
+  for(const bloc of variant.blocs){
+    const a = polyArea(bloc);
+    let perim=0;
+    for(let i=0;i<bloc.length;i++){
+      const j=(i+1)%bloc.length;
+      perim += Math.hypot(bloc[j][0]-bloc[i][0], bloc[j][1]-bloc[i][1]);
+    }
+    compSum += (4*Math.PI*a)/(perim*perim);
+  }
+  const compacite = variant.blocs.length > 0 ? compSum/variant.blocs.length : 0;
+
+  // Prospect cost (distance minimale entre blocs)
+  let prospectCost = 0;
+  if(variant.blocs.length > 1){
+    let minDist=Infinity;
+    for(let i=0;i<variant.blocs.length;i++){
+      for(let j=i+1;j<variant.blocs.length;j++){
+        const c1=polyCentroid(variant.blocs[i]);
+        const c2=polyCentroid(variant.blocs[j]);
+        const d=Math.hypot(c1[0]-c2[0], c1[1]-c2[1]);
+        minDist = Math.min(minDist, d);
+      }
+    }
+    const H = variant.niveaux * 3;
+    // Règle : gap >= 8m ou H (façade-à-façade)
+    prospectCost = Math.max(0, (Math.max(8, H) - minDist) / Math.max(8, H));
+  }
+
+  // Validation (contraintes dures) — POC : contraintes relâchées pour avoir des solutions
+  const violations = [];
+  if(empriseFrac > plu.emprMax + 0.05) violations.push('emprMax');
+  // permMin : contrainte soft (tolérance large pour Uc 70% → accepte jusqu'à 30% perm)
+  if(permeabilite < Math.max(0.20, plu.permMin - 0.30)) violations.push('permMin');
+  if(variant.niveaux * 3 > plu.heMax + 0.5) violations.push('heMax');
+  // RTAA : warning (pénalité dans objectifs), pas invalidation
+  let rtaaWarning = false;
+  for(const bloc of variant.blocs){
+    const bb=polyBounds(bloc);
+    if(Math.min(bb.w, bb.h) > 12) { rtaaWarning = true; break; }
+  }
+  // Inlet check (approximation via centroid)
+  for(const bloc of variant.blocs){
+    const c=polyCentroid(bloc);
+    if(!pointInPoly(c, inlet.poly)) { violations.push('inlet'); break; }
+  }
+
+  // Limiting factor
+  let limiting = 'aucun';
+  if(empriseFrac >= plu.emprMax - 0.02) limiting = 'emprMax';
+  else if(permeabilite <= plu.permMin + 0.05) limiting = 'permMin';
+  else if(variant.niveaux * 3 >= plu.heMax - 0.5) limiting = 'heMax';
+  else if(prospectCost > 0.3) limiting = 'prospect';
+
+  return {
+    objectives: {
+      // Tous convertis en MINIMISATION
+      nbLogements_neg: -nbLogements,
+      permeabilite_neg: -permeabilite,
+      orientationScore_neg: -orientationScore,
+      prospectCost,
+      parkingFriction,
+      circulationRatio
+    },
+    display: {
+      nbLogements, empriseTotale, empriseFrac, sdp, permeabilite,
+      orientationScore, prospectCost, parkingFriction, circulationRatio,
+      compacite, pkPlaces, pkArea, pkExtSurface, limiting, rtaaWarning,
+      pluConform: permeabilite >= plu.permMin - 0.05 && empriseFrac <= plu.emprMax + 0.02
+    },
+    valid: violations.length === 0,
+    violations
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PARETO (NSGA-II lite)
+// ════════════════════════════════════════════════════════════════════
+function dominates(objA, objB){
+  // A dominates B si A <= B sur tous et < sur au moins un
+  let strict=false;
+  for(const k of Object.keys(objA)){
+    if(objA[k] > objB[k]) return false;
+    if(objA[k] < objB[k]) strict=true;
+  }
+  return strict;
+}
+
+function computeFronts(solutions){
+  // Tri en fronts par rang (1 = non-dominé, 2 = dominé uniquement par front 1...)
+  const n = solutions.length;
+  const S = Array.from({length:n}, ()=>[]);     // S[i] = list dominés par i
+  const nDom = new Array(n).fill(0);            // nDom[i] = nb sols qui dominent i
+  const fronts = [[]];
+  for(let i=0;i<n;i++){
+    for(let j=0;j<n;j++){
+      if(i===j) continue;
+      if(dominates(solutions[i].objectives, solutions[j].objectives)) S[i].push(j);
+      else if(dominates(solutions[j].objectives, solutions[i].objectives)) nDom[i]++;
+    }
+    if(nDom[i] === 0){
+      solutions[i].rank = 1;
+      fronts[0].push(i);
+    }
+  }
+  let k=0;
+  while(fronts[k] && fronts[k].length > 0){
+    const next=[];
+    for(const i of fronts[k]){
+      for(const j of S[i]){
+        nDom[j]--;
+        if(nDom[j]===0){
+          solutions[j].rank = k+2;
+          next.push(j);
+        }
+      }
+    }
+    if(next.length > 0){
+      fronts.push(next);
+      k++;
+    } else break;
+  }
+  // Nettoyer le dernier front s'il est vide
+  if(fronts[fronts.length-1].length === 0) fronts.pop();
+  if(fronts.length === 0) return [];
+  return fronts.map((f, idx) => ({
+    rank: idx+1,
+    solutions: f.map(i => solutions[i])
+  }));
+}
+
+function computeCrowdingDistance(frontSols){
+  if(frontSols.length <= 2){
+    frontSols.forEach(s => s.crowding = Infinity);
+    return;
+  }
+  frontSols.forEach(s => s.crowding = 0);
+  const keys = Object.keys(frontSols[0].objectives);
+  for(const k of keys){
+    frontSols.sort((a,b) => a.objectives[k] - b.objectives[k]);
+    const min = frontSols[0].objectives[k];
+    const max = frontSols[frontSols.length-1].objectives[k];
+    if(max - min === 0) continue;
+    frontSols[0].crowding = Infinity;
+    frontSols[frontSols.length-1].crowding = Infinity;
+    for(let i=1;i<frontSols.length-1;i++){
+      frontSols[i].crowding += (frontSols[i+1].objectives[k] - frontSols[i-1].objectives[k]) / (max - min);
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MAIN STATE
+// ════════════════════════════════════════════════════════════════════
+const state = {
+  parcelleId: 'avirons',
+  strategy: 'densite',
+  sliderIdx: 0,
+  intentions: {eco:0, qua:0, econ:0, cmp:0},
+  axisX: 'nbLogements',
+  axisY: 'permeabilite',
+  parcelle: null, inlet: null,
+  variants: [],
+  evaluations: new Map(),   // id → evaluation
+  fronts: [],
+  front1Sorted: [],          // front 1 trié par nbLgts pour le slider
+  filteredSolutions: []      // front 1 réordonné par intentions
+};
+
+function computeEverything(){
+  state.parcelle = PARCELLES[state.parcelleId];
+  state.inlet = computeInlet(state.parcelle);
+
+  const strat = STRATEGIES[state.strategy];
+  state.variants = strat.generate(state.parcelle, state.inlet);
+
+  const solutions = [];
+  state.evaluations = new Map();
+  for(const v of state.variants){
+    const ev = evaluateVariant(v, state.parcelle, state.inlet);
+    state.evaluations.set(v.id, ev);
+    if(ev.valid){
+      solutions.push({
+        variantId: v.id,
+        variant: v,
+        objectives: ev.objectives,
+        display: ev.display
+      });
+    }
+  }
+
+  state.fronts = computeFronts(solutions);
+  for(const front of state.fronts){
+    computeCrowdingDistance(front.solutions);
+  }
+  // Front 1 trié par nbLogements croissant
+  if(state.fronts.length > 0){
+    state.front1Sorted = [...state.fronts[0].solutions].sort(
+      (a,b) => a.display.nbLogements - b.display.nbLogements
+    );
+  } else {
+    state.front1Sorted = [];
+  }
+
+  applyIntentions();
+  state.sliderIdx = Math.min(state.sliderIdx, Math.max(0, state.front1Sorted.length-1));
+  if(state.front1Sorted.length === 0) state.sliderIdx = 0;
+
+  renderAll();
+}
+
+function applyIntentions(){
+  const I = state.intentions;
+  const tot = I.eco + I.qua + I.econ + I.cmp;
+  if(tot === 0){
+    state.filteredSolutions = [...state.front1Sorted];
+    state.filteredSolutions.forEach(s => s.intentionScore = 0);
+    return;
+  }
+  state.filteredSolutions = state.front1Sorted.map(s => {
+    const d = s.display;
+    const score =
+      I.eco  * (d.permeabilite) +
+      I.qua  * (d.orientationScore) +
+      I.econ * (s.variant.pkMode === 'ext' ? 1 : s.variant.pkMode === 'rdc' ? 0.7 : 0.3) +
+      I.cmp  * d.compacite * 2;
+    return {...s, intentionScore: score / tot};
+  }).sort((a,b) => b.intentionScore - a.intentionScore);
+}
+
+function currentSolution(){
+  if(state.front1Sorted.length === 0) return null;
+  return state.front1Sorted[state.sliderIdx];
+}
+
+// ════════════════════════════════════════════════════════════════════
+// RENDER
+// ════════════════════════════════════════════════════════════════════
+function renderAll(){
+  renderParcelleTabs();
+  renderStratList();
+  renderPLU();
+  renderSlider();
+  renderIntentions();
+  renderPlan();
+  renderScatter();
+  renderSolutionsList();
+  renderMetrics();
+  renderHeader();
+}
+
+function renderParcelleTabs(){
+  const c = document.getElementById('ptabs');
+  c.innerHTML = Object.values(PARCELLES).map(p => `
+    <div class="ptab ${p.id===state.parcelleId?'on':''}" data-id="${p.id}">
+      <div class="pnm">${p.name}</div>
+      <div class="pmt">${p.subtitle}</div>
+    </div>
+  `).join('');
+  c.querySelectorAll('.ptab').forEach(el => {
+    el.onclick = () => { state.parcelleId = el.dataset.id; computeEverything(); };
+  });
+}
+
+function renderStratList(){
+  const c = document.getElementById('strat-list');
+  c.innerHTML = Object.entries(STRATEGIES).map(([k, s]) => `
+    <button class="strat-btn ${k===state.strategy?'on':''}" data-k="${k}">
+      <div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="id">${s.id}</span>
+          <span>${s.name}</span>
+        </div>
+        <div class="meta">${s.hint}</div>
+      </div>
+    </button>
+  `).join('');
+  document.getElementById('strat-count').textContent = `${Object.keys(STRATEGIES).length} actives`;
+  c.querySelectorAll('.strat-btn').forEach(el => {
+    el.onclick = () => { state.strategy = el.dataset.k; state.sliderIdx = 0; computeEverything(); };
+  });
+}
+
+function renderPLU(){
+  const p = state.parcelle.plu;
+  document.getElementById('plu-zone').textContent = p.zone;
+  document.getElementById('plu-empr').textContent = (p.emprMax*100).toFixed(0)+'%';
+  document.getElementById('plu-perm').textContent = (p.permMin*100).toFixed(0)+'%';
+  document.getElementById('plu-h').textContent = p.heMax+'m';
+}
+
+function renderSlider(){
+  const s = document.getElementById('main-slider');
+  const max = Math.max(0, state.front1Sorted.length - 1);
+  s.max = max;
+  s.value = state.sliderIdx;
+  const cur = currentSolution();
+  document.getElementById('slider-val').textContent = cur
+    ? `[${state.sliderIdx+1}/${state.front1Sorted.length}] ${cur.display.nbLogements} lgts`
+    : 'aucune solution valide';
+  document.getElementById('front-info').textContent = state.fronts.length > 0
+    ? `${state.fronts[0].solutions.length} sol. non-dominées · ${state.variants.length} variantes générées`
+    : `0/${state.variants.length} valides`;
+}
+
+function renderIntentions(){
+  document.getElementById('int-eco-v').textContent = state.intentions.eco;
+  document.getElementById('int-qua-v').textContent = state.intentions.qua;
+  document.getElementById('int-eco2-v').textContent = state.intentions.econ;
+  document.getElementById('int-cmp-v').textContent = state.intentions.cmp;
+}
+
+function renderHeader(){
+  const strat = STRATEGIES[state.strategy];
+  const cur = currentSolution();
+  document.getElementById('hd-strat').textContent = strat.name;
+  document.getElementById('hd-dof').textContent = cur
+    ? Object.entries(cur.variant.dof).map(([k,v]) => `${k}:${typeof v==='number'?v.toFixed(1).replace(/\.0$/,''):v}`).join(' · ')
+    : '—';
+  const valEl = document.getElementById('hd-valid-wrap');
+  const valSpan = document.getElementById('hd-valid');
+  if(cur){
+    const warnings = [];
+    if(cur.display.rtaaWarning) warnings.push('RTAA largeur');
+    if(!cur.display.pluConform) warnings.push('PLU non-conforme');
+    if(warnings.length > 0){
+      valSpan.textContent = warnings.join(' · ');
+      valEl.className = 'kv';
+      document.getElementById('hd-valid').style.color = 'var(--warn)';
+    } else {
+      valSpan.textContent = 'OK';
+      valEl.className = 'kv ok';
+      document.getElementById('hd-valid').style.color = '';
+    }
+  } else {
+    valSpan.textContent = 'Aucune solution valide';
+    valEl.className = 'kv err';
+    document.getElementById('hd-valid').style.color = '';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PLAN RENDER (SVG)
+// ════════════════════════════════════════════════════════════════════
+function renderPlan(){
+  const svg = document.getElementById('plan-svg');
+  const parc = state.parcelle;
+  const b = polyBounds(parc.poly);
+  const pad = 8;
+  svg.setAttribute('viewBox', `${b.minX-pad} ${b.minY-pad} ${b.w+2*pad} ${b.h+2*pad}`);
+  // Flip Y pour que "nord" soit en haut visuel
+  // On travaille en y=bas↑ mais SVG y=haut↑ → on inverse par transform
+  const g = `<g transform="scale(1,-1) translate(0,${-(b.h+2*(b.minY-pad)+2*pad)})">`;
+
+  let parts = [];
+
+  // Grid background
+  for(let x = Math.floor(b.minX/5)*5; x <= b.maxX; x += 5)
+    parts.push(`<line class="grid-line" x1="${x}" y1="${b.minY-pad}" x2="${x}" y2="${b.maxY+pad}"/>`);
+  for(let y = Math.floor(b.minY/5)*5; y <= b.maxY; y += 5)
+    parts.push(`<line class="grid-line" x1="${b.minX-pad}" y1="${y}" x2="${b.maxX+pad}" y2="${y}"/>`);
+
+  // Isohypses si pente
+  if((parc.topo.slope||0) >= 0.08){
+    const step = 3;
+    for(let y = b.minY + step; y < b.maxY; y += step){
+      parts.push(`<line class="topo-line" x1="${b.minX}" y1="${y}" x2="${b.maxX}" y2="${y}"/>`);
+    }
+  }
+
+  // Parcelle
+  parts.push(`<polygon class="parcelle-fill" points="${parc.poly.map(p=>p.join(',')).join(' ')}"/>`);
+
+  // Edges colorées par type
+  for(let i=0;i<parc.poly.length;i++){
+    const j=(i+1)%parc.poly.length;
+    const [x1,y1]=parc.poly[i], [x2,y2]=parc.poly[j];
+    const edge = parc.edges[i];
+    const cls = 'edge-'+edge.type;
+    parts.push(`<line class="${cls}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`);
+    // Label placé à l'extérieur (dans la zone de recul)
+    const mx=(x1+x2)/2, my=(y1+y2)/2;
+    const nx=-(y2-y1), ny=(x2-x1);
+    const nlen=Math.hypot(nx,ny);
+    const offX=mx + (nx/nlen)*2, offY=my + (ny/nlen)*2;
+    parts.push(`<text class="plan-label" x="${offX}" y="${offY}" text-anchor="middle" transform="scale(1,-1) translate(0,${-2*offY})">${edge.type.toUpperCase()} ${edge.recul}m</text>`);
+  }
+
+  // Inlet
+  parts.push(`<polygon class="inlet-fill" points="${state.inlet.poly.map(p=>p.join(',')).join(' ')}"/>`);
+
+  // Variant active
+  const cur = currentSolution();
+  if(cur){
+    // Parking ext (approximation : rectangle côté voie)
+    if(cur.variant.pkMode === 'ext' || cur.variant.pkMode === 'mixte'){
+      const pkFrac = cur.variant.pkMode === 'mixte' ? 0.5 : 1;
+      const pkArea = cur.display.pkArea * pkFrac;
+      const pkW = Math.min(state.inlet.bounds.w, 14);
+      const pkH = pkArea / pkW;
+      const pkCx = state.inlet.bounds.minX + state.inlet.bounds.w/2;
+      const pkCy = state.inlet.bounds.minY + pkH/2;
+      const pk = rect(pkCx, pkCy, pkW, pkH);
+      parts.push(`<polygon class="parking-ext" points="${pk.map(p=>p.join(',')).join(' ')}"/>`);
+      parts.push(`<text x="${pkCx}" y="${pkCy}" text-anchor="middle" transform="scale(1,-1) translate(0,${-2*pkCy})" style="font-family:'Inconsolata',monospace;font-size:1.3px;fill:var(--blue)">PK EXT ${Math.round(cur.display.pkPlaces*pkFrac)}pl</text>`);
+    }
+
+    // Blocs
+    for(const bloc of cur.variant.blocs){
+      parts.push(`<polygon class="bloc-fill ${cur.variant.blocs.length>1?'multi':''}" points="${bloc.map(p=>p.join(',')).join(' ')}"/>`);
+    }
+
+    // Label bloc principal
+    if(cur.variant.blocs.length > 0){
+      const c0 = polyCentroid(cur.variant.blocs[0]);
+      parts.push(`<text x="${c0[0]}" y="${c0[1]}" text-anchor="middle" transform="scale(1,-1) translate(0,${-2*c0[1]})" style="font-family:'DM Serif Display',serif;font-size:2.8px;fill:var(--text)">${cur.display.nbLogements} LGTS</text>`);
+      parts.push(`<text x="${c0[0]}" y="${c0[1]+2}" text-anchor="middle" transform="scale(1,-1) translate(0,${-2*(c0[1]+2)})" style="font-family:'Inconsolata',monospace;font-size:1.3px;fill:var(--t2)">R+${cur.variant.niveaux-1} · PK ${cur.variant.pkMode.toUpperCase()}</text>`);
+    }
+
+    // Parking RdC / SS
+    if(cur.variant.pkMode === 'rdc'){
+      for(const bloc of cur.variant.blocs){
+        parts.push(`<polygon class="parking-rdc" points="${bloc.map(p=>p.join(',')).join(' ')}"/>`);
+      }
+    } else if(cur.variant.pkMode === 'ss'){
+      parts.push(`<text x="${b.maxX-4}" y="${b.maxY-3}" text-anchor="end" transform="scale(1,-1) translate(0,${-2*(b.maxY-3)})" style="font-family:'Inconsolata',monospace;font-size:1.6px;fill:var(--blue)">🅿 SS · ${cur.display.pkPlaces} pl.</text>`);
+    }
+  }
+
+  // Compass
+  const cpX = b.maxX - 2, cpY = b.maxY - 2;
+  parts.push(`<circle cx="${cpX}" cy="${cpY}" r="2" fill="none" stroke="var(--gold)" stroke-width="0.3"/>`);
+  parts.push(`<line x1="${cpX}" y1="${cpY}" x2="${cpX}" y2="${cpY+1.8}" stroke="var(--gold)" stroke-width="0.4"/>`);
+  parts.push(`<text x="${cpX}" y="${cpY+2.8}" text-anchor="middle" transform="scale(1,-1) translate(0,${-2*(cpY+2.8)})" style="font-family:'Inconsolata',monospace;font-size:1.4px;fill:var(--gold);font-weight:600">N</text>`);
+
+  svg.innerHTML = g + parts.join('') + '</g>';
+}
+
+// ════════════════════════════════════════════════════════════════════
+// SCATTER RENDER (CANVAS)
+// ════════════════════════════════════════════════════════════════════
+const AXIS_DEFS = {
+  nbLogements: {label:'Nb logements', get:(s)=>s.display.nbLogements, higher:true},
+  empriseFrac: {label:'Emprise %', get:(s)=>s.display.empriseFrac*100, higher:true},
+  niveaux: {label:'Niveaux', get:(s)=>s.variant.niveaux, higher:true},
+  circulationRatio: {label:'Circulation %', get:(s)=>s.display.circulationRatio*100, higher:false},
+  permeabilite: {label:'Perméabilité %', get:(s)=>s.display.permeabilite*100, higher:true},
+  orientationScore: {label:'Orientation', get:(s)=>s.display.orientationScore, higher:true},
+  parkingFriction: {label:'Friction PK', get:(s)=>s.display.parkingFriction, higher:false},
+  compacite: {label:'Compacité', get:(s)=>s.display.compacite, higher:true}
+};
+
+function renderScatter(){
+  const canvas = document.getElementById('scatter-canvas');
+  const dpr = window.devicePixelRatio || 1;
+  const rect_ = canvas.getBoundingClientRect();
+  canvas.width = rect_.width * dpr;
+  canvas.height = rect_.height * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const W = rect_.width, H = rect_.height;
+  const pad = {l:36, r:14, t:14, b:32};
+
+  // Background
+  ctx.fillStyle = '#161209';
+  ctx.fillRect(0, 0, W, H);
+
+  if(state.fronts.length === 0){
+    ctx.fillStyle = '#7a6040';
+    ctx.font = '10px Inconsolata';
+    ctx.textAlign = 'center';
+    ctx.fillText('Aucune solution', W/2, H/2);
+    return;
+  }
+
+  // Collect all solutions (all fronts)
+  const allSols = [];
+  for(const front of state.fronts){
+    for(const sol of front.solutions){
+      allSols.push({...sol, rank: front.rank});
+    }
+  }
+
+  const xDef = AXIS_DEFS[state.axisX];
+  const yDef = AXIS_DEFS[state.axisY];
+  const xs = allSols.map(s => xDef.get(s));
+  const ys = allSols.map(s => yDef.get(s));
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const yMin = Math.min(...ys), yMax = Math.max(...ys);
+  const xSpan = xMax - xMin || 1;
+  const ySpan = yMax - yMin || 1;
+
+  const xTo = x => pad.l + ((x - xMin) / xSpan) * (W - pad.l - pad.r);
+  const yTo = y => H - pad.b - ((y - yMin) / ySpan) * (H - pad.t - pad.b);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(201,168,76,.06)';
+  ctx.lineWidth = 0.5;
+  for(let i=0;i<=4;i++){
+    const x = pad.l + i*(W-pad.l-pad.r)/4;
+    const y = pad.t + i*(H-pad.t-pad.b)/4;
+    ctx.beginPath(); ctx.moveTo(x, pad.t); ctx.lineTo(x, H-pad.b); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W-pad.r, y); ctx.stroke();
+  }
+
+  // Axes
+  ctx.strokeStyle = 'rgba(201,168,76,.35)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad.l, pad.t); ctx.lineTo(pad.l, H-pad.b); ctx.lineTo(W-pad.r, H-pad.b);
+  ctx.stroke();
+
+  // Axis labels
+  ctx.fillStyle = '#b09070';
+  ctx.font = '9px Inconsolata';
+  ctx.textAlign = 'center';
+  ctx.fillText(xDef.label, (pad.l + W - pad.r)/2, H-8);
+  ctx.save();
+  ctx.translate(10, (pad.t + H-pad.b)/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText(yDef.label, 0, 0);
+  ctx.restore();
+
+  // Ticks
+  ctx.fillStyle = '#7a6040';
+  ctx.font = '8px Inconsolata';
+  for(let i=0;i<=2;i++){
+    const tv = xMin + (xSpan * i/2);
+    ctx.textAlign = 'center';
+    ctx.fillText(tv.toFixed(1), xTo(tv), H-pad.b+12);
+    const tvy = yMin + (ySpan * i/2);
+    ctx.textAlign = 'right';
+    ctx.fillText(tvy.toFixed(1), pad.l-4, yTo(tvy)+3);
+  }
+
+  // Draw dominated solutions (gray)
+  for(const sol of allSols){
+    if(sol.rank === 1) continue;
+    const x = xTo(xDef.get(sol));
+    const y = yTo(yDef.get(sol));
+    ctx.fillStyle = 'rgba(122,96,64,.35)';
+    ctx.beginPath(); ctx.arc(x, y, 2.5, 0, 2*Math.PI); ctx.fill();
+  }
+
+  // Draw front 1 (golden)
+  // Sort front 1 for connecting line
+  const front1Sorted = [...state.fronts[0].solutions].sort((a,b) => xDef.get(a) - xDef.get(b));
+  ctx.strokeStyle = 'rgba(201,168,76,.25)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 3]);
+  ctx.beginPath();
+  front1Sorted.forEach((sol, i) => {
+    const x = xTo(xDef.get(sol));
+    const y = yTo(yDef.get(sol));
+    if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  for(const sol of state.fronts[0].solutions){
+    const x = xTo(xDef.get(sol));
+    const y = yTo(yDef.get(sol));
+    ctx.fillStyle = '#c9a84c';
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, 2*Math.PI); ctx.fill();
+    ctx.strokeStyle = 'rgba(14,12,8,.6)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Active solution highlight
+  const cur = currentSolution();
+  if(cur){
+    const x = xTo(xDef.get(cur));
+    const y = yTo(yDef.get(cur));
+    ctx.strokeStyle = '#e05030';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(x, y, 7, 0, 2*Math.PI); ctx.stroke();
+    ctx.fillStyle = '#e05030';
+    ctx.beginPath(); ctx.arc(x, y, 3, 0, 2*Math.PI); ctx.fill();
+  }
+
+  // Stats
+  document.getElementById('pareto-stats').textContent = state.fronts.length > 0
+    ? `${state.fronts.length} front${state.fronts.length>1?'s':''} · ${allSols.length} sol.`
+    : '—';
+}
+
+// ════════════════════════════════════════════════════════════════════
+// SOLUTIONS LIST
+// ════════════════════════════════════════════════════════════════════
+function renderSolutionsList(){
+  const c = document.getElementById('sol-items');
+  const cur = currentSolution();
+  const curId = cur ? cur.variantId : null;
+  const list = state.intentions.eco + state.intentions.qua + state.intentions.econ + state.intentions.cmp > 0
+    ? state.filteredSolutions
+    : state.front1Sorted;
+  c.innerHTML = list.map((s, i) => {
+    const d = s.display;
+    const active = s.variantId === curId;
+    const dofStr = Object.entries(s.variant.dof).slice(0,3)
+      .map(([k,v]) => typeof v==='number' ? v.toFixed(1).replace(/\.0$/,'') : v).join('·');
+    const scoreText = s.intentionScore !== undefined && state.intentions.eco+state.intentions.qua+state.intentions.econ+state.intentions.cmp > 0
+      ? (s.intentionScore*100).toFixed(0)
+      : '';
+    return `
+      <div class="sol-item ${active?'active':''}" data-id="${s.variantId}">
+        <div class="sol-rank">${state.front1Sorted.indexOf(s)+1}</div>
+        <div>
+          <div class="sol-main"><strong>${d.nbLogements}lgts</strong> R+${s.variant.niveaux-1}<span class="sep">·</span>PK ${s.variant.pkMode}<span class="sep">·</span>${(d.permeabilite*100).toFixed(0)}%v</div>
+          <div class="sol-meta">emprise ${d.empriseTotale.toFixed(0)}m² · SDP ${d.sdp.toFixed(0)}m² · ${dofStr}</div>
+        </div>
+        <div class="sol-score">${scoreText}</div>
+      </div>
+    `;
+  }).join('');
+  document.getElementById('sol-count').textContent = `${list.length}`;
+  c.querySelectorAll('.sol-item').forEach(el => {
+    el.onclick = () => {
+      const id = el.dataset.id;
+      const idx = state.front1Sorted.findIndex(s => s.variantId === id);
+      if(idx >= 0){ state.sliderIdx = idx; renderAll(); }
+    };
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════
+// METRICS
+// ════════════════════════════════════════════════════════════════════
+function renderMetrics(){
+  const cur = currentSolution();
+  const set = (id, v, sub) => {
+    document.getElementById(id).innerHTML = v;
+    if(sub !== undefined) document.getElementById(id+'-sub') && (document.getElementById(id+'-sub').textContent = sub);
+  };
+  if(!cur){
+    ['m-lgts','m-empr','m-sdp','m-perm','m-pk','m-niv','m-ori','m-lim'].forEach(id => {
+      document.getElementById(id).textContent = '—';
+    });
+    return;
+  }
+  const d = cur.display;
+  const plu = state.parcelle.plu;
+  document.getElementById('m-lgts').textContent = d.nbLogements;
+  document.getElementById('m-empr').innerHTML = `${d.empriseTotale.toFixed(0)}<span class="u">m²</span>`;
+  document.getElementById('m-empr-pct').textContent = `${(d.empriseFrac*100).toFixed(0)}% · max ${(plu.emprMax*100).toFixed(0)}%`;
+  document.getElementById('m-sdp').innerHTML = `${d.sdp.toFixed(0)}<span class="u">m²</span>`;
+  document.getElementById('m-sdp-sub').textContent = `R+${cur.variant.niveaux-1}`;
+  const permEl = document.getElementById('m-perm');
+  const permPct = d.permeabilite * 100;
+  permEl.innerHTML = `${permPct.toFixed(0)}<span class="u">%</span>`;
+  permEl.className = 'v ' + (permPct >= plu.permMin*100 ? 'ok' : 'err');
+  document.getElementById('m-perm-sub').textContent = `min ${(plu.permMin*100).toFixed(0)}%`;
+  document.getElementById('m-pk').textContent = `${d.pkPlaces}pl`;
+  document.getElementById('m-pk-sub').textContent = cur.variant.pkMode;
+  document.getElementById('m-niv').textContent = `R+${cur.variant.niveaux-1}`;
+  document.getElementById('m-ori').textContent = (d.orientationScore*100).toFixed(0);
+  document.getElementById('m-lim').textContent = d.limiting;
+  document.getElementById('m-lim').className = 'v' + (d.limiting==='aucun' ? ' ok' : '');
+  document.getElementById('m-lim').style.fontSize = '12px';
+}
+
+// ════════════════════════════════════════════════════════════════════
+// EVENT BINDINGS
+// ════════════════════════════════════════════════════════════════════
+document.getElementById('main-slider').oninput = e => {
+  state.sliderIdx = parseInt(e.target.value, 10);
+  renderPlan(); renderScatter(); renderSolutionsList(); renderMetrics(); renderHeader(); renderSlider();
+};
+
+['eco','qua','eco2','cmp'].forEach(key => {
+  const mapping = {eco:'eco', qua:'qua', eco2:'econ', cmp:'cmp'};
+  document.getElementById('int-'+key).oninput = e => {
+    state.intentions[mapping[key]] = parseInt(e.target.value, 10);
+    applyIntentions();
+    renderIntentions(); renderSolutionsList();
+  };
+});
+
+document.getElementById('axis-x').onchange = e => { state.axisX = e.target.value; renderScatter(); };
+document.getElementById('axis-y').onchange = e => { state.axisY = e.target.value; renderScatter(); };
+
+window.addEventListener('resize', () => renderScatter());
+
+// ════════════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════════════
+computeEverything();
+</script>
+</body>
+</html>

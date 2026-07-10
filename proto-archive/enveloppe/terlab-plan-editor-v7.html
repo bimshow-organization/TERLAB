@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>TERLAB — Éditeur Plan Masse v7</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--c-voie:#EF4444;--c-lat:#3B82F6;--c-fond:#22C55E;--c-env:#22C55E;--paper:#F7F4EE}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0D1117;font-family:'Outfit',sans-serif;color:#E2E8F0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+.tb{height:46px;background:#161B22;border-bottom:1px solid #30363D;display:flex;align-items:center;padding:0 10px;gap:7px;flex-shrink:0;overflow:hidden}
+.logo{font:700 11px/1 'IBM Plex Mono',monospace;letter-spacing:.18em;color:#58A6FF;padding:3px 7px;border:1px solid #1F6FEB44;border-radius:3px;flex-shrink:0}
+.sep{width:1px;height:22px;background:#30363D;flex-shrink:0}
+.tabs{display:flex;gap:2px;flex-shrink:0}
+.ttab,.btn{padding:3px 9px;border-radius:4px;font:600 9.5px 'IBM Plex Mono',monospace;border:1px solid #30363D;cursor:pointer;background:#1C2128;color:#6E7681;transition:all .12s;white-space:nowrap;display:flex;align-items:center;gap:4px}
+.ttab.act{background:#2D333B;color:#CDD9E5;border-color:#768390}
+.ttab[data-sc="A1"].act{background:#5E3ABA;border-color:transparent;color:#fff}
+.ttab[data-sc="B1"].act{background:#1F4CB5;border-color:transparent;color:#fff}
+.ttab[data-sc="B2"].act{background:#0B5E82;border-color:transparent;color:#fff}
+.ttab[data-sc="C1"].act{background:#0A5A3C;border-color:transparent;color:#fff}
+.ttab:not(.act):hover,.btn:hover{background:#21262D;color:#CDD9E5}
+.zbtn{width:26px;height:26px;padding:0;display:flex;align-items:center;justify-content:center;font-size:14px;border-radius:4px;font-family:'IBM Plex Mono',monospace;border:1px solid #30363D;cursor:pointer;background:#1C2128;color:#6E7681}
+.zbtn:hover{background:#21262D;color:#CDD9E5}
+.zlbl{font:10px 'IBM Plex Mono',monospace;color:#6E7681;min-width:34px;text-align:center}
+.btn.pri{background:#172554;border-color:#2563EB44;color:#93C5FD}
+.btn.pri:hover{background:#2563EB;color:#fff}
+.btn.act-green{background:#0A5A3C;border-color:#22C55E44;color:#4ADE80}
+.lbl{font:10px 'IBM Plex Mono',monospace;color:#484F58;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{font:500 8px 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;padding:1px 4px;border-radius:2px;margin-left:2px;vertical-align:middle}
+.tag.geo{background:#1a3050;color:#60A5FA}.tag.nc{background:#3d1010;color:#F87171}
+.tag.pca{background:#2d1a50;color:#A78BFA}.tag.bif{background:#0a3020;color:#4ADE80}
+.ws{flex:1;display:flex;overflow:hidden}
+.pl{width:190px;background:#161B22;border-right:1px solid #30363D;padding:8px;overflow-y:auto;flex-shrink:0;display:flex;flex-direction:column;gap:1px}
+.cw{flex:1;background:#0A0E14;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+#svg{display:block;cursor:crosshair}
+.sb{position:absolute;bottom:0;left:0;right:0;height:22px;background:#161B22;border-top:1px solid #30363D;display:flex;align-items:center;padding:0 10px;gap:20px;font:10px 'IBM Plex Mono',monospace;color:#484F58}
+.sb .cur{color:#38BDF8;flex:1;text-align:center}
+.pr{width:252px;background:#161B22;border-left:1px solid #30363D;padding:8px;overflow-y:auto;flex-shrink:0}
+/* Left panel */
+.psec{margin-bottom:10px}
+.ph{font:600 9px/1 'Outfit',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#484F58;margin-bottom:7px;padding-bottom:5px;border-bottom:1px solid #21262D;display:flex;justify-content:space-between;align-items:center}
+.ph .phi{font:400 8px 'IBM Plex Mono',monospace;text-transform:none;color:#30363D;cursor:pointer;transition:color .1s}
+.ph .phi:hover{color:#768390}
+.pr-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid #1A1F28;gap:4px}
+.rl{font-size:10px;color:#6E7681;white-space:nowrap}
+.tg{display:flex;gap:2px}
+.tgb{padding:2px 6px;border-radius:3px;font:600 9px 'IBM Plex Mono',monospace;border:1px solid #30363D;cursor:pointer;background:#1C2128;color:#6E7681;transition:all .1s}
+.tgb.act{background:#1F4CB5;border-color:#2563EB44;color:#93C5FD}.tgb:hover{background:#21262D}
+.rr{display:flex;align-items:center;gap:4px}
+input[type=range]{-webkit-appearance:none;width:78px;height:4px;border-radius:2px;background:#30363D;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#38BDF8;cursor:pointer;box-shadow:0 0 0 2px #0D1117}
+.rv{font:600 10px 'IBM Plex Mono',monospace;color:#38BDF8;text-align:right;white-space:nowrap;min-width:62px}
+.rm{font:8px 'IBM Plex Mono',monospace;color:#484F58;width:78px;text-align:right}
+.pkb{padding:2px 5px;border-radius:3px;font:600 8.5px 'IBM Plex Mono',monospace;border:1px solid #30363D;cursor:pointer;background:#1C2128;color:#6E7681;transition:all .1s}
+.pkb.act{background:#374151;border-color:#6B7280;color:#E2E8F0}.pkb:hover{background:#21262D}
+.cb-row{display:flex;align-items:center;gap:5px;padding:3px 0;cursor:pointer;font-size:10px;color:#8B949E}
+input[type=checkbox]{accent-color:#38BDF8;width:11px;height:11px;cursor:pointer}
+/* Edge list */
+.er{display:flex;align-items:center;gap:4px;padding:4px 3px;border-bottom:1px solid #1A1F28;cursor:pointer;border-radius:2px;transition:background .1s}
+.er:hover{background:#21262D}
+.ed{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.en{font:400 9px 'IBM Plex Mono',monospace;color:#484F58;min-width:14px}
+.eb{font:600 9px 'IBM Plex Mono',monospace;padding:1px 4px;border-radius:2px;min-width:34px;text-align:center}
+.bv{background:rgba(239,68,68,.15);color:#F87171}.bf{background:rgba(34,197,94,.15);color:#4ADE80}.bl{background:rgba(59,130,246,.15);color:#60A5FA}
+.em{font:400 9px 'IBM Plex Mono',monospace;flex:1;text-align:right;color:#6E7681}
+.emi{font:400 9px 'IBM Plex Mono',monospace;color:#FBBF24}
+.wbox{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:3px;padding:4px 6px;font:9px 'IBM Plex Mono',monospace;color:#F87171;margin-top:3px;line-height:1.5}
+/* Layer rows */
+.lr{display:flex;align-items:center;gap:5px;padding:3px 3px;cursor:pointer;border-radius:3px}
+.lr:hover{background:#21262D}
+.ld{width:7px;height:7px;border-radius:2px;flex-shrink:0}
+.ll{font-size:10px;color:#8B949E;flex:1}
+/* Right panel */
+.sc-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:12px;font:600 9.5px 'Outfit',sans-serif;margin-bottom:4px}
+.sc-pill.ok{background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.25);color:#4ADE80}
+.sc-pill.nok{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.25);color:#F87171}
+.mbig{font:700 30px 'IBM Plex Mono',monospace;color:#F0F9FF;text-align:center;line-height:1;margin:3px 0 1px}
+.msub{font-size:9px;color:#484F58;text-align:center;margin-bottom:8px}
+/* Gauges */
+.gauge{margin-bottom:6px}
+.gr{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.gl{font:10px 'IBM Plex Mono',monospace;color:#6E7681;flex:1}
+.gv{font:600 10px 'IBM Plex Mono',monospace;color:#38BDF8;min-width:46px;text-align:right}
+.gt{height:5px;background:#21262D;border-radius:3px;overflow:hidden;margin-bottom:1px}
+.gf{height:100%;border-radius:3px;transition:width .4s}
+.glimit{font:8px 'IBM Plex Mono',monospace;color:#484F58;text-align:right}
+.mrow{display:flex;justify-content:space-between;align-items:baseline;padding:2.5px 0;border-bottom:1px solid #1A1F28}
+.ml{font-size:10px;color:#6E7681}
+.mv{font:600 10px 'IBM Plex Mono',monospace;color:#38BDF8}
+.mv.w{color:#FBBF24}.mv.d{color:#F87171}.mv.g{color:#4ADE80}
+.ck{width:100%;border-collapse:collapse;font-size:9px}
+.ck th{color:#484F58;font-weight:500;text-align:left;padding:2px 2px;border-bottom:1px solid #21262D}
+.ck td{padding:2px 2px;border-bottom:1px solid #1A1F28}
+.cok td{color:#86EFAC}.cnok td{color:#FCA5A5}.ci{text-align:center;font-weight:700}
+.gbox{background:#1A1F28;border:1px solid #21262D;border-radius:3px;padding:5px 7px;font:9.5px 'IBM Plex Mono',monospace;color:#8B949E;line-height:1.8}
+.gv2{color:#FBBF24;font-weight:600}
+.maxbox{background:#1A1F28;border:1px solid #7C3AED33;border-radius:3px;padding:5px 7px;font:9px 'IBM Plex Mono',monospace;text-align:center;margin-bottom:6px}
+.maxv{font:700 20px 'IBM Plex Mono',monospace;color:#A78BFA;display:block}
+.infobt{font:9.5px 'IBM Plex Mono',monospace;color:#4ADE80;text-align:center;padding:1px 0}
+.nc-warning{background:#2d1010;border:1px solid rgba(239,68,68,.4);border-radius:4px;padding:10px;text-align:center;margin-bottom:8px}
+.nc-warning .nct{font:600 11px 'IBM Plex Mono',monospace;color:#F87171;display:block;margin-bottom:4px}
+.nc-warning .ncs{font:400 9px 'IBM Plex Mono',monospace;color:#6E7681;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="tb">
+  <span class="logo">TERLAB</span>
+  <div class="tabs" id="ter-tabs">
+    <button class="ttab act" data-ter="T1">T1</button>
+    <button class="ttab" data-ter="T2">T2 <span class="tag geo">PIR</span></button>
+    <button class="ttab" data-ter="T3">T3 <span class="tag nc">Zone A</span></button>
+    <button class="ttab" data-ter="T4">T4 <span class="tag bif">Biface</span></button>
+    <button class="ttab" data-ter="T5">T5 <span class="tag pca">PCA</span></button>
+  </div>
+  <div class="sep"></div>
+  <div class="tabs">
+    <button class="ttab" data-sc="A1">A1</button>
+    <button class="ttab act" data-sc="B1">B1</button>
+    <button class="ttab" data-sc="B2">B2</button>
+    <button class="ttab" data-sc="C1">C1</button>
+  </div>
+  <div class="sep"></div>
+  <div class="tabs">
+    <button class="ttab act" data-view="plan">↦ Plan</button>
+    <button class="ttab" data-view="coupe">↕ Coupe</button>
+  </div>
+  <div class="sep"></div>
+  <button class="zbtn" id="bzo">−</button>
+  <span class="zlbl" id="zlbl">100%</span>
+  <button class="zbtn" id="bzi">+</button>
+  <button class="zbtn" id="bzr" title="Reset vue">⌂</button>
+  <div class="sep"></div>
+  <button class="btn act-green" id="btn-auto" title="Placement automatique par PIR">◎ Auto</button>
+  <button class="btn pri" id="btn-svg">↓ SVG</button>
+  <span class="lbl" id="view-lbl">p07 · Plan masse v7 · Géométrie robuste</span>
+</div>
+
+<div class="ws">
+<div class="pl">
+
+  <div class="psec">
+    <div class="ph">Programme</div>
+    <div class="pr-row">
+      <span class="rl">Type</span>
+      <div class="tg">
+        <button class="tgb" data-prog="type" data-val="maison">Maison</button>
+        <button class="tgb act" data-prog="type" data-val="collectif">Collectif</button>
+      </div>
+    </div>
+    <div class="pr-row" style="align-items:flex-start;padding-top:4px">
+      <span class="rl">Niveaux</span>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">
+        <div class="rr"><input type="range" id="rng-nv" min="1" max="3" value="3"><span class="rv" id="val-nv">R+2</span></div>
+        <span class="rm" id="nv-marks">R+0 R+1 R+2</span>
+      </div>
+    </div>
+    <div class="pr-row">
+      <span class="rl">Prof. N↔S</span>
+      <div class="rr"><input type="range" id="rng-prof" min="5" max="25" step=".5" value="15"><span class="rv" id="val-prof">15m</span></div>
+    </div>
+    <div class="pr-row" id="row-units">
+      <span class="rl">Max/bloc</span>
+      <div class="rr"><input type="range" id="rng-units" min="0" max="40" step="1" value="20"><span class="rv" id="val-units">20</span></div>
+    </div>
+  </div>
+
+  <div class="psec">
+    <div class="ph">Parking</div>
+    <div class="tg" style="margin-bottom:5px">
+      <button class="tgb act" data-prog="park" data-val="ext">Ext.</button>
+      <button class="tgb" data-prog="park" data-val="rdc">RdC</button>
+      <button class="tgb" data-prog="park" data-val="ss">SS</button>
+    </div>
+    <div id="park-side-btns" style="display:flex;gap:2px;flex-wrap:wrap;margin-bottom:4px">
+      <button class="pkb act" data-side="est">→E</button>
+      <button class="pkb" data-side="nord">↑N</button>
+      <button class="pkb" data-side="ouest">←O</button>
+      <button class="pkb" data-side="sud">↓S</button>
+    </div>
+    <label class="cb-row"><input type="checkbox" id="cb-pkss"><span>+ overflow SS</span></label>
+  </div>
+
+  <div class="psec">
+    <div class="ph">Limites arêtes <span class="phi" id="btn-reset-edges" title="Reset">↺</span></div>
+    <div style="font:9px 'IBM Plex Mono',monospace;color:#484F58;padding:2px 0 6px;font-style:italic">Cliquer arête → changer type</div>
+    <div id="edge-list"></div>
+    <div class="wbox" id="inset-warn" style="display:none"></div>
+    <div class="wbox" id="zone-warn" style="display:none"></div>
+  </div>
+
+  <div class="psec">
+    <div class="ph">Couches</div>
+    <label class="lr"><input class="lcb" type="checkbox" data-layer="reculs" checked><div class="ld" style="background:#EF4444"></div><span class="ll">Limites PLU</span></label>
+    <label class="lr"><input class="lcb" type="checkbox" data-layer="env" checked><div class="ld" style="background:#22C55E"></div><span class="ll">Enveloppe</span></label>
+    <label class="lr"><input class="lcb" type="checkbox" data-layer="veg" checked><div class="ld" style="background:#16a34a"></div><span class="ll">Végétation zones</span></label>
+    <label class="lr"><input class="lcb" type="checkbox" data-layer="parking" checked><div class="ld" style="background:#64748B"></div><span class="ll">Parking</span></label>
+    <label class="lr"><input class="lcb" type="checkbox" data-layer="dims" checked><div class="ld" style="background:#374151"></div><span class="ll">Cotations</span></label>
+    <label class="lr"><input class="lcb" type="checkbox" data-layer="pir"><div class="ld" style="background:#F59E0B"></div><span class="ll">PIR (inscrit ●)</span></label>
+    <label class="lr"><input class="lcb" type="checkbox" data-layer="pca"><div class="ld" style="background:#A78BFA"></div><span class="ll">PCA axe principal</span></label>
+  </div>
+
+  <div class="psec">
+    <div class="ph">Bâtiment</div>
+    <div class="infobt" id="m-bpos">—</div>
+    <div class="infobt" id="m-bdim">—</div>
+  </div>
+</div>
+
+<div class="cw">
+  <svg id="svg" style="touch-action:none;user-select:none"></svg>
+  <div class="sb">
+    <span id="ter-info">—</span>
+    <span class="cur" id="scur">—</span>
+    <span id="hint-bar" style="color:#38BDF8">Cliquer arête → changer type · Drag bat → déplacer · Handles → redimensionner</span>
+  </div>
+</div>
+
+<div class="pr">
+  <div class="psec">
+    <div class="ph">Capacité max (PLU)</div>
+    <div class="maxbox" id="max-box">
+      <span class="maxv" id="m-maxlgts">—</span>
+      <span style="color:#6E7681;font-size:9px" id="m-maxniv">—</span>
+    </div>
+    <div class="ph">Scénario actuel</div>
+    <span class="sc-pill ok" id="sc-status">✓ Conforme</span>
+    <div class="mbig" id="m-lgts">0</div>
+    <div class="msub" id="m-sub">logements</div>
+
+    <div class="gauge">
+      <div class="gr"><span class="gl">Emprise</span><span class="gv" id="gv-emp">—</span></div>
+      <div class="gt"><div class="gf" id="gf-emp" style="width:0"></div></div>
+      <div class="glimit" id="gl-emp">max —%</div>
+    </div>
+    <div class="gauge">
+      <div class="gr"><span class="gl">Perméabilité</span><span class="gv" id="gv-perm">—</span></div>
+      <div class="gt"><div class="gf" id="gf-perm" style="width:0;background:#22C55E"></div></div>
+      <div class="glimit" id="gl-perm">min —%</div>
+    </div>
+
+    <div class="mrow"><span class="ml">SP totale</span><span class="mv" id="m-sp">—</span></div>
+    <div class="mrow"><span class="ml">Niveaux</span><span class="mv" id="m-nv">—</span></div>
+    <div class="mrow"><span class="ml">Enveloppe</span><span class="mv" id="m-envarea">—</span></div>
+    <div class="mrow"><span class="ml">Parking</span><span class="mv" id="m-park">—</span></div>
+    <div class="mrow"><span class="ml">Densité</span><span class="mv" id="m-dens">—</span></div>
+    <div class="mrow"><span class="ml">Logts aidés</span><span class="mv" id="m-aide">—</span></div>
+    <div class="mrow" id="row-blocs"><span class="ml">Blocs · dist.</span><span class="mv" id="m-blocs">—</span></div>
+  </div>
+  <div class="psec">
+    <div class="ph">Vérifications PLU / RTAA</div>
+    <table class="ck"><thead><tr><th>Vérif.</th><th>Projet</th><th>Règle</th><th></th></tr></thead>
+    <tbody id="ck-body"></tbody></table>
+  </div>
+  <div class="psec">
+    <div class="ph">GIEP pré-dim.</div>
+    <div class="gbox">Q : <span class="gv2" id="m-Q">—</span> m³/s<br>Vol. noue : <span class="gv2" id="m-vg">—</span> m³<br>S. noue : <span class="gv2" id="m-sn">—</span> m²</div>
+  </div>
+  <div class="psec" id="nc-panel" style="display:none">
+    <div class="nc-warning">
+      <span class="nct" id="nc-title">Zone N — Non Constructible</span>
+      <span class="ncs" id="nc-desc">La zone N n'autorise pas les constructions à usage d'habitation. Aucun gabarit calculable.</span>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════════════════
+// TERLAB · Plan masse v7 · MGA Architecture · ÉARL La Réunion 2026
+// Géométrie robuste complète : PIR, PCA, inset adaptatif, edgeTypes
+// ═══════════════════════════════════════════════════════════════════
+
+// ── Constantes ───────────────────────────────────────────────────
+const SVG_W=860,SVG_H=600,SCX=SVG_W/2,SCY=SVG_H/2+15,BS=10;
+const SNAP=0.5,MIN_W=4,MIN_L=5,H_NIV=3.0;
+const COL={voie:'#EF4444',lat:'#3B82F6',fond:'#22C55E'};
+const DASH={voie:'10,5',lat:'6,4',fond:'10,5'};
+const NV=['','R+0','R+1','R+2','R+3','R+4'];
+const SP_MOY=0.175*31+0.275*49+0.325*68+0.225*87; // 60.6m²
+
+// ── GÉOMÉTRIE ROBUSTE ─────────────────────────────────────────────
+function lineIsect(x1,y1,x2,y2,x3,y3,x4,y4){
+  const d1x=x2-x1,d1y=y2-y1,d2x=x4-x3,d2y=y4-y3;
+  const cross=d1x*d2y-d1y*d2x;
+  if(Math.abs(cross)<1e-8)return[(x2+x3)/2,(y2+y3)/2]; // quasi-parallèles
+  const t=((x3-x1)*d2y-(y3-y1)*d2x)/cross;
+  const px2=x1+t*d1x,py2=y1+t*d1y;
+  // Cap spike : si > 3× diag AABB → midpoint
+  const r=3*Math.max(Math.abs(x2-x1),Math.abs(y2-y1),Math.abs(x4-x3),Math.abs(y4-y3),15);
+  if(Math.abs(px2-x1)>r||Math.abs(py2-y1)>r)return[(x2+x3)/2,(y2+y3)/2];
+  return[px2,py2];
+}
+
+function insetPoly(poly,reculs){
+  const n=poly.length;
+  const ie=[];
+  for(let i=0;i<n;i++){
+    const[x1,y1]=poly[i],[x2,y2]=poly[(i+1)%n];
+    const d=reculs[i]??0,dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy);
+    if(len<1e-9){ie.push([x1,y1,x2,y2]);continue;}
+    const nx=-dy/len*d,ny=dx/len*d;
+    ie.push([x1+nx,y1+ny,x2+nx,y2+ny]);
+  }
+  return ie.map((_,i)=>{
+    const[x1,y1,x2,y2]=ie[i],[x3,y3,x4,y4]=ie[(i+1)%n];
+    return lineIsect(x1,y1,x2,y2,x3,y3,x4,y4);
+  });
+}
+
+function polyArea(pts){let s=0;for(let i=0,n=pts.length;i<n;i++){const[x1,y1]=pts[i],[x2,y2]=pts[(i+1)%n];s+=x1*y2-x2*y1;}return Math.abs(s)/2;}
+function polyAABB(p){const xs=p.map(v=>v[0]),ys=p.map(v=>v[1]);return{x:Math.min(...xs),y:Math.min(...ys),x1:Math.max(...xs),y1:Math.max(...ys),w:Math.max(...xs)-Math.min(...xs),h:Math.max(...ys)-Math.min(...ys)};}
+function ptInPoly(px2,py2,poly){let inside=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const[xi,yi]=poly[i],[xj,yj]=poly[j];if((yi>py2)!==(yj>py2)&&px2<(xj-xi)*(py2-yi)/(yj-yi)+xi)inside=!inside;}return inside;}
+function centroidPoly(p){let cx=0,cy=0;for(const[x,y]of p){cx+=x;cy+=y;}return[cx/p.length,cy/p.length];}
+function distPtSeg(px2,py2,x1,y1,x2,y2){const dx=x2-x1,dy=y2-y1,l2=dx*dx+dy*dy;if(l2<1e-10)return Math.hypot(px2-x1,py2-y1);const t=Math.max(0,Math.min(1,((px2-x1)*dx+(py2-y1)*dy)/l2));return Math.hypot(px2-(x1+t*dx),py2-(y1+t*dy));}
+
+// Pôle d'inaccessibilité (polylabel simplifié, grille 1.5m)
+function poleOfInaccessibility(poly,prec=1.5){
+  const bb=polyAABB(poly);
+  let best=[(bb.x+bb.x1)/2,(bb.y+bb.y1)/2],bestD=-Infinity;
+  for(let x=bb.x+prec/2;x<=bb.x1;x+=prec){
+    for(let y=bb.y+prec/2;y<=bb.y1;y+=prec){
+      if(!ptInPoly(x,y,poly))continue;
+      let minD=Infinity;
+      const n=poly.length;
+      for(let i=0;i<n;i++){const[x1,y1]=poly[i],[x2,y2]=poly[(i+1)%n];minD=Math.min(minD,distPtSeg(x,y,x1,y1,x2,y2));}
+      if(minD>bestD){bestD=minD;best=[x,y];}
+    }
+  }
+  return best;
+}
+
+// Axe principal PCA sur les sommets
+function inferBearingPCA(poly){
+  const n=poly.length;
+  let mx=0,my=0;
+  for(const[x,y]of poly){mx+=x/n;my+=y/n;}
+  let cxx=0,cxy=0,cyy=0;
+  for(const[x,y]of poly){cxx+=(x-mx)**2;cxy+=(x-mx)*(y-my);cyy+=(y-my)**2;}
+  const d=Math.sqrt((cxx-cyy)**2/4+cxy**2);
+  const ev=[cxy,(cyy-cxx)/2+d]; // PC1
+  return Math.atan2(ev[1],ev[0])*180/Math.PI;
+}
+
+// ── TERRAINS ──────────────────────────────────────────────────────
+const TERRAINS={
+  T1:{id:'T1',label:'Saint-Paul · AU3c',sublabel:'Rectangle 42×38m — Standard',
+    poly:[[0,0],[42,0],[42,38],[0,38]],
+    edgeTypes:['voie','lat','lat','fond'],
+    plu:{type:'AU',constructible:true,emprMax:60,permMin:40,heMax:9,rtaaZone:1,zone:'AU3c',interBatMin:4,reculs:{voie:3,lat:1.5,fond:3}}},
+  T2:{id:'T2',label:'Saint-André · U3b',sublabel:'L-shape 52×52m — PIR vs centroïde',
+    poly:[[0,0],[52,0],[52,22],[22,22],[22,52],[0,52]],
+    edgeTypes:['voie','lat','fond','lat','fond','lat'],
+    plu:{type:'U',constructible:true,emprMax:60,permMin:30,heMax:12,rtaaZone:2,zone:'U3b',interBatMin:3,reculs:{voie:3,lat:3,fond:3}}},
+  T3:{id:'T3',label:'Sainte-Marie · Zone A',sublabel:'Bande oblique 14×60m — Non constructible',
+    poly:[[0,0],[14,0],[20,60],[6,60]],
+    edgeTypes:['voie','lat','fond','lat'],
+    plu:{type:'A',constructible:false,emprMax:0,permMin:100,heMax:0,rtaaZone:1,zone:'A',interBatMin:0,reculs:{voie:5,lat:3,fond:5}}},
+  T4:{id:'T4',label:'Saint-Denis · UA',sublabel:'Coin de rue — Biface 2 voies',
+    poly:[[0,0],[40,0],[44,38],[0,38]],
+    edgeTypes:['voie','voie','fond','lat'],
+    plu:{type:'U',constructible:true,emprMax:70,permMin:25,heMax:15,rtaaZone:2,zone:'UA',interBatMin:3,reculs:{voie:3,lat:3,fond:3}}},
+  T5:{id:'T5',label:'Saint-Leu · UC',sublabel:'Pentagone irrégulier — Axe PCA',
+    poly:[[4,0],[42,0],[46,24],[22,46],[0,34]],
+    edgeTypes:['voie','lat','fond','fond','lat'],
+    plu:{type:'U',constructible:true,emprMax:60,permMin:25,heMax:7,rtaaZone:2,zone:'UC',interBatMin:4,reculs:{voie:4,lat:3,fond:3}}},
+};
+Object.values(TERRAINS).forEach(t=>{t.area=polyArea(t.poly);});
+
+// Scénarios Pareto
+const SC=[
+  {id:'A1',nv:3,eff:.80,aide:.70,col:'#7C3AED',label:'max densité'},
+  {id:'B1',nv:3,eff:.82,aide:.60,col:'#2563EB',label:'équilibre'},
+  {id:'B2',nv:2,eff:.85,aide:.55,col:'#0891B2',label:'durable'},
+  {id:'C1',nv:2,eff:.88,aide:.50,col:'#059669',label:'verdure'},
+];
+
+// ── ÉTAT ──────────────────────────────────────────────────────────
+const S={
+  terId:'T1',scId:'B1',view:'plan',
+  bat:{x:13,y:4,w:10,l:18},
+  prog:{type:'collectif',nvMax:3,profMax:15,parkMode:'ext',parkSS:false,maxUnits:20},
+  parkSide:'est',
+  edgeTypes:['voie','lat','lat','fond'],
+  mitoyen:[],
+  zoom:1,panX:0,panY:0,wcx:21,wcy:19,
+  layers:{reculs:true,env:true,veg:true,parking:true,dims:true,pir:false,pca:false},
+  _insetWarn:null,
+};
+
+function ter(){return TERRAINS[S.terId];}
+function curSc(){return SC.find(s=>s.id===S.scId);}
+function nvMaxPLU(){return Math.max(1,Math.floor(ter().plu.heMax/H_NIV));}
+function nvLbl(n){return`${NV[n]||'R+'+(n-1)} (≤${n*H_NIV}m)`;}
+
+function edgeRecul(i){
+  const t=S.edgeTypes[i];
+  if(t==='lat'&&S.mitoyen[i])return 0;
+  return ter().plu.reculs[t]??0;
+}
+
+function resetEdgeState(){
+  const t=ter();
+  S.edgeTypes=[...t.edgeTypes];
+  S.mitoyen=new Array(t.poly.length).fill(false);
+  S._insetWarn=null;
+}
+
+// ── ENVELOPPE ──────────────────────────────────────────────────────
+function computeEnvPoly(){
+  const t=ter();
+  const R=S.edgeTypes.map((_,i)=>edgeRecul(i));
+  let env=insetPoly(t.poly,R);
+  const area=polyArea(env);
+  if(area<=5){
+    const bb=polyAABB(t.poly);
+    const lMin=Math.min(bb.w,bb.h);
+    const rMax=Math.max(...R.filter(r=>r>0),1);
+    const ratio=Math.min(0.85,lMin/(2.2*rMax));
+    const adapted=R.map(r=>r*ratio);
+    env=insetPoly(t.poly,adapted);
+    S._insetWarn=`Reculs réduits ×${ratio.toFixed(2)} — parcelle étroite (${lMin.toFixed(0)}m)`;
+  }else{S._insetWarn=null;}
+  return env;
+}
+
+function computeEnv(){
+  const poly=computeEnvPoly();
+  return{...polyAABB(poly),poly};
+}
+
+function snap(v){return Math.round(v/SNAP)*SNAP;}
+function clampBat(b,env){
+  b.w=Math.max(MIN_W,Math.min(b.w,env.w));
+  b.l=Math.max(MIN_L,Math.min(b.l,env.h));
+  b.x=Math.max(env.x,Math.min(env.x1-b.w,b.x));
+  b.y=Math.max(env.y,Math.min(env.y1-b.l,b.y));
+}
+function batInEnv(b,ep){return[[b.x,b.y],[b.x+b.w,b.y],[b.x+b.w,b.y+b.l],[b.x,b.y+b.l]].every(([px2,py2])=>ptInPoly(px2,py2,ep));}
+
+// ── AUTO-PLAN PAR PIR ──────────────────────────────────────────────
+function initBatFromPIR(){
+  const env=computeEnv();
+  if(!env||polyArea(env.poly)<MIN_W*MIN_L)return;
+  const pir=poleOfInaccessibility(env.poly,1.5);
+  const p=S.prog;
+  const plu=ter().plu;
+  const rtaaW=plu.rtaaZone===1?10:12;
+  const bw=Math.min(rtaaW,env.w*0.55,p.profMax);
+  const bl=Math.min(p.profMax,env.h*0.65);
+  S.bat={x:snap(pir[0]-bw/2),y:snap(pir[1]-bl/2),w:Math.max(MIN_W,snap(bw)),l:Math.max(MIN_L,snap(bl))};
+  clampBat(S.bat,env);
+}
+
+// ── TRANSFORMS ────────────────────────────────────────────────────
+function w2s(wx,wy){const sc=BS*S.zoom;return[SCX+(wx-S.wcx)*sc+S.panX,SCY-(wy-S.wcy)*sc+S.panY];}
+function s2w(sx,sy){const sc=BS*S.zoom;return[S.wcx+(sx-SCX-S.panX)/sc,S.wcy+(SCY+S.panY-sy)/sc];}
+function px(m){return m*BS*S.zoom;}
+
+function resetView(){
+  const t=ter(),xs=t.poly.map(p=>p[0]),ys=t.poly.map(p=>p[1]);
+  const bx=Math.min(...xs),bw2=Math.max(...xs)-bx,by=Math.min(...ys),bh=Math.max(...ys)-by;
+  S.wcx=bx+bw2/2;S.wcy=by+bh/2;
+  const m=80;S.zoom=Math.max(.2,Math.min(6,Math.min((SVG_W-2*m)/(bw2*BS),(SVG_H-2*m)/(bh*BS))));
+  S.panX=0;S.panY=0;
+}
+
+// ── VÉGÉTATION PAR ZONES ─────────────────────────────────────────
+function computeVegPlants(){
+  const t=ter(),n=t.poly.length,plants=[];
+  if(!S.layers.veg)return plants;
+  for(let i=0;i<n;i++){
+    const type=S.edgeTypes[i];
+    const r=edgeRecul(i);
+    if(r<1)continue;
+    const[p1x,p1y]=t.poly[i],[p2x,p2y]=t.poly[(i+1)%n];
+    const dx=p2x-p1x,dy=p2y-p1y,len=Math.hypot(dx,dy);
+    if(len<1)continue;
+    const nx=-dy/len,ny=dx/len; // normale interne
+    const seed=(p1x*7+p1y*13)%100;
+    if(type==='voie'){
+      // Arbres d'alignement (5m spacing, offset 1.5m from edge)
+      const nT=Math.max(1,Math.floor((len-3)/5));
+      for(let k=0;k<nT;k++){
+        const f=(k+.5)/nT;
+        const tx=p1x+(p2x-p1x)*f+nx*1.5,ty=p1y+(p2y-p1y)*f+ny*1.5;
+        if(!ptInPoly(tx,ty,t.poly))continue;
+        plants.push({x:tx,y:ty,r:1.8,type:'tree_voie',s:(seed+k*17)%100});
+      }
+    } else if(type==='lat'){
+      // Haie arbustive (2.5m spacing, offset 0.8m)
+      const nS=Math.max(1,Math.floor((len-2)/2.5));
+      for(let k=0;k<nS;k++){
+        const f=(k+.5)/nS;
+        const tx=p1x+(p2x-p1x)*f+nx*.8,ty=p1y+(p2y-p1y)*f+ny*.8;
+        if(!ptInPoly(tx,ty,t.poly))continue;
+        plants.push({x:tx,y:ty,r:1.0,type:'shrub',s:(seed+k*11)%100});
+      }
+    } else if(type==='fond'){
+      // Arbres de jardin (variés, offset r*0.4)
+      const nT=Math.max(1,Math.floor(len/6));
+      for(let k=0;k<nT;k++){
+        const f=(k+.5)/nT;
+        const offN=r*0.35+1.5+(((seed+k*23)%100)/100)*r*0.25;
+        const tx=p1x+(p2x-p1x)*f+nx*offN,ty=p1y+(p2y-p1y)*f+ny*offN;
+        if(!ptInPoly(tx,ty,t.poly))continue;
+        plants.push({x:tx,y:ty,r:2.2+(((seed+k*7)%100)/100)*0.8,type:'tree_fond',s:(seed+k*31)%100});
+      }
+    }
+  }
+  return plants;
+}
+
+// ── SVG HELPERS ───────────────────────────────────────────────────
+function ra(hex,a){const r2=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return`rgba(${r2},${g},${b},${a})`;}
+function polyPts(pts){return pts.map(([x,y])=>w2s(x,y).join(',')).join(' ');}
+function tx(wx,wy,str,sz,fill,anch='middle'){const[sx,sy]=w2s(wx,wy);return`<text x="${sx.toFixed(1)}" y="${sy.toFixed(1)}" text-anchor="${anch}" font-size="${sz}" fill="${fill}" font-family="'IBM Plex Mono',monospace">${str}</text>`;}
+function dd(n){return n.toFixed(1);}
+
+function dimLine(wx1,wy1,wx2,wy2,lbl,offM,dir,col='#374151'){
+  let o='';const[x1,y1]=w2s(wx1,wy1),[x2,y2]=w2s(wx2,wy2),ts=5;
+  if(dir==='h'){
+    const[,dy]=w2s(0,offM+S.wcy),oy=dy-(w2s(0,0)[1]);
+    const yo=y1+oy;
+    o+=`<line x1="${dd(x1)}" y1="${dd(y1)}" x2="${dd(x1)}" y2="${dd(yo)}" stroke="${col}" stroke-width=".7" opacity=".5"/>`;
+    o+=`<line x1="${dd(x2)}" y1="${dd(y2)}" x2="${dd(x2)}" y2="${dd(yo)}" stroke="${col}" stroke-width=".7" opacity=".5"/>`;
+    o+=`<line x1="${dd(x1)}" y1="${dd(yo)}" x2="${dd(x2)}" y2="${dd(yo)}" stroke="${col}" stroke-width="1"/>`;
+    [x1,x2].forEach(xi=>{o+=`<line x1="${dd(xi)}" y1="${dd(yo-ts)}" x2="${dd(xi)}" y2="${dd(yo+ts)}" stroke="${col}" stroke-width="1.5"/>`;});
+    o+=`<text x="${dd((x1+x2)/2)}" y="${dd(yo-5)}" text-anchor="middle" font-size="9" fill="${col}" font-family="'IBM Plex Mono',monospace" font-weight="500">${lbl}</text>`;
+  }else{
+    const[dx]=w2s(offM+S.wcx,0),ox=dx-(w2s(0,0)[0]);
+    const xo=x1+ox;
+    o+=`<line x1="${dd(x1)}" y1="${dd(y1)}" x2="${dd(xo)}" y2="${dd(y1)}" stroke="${col}" stroke-width=".7" opacity=".5"/>`;
+    o+=`<line x1="${dd(x2)}" y1="${dd(y2)}" x2="${dd(xo)}" y2="${dd(y2)}" stroke="${col}" stroke-width=".7" opacity=".5"/>`;
+    o+=`<line x1="${dd(xo)}" y1="${dd(y1)}" x2="${dd(xo)}" y2="${dd(y2)}" stroke="${col}" stroke-width="1"/>`;
+    [y1,y2].forEach(yi=>{o+=`<line x1="${dd(xo-ts)}" y1="${dd(yi)}" x2="${dd(xo+ts)}" y2="${dd(yi)}" stroke="${col}" stroke-width="1.5"/>`;});
+    const side=offM>0?xo+8:xo-8,anch=offM>0?'start':'end';
+    o+=`<text x="${dd(side)}" y="${dd((y1+y2)/2+4)}" font-size="9" fill="${col}" font-family="'IBM Plex Mono',monospace" font-weight="500" text-anchor="${anch}">${lbl}</text>`;
+  }
+  return o;
+}
+
+function drawPlant(p,cx,cy,r,type,seed){
+  const rPx=Math.max(3.5,Math.min(35,r*px(1)));
+  const jx=(seed%10-5)*0.03,jy=((seed*7)%10-5)*0.03; // léger jitter
+  const[sx,sy]=w2s(cx+jx,cy+jy);
+  let fill,stroke,fill2;
+  switch(type){
+    case'tree_voie':fill='rgba(22,78,18,.42)';stroke='rgba(12,55,10,.55)';fill2='rgba(30,100,24,.28)';break;
+    case'tree_fond':fill='rgba(18,72,22,.38)';stroke='rgba(10,50,12,.5)';fill2='rgba(28,95,32,.24)';break;
+    default:fill='rgba(45,90,35,.38)';stroke='rgba(28,65,20,.5)';fill2='rgba(55,110,42,.26)';
+  }
+  // Shadow
+  p.push(`<circle cx="${dd(sx+rPx*.22)}" cy="${dd(sy+rPx*.22)}" r="${dd(rPx)}" fill="rgba(0,0,0,0.07)"/>`);
+  // Canopy outer
+  p.push(`<circle cx="${dd(sx)}" cy="${dd(sy)}" r="${dd(rPx)}" fill="${fill}" stroke="${stroke}" stroke-width="0.7"/>`);
+  // Canopy inner highlight
+  p.push(`<circle cx="${dd(sx)}" cy="${dd(sy-rPx*.18)}" r="${dd(rPx*.58)}" fill="${fill2}"/>`);
+  // Trunk
+  p.push(`<circle cx="${dd(sx)}" cy="${dd(sy)}" r="${dd(Math.max(1.2,rPx*.12))}" fill="${stroke}" opacity="0.55"/>`);
+}
+
+// ── MÉTRIQUES ─────────────────────────────────────────────────────
+function metrics(){
+  const t=ter(),plu=t.plu,b=S.bat,p=S.prog,sc=curSc();
+  const env=computeEnv();
+  const nvEffMax=nvMaxPLU(),nvEff=Math.min(p.nvMax,nvEffMax);
+  const emprise=b.w*b.l,empPct=emprise/t.area*100;
+  let spBase=emprise;
+  if(p.parkMode==='rdc')spBase*=.75;
+  const spTot=spBase*sc.eff*nvEff;
+  const nbLgts=p.type==='maison'?1:Math.floor(spTot/SP_MOY);
+  const nbAide=p.type==='maison'?0:Math.round(nbLgts*sc.aide);
+  const parkReq=p.type==='maison'?2:(nbLgts-nbAide)*2+nbAide+Math.ceil(nbLgts/5);
+  let parkExt=0,parkSS=0,empPark=0;
+  if(p.parkMode==='ss'){parkSS=parkReq;}
+  else if(p.parkMode==='rdc'){parkExt=Math.floor(emprise*.25/25);if(p.parkSS)parkSS=Math.max(0,parkReq-parkExt);}
+  else{parkExt=parkReq;empPark=parkExt*25;if(p.parkSS){parkExt=0;parkSS=parkReq;empPark=0;}}
+  const impermeab=emprise+empPark;
+  const permPct=Math.max(0,(1-impermeab/t.area)*100);
+  const dens=nbLgts/(t.area/10000);
+  const rtaaW=plu.rtaaZone===1?10:12;
+  const inEnv=batInEnv(b,env.poly);
+  const gapMin=Math.max(plu.interBatMin||4,nvEff*H_NIV/2);
+  const nbBlocs=(p.type==='collectif'&&p.maxUnits>0&&nbLgts>p.maxUnits)?Math.ceil(nbLgts/Math.max(1,p.maxUnits)):1;
+  const envArea=polyArea(env.poly);
+  const maxLgts=Math.floor(envArea*plu.emprMax/100*sc.eff*nvEffMax/SP_MOY);
+  const Q=0.9*(80/3600)*impermeab;
+  const checks=[
+    {lbl:'Constructible',ok:!!plu.constructible,proj:plu.type,rule:'U/AU',u:''},
+    {lbl:'Dans env.',ok:inEnv,proj:inEnv?'oui':'NON',rule:'requis',u:''},
+    {lbl:'Larg. RTAA',ok:b.w<=rtaaW,proj:b.w.toFixed(1),rule:`≤${rtaaW}`,u:'m'},
+    {lbl:'Prof. N-S',ok:b.l<=p.profMax,proj:b.l.toFixed(1),rule:`≤${p.profMax}`,u:'m'},
+    {lbl:'Niv. PLU',ok:nvEff<=nvEffMax,proj:NV[nvEff]||nvEff,rule:`≤${NV[nvEffMax]||nvEffMax}`,u:''},
+    {lbl:'Emprise',ok:empPct<=plu.emprMax,proj:empPct.toFixed(1),rule:`≤${plu.emprMax}`,u:'%'},
+    {lbl:'Perméab.',ok:permPct>=plu.permMin,proj:permPct.toFixed(1),rule:`≥${plu.permMin}`,u:'%'},
+    {lbl:'Densité SCoT',ok:dens>=30,proj:dens.toFixed(0),rule:'≥30',u:'l/ha'},
+  ];
+  return{sc,nvEff,nvEffMax,emprise,empPct,spTot,nbLgts,nbAide,nbLibre:nbLgts-nbAide,
+    parkExt,parkSS,parkReq,empPark,impermeab,permPct,dens,Q,
+    vGiep:Q*600,sNoue:Q*600/.30,inEnv,checks,
+    allOk:checks.every(c=>c.ok),nbBlocs,gapMin,rtaaW,maxLgts,nvEffMax,envArea};
+}
+
+function getBlocRects(m){
+  const b=S.bat,nb=m.nbBlocs;if(nb<=1)return[b];
+  const g=m.gapMin,tg=(nb-1)*g,bw=(b.w-tg)/nb;
+  if(bw>=MIN_W)return Array.from({length:nb},(_,i)=>({x:b.x+i*(bw+g),y:b.y,w:bw,l:b.l}));
+  const bl=(b.l-tg)/nb;
+  return bl>=MIN_L?Array.from({length:nb},(_,i)=>({x:b.x,y:b.y+i*(bl+g),w:b.w,l:bl})):[b];
+}
+
+// ── RENDU PLAN ────────────────────────────────────────────────────
+function renderPlan(m){
+  const t=ter(),b=S.bat,sc=m.sc,env=computeEnv();
+  const batCol=m.inEnv?sc.col:'#EF4444';
+  const parts=[];
+  const xs=t.poly.map(p=>p[0]),ys=t.poly.map(p=>p[1]);
+  const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+  const plants=computeVegPlants();
+
+  // ── Defs ───────────────────────────────────────────────────────
+  parts.push(`<defs>
+    <pattern id="hatch" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="7" stroke="rgba(100,100,100,.35)" stroke-width="1.4"/></pattern>
+    <pattern id="hatch_r" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="rgba(239,68,68,.35)" stroke-width="1.3"/></pattern>
+    <pattern id="grass" patternUnits="userSpaceOnUse" width="5" height="5"><circle cx="2.5" cy="2.5" r="0.6" fill="rgba(34,100,24,.28)"/></pattern>
+    <pattern id="tree_pat" patternUnits="userSpaceOnUse" width="8" height="8"><circle cx="4" cy="4" r="2" fill="rgba(22,70,18,.22)"/></pattern>
+    <clipPath id="tc"><polygon points="${polyPts(t.poly)}"/></clipPath>
+  </defs>`);
+
+  // ── Fond papier pleine surface SVG ────────────────────────────
+  parts.push(`<rect width="${SVG_W}" height="${SVG_H}" fill="#F0EDE6"/>`);
+
+  // ── Plan masse zone (fond chaud) ──────────────────────────────
+  parts.push(`<polygon points="${polyPts(t.poly)}" fill="#EAE3D3" stroke="none"/>`);
+
+  // ── Grille métrique (5m) ──────────────────────────────────────
+  {let g=`<g opacity=".10" clip-path="url(#tc)">`;
+    for(let gx=Math.ceil(x0);gx<=x1;gx+=5){const[gsx]=w2s(gx,0);const[,a]=w2s(0,y1);const[,c]=w2s(0,y0);g+=`<line x1="${dd(gsx)}" y1="${dd(a)}" x2="${dd(gsx)}" y2="${dd(c)}" stroke="#70634A" stroke-width=".4"/>`;}
+    for(let gy=Math.ceil(y0);gy<=y1;gy+=5){const[a]=w2s(x0,0);const[c]=w2s(x1,0);const[,gsy]=w2s(0,gy);g+=`<line x1="${dd(a)}" y1="${dd(gsy)}" x2="${dd(c)}" y2="${dd(gsy)}" stroke="#70634A" stroke-width=".4"/>`;}
+    parts.push(g+'</g>');
+  }
+
+  // ── Zone N/A overlay (si non constructible) ───────────────────
+  if(!t.plu.constructible){
+    parts.push(`<polygon points="${polyPts(t.poly)}" fill="url(#tree_pat)" clip-path="url(#tc)" opacity=".8"/>`);
+    parts.push(`<polygon points="${polyPts(t.poly)}" fill="rgba(130,60,30,.08)"/>`);
+  }
+
+  // ── Zone fills recul (entre arête et inset) ───────────────────
+  if(S.layers.reculs){
+    const envPoly=computeEnvPoly();
+    const n=t.poly.length;
+    for(let i=0;i<n;i++){
+      const type=S.edgeTypes[i];
+      const r=edgeRecul(i);
+      if(r<=0)continue;
+      const col=COL[type];
+      const[p1x,p1y]=t.poly[i],[p2x,p2y]=t.poly[(i+1)%n];
+      const[e1x,e1y]=envPoly[i],[e2x,e2y]=envPoly[(i+1)%n];
+      const[sp1x,sp1y]=w2s(p1x,p1y),[sp2x,sp2y]=w2s(p2x,p2y);
+      const[se1x,se1y]=w2s(e1x,e1y),[se2x,se2y]=w2s(e2x,e2y);
+      parts.push(`<polygon points="${dd(sp1x)},${dd(sp1y)} ${dd(sp2x)},${dd(sp2y)} ${dd(se2x)},${dd(se2y)} ${dd(se1x)},${dd(se1y)}" fill="${ra(col,.09)}" stroke="none"/>`);
+    }
+  }
+
+  // ── Terrain polygone outline ───────────────────────────────────
+  parts.push(`<polygon points="${polyPts(t.poly)}" fill="none" stroke="rgba(100,88,68,.5)" stroke-width="1.5" stroke-linejoin="miter"/>`);
+
+  // ── Cotation surface terrain ───────────────────────────────────
+  parts.push(tx((x0+x1)/2,y0-1.6,`${t.area.toFixed(0)} m² · ${t.label}`,8.5,'rgba(100,88,68,.7)'));
+
+  // ── Arêtes colorées par type (thick colored edges) ────────────
+  {const n=t.poly.length;
+    for(let i=0;i<n;i++){
+      const[p1x,p1y]=t.poly[i],[p2x,p2y]=t.poly[(i+1)%n];
+      const[sx1,sy1]=w2s(p1x,p1y),[sx2,sy2]=w2s(p2x,p2y);
+      const col=COL[S.edgeTypes[i]];
+      parts.push(`<line x1="${dd(sx1)}" y1="${dd(sy1)}" x2="${dd(sx2)}" y2="${dd(sy2)}" stroke="${col}" stroke-width="4" opacity=".68" stroke-linecap="round"/>`);
+    }
+  }
+
+  // ── Lignes d'inset + labels + flèches dimension ───────────────
+  if(S.layers.reculs){
+    const n=t.poly.length;
+    for(let i=0;i<n;i++){
+      const type=S.edgeTypes[i];
+      const r=edgeRecul(i);
+      const col=COL[type];
+      const[p1x,p1y]=t.poly[i],[p2x,p2y]=t.poly[(i+1)%n];
+      const dx=p2x-p1x,dy=p2y-p1y,len=Math.hypot(dx,dy);
+      if(len<0.1)continue;
+      const nxu=-dy/len,nyu=dx/len;
+      if(r>0){
+        const ix1=p1x+nxu*r,iy1=p1y+nyu*r,ix2=p2x+nxu*r,iy2=p2y+nyu*r;
+        const[si1x,si1y]=w2s(ix1,iy1),[si2x,si2y]=w2s(ix2,iy2);
+        parts.push(`<line x1="${dd(si1x)}" y1="${dd(si1y)}" x2="${dd(si2x)}" y2="${dd(si2y)}" stroke="${col}" stroke-width="1.1" stroke-dasharray="${DASH[type]}" opacity=".88" clip-path="url(#tc)"/>`);
+        // Flèche dim au midpoint
+        const mx=(p1x+p2x)/2,my=(p1y+p2y)/2;
+        const[smx0,smy0]=w2s(mx,my),[smx1,smy1]=w2s(mx+nxu*r,my+nyu*r);
+        parts.push(`<line x1="${dd(smx0)}" y1="${dd(smy0)}" x2="${dd(smx1)}" y2="${dd(smy1)}" stroke="${col}" stroke-width=".7" opacity=".4" clip-path="url(#tc)"/>`);
+        const tn=-nyu*3.5,tti=nxu*3.5;
+        parts.push(`<line x1="${dd(smx0+tn)}" y1="${dd(smy0+tti)}" x2="${dd(smx0-tn)}" y2="${dd(smy0-tti)}" stroke="${col}" stroke-width="1.2" opacity=".45"/>`);
+        parts.push(`<line x1="${dd(smx1+tn)}" y1="${dd(smy1+tti)}" x2="${dd(smx1-tn)}" y2="${dd(smy1-tti)}" stroke="${col}" stroke-width="1.2" opacity=".65" clip-path="url(#tc)"/>`);
+        // Label avec fond blanc
+        const lx=mx+nxu*r*.5,ly=my+nyu*r*.5;
+        const[slx,sly]=w2s(lx,ly);
+        const tLabel={voie:'voie',fond:'fond',lat:'lat.'}[type];
+        const tw=(tLabel.length+r.toFixed(1).length+2)*4.6;
+        parts.push(`<rect x="${dd(slx-tw/2)}" y="${dd(sly-9)}" width="${dd(tw)}" height="12" fill="rgba(240,237,225,.8)" rx="2" clip-path="url(#tc)"/>`);
+        parts.push(`<text x="${dd(slx)}" y="${dd(sly)}" text-anchor="middle" font-size="8.5" fill="${col}" font-family="'IBM Plex Mono',monospace" font-weight="600" clip-path="url(#tc)">${tLabel} ${r}m</text>`);
+      } else if(type==='lat'&&S.mitoyen[i]){
+        const mx=(p1x+p2x)/2,my=(p1y+p2y)/2;
+        const lx=mx+nxu*1.1,ly=my+nyu*1.1;
+        const[slx,sly]=w2s(lx,ly);
+        parts.push(`<rect x="${dd(slx-26)}" y="${dd(sly-9)}" width="52" height="12" fill="rgba(240,237,225,.8)" rx="2" clip-path="url(#tc)"/>`);
+        parts.push(`<text x="${dd(slx)}" y="${dd(sly)}" text-anchor="middle" font-size="8.5" fill="${col}" font-family="'IBM Plex Mono',monospace" font-weight="600" clip-path="url(#tc)">mitoyen 0m</text>`);
+      }
+    }
+  }
+
+  // ── Enveloppe polygonale ──────────────────────────────────────
+  if(S.layers.env&&t.plu.constructible){
+    parts.push(`<polygon points="${polyPts(env.poly)}" fill="rgba(34,197,94,.07)" stroke="#22C55E" stroke-width="1.2" stroke-dasharray="8,4"/>`);
+    const ebb=polyAABB(env.poly);
+    parts.push(tx((ebb.x+ebb.x1)/2,ebb.y1+1.5,`env. ${polyArea(env.poly).toFixed(0)} m²  ·  max ${t.plu.emprMax}% = ${(polyArea(env.poly)*t.plu.emprMax/100).toFixed(0)} m²`,7.5,'rgba(34,197,94,.75)'));
+  }
+
+  // ── Végétation dans les zones ──────────────────────────────────
+  if(S.layers.veg&&t.plu.constructible){
+    for(const plant of plants)drawPlant(parts,plant.x,plant.y,plant.r,plant.type,plant.s);
+  }
+
+  // ── Parking extérieur ──────────────────────────────────────────
+  if(S.layers.parking&&S.prog.parkMode==='ext'&&!S.prog.parkSS&&m.parkReq>0&&t.plu.constructible){
+    const GAP=1.0,totalArea=m.parkReq*25;
+    let px2,ph2,bx2,by2;
+    if(S.parkSide==='est'){const av=env.x1-(b.x+b.w)-GAP;px2=Math.max(4,Math.min(13,av));ph2=Math.min(env.h,Math.max(5,totalArea/px2));bx2=Math.min(b.x+b.w+GAP,env.x1-px2);by2=Math.max(env.y,Math.min(b.y,env.y1-ph2));}
+    else if(S.parkSide==='ouest'){const av=b.x-env.x-GAP;px2=Math.max(4,Math.min(13,av));ph2=Math.min(env.h,Math.max(5,totalArea/px2));bx2=Math.max(env.x,b.x-px2-GAP);by2=Math.max(env.y,Math.min(b.y,env.y1-ph2));}
+    else if(S.parkSide==='nord'){const av=env.y1-(b.y+b.l)-GAP;ph2=Math.max(4,Math.min(13,av));px2=Math.min(env.w,Math.max(5,totalArea/ph2));bx2=Math.max(env.x,Math.min(b.x,env.x1-px2));by2=Math.min(b.y+b.l+GAP,env.y1-ph2);}
+    else{const av=b.y-env.y-GAP;ph2=Math.max(4,Math.min(13,av));px2=Math.min(env.w,Math.max(5,totalArea/ph2));bx2=Math.max(env.x,Math.min(b.x,env.x1-px2));by2=Math.max(env.y,b.y-ph2-GAP);}
+    const[prx,pry]=w2s(bx2,by2+ph2);
+    parts.push(`<rect x="${dd(prx)}" y="${dd(pry)}" width="${dd(px(px2))}" height="${dd(px(ph2))}" fill="url(#hatch)" stroke="rgba(100,100,100,.5)" stroke-width="1" stroke-dasharray="4,3"/>`);
+    parts.push(tx(bx2+px2/2,by2+ph2/2+.8,`${m.parkReq}×PK`,9,'rgba(80,80,80,.75)'));
+    if(m.parkSS>0){parts.push(tx(b.x+b.w/2,b.y-.8,`↓${m.parkSS}PK ss`,8.5,'rgba(80,80,80,.7)'));}
+  }
+
+  // ── Bâtiment ──────────────────────────────────────────────────
+  if(t.plu.constructible){
+    const blocs=getBlocRects(m);
+    blocs.forEach((bl,bi)=>{
+      const[bsx,bsy]=w2s(bl.x,bl.y+bl.l);
+      const bw2=px(bl.w),bh2=px(bl.l);
+      // Shadow décalé
+      parts.push(`<rect x="${dd(bsx+4)}" y="${dd(bsy+4)}" width="${dd(bw2)}" height="${dd(bh2)}" fill="rgba(0,0,0,.12)" rx="2"/>`);
+      // Corps bâtiment
+      const bodyAttr=bi===0?`data-type="building-body" style="cursor:move"`:'';
+      parts.push(`<rect x="${dd(bsx)}" y="${dd(bsy)}" width="${dd(bw2)}" height="${dd(bh2)}" fill="${ra(batCol,.22)}" stroke="${batCol}" stroke-width="2.5" rx="2" ${bodyAttr}/>`);
+      // Varangue nord (1.5m hauteur visuelle de la bande N)
+      const vaH=Math.min(px(1.5),bh2*.18);
+      parts.push(`<rect x="${dd(bsx)}" y="${dd(bsy)}" width="${dd(bw2)}" height="${dd(vaH)}" fill="rgba(245,222,179,.65)" stroke="${batCol}" stroke-width="1" stroke-dasharray="5,3" pointer-events="none"/>`);
+      // Hatch RdC parking
+      if(S.prog.parkMode==='rdc'){const rdcH=px(3.2);parts.push(`<rect x="${dd(bsx)}" y="${dd(bsy+bh2-rdcH)}" width="${dd(bw2)}" height="${dd(rdcH)}" fill="url(#hatch)" opacity=".55" pointer-events="none"/>`);}
+      // Labels bâtiment
+      if(bi===0){
+        const[cx,cy]=w2s(bl.x+bl.w/2,bl.y+bl.l/2);
+        const nvL=NV[m.nvEff]||`R+${m.nvEff-1}`;
+        const sub=m.nbBlocs>1?`${m.nbBlocs} blocs`:`${bl.w.toFixed(1)}×${bl.l.toFixed(1)}m`;
+        parts.push(`<text x="${dd(cx)}" y="${dd(cy-10)}" text-anchor="middle" font-size="16" fill="${batCol}" font-weight="700" font-family="'Outfit',sans-serif" pointer-events="none">${S.prog.type==='maison'?'Maison':`${m.nbLgts} lgts`}</text>`);
+        parts.push(`<text x="${dd(cx)}" y="${dd(cy+6)}" text-anchor="middle" font-size="9.5" fill="${batCol}" opacity=".85" font-family="'IBM Plex Mono',monospace" pointer-events="none">${sub}</text>`);
+        parts.push(`<text x="${dd(cx)}" y="${dd(cy+19)}" text-anchor="middle" font-size="9" fill="${batCol}" opacity=".65" font-family="'IBM Plex Mono',monospace" pointer-events="none">${nvL} · h≤${m.nvEff*H_NIV}m</text>`);
+      }else{
+        const[cx,cy]=w2s(bl.x+bl.w/2,bl.y+bl.l/2);
+        parts.push(`<text x="${dd(cx)}" y="${dd(cy)}" text-anchor="middle" font-size="10" fill="${batCol}" opacity=".7" font-family="'IBM Plex Mono',monospace" pointer-events="none">B${bi+1}</text>`);
+        if(bi<blocs.length-1){const bl2=blocs[bi+1];const[gsx,gsy]=w2s((bl.x+bl.w+bl2.x)/2,bl.y+bl.l/2);parts.push(`<text x="${dd(gsx)}" y="${dd(gsy)}" text-anchor="middle" font-size="7.5" fill="rgba(80,80,80,.7)" font-family="'IBM Plex Mono',monospace">${m.gapMin.toFixed(0)}m</text>`);}
+      }
+    });
+
+    // ── Handles AABB ─────────────────────────────────────────────
+    const HH=[
+      ['sw',b.x,b.y,'sw-resize','c'],['s',b.x+b.w/2,b.y,'s-resize','d'],['se',b.x+b.w,b.y,'se-resize','c'],
+      ['e',b.x+b.w,b.y+b.l/2,'e-resize','d'],
+      ['ne',b.x+b.w,b.y+b.l,'ne-resize','c'],['n',b.x+b.w/2,b.y+b.l,'n-resize','d'],['nw',b.x,b.y+b.l,'nw-resize','c'],
+      ['w',b.x,b.y+b.l/2,'w-resize','d'],
+    ];
+    HH.forEach(([hid,hwx,hwy,cur,shape])=>{
+      const[hsx,hsy]=w2s(hwx,hwy);
+      if(shape==='c')parts.push(`<circle cx="${dd(hsx)}" cy="${dd(hsy)}" r="5.5" fill="white" stroke="${batCol}" stroke-width="2" data-handle="${hid}" style="cursor:${cur}"/>`);
+      else{const s=4.5;parts.push(`<rect x="${dd(hsx-s)}" y="${dd(hsy-s)}" width="${dd(s*2)}" height="${dd(s*2)}" fill="white" stroke="${batCol}" stroke-width="1.5" data-handle="${hid}" style="cursor:${cur}" transform="rotate(45,${dd(hsx)},${dd(hsy)})"/>`);}
+    });
+  }
+
+  // ── Hit areas arêtes terrain (transparent, sur tout) ──────────
+  {const n=t.poly.length;
+    for(let i=0;i<n;i++){
+      const[p1x,p1y]=t.poly[i],[p2x,p2y]=t.poly[(i+1)%n];
+      const[sx1,sy1]=w2s(p1x,p1y),[sx2,sy2]=w2s(p2x,p2y);
+      parts.push(`<line x1="${dd(sx1)}" y1="${dd(sy1)}" x2="${dd(sx2)}" y2="${dd(sy2)}" stroke="transparent" stroke-width="20" data-edge="${i}" style="cursor:pointer" title="Cliquer → changer type"/>`);
+    }
+  }
+
+  // ── Cotations ─────────────────────────────────────────────────
+  if(S.layers.dims&&t.plu.constructible){
+    parts.push(dimLine(b.x,b.y,b.x+b.w,b.y,`${b.w.toFixed(1)} m`,-2.2,'h'));
+    parts.push(dimLine(b.x+b.w,b.y,b.x+b.w,b.y+b.l,`${b.l.toFixed(1)} m`,2.8,'v'));
+    if(b.y>env.y+.4)parts.push(dimLine(b.x+b.w*.12,env.y,b.x+b.w*.12,b.y,`${(b.y-env.y).toFixed(1)}m`,-1.2,'v','rgba(100,100,100,.6)'));
+    if(b.x>env.x+.4)parts.push(dimLine(env.x,b.y*.5,b.x,b.y*.5,`${(b.x-env.x).toFixed(1)}m`,-.8,'h','rgba(100,100,100,.6)'));
+  }
+
+  // ── PIR visualisation ─────────────────────────────────────────
+  if(S.layers.pir&&t.plu.constructible){
+    const ep=env.poly;
+    const pir=poleOfInaccessibility(ep,1);
+    const pirR=ep.reduce((mn,_,i)=>{const[x1,y1]=ep[i],[x2,y2]=ep[(i+1)%ep.length];return Math.min(mn,distPtSeg(pir[0],pir[1],x1,y1,x2,y2));},Infinity);
+    const[pirx,piry]=w2s(pir[0],pir[1]);
+    const pirRpx=Math.max(4,px(pirR));
+    parts.push(`<circle cx="${dd(pirx)}" cy="${dd(piry)}" r="${dd(pirRpx)}" fill="rgba(245,158,11,.06)" stroke="rgba(245,158,11,.3)" stroke-width="1.2" stroke-dasharray="6,4"><animate attributeName="r" values="${dd(pirRpx*.95)};${dd(pirRpx)};${dd(pirRpx*.95)}" dur="3s" repeatCount="indefinite"/></circle>`);
+    parts.push(`<circle cx="${dd(pirx)}" cy="${dd(piry)}" r="8" fill="rgba(245,158,11,.25)" stroke="#F59E0B" stroke-width="1.5"><animate attributeName="r" values="6;9;6" dur="2s" repeatCount="indefinite"/></circle>`);
+    parts.push(`<circle cx="${dd(pirx)}" cy="${dd(piry)}" r="3.5" fill="#F59E0B"/>`);
+    parts.push(`<text x="${dd(pirx+12)}" y="${dd(piry+4)}" font-size="9" fill="#F59E0B" font-family="'IBM Plex Mono',monospace" font-weight="600">PIR · r=${pirR.toFixed(1)}m</text>`);
+    // Centroïde pour comparaison
+    const cc=centroidPoly(ep);
+    const inC=ptInPoly(cc[0],cc[1],ep);
+    const[csx,csy]=w2s(cc[0],cc[1]);
+    parts.push(`<circle cx="${dd(csx)}" cy="${dd(csy)}" r="5" fill="none" stroke="rgba(122,48,37,.7)" stroke-width="1.5"/>`);
+    parts.push(`<line x1="${dd(csx-4)}" y1="${dd(csy-4)}" x2="${dd(csx+4)}" y2="${dd(csy+4)}" stroke="rgba(122,48,37,.8)" stroke-width="1.2"/>`);
+    parts.push(`<line x1="${dd(csx+4)}" y1="${dd(csy-4)}" x2="${dd(csx-4)}" y2="${dd(csy+4)}" stroke="rgba(122,48,37,.8)" stroke-width="1.2"/>`);
+    parts.push(`<text x="${dd(csx+8)}" y="${dd(csy-2)}" font-size="8" fill="rgba(122,48,37,.8)" font-family="'IBM Plex Mono',monospace">G (centroïde${inC?'':', hors poly'})</text>`);
+  }
+
+  // ── PCA axe principal ─────────────────────────────────────────
+  if(S.layers.pca){
+    const poly=t.poly;
+    const bearing=inferBearingPCA(poly);
+    const bb=polyAABB(poly);
+    const cx=(bb.x+bb.x1)/2,cy=(bb.y+bb.y1)/2;
+    const L=Math.max(bb.w,bb.h)*0.55;
+    const rad=bearing*Math.PI/180;
+    const dx=Math.cos(rad)*L,dy=Math.sin(rad)*L;
+    const[ax1,ay1]=w2s(cx-dx,cy-dy),[ax2,ay2]=w2s(cx+dx,cy+dy);
+    const[acx,acy]=w2s(cx,cy);
+    parts.push(`<line x1="${dd(ax1)}" y1="${dd(ay1)}" x2="${dd(ax2)}" y2="${dd(ay2)}" stroke="rgba(167,139,250,.65)" stroke-width="1.5" stroke-dasharray="8,4"/>`);
+    parts.push(`<circle cx="${dd(acx)}" cy="${dd(acy)}" r="4" fill="rgba(167,139,250,.5)" stroke="#A78BFA" stroke-width="1.2"/>`);
+    parts.push(`<text x="${dd(ax2+6)}" y="${dd(ay2+4)}" font-size="8.5" fill="#A78BFA" font-family="'IBM Plex Mono',monospace">PC1 · ${bearing.toFixed(0)}°</text>`);
+  }
+
+  // ── Zone non-constructible overlay ───────────────────────────
+  if(!t.plu.constructible){
+    parts.push(`<polygon points="${polyPts(t.poly)}" fill="rgba(139,30,20,.1)"/>`);
+    const[sox,soy]=w2s((x0+x1)/2,(y0+y1)/2);
+    parts.push(`<text x="${dd(sox)}" y="${dd(soy)}" text-anchor="middle" font-size="16" fill="rgba(220,60,40,.7)" font-weight="700" font-family="'Outfit',sans-serif">ZONE NON CONSTRUCTIBLE</text>`);
+    parts.push(`<text x="${dd(sox)}" y="${dd(soy+17)}" text-anchor="middle" font-size="10" fill="rgba(200,50,30,.5)" font-family="'IBM Plex Mono',monospace">${t.plu.type} — aucun gabarit calculable</text>`);
+  }
+
+  // ── Nord + Échelle ────────────────────────────────────────────
+  const[nax,nay]=[SVG_W-58,58];
+  parts.push(`<g>
+    <circle cx="${nax}" cy="${nay}" r="26" fill="rgba(247,244,238,.92)" stroke="#8A7F78" stroke-width="1.2"/>
+    <path d="M${nax},${nay-20} L${nax-8},${nay+12} L${nax},${nay+5} L${nax+8},${nay+12} Z" fill="#1E293B"/>
+    <path d="M${nax},${nay-20} L${nax-8},${nay+12} L${nax},${nay+5} Z" fill="white" stroke="#1E293B" stroke-width=".5"/>
+    <text x="${nax}" y="${nay-26}" text-anchor="middle" font-size="13" font-weight="800" fill="#0F172A" font-family="'Outfit',sans-serif">N</text>
+    <text x="${nax}" y="${nay+22}" text-anchor="middle" font-size="6.5" fill="#6B7280" font-family="'IBM Plex Mono',monospace">S ↑ NORD</text>
+  </g>`);
+
+  // Barre d'échelle
+  const[sb0x,sb0y]=[44,SVG_H-38],sc10=px(10);
+  const scaleM=Math.round(100/S.zoom)*10;
+  parts.push(`<g>
+    <rect x="${sb0x}" y="${sb0y-9}" width="${dd(sc10/2)}" height="7" fill="#374151" opacity=".75" rx="1"/>
+    <rect x="${dd(sb0x+sc10/2)}" y="${sb0y-9}" width="${dd(sc10/2)}" height="7" fill="white" stroke="#374151" stroke-width=".6" rx="1" opacity=".75"/>
+    <text x="${sb0x}" y="${sb0y+4}" font-size="8" fill="#6B7280" font-family="'IBM Plex Mono',monospace">0</text>
+    <text x="${dd(sb0x+sc10)}" y="${sb0y+4}" font-size="8" fill="#6B7280" font-family="'IBM Plex Mono',monospace" text-anchor="end">10m</text>
+    <text x="${dd(sb0x+sc10/2)}" y="${sb0y+4}" font-size="7.5" fill="#484F58" font-family="'IBM Plex Mono',monospace" text-anchor="middle">1:${Math.round(100/S.zoom)}</text>
+  </g>`);
+
+  // Légende compacte (haut-gauche du terrain)
+  {const[lsx,lsy]=w2s(x0+.5,y1-.5);const lw=96,lh=62;
+    parts.push(`<rect x="${dd(lsx)}" y="${dd(lsy)}" width="${lw}" height="${lh}" fill="rgba(247,244,238,.92)" stroke="#D4C8A8" rx="2"/>
+    <text x="${dd(lsx+5)}" y="${dd(lsy+13)}" font-size="7" fill="#9CA3AF" font-weight="600" font-family="'IBM Plex Mono',monospace">LIMITES PLU</text>
+    <line x1="${dd(lsx+5)}" y1="${dd(lsy+22)}" x2="${dd(lsx+18)}" y2="${dd(lsy+22)}" stroke="#EF4444" stroke-width="3" stroke-linecap="round"/>
+    <text x="${dd(lsx+22)}" y="${dd(lsy+25)}" font-size="7.5" fill="#6B7280" font-family="'IBM Plex Mono',monospace">voie</text>
+    <line x1="${dd(lsx+5)}" y1="${dd(lsy+35)}" x2="${dd(lsx+18)}" y2="${dd(lsy+35)}" stroke="#3B82F6" stroke-width="3" stroke-linecap="round"/>
+    <text x="${dd(lsx+22)}" y="${dd(lsy+38)}" font-size="7.5" fill="#6B7280" font-family="'IBM Plex Mono',monospace">latérale</text>
+    <line x1="${dd(lsx+5)}" y1="${dd(lsy+48)}" x2="${dd(lsx+18)}" y2="${dd(lsy+48)}" stroke="#22C55E" stroke-width="3" stroke-linecap="round"/>
+    <text x="${dd(lsx+22)}" y="${dd(lsy+51)}" font-size="7.5" fill="#6B7280" font-family="'IBM Plex Mono',monospace">fond</text>
+    <text x="${dd(lsx+5)}" y="${dd(lsy+62)}" font-size="6" fill="#9CA3AF" font-family="'IBM Plex Mono',monospace">▶ cliquer arête</text>`);
+  }
+
+  return parts.join('');
+}
+
+// ── RENDU COUPE ───────────────────────────────────────────────────
+function renderCoupe(m){
+  const plu=ter().plu,b=S.bat,sc=m.sc;
+  const heMax=plu.heMax,hBat=m.nvEff*H_NIV;
+  const r=plu.reculs;
+  const sceneW=r.voie+b.l+r.fond+8,sceneH=heMax+5;
+  const ML=110,MR=52,MT=60,MB=92;
+  const SC2=Math.min((SVG_W-ML-MR)/sceneW,(SVG_H-MT-MB)/sceneH,24);
+  const groundY=SVG_H-MB;
+  const xVoie=ML+16,xBatS=xVoie+r.voie*SC2,xBatN=xBatS+b.l*SC2,xFond=xBatN+r.fond*SC2;
+  const heMaxY=groundY-heMax*SC2,batTopY=groundY-hBat*SC2;
+  const W=SVG_W,H=SVG_H;
+  const parts=[];
+
+  // Fond ciel
+  parts.push(`<rect width="${W}" height="${H}" fill="#EEF4F9"/>`);
+  parts.push(`<rect x="0" y="${groundY}" width="${W}" height="${H-groundY}" fill="#E0D8C8"/>`);
+
+  // Titre
+  parts.push(`<text x="${W/2}" y="34" text-anchor="middle" font-size="14" font-weight="700" fill="#1E293B" font-family="'Outfit',sans-serif">COUPE N—S · GABARIT PLU</text>`);
+  parts.push(`<text x="${W/2}" y="50" text-anchor="middle" font-size="10" fill="#94A3B8" font-family="'IBM Plex Mono',monospace">${ter().label} · ${plu.zone} · RTAA Zone ${plu.rtaaZone} · heMax ${heMax}m</text>`);
+
+  // Zones recul
+  parts.push(`<rect x="${xVoie}" y="${MT}" width="${r.voie*SC2}" height="${groundY-MT}" fill="rgba(239,68,68,.07)"/>`);
+  parts.push(`<line x1="${xBatS}" y1="${MT}" x2="${xBatS}" y2="${groundY}" stroke="rgba(239,68,68,.3)" stroke-width=".7" stroke-dasharray="5,4"/>`);
+  parts.push(`<text x="${xVoie+r.voie*SC2/2}" y="${groundY+18}" text-anchor="middle" font-size="8.5" fill="#EF4444" font-family="'IBM Plex Mono',monospace">voie ${r.voie}m</text>`);
+
+  if(xFond+16<W-MR+30){
+    parts.push(`<rect x="${xBatN}" y="${MT}" width="${r.fond*SC2}" height="${groundY-MT}" fill="rgba(34,197,94,.07)"/>`);
+    parts.push(`<line x1="${xBatN}" y1="${MT}" x2="${xBatN}" y2="${groundY}" stroke="rgba(34,197,94,.3)" stroke-width=".7" stroke-dasharray="5,4"/>`);
+    parts.push(`<text x="${xBatN+r.fond*SC2/2}" y="${groundY+18}" text-anchor="middle" font-size="8.5" fill="#22C55E" font-family="'IBM Plex Mono',monospace">fond ${r.fond}m</text>`);
+  }
+
+  // heMax PLU
+  parts.push(`<line x1="${xVoie-18}" y1="${heMaxY}" x2="${xFond+22}" y2="${heMaxY}" stroke="#EF4444" stroke-width="1.5" stroke-dasharray="8,4"/>`);
+  parts.push(`<text x="${xFond+26}" y="${heMaxY+4}" font-size="10" fill="#EF4444" font-family="'IBM Plex Mono',monospace" font-weight="600">h max ${heMax}m</text>`);
+
+  // Niveaux
+  for(let f=0;f<=Math.ceil(heMax/H_NIV);f++){
+    const fy=groundY-f*H_NIV*SC2;
+    if(fy>=MT-4){
+      parts.push(`<line x1="${xVoie-5}" y1="${fy}" x2="${xFond+8}" y2="${fy}" stroke="rgba(200,200,200,.6)" stroke-width=".7"/>`);
+      parts.push(`<text x="${xVoie-9}" y="${fy+3}" text-anchor="end" font-size="9" fill="#A0AEC0" font-family="'IBM Plex Mono',monospace">${(f*H_NIV).toFixed(0)}m</text>`);
+    }
+  }
+
+  // Volume bâtiment
+  const batW=b.l*SC2,col2=sc.col;
+  parts.push(`<rect x="${xBatS}" y="${batTopY}" width="${batW}" height="${hBat*SC2}" fill="${ra(col2,.18)}" stroke="${col2}" stroke-width="2" rx="1"/>`);
+
+  // Niveaux intérieurs
+  for(let f=0;f<m.nvEff;f++){
+    const fBot=groundY-f*H_NIV*SC2,fTop=groundY-(f+1)*H_NIV*SC2,fMid=(fBot+fTop)/2;
+    const lbl=f===0?'RdC':`R+${f}`;
+    if(f>0)parts.push(`<line x1="${xBatS}" y1="${fBot}" x2="${xBatS+batW}" y2="${fBot}" stroke="${col2}" stroke-width="1" opacity=".45"/>`);
+    parts.push(`<text x="${xBatS+batW/2}" y="${fMid+6}" text-anchor="middle" font-size="18" font-weight="700" fill="${col2}" font-family="'Outfit',sans-serif" opacity=".9">${lbl}</text>`);
+    parts.push(`<text x="${xBatS+batW/2}" y="${fMid+21}" text-anchor="middle" font-size="9.5" fill="${col2}" font-family="'IBM Plex Mono',monospace" opacity=".6">${(f*H_NIV).toFixed(0)}–${((f+1)*H_NIV).toFixed(0)} m</text>`);
+    // Varangue
+    const vaW=Math.min(2.8*SC2,30),vaH=(H_NIV*SC2)*.78;
+    parts.push(`<rect x="${xBatS-vaW}" y="${fBot-vaH}" width="${vaW}" height="${vaH}" fill="rgba(245,222,179,.75)" stroke="${col2}" stroke-width=".8" stroke-dasharray="4,3" rx="1"/>`);
+    if(f===0)parts.push(`<text x="${xBatS-vaW/2}" y="${fBot-vaH-4}" text-anchor="middle" font-size="7.5" fill="${col2}" font-family="'IBM Plex Mono',monospace">vara.</text>`);
+  }
+
+  // Toiture
+  const roofH=Math.min(26,batW*.18);
+  parts.push(`<polygon points="${xBatS},${batTopY} ${xBatS+batW/2},${batTopY-roofH} ${xBatS+batW},${batTopY}" fill="${ra(col2,.1)}" stroke="${col2}" stroke-width="1.5"/>`);
+
+  // Arbres contexte
+  const treeH=hBat*SC2*.7+roofH;
+  parts.push(`<ellipse cx="${xVoie+r.voie*SC2*.5}" cy="${groundY}" rx="${r.voie*SC2*.35}" ry="${Math.min(treeH*.7,40)}" fill="rgba(22,80,18,.3)"/>`);
+  if(xFond+18<W-MR+30)parts.push(`<ellipse cx="${xFond-r.fond*SC2*.5}" cy="${groundY}" rx="${r.fond*SC2*.3}" ry="${Math.min(treeH*.8,45)}" fill="rgba(18,70,22,.3)"/>`);
+
+  // Sol + limites
+  parts.push(`<line x1="${xVoie-32}" y1="${groundY}" x2="${xFond+32}" y2="${groundY}" stroke="#8A7F78" stroke-width="3" stroke-linecap="round"/>`);
+
+  // Cotation hauteur bâtiment
+  const dimX=xBatS+batW+32;
+  if(dimX<W-MR-18){
+    parts.push(`<line x1="${dimX}" y1="${batTopY}" x2="${dimX}" y2="${groundY}" stroke="#374151" stroke-width="1"/>`);
+    parts.push(`<line x1="${dimX-6}" y1="${batTopY}" x2="${dimX+6}" y2="${batTopY}" stroke="#374151" stroke-width="1.8"/>`);
+    parts.push(`<line x1="${dimX-6}" y1="${groundY}" x2="${dimX+6}" y2="${groundY}" stroke="#374151" stroke-width="1.8"/>`);
+    parts.push(`<text x="${dimX+10}" y="${(batTopY+groundY)/2+4}" font-size="11" fill="#374151" font-family="'IBM Plex Mono',monospace" font-weight="600">${hBat}m</text>`);
+  }
+
+  // Cotation profondeur N-S
+  parts.push(`<line x1="${xBatS}" y1="${groundY+32}" x2="${xBatN}" y2="${groundY+32}" stroke="#374151" stroke-width="1"/>`);
+  parts.push(`<line x1="${xBatS}" y1="${groundY+26}" x2="${xBatS}" y2="${groundY+38}" stroke="#374151" stroke-width="1.8"/>`);
+  parts.push(`<line x1="${xBatN}" y1="${groundY+26}" x2="${xBatN}" y2="${groundY+38}" stroke="#374151" stroke-width="1.8"/>`);
+  parts.push(`<text x="${(xBatS+xBatN)/2}" y="${groundY+47}" text-anchor="middle" font-size="11" fill="#374151" font-family="'IBM Plex Mono',monospace" font-weight="600">${b.l.toFixed(1)}m N-S</text>`);
+
+  // Repères cardinaux
+  parts.push(`<text x="${xVoie-24}" y="${groundY-14}" text-anchor="middle" font-size="9.5" fill="#94A3B8" font-family="'IBM Plex Mono',monospace">◀ SUD</text>`);
+  parts.push(`<text x="${xFond+18}" y="${groundY-14}" text-anchor="middle" font-size="9.5" fill="#94A3B8" font-family="'IBM Plex Mono',monospace">NORD ▶</text>`);
+
+  return parts.join('');
+}
+
+// ── RENDU PRINCIPAL ────────────────────────────────────────────────
+function render(){
+  const m=metrics();
+  const svg=document.getElementById('svg');
+  svg.setAttribute('width',SVG_W);svg.setAttribute('height',SVG_H);
+  svg.setAttribute('viewBox',`0 0 ${SVG_W} ${SVG_H}`);
+  svg.style.cursor=S.view==='plan'?'crosshair':'default';
+  svg.innerHTML=S.view==='plan'?renderPlan(m):renderCoupe(m);
+  document.getElementById('zlbl').textContent=`${(S.zoom*100).toFixed(0)}%`;
+  updatePanel(m);
+}
+
+// ── PANEL ──────────────────────────────────────────────────────────
+function updatePanel(m){
+  const t=ter(),plu=t.plu,b=S.bat;
+  function g(id){return document.getElementById(id);}
+  function sv(id,v,warn,danger){const el=g(id);if(!el)return;el.textContent=v;el.className='mv'+(danger?' d':warn?' w':'');}
+
+  const nc=!plu.constructible;
+  g('nc-panel').style.display=nc?'block':'none';
+  g('max-box').style.display=nc?'none':'block';
+  if(nc){g('m-lgts').textContent='—';g('m-sub').textContent='Zone non constructible';
+    g('ck-body').innerHTML='';g('m-sp').textContent='—';g('m-nv').textContent='—';
+    g('m-envarea').textContent='—';g('m-park').textContent='—';g('m-dens').textContent='—';
+    g('m-aide').textContent='—';g('zone-warn').style.display='block';
+    g('zone-warn').textContent=`⛔ Zone ${plu.type} — non constructible`;
+    renderEdgePanel();return;
+  }
+  g('zone-warn').style.display='none';
+  g('m-maxlgts').textContent=m.maxLgts;
+  g('m-maxniv').textContent=`${NV[m.nvEffMax]||m.nvEffMax} PLU · ${plu.heMax}m`;
+  g('m-lgts').textContent=S.prog.type==='maison'?'1':m.nbLgts;
+  g('m-sub').textContent=S.prog.type==='maison'?'maison individuelle':'logements';
+  sv('m-sp',m.spTot.toFixed(0)+'m²');
+  sv('m-nv',`${NV[m.nvEff]||m.nvEff} (max ${NV[m.nvEffMax]||m.nvEffMax})`);
+  sv('m-envarea',m.envArea.toFixed(0)+'m²');
+  const pkStr=S.prog.parkMode==='ss'?`${m.parkReq}↓SS`:S.prog.parkMode==='rdc'?`${m.parkExt}PK RdC`:`${m.parkExt}PK ext`;
+  sv('m-park',pkStr);
+  sv('m-dens',m.dens.toFixed(0)+' l/ha',m.dens<30);
+  sv('m-aide',m.nbAide+' aid. · '+m.nbLibre+' lib.');
+  g('row-blocs').style.display=m.nbBlocs>1?'flex':'none';
+  if(m.nbBlocs>1)g('m-blocs').textContent=`${m.nbBlocs} · ${m.gapMin.toFixed(1)}m`;
+
+  // Gauges
+  {const empPct=m.empPct,empMax=plu.emprMax;
+    const empBar=Math.min(100,empPct/empMax*100);
+    const empColor=empPct>empMax?'#EF4444':empPct>empMax*.9?'#F59E0B':'#6366F1';
+    g('gv-emp').textContent=empPct.toFixed(1)+'%';
+    g('gv-emp').style.color=empColor;
+    g('gf-emp').style.width=empBar.toFixed(0)+'%';
+    g('gf-emp').style.background=empColor;
+    g('gl-emp').textContent=`max ${empMax}%`;
+    const permPct=m.permPct,permMin=plu.permMin;
+    const permBar=Math.min(100,permPct/100*100);
+    const permColor=permPct<permMin?'#EF4444':permPct<permMin*1.1?'#F59E0B':'#22C55E';
+    g('gv-perm').textContent=permPct.toFixed(1)+'%';
+    g('gv-perm').style.color=permColor;
+    g('gf-perm').style.width=permBar.toFixed(0)+'%';
+    g('gf-perm').style.background=permColor;
+    g('gl-perm').textContent=`min ${permMin}%`;
+  }
+
+  const ss=g('sc-status');
+  if(ss){ss.textContent=m.allOk?'✓ Conforme':'⚠ Non conforme';ss.className='sc-pill '+(m.allOk?'ok':'nok');}
+  g('ck-body').innerHTML=m.checks.map(c=>`<tr class="${c.ok?'cok':'cnok'}"><td>${c.lbl}</td><td>${c.proj}${c.u}</td><td>${c.rule}${c.u}</td><td class="ci">${c.ok?'✓':'✗'}</td></tr>`).join('');
+  g('m-Q').textContent=m.Q.toFixed(5);g('m-vg').textContent=m.vGiep.toFixed(1);g('m-sn').textContent=m.sNoue.toFixed(0);
+  g('m-bpos').textContent=`x=${b.x.toFixed(1)} y=${b.y.toFixed(1)} m`;
+  g('m-bdim').textContent=`${b.w.toFixed(1)}×${b.l.toFixed(1)} m`;
+  g('ter-info').textContent=`${t.label} · ${t.area.toFixed(0)} m²`;
+
+  const iw=g('inset-warn');
+  if(iw){iw.style.display=S._insetWarn?'block':'none';if(S._insetWarn)iw.textContent='⚠ '+S._insetWarn;}
+  renderEdgePanel();
+}
+
+function renderEdgePanel(){
+  const t=ter(),n=t.poly.length;
+  const html=Array.from({length:n},(_,i)=>{
+    const type=S.edgeTypes[i],r=edgeRecul(i),col=COL[type];
+    const bc={voie:'bv',fond:'bf',lat:'bl'}[type];
+    const lbl={voie:'voie',fond:'fond',lat:'lat.'}[type];
+    const isLat=type==='lat';
+    return`<div class="er" onclick="cycleEdge(${i})" title="Cliquer pour changer">
+      <span class="en">${i+1}</span>
+      <span class="ed" style="background:${col}"></span>
+      <span class="eb ${bc}">${lbl}</span>
+      <span class="em">${r}m</span>
+      ${isLat?`<label onclick="event.stopPropagation()" style="display:flex;align-items:center;gap:2px;cursor:pointer">
+        <input type="checkbox" ${S.mitoyen[i]?'checked':''} onchange="toggleMitoyen(${i},this.checked)" style="width:10px;height:10px;accent-color:#FBBF24">
+        <span class="emi">0m</span>
+      </label>`:''}
+    </div>`;
+  }).join('');
+  document.getElementById('edge-list').innerHTML=html;
+}
+
+function cycleEdge(i){
+  const types=['voie','lat','fond'];
+  S.edgeTypes[i]=types[(types.indexOf(S.edgeTypes[i])+1)%3];
+  render();
+}
+function toggleMitoyen(i,checked){S.mitoyen[i]=checked;render();}
+
+function syncNvSlider(){
+  const maxNv=nvMaxPLU();
+  const rng=document.getElementById('rng-nv');
+  rng.max=maxNv;if(S.prog.nvMax>maxNv)S.prog.nvMax=maxNv;
+  rng.value=S.prog.nvMax;
+  document.getElementById('val-nv').textContent=`${NV[S.prog.nvMax]||S.prog.nvMax} (≤${S.prog.nvMax*H_NIV}m)`;
+  document.getElementById('nv-marks').textContent=Array.from({length:maxNv},(_,i)=>NV[i+1]||`R+${i}`).join(' ');
+}
+
+// ── INTERACTION ───────────────────────────────────────────────────
+let drag=null;
+function getSVGPt(e){const r=document.getElementById('svg').getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top];}
+
+document.getElementById('svg').addEventListener('pointerdown',e=>{
+  if(S.view!=='plan')return;
+  const[sx,sy]=getSVGPt(e),[wx,wy]=s2w(sx,sy);
+  const edgeIdx=e.target.dataset.edge;
+  if(edgeIdx!==undefined){cycleEdge(parseInt(edgeIdx));return;}
+  const h=e.target.dataset.handle,isBody=e.target.dataset.type?.startsWith('building');
+  const svg=document.getElementById('svg');
+  if(h||isBody){drag={type:h?'handle':'body',h:h||null,ww0:[wx,wy],bat0:{...S.bat}};svg.setPointerCapture(e.pointerId);e.preventDefault();}
+  else{drag={type:'pan',sw0:[sx,sy],pan0:[S.panX,S.panY]};svg.setPointerCapture(e.pointerId);}
+});
+
+document.getElementById('svg').addEventListener('pointermove',e=>{
+  const[sx,sy]=getSVGPt(e),[wx,wy]=s2w(sx,sy);
+  const cur=document.getElementById('scur');if(cur)cur.textContent=`x: ${wx.toFixed(2)} m  /  y: ${wy.toFixed(2)} m`;
+  if(!drag||S.view!=='plan'){return;}
+  if(drag.type==='pan'){S.panX=drag.pan0[0]+sx-drag.sw0[0];S.panY=drag.pan0[1]+sy-drag.sw0[1];render();return;}
+  const dw=wx-drag.ww0[0],dh=wy-drag.ww0[1],sb=drag.bat0,b=S.bat;
+  if(drag.type==='body'){b.x=snap(sb.x+dw);b.y=snap(sb.y+dh);}
+  else{
+    const h=drag.h;
+    if(h==='sw'||h==='w'||h==='nw'){const nx=snap(sb.x+dw),nw=sb.x+sb.w-nx;if(nw>=MIN_W){b.x=nx;b.w=nw;}}
+    if(h==='se'||h==='e'||h==='ne'){const nw=snap(sb.w+dw);if(nw>=MIN_W)b.w=nw;}
+    if(h==='sw'||h==='s'||h==='se'){const ny=snap(sb.y+dh),nl=sb.y+sb.l-ny;if(nl>=MIN_L){b.y=ny;b.l=nl;}}
+    if(h==='nw'||h==='n'||h==='ne'){const nl=snap(sb.l+dh);if(nl>=MIN_L)b.l=nl;}
+  }
+  clampBat(b,computeEnv());render();
+});
+
+document.getElementById('svg').addEventListener('pointerup',()=>{drag=null;});
+document.getElementById('svg').addEventListener('wheel',e=>{
+  if(S.view!=='plan')return;
+  e.preventDefault();
+  const[sx,sy]=getSVGPt(e),[mwx,mwy]=s2w(sx,sy);
+  S.zoom=Math.max(.12,Math.min(18,S.zoom*(e.deltaY<0?1.12:1/1.12)));
+  const ns=BS*S.zoom;S.panX=sx-SCX-(mwx-S.wcx)*ns;S.panY=sy-SCY+(mwy-S.wcy)*ns;render();
+},{passive:false});
+
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||S.view!=='plan')return;
+  const b=S.bat,env=computeEnv(),step=SNAP;
+  if(e.key==='ArrowLeft'){b.x=Math.max(env.x,b.x-step);e.preventDefault();}
+  if(e.key==='ArrowRight'){b.x=Math.min(env.x1-b.w,b.x+step);e.preventDefault();}
+  if(e.key==='ArrowDown'){b.y=Math.max(env.y,b.y-step);e.preventDefault();}
+  if(e.key==='ArrowUp'){b.y=Math.min(env.y1-b.l,b.y+step);e.preventDefault();}
+  if(e.key==='0'||e.key==='r'){resetView();e.preventDefault();}
+  render();
+});
+
+// ── BINDINGS ──────────────────────────────────────────────────────
+document.querySelectorAll('#ter-tabs .ttab').forEach(t2=>{
+  t2.addEventListener('click',()=>{
+    S.terId=t2.dataset.ter;
+    document.querySelectorAll('#ter-tabs .ttab').forEach(x=>x.classList.remove('act'));
+    t2.classList.add('act');
+    resetEdgeState();
+    const t3=ter();
+    if(t3.plu.constructible){initBatFromPIR();}
+    resetView();syncNvSlider();render();
+  });
+});
+
+document.querySelectorAll('.ttab[data-sc]').forEach(t2=>{
+  t2.addEventListener('click',()=>{
+    S.scId=t2.dataset.sc;
+    document.querySelectorAll('.ttab[data-sc]').forEach(x=>x.classList.remove('act'));
+    t2.classList.add('act');
+    const sc=curSc();S.prog.nvMax=Math.min(sc.nv,nvMaxPLU());syncNvSlider();render();
+  });
+});
+
+document.querySelectorAll('.ttab[data-view]').forEach(t2=>{
+  t2.addEventListener('click',()=>{
+    S.view=t2.dataset.view;
+    document.querySelectorAll('.ttab[data-view]').forEach(x=>x.classList.remove('act'));
+    t2.classList.add('act');
+    document.getElementById('view-lbl').textContent=S.view==='plan'?'p07 · Plan masse v7':'p07 · Coupe gabarit';
+    render();
+  });
+});
+
+document.querySelectorAll('.lcb').forEach(cb=>{cb.addEventListener('change',()=>{S.layers[cb.dataset.layer]=cb.checked;render();});});
+
+document.querySelectorAll('[data-prog]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const key=btn.dataset.prog,val=btn.dataset.val;
+    if(key==='type'){S.prog.type=val;document.getElementById('row-units').style.display=val==='maison'?'none':'flex';}
+    else if(key==='park'){S.prog.parkMode=val;const sp=document.getElementById('park-side-btns');sp.style.opacity=val==='ext'?'1':'.4';sp.style.pointerEvents=val==='ext'?'auto':'none';document.getElementById('row-pkss').parentElement.style.display=val==='ss'?'none':'flex';}
+    document.querySelectorAll(`[data-prog="${key}"]`).forEach(b2=>b2.classList.remove('act'));
+    btn.classList.add('act');render();
+  });
+});
+
+document.querySelectorAll('.pkb[data-side]').forEach(btn=>{
+  btn.addEventListener('click',()=>{S.parkSide=btn.dataset.side;document.querySelectorAll('.pkb[data-side]').forEach(b2=>b2.classList.remove('act'));btn.classList.add('act');render();});
+});
+
+document.getElementById('cb-pkss').addEventListener('change',e=>{S.prog.parkSS=e.target.checked;render();});
+document.getElementById('rng-nv').addEventListener('input',e=>{S.prog.nvMax=+e.target.value;document.getElementById('val-nv').textContent=`${NV[S.prog.nvMax]||S.prog.nvMax} (≤${S.prog.nvMax*H_NIV}m)`;render();});
+document.getElementById('rng-prof').addEventListener('input',e=>{S.prog.profMax=+e.target.value;document.getElementById('val-prof').textContent=S.prog.profMax+'m';render();});
+document.getElementById('rng-units').addEventListener('input',e=>{S.prog.maxUnits=+e.target.value;document.getElementById('val-units').textContent=S.prog.maxUnits===0?'∞':String(S.prog.maxUnits);render();});
+
+document.getElementById('bzi').addEventListener('click',()=>{S.zoom=Math.min(18,S.zoom*1.2);render();});
+document.getElementById('bzo').addEventListener('click',()=>{S.zoom=Math.max(.12,S.zoom/1.2);render();});
+document.getElementById('bzr').addEventListener('click',()=>{resetView();render();});
+
+document.getElementById('btn-reset-edges').addEventListener('click',()=>{resetEdgeState();render();});
+
+document.getElementById('btn-auto').addEventListener('click',()=>{
+  if(!ter().plu.constructible)return;
+  initBatFromPIR();render();
+  const btn=document.getElementById('btn-auto');
+  btn.textContent='✓ Auto';setTimeout(()=>{btn.textContent='◎ Auto';},900);
+});
+
+document.getElementById('btn-svg').addEventListener('click',()=>{
+  const m=metrics();
+  function exp(content,name){
+    const b=new Blob([`<?xml version="1.0" encoding="utf-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${SVG_W}" height="${SVG_H}" viewBox="0 0 ${SVG_W} ${SVG_H}"><rect width="${SVG_W}" height="${SVG_H}" fill="white"/>${content}</svg>`],{type:'image/svg+xml'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click();
+  }
+  exp(renderPlan(m),`terlab-${S.terId}-plan.svg`);
+  setTimeout(()=>exp(renderCoupe(m),`terlab-${S.terId}-coupe.svg`),400);
+});
+
+// ── INIT ──────────────────────────────────────────────────────────
+resetEdgeState();
+resetView();
+if(ter().plu.constructible)initBatFromPIR();
+syncNvSlider();
+document.getElementById('val-prof').textContent='15m';
+document.getElementById('val-units').textContent='20';
+render();
+</script>
+</body>
+</html>

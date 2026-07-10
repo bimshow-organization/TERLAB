@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>TERLAB · Audit Géométrie SVG · Résumé</title>
+<link href="https://fonts.googleapis.com/css2?family=Inconsolata:wght@300;400;600;700;900&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0e0c08;--bg1:#161209;--bg2:#1e1810;--bg3:#261f14;
+  --text:#e8dfc8;--t2:#b09070;--t3:#7a6040;
+  --gold:#c9a84c;--ok:#4ca870;--warn:#d4902c;--err:#e05030;
+  --blue:#5090d8;--border:rgba(201,168,76,.18);
+}
+body{font-family:'Inconsolata',monospace;background:var(--bg);color:var(--text);font-size:12.5px;line-height:1.6}
+/* HEADER */
+.hd{padding:48px 56px 40px;background:var(--bg1);border-bottom:1px solid var(--border)}
+.hd-rule{width:44px;height:1px;background:var(--gold);margin-bottom:20px}
+h1{font-family:'DM Serif Display',serif;font-size:2rem;color:var(--text);margin-bottom:6px}
+h1 em{font-style:italic;color:var(--gold)}
+.hd-meta{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t3)}
+/* NAV */
+.nav{display:flex;gap:8px;padding:16px 56px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.nav a{padding:4px 12px;border:1px solid var(--border);border-radius:3px;
+  color:var(--t3);text-decoration:none;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;transition:all .12s}
+.nav a:hover{background:rgba(201,168,76,.10);color:var(--gold);border-color:rgba(201,168,76,.4)}
+/* SECTIONS */
+.section{padding:0 56px 48px}
+.section-hd{padding:28px 0 16px;border-top:2px solid;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.s-num{font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;
+  background:var(--bg3);color:var(--gold);padding:2px 7px;border-radius:2px}
+h2{font-family:'DM Serif Display',serif;font-size:1.5rem;font-weight:400}
+h3{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--t2);margin-bottom:10px;margin-top:20px}
+/* PROBLEM CARDS */
+.problems{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px;margin-bottom:16px}
+.pb{background:var(--bg2);border:1px solid var(--pb-border,var(--border));border-radius:4px;overflow:hidden}
+.pb-hd{display:flex;align-items:center;gap:8px;padding:9px 12px 7px;border-bottom:1px solid var(--pb-border,var(--border))}
+.pb-id{font-size:7.5px;letter-spacing:.10em;text-transform:uppercase;
+  padding:2px 5px;border-radius:2px;background:var(--bg3);font-weight:700;flex-shrink:0}
+.pb-title{font-size:10.5px;font-weight:700;color:var(--text)}
+.pb-body{padding:9px 12px}
+.pb-where{font-size:8.5px;color:var(--t3);margin-bottom:6px;letter-spacing:.05em;text-transform:uppercase}
+.pb-desc{font-size:9.5px;color:var(--t2);line-height:1.45;margin-bottom:8px}
+.pb-code{background:var(--bg3);border-radius:3px;padding:6px 9px;font-size:8.5px;
+  color:#a0c8a0;line-height:1.4;border-left:2px solid var(--pb-accent,var(--border))}
+.pb-fix{background:rgba(76,168,112,.06);border:1px solid rgba(76,168,112,.20);
+  border-radius:3px;padding:6px 9px;margin-top:7px;font-size:9px;color:var(--ok);line-height:1.4}
+.pb-fix b{color:var(--ok);display:block;margin-bottom:2px;font-size:8.5px;letter-spacing:.06em;text-transform:uppercase}
+/* Severity badges */
+.sev{padding:2px 7px;border-radius:2px;font-size:7.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;flex-shrink:0}
+.sev-crit{background:rgba(224,80,48,.18);color:var(--err)}
+.sev-hi{background:rgba(212,144,44,.15);color:var(--warn)}
+.sev-med{background:rgba(80,144,216,.15);color:var(--blue)}
+.sev-ok{background:rgba(76,168,112,.15);color:var(--ok)}
+/* Matrix table */
+table{width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:20px}
+th{background:var(--bg3);color:var(--gold);padding:7px 10px;text-align:left;
+  font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--border)}
+td{padding:6px 10px;border-bottom:1px solid rgba(201,168,76,.08);vertical-align:top;color:var(--t2)}
+tr:hover td{background:rgba(201,168,76,.04)}
+.c-ok{color:var(--ok)}
+.c-err{color:var(--err)}
+.c-warn{color:var(--warn)}
+.c-blue{color:var(--blue)}
+/* Code inline */
+code{background:var(--bg3);padding:1px 5px;border-radius:2px;font-size:9px;color:#a0c8a0}
+/* Atlas section */
+.atlas-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px;margin-bottom:16px}
+.impl{background:var(--bg2);border:1px solid rgba(76,168,112,.22);border-radius:3px;padding:10px 12px}
+.impl-id{font-size:8px;font-weight:700;color:var(--ok);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.impl-title{font-size:10px;font-weight:600;color:var(--text);margin-bottom:5px}
+.impl-desc{font-size:9px;color:var(--t2);line-height:1.35}
+/* Summary bar */
+.summary-bar{display:flex;gap:12px;padding:14px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:4px;margin-bottom:28px;flex-wrap:wrap}
+.sb-item{text-align:center;min-width:80px}
+.sb-val{font-size:1.8rem;font-weight:700;line-height:1}
+.sb-lbl{font-size:8px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
+/* Prompt box */
+.prompt-box{background:var(--bg2);border:1px solid rgba(80,144,216,.3);border-radius:4px;
+  padding:16px 20px;margin-top:16px}
+.prompt-box pre{font-size:9.5px;line-height:1.5;color:#a0b8c8;white-space:pre-wrap;word-break:break-word}
+</style>
+</head>
+<body>
+
+<div class="hd">
+  <div class="hd-rule"></div>
+  <h1>TERLAB · Audit <em>Géométrie SVG</em></h1>
+  <p style="color:var(--t2);margin-bottom:8px;font-style:italic">Résumé problèmes · erreurs · réparations · améliorations — Session atlas handlers 2026-04-15</p>
+  <p class="hd-meta">MGA Architecture · ENSA La Réunion · Vanilla JS ES2022+ · gabarit-engine.js · plan-masse-canvas.js</p>
+</div>
+
+<nav class="nav">
+  <a href="#bilan">Bilan</a>
+  <a href="#gabarit">gabarit-engine</a>
+  <a href="#planmasse">plan-masse-canvas</a>
+  <a href="#offset">Offset 2m</a>
+  <a href="#atlas">Fixes atlas</a>
+  <a href="#prompt">Claude Code Prompt</a>
+</nav>
+
+<!-- BILAN ─────────────────────────────────────────── -->
+<div class="section" id="bilan">
+  <div class="section-hd" style="border-top-color:var(--gold)">
+    <span class="s-num">00</span>
+    <h2 style="color:var(--gold)">Bilan général</h2>
+  </div>
+
+  <div class="summary-bar">
+    <div class="sb-item"><div class="sb-val" style="color:var(--err)">9</div><div class="sb-lbl">Critiques</div></div>
+    <div class="sb-item"><div class="sb-val" style="color:var(--warn)">5</div><div class="sb-lbl">Importants</div></div>
+    <div class="sb-item"><div class="sb-val" style="color:var(--blue)">3</div><div class="sb-lbl">Médians</div></div>
+    <div class="sb-item" style="border-left:1px solid var(--border);padding-left:16px">
+      <div class="sb-val" style="color:var(--ok)">10</div><div class="sb-lbl">Déjà fixés (atlas)</div>
+    </div>
+    <div class="sb-item"><div class="sb-val" style="color:var(--t2)">7</div><div class="sb-lbl">À porter dans TERLAB</div></div>
+    <div class="sb-item" style="border-left:1px solid var(--border);padding-left:16px">
+      <div class="sb-val" style="color:var(--gold)">2</div><div class="sb-lbl">Fichiers concernés</div>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr>
+      <th>#</th><th>Problème</th><th>Fichier</th><th>Sévérité</th><th>Statut</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>P1</td><td>Drag vertex sans guard anti-croisement</td><td>gabarit-engine.js</td>
+        <td class="c-err">CRITIQUE</td><td class="c-ok">✓ Atlas</td></tr>
+      <tr><td>P2</td><td>Edge-mid click = insertVertex, pas drag ⊥</td><td>gabarit-engine.js</td>
+        <td class="c-err">CRITIQUE</td><td class="c-err">À faire</td></tr>
+      <tr><td>P3</td><td>Aucun indicateur hover arête (pill preview)</td><td>gabarit-engine.js</td>
+        <td class="c-warn">Important</td><td class="c-ok">✓ Atlas</td></tr>
+      <tr><td>P4</td><td>Handles vertex non différenciés convexe/concave</td><td>gabarit-engine.js</td>
+        <td class="c-warn">Important</td><td class="c-ok">✓ Atlas</td></tr>
+      <tr><td>P5</td><td>_renderConstructible sans clipPath ni fill-rule</td><td>gabarit-engine.js</td>
+        <td class="c-err">CRITIQUE</td><td class="c-err">À faire</td></tr>
+      <tr><td>P6</td><td>insetPolygon — polygonWinding() recalculé dans la boucle</td><td>gabarit-engine.js</td>
+        <td class="c-blue">Médian</td><td class="c-err">À faire</td></tr>
+      <tr><td>P7</td><td>insetPolygon — spike guard conditionnel (window.GeoUtils stub)</td><td>gabarit-engine.js</td>
+        <td class="c-err">CRITIQUE</td><td class="c-err">À faire</td></tr>
+      <tr><td>P8</td><td>_clipPolygon (S-H) uniquement dans _renderSolution, pas _renderConstructible</td><td>gabarit-engine.js</td>
+        <td class="c-err">CRITIQUE</td><td class="c-err">À faire</td></tr>
+      <tr><td>P9</td><td>Pas de guard anti-croisement dans drag vertex</td><td>gabarit-engine.js</td>
+        <td class="c-err">CRITIQUE</td><td class="c-ok">✓ Atlas</td></tr>
+      <tr><td>P10</td><td>cycleEdge sur click arête ≠ drag perpendiculaire (comportement inattendu)</td><td>plan-masse-canvas.js</td>
+        <td class="c-err">CRITIQUE</td><td class="c-err">À faire</td></tr>
+      <tr><td>P11</td><td>_rotateActiveBloc sans clamp enveloppe (sortie possible)</td><td>plan-masse-canvas.js</td>
+        <td class="c-warn">Important</td><td class="c-err">À faire</td></tr>
+      <tr><td>P12</td><td>_resizeActiveBloc sans clamp enveloppe</td><td>plan-masse-canvas.js</td>
+        <td class="c-warn">Important</td><td class="c-err">À faire</td></tr>
+      <tr><td>P13</td><td>Contour intérieur 2m absent du rendu plan masse</td><td>plan-masse-canvas.js</td>
+        <td class="c-err">CRITIQUE</td><td class="c-err">À faire</td></tr>
+      <tr><td>P14</td><td>clipPath pmc-tc présent pour grille/contours, absent pour les blocs</td><td>plan-masse-canvas.js</td>
+        <td class="c-warn">Important</td><td class="c-err">À faire</td></tr>
+      <tr><td>P15</td><td>checkSelfIntersect existe ailleurs (L57990) mais non importé dans les éditeurs</td><td>Transverse</td>
+        <td class="c-blue">Médian</td><td class="c-err">À faire</td></tr>
+      <tr><td>P16</td><td>insetPolygon — shoelaceArea seul insuffisant pour détecter dégénérescence</td><td>gabarit-engine.js</td>
+        <td class="c-blue">Médian</td><td class="c-err">À faire</td></tr>
+      <tr><td>P17</td><td>Offset partiel affiché (zones corrompues visibles hors polygone)</td><td>Les deux</td>
+        <td class="c-err">CRITIQUE</td><td class="c-ok">✓ Atlas</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- GABARIT-ENGINE ────────────────────────────────── -->
+<div class="section" id="gabarit">
+  <div class="section-hd" style="border-top-color:var(--err)">
+    <span class="s-num">01</span>
+    <h2 style="color:var(--err)">gabarit-engine.js</h2>
+    <span style="font-style:italic;font-size:.78rem;color:var(--t3);margin-left:auto">ConstraintSolver · Éditeur parcelle P07 · 23Ko</span>
+  </div>
+
+  <div class="problems">
+
+    <div class="pb" style="--pb-border:rgba(224,80,48,.25);--pb-accent:var(--err)">
+      <div class="pb-hd">
+        <span class="pb-id" style="color:var(--err)">P1</span>
+        <span class="pb-title">Drag vertex sans guard anti-croisement</span>
+        <span class="sev sev-crit">CRITIQUE</span>
+      </div>
+      <div class="pb-body">
+        <div class="pb-where">gabarit-engine.js · _initInteraction() · mousemove</div>
+        <p class="pb-desc">Pendant le drag d'un vertex, les nœuds peuvent se croiser et rendre le polygone auto-intersecté. L'offset <code>insetPolygon</code> reçoit alors un polygone invalide → résultat aberrant.</p>
+        <div class="pb-code">// L18922 — aucune validation avant update
+polygon[dragging.vertexIdx] = snapped; // ← direct, sans revert
+// → _recomputeUnion() + _quickUpdate() sur polygone potentiellement croisé</div>
+        <div class="pb-fix"><b>Fix</b>
+const prev = {...polygon[dragging.vertexIdx]};
+polygon[dragging.vertexIdx] = snapped;
+if (checkSelfIntersect(polygon).segments.length > 0) {
+  polygon[dragging.vertexIdx] = prev; // revert
+}</div>
+      </div>
+    </div>
+
+    <div class="pb" style="--pb-border:rgba(224,80,48,.25);--pb-accent:var(--err)">
+      <div class="pb-hd">
+        <span class="pb-id" style="color:var(--err)">P2</span>
+        <span class="pb-title">Edge-mid click = insertVertex seul (pas drag ⊥)</span>
+        <span class="sev sev-crit">CRITIQUE</span>
+      </div>
+      <div class="pb-body">
+        <div class="pb-where">gabarit-engine.js · _initInteraction() · mousedown</div>
+        <p class="pb-desc">Le click sur un diamond (milieu d'arête) insère immédiatement un vertex sans permettre de draguer l'arête perpendiculairement. Le comportement attendu (push edge ⊥) est absent.</p>
+        <div class="pb-code">// L18901 — click = insertion directe, aucun drag possible
+} else if (node.dataset.nodeType === 'edge-mid') {
+  this._insertVertex(+node.dataset.parcelIdx, +node.dataset.edgeIdx);
+  this.onNodesChange(this._parcelSet);
+}</div>
+        <div class="pb-fix"><b>Fix</b>
+// pointerdown sur edge-mid → démarrer drag en mode 'edge'
+dragging = { type:'edge', parcelIdx, edgeIdx,
+  prevX: pt.x, prevY: pt.y };
+// pointermove → projeter delta souris sur normale ⊥ arête
+// → déplacer les 2 endpoints → revert si croisement</div>
+      </div>
+    </div>
+
+    <div class="pb" style="--pb-border:rgba(224,80,48,.25);--pb-accent:var(--err)">
+      <div class="pb-hd">
+        <span class="pb-id" style="color:var(--err)">P5</span>
+        <span class="pb-title">_renderConstructible sans clipPath</span>
+        <span class="sev sev-crit">CRITIQUE</span>
+      </div>
+      <div class="pb-body">
+        <div class="pb-where">gabarit-engine.js · _renderConstructible()</div>
+        <p class="pb-desc">La zone constructible est rendue directement. Si <code>insetPolygon</code> produit des sommets hors de la parcelle (coin oblique, angle aigu), la hacure verte déborde visuellement — résultat trompeur pour l'étudiant.</p>
+        <div class="pb-code">// L18567 — path simple, aucune protection
+_renderConstructible(polygon) {
+  const path = this._polyToPath(polygon);
+  this._addPath(this.layers.constructible, path, {...});
+  // ← MANQUE : clipPath sur la parcelle + fill-rule evenodd
+}</div>
+        <div class="pb-fix"><b>Fix</b>
+// Ajouter un clipPath parcelle dans les defs SVG
+// Envelopper dans &lt;g clip-path="url(#parcel-clip)"&gt;
+// Utiliser fill-rule="evenodd" pour éliminer boucles internes</div>
+      </div>
+    </div>
+
+    <div class="pb" style="--pb-border:rgba(224,80,48,.25);--pb-accent:var(--err)">
+      <div class="pb-hd">
+        <span class="pb-id" style="color:var(--err)">P7</span>
+        <span class="pb-title">insetPolygon — spike guard conditionnel</span>
+        <span class="sev sev-crit">CRITIQUE</span>
+      </div>
+      <div class="pb-body">
+        <div class="pb-where">gabarit-engine.js · insetPolygon() L17695</div>
+        <p class="pb-desc">Le guard contre les éperons aigus (sommets à angle &lt; 90°) n'est activé que si <code>window.GeoUtils</code> est disponible. Si le service est absent ou chargé en retard → polygones avec spikes → offsets invalides.</p>
+        <div class="pb-code">// L17698 — conditionnel fragile
+const GU = (typeof window !== 'undefined') ? window.GeoUtils : null;
+if (GU?.removeAcuteSpikes) { // ← STUB silencieux si GeoUtils absent
+  const cleaned = GU.removeAcuteSpikes(result, 90);
+  ...
+}
+return result; // ← retourne le polygon avec spikes si GU absent !</div>
+        <div class="pb-fix"><b>Fix</b>
+// Inline removeAcuteSpikes directement dans insetPolygon
+// Supprimer la dépendance à window.GeoUtils
+function removeAcuteSpikes(pts, minAngleDeg) { ... }
+// Appel inconditionnel dans insetPolygon</div>
+      </div>
+    </div>
+
+    <div class="pb" style="--pb-border:rgba(212,144,44,.25);--pb-accent:var(--warn)">
+      <div class="pb-hd">
+        <span class="pb-id" style="color:var(--warn)">P6</span>
+        <span class="pb-title">insetPolygon — polygonWinding() dans la boucle</span>
+        <span class="sev sev-hi">Important</span>
+      </div>
+      <div class="pb-body">
+        <div class="pb-where">gabarit-engine.js · insetPolygon() L17667</div>
+        <p class="pb-desc">La détection du winding (CW/CCW) est recalculée pour CHAQUE arête dans la boucle. Pour n=12 sommets → 12 × shoelace O(12) = 144 opérations inutiles par appel.</p>
+        <div class="pb-code">// L17670 — recalcul à chaque arête ← INUTILE
+for (let i = 0; i < n; i++) {
+  ...
+  const winding = polygonWinding(poly); // ← O(n) dans O(n) = O(n²)
+  const sign = winding < 0 ? -1 : 1;
+}</div>
+        <div class="pb-fix"><b>Fix</b>
+const winding = polygonWinding(poly); // ← une seule fois avant la boucle
+const sign = winding &lt; 0 ? -1 : 1;
+for (let i = 0; i &lt; n; i++) { /* utiliser sign */ }</div>
+      </div>
+    </div>
+
+    <div class="pb" style="--pb-border:rgba(212,144,44,.25);--pb-accent:var(--warn)">
+      <div class="pb-hd">
+        <span class="pb-id" style="color:var(--warn)">P8</span>
+        <span class="pb-title">_clipPolygon absent de _renderConstructible</span>
+        <span class="sev sev-hi">Important</span>
+      </div>
+      <div class="pb-body">
+        <div class="pb-where">gabarit-engine.js · _renderSolution() vs _renderConstructible()</div>
+        <p class="pb-desc"><code>_renderSolution</code> clippe correctement le rectangle solution contre l'emprise constructible via Sutherland-Hodgman (L18615). <code>_renderConstructible</code> n'applique aucun clip → asymétrie de traitement.</p>
+        <div class="pb-code">// _renderSolution L18615 ← correct
+const clipped = this._clipPolygon(solutionPoly, empriseConstructible);
+
+// _renderConstructible L18567 ← manque ce clip
+_renderConstructible(polygon) {
+  const path = this._polyToPath(polygon); // ← direct, pas de clip
+}</div>
+        <div class="pb-fix"><b>Fix</b>
+// Clipper emprise_constructible contre union parcelSet avant rendu
+// OU utiliser clipPath SVG sur la parcelle</div>
+      </div>
+    </div>
+
+    <div class="pb" style="--pb-border:rgba(212,144,44,.25);--pb-accent:var(--warn)">
+      <div class="pb-hd">
+        <span class="pb-id" style="color:var(--warn)">P3</span>
+        <span class="pb-title">Pas de pill hover preview sur les arêtes</span>
+        <span class="sev sev-hi">Important</span>
+      </div>
+      <div class="pb-body">
+        <div class="pb-where">gabarit-engine.js · _renderNodes() + _initInteraction()</div>
+        <p class="pb-desc">Les diamonds de milieu d'arête sont discrets (fill transparent, stroke jaune). Aucun indicateur visuel au survol pour montrer que l'arête est draggable et dans quelle direction.</p>
+        <div class="pb-code">// L18858 — diamond statique, aucun hover effect
+diamond.setAttribute('fill', 'rgba(255,255,255,0.2)');
+diamond.setAttribute('stroke', '#f1c40f');
+// ← MANQUE : mouseover → drawInfluenceZone() capsule pointillée orange</div>
+        <div class="pb-fix"><b>Fix</b>
+// Port de drawInfluenceZone() (HOUSEG-SPEECH L3878)
+// Capsule SVG : M c1 L c2 A r r 0 0 1 c3 L c4 A r r 0 0 1 c1 Z
+// stroke-dasharray:5,4 orange + flèches ⊥ + endpoints highlighted</div>
+      </div>
+    </div>
+
+    <div class="pb" style="--pb-border:rgba(80,144,216,.25);--pb-accent:var(--blue)">
+      <div class="pb-hd">
+        <span class="pb-id" style="color:var(--blue)">P4</span>
+        <span class="pb-title">Handles vertex non différenciés convexe/concave</span>
+        <span class="sev sev-med">Médian</span>
+      </div>
+      <div class="pb-body">
+        <div class="pb-where">gabarit-engine.js · _renderNodes()</div>
+        <p class="pb-desc">Tous les vertex ont le même style (cercle blanc, stroke jaune). Les coins rentrants 270° (jonctions T, L, X, Y) ne sont pas signalés visuellement — l'étudiant ne sait pas lesquels sont critiques.</p>
+        <div class="pb-code">// L18840 — style identique pour tous
+circle.setAttribute('fill', '#ffffff');
+circle.setAttribute('stroke', '#f1c40f');
+// ← MANQUE : isConcave(parcel.polygon, vIdx) → rouge si 270°</div>
+        <div class="pb-fix"><b>Fix</b>
+const conc = isConcave(parcel.polygon, vIdx); // cross-product
+circle.setAttribute('fill', conc ? '#e05030' : '#ffffff');
+circle.setAttribute('stroke', conc ? '#c03018' : '#f1c40f');</div>
+      </div>
+    </div>
+
+    <div class="pb" style="--pb-border:rgba(80,144,216,.25);--pb-accent:var(--blue)">
+      <div class="pb-hd">
+        <span class="pb-id" style="color:var(--blue)">P16</span>
+        <span class="pb-title">insetPolygon — shoelaceArea seul insuffisant</span>
+        <span class="sev sev-med">Médian</span>
+      </div>
+      <div class="pb-body">
+        <div class="pb-where">gabarit-engine.js · insetPolygon() L17703</div>
+        <p class="pb-desc">Le seul guard post-offset est <code>shoelaceArea &lt; 0.01</code>. Un polygone auto-intersecté peut avoir une aire shoelace non nulle (les boucles s'annulent partiellement) → le polygon corrompu passe le filtre.</p>
+        <div class="pb-code">// L17703 — guard insuffisant
+if (shoelaceArea(result) &lt; 0.01) return null;
+// ← Un polygone en "papillon" peut avoir area > 0 mais être invalide !</div>
+        <div class="pb-fix"><b>Fix</b>
+if (shoelaceArea(result) &lt; 0.01) return null;
+// Ajouter :
+if (checkSelfIntersect(result).segments.length > 0) return null;</div>
+      </div>
+    </div>
+
+  </div><!-- /problems gabarit -->
+</div>
+
+<!-- PLAN-MASSE-CANVAS ─────────────────────────────── -->
+<div class="section" id="planmasse">
+  <div class="section-hd" style="border-top-color:var(--blue)">
+    <span class="s-num">02</span>
+    <h2 style="color:var(--blue)">plan-masse-canvas.js</h2>
+    <span style="font-style:italic;font-size:.78rem;color:var(--t3);margin-left:auto">PlanMasseCanvas · Éditeur SVG P07/P11 · 120Ko</span>
+  </div>
+
+  <div class="problems">
+
+    <div class="pb" style="--pb-border:rgba(224,80,48,.25);--pb-accent:var(--err)">
+      <div class="pb-hd">
+        <span class="pb-id" style="color:var(--err)">P10</span>
+        <span class="pb-title">Edge click = cycleEdge, pas drag perpendiculaire</span>
+        <span class="sev sev-crit">CRITIQUE · UX BLOQUANT</span>
+      </div>
+      <div class="pb-body">
+        <div class="pb-where">plan-masse-canvas.js · pointerdown handler L49656</div>
+        <p class="pb-desc">Un click sur une arête de bâtiment change son TYPE réglementaire (voie→lat→lat-mitoyen→fond→voie). Ce comportement est documenté mais inattendu : l'étudiant s'attend à pouvoir draguer l'arête pour modifier la forme. Le drag d'arête ⊥ est totalement absent.</p>
+        <div class="pb-code">// L49656 — click arête = cycle type (voie/lat/fond)
+const edgeIdx = e.target.dataset?.edge;
+if (edgeIdx !== undefined) {
+  self.cycleEdge(parseInt(edgeIdx)); // ← change le TYPE, pas la forme !
+  return;
+}
+// ← MANQUE TOTAL : drag arête perpendiculaire</div>
+        <div class="pb-fix"><b>Fix</b>
+// Distinguer click court (cycle type) vs drag (déplacer arête ⊥)
+// pointerdown → snapshot arête
+// pointermove > seuil → mode drag ⊥ (comme atlas _move edge)
+// pointerup sans drag → cycleEdge</div>
+      </div>
+    </div>
+
+    <div class="pb" style="--pb-border:rgba(224,80,48,.25);--pb-accent:var(--err)">
+      <div class="pb-hd">
+        <span class="pb-id" style="color:var(--err)">P13</span>
+        <span class="pb-title">Contour intérieur 2m absent du rendu plan masse</span>
+        <span class="sev sev-crit">CRITIQUE · PÉDAGO</span>
+      </div>
+      <div class="pb-body">
+        <div class="pb-where">plan-masse-canvas.js · render() → blocs SVG</div>
+        <p class="pb-desc">La zone d'emprise intérieure (2m depuis chaque façade) n'est jamais rendue dans le plan masse P07/P11. L'étudiant ne voit pas la surface habitable réelle et ne peut pas vérifier si une section est &lt; 4m (dégénérée).</p>
+        <div class="pb-code">// L49029 — rendu blocs : uniquement le contour extérieur
+blocs.forEach((bl, bi) => {
+  parts.push(`&lt;polygon points="${pts}" .../&gt;`); // ← contour externe
+  // ← MANQUE : insetPolygon(bl.polygon, 2) → rendu avec evenodd + clipPath
+});</div>
+        <div class="pb-fix"><b>Fix</b>
+const off2m = insetPolygon(bl.polygon, 2);
+if (off2m?.length >= 3) {
+  // clipPath sur bl.polygon + fill-rule evenodd
+  parts.push(`&lt;g clip-path="url(#clip-${bl.id})"&gt;`);
+  parts.push(`&lt;polygon points="${offPts}" fill-rule="evenodd"
+    fill="rgba(76,168,112,0.08)" stroke="#4ca870"
+    stroke-dasharray="5,3"/&gt;`);
+  parts.push('&lt;/g&gt;');
+}</div>
+      </div>
+    </div>
+
+    <div class="pb" style="--pb-border:rgba(224,80,48,.25);--pb-accent:var(--err)">
+      <div class="pb-hd">
+        <span class="pb-id" style="color:var(--err)">P14</span>
+        <span class="pb-title">clipPath pmc-tc présent pour grille, absent pour blocs</span>
+        <span class="sev sev-crit">CRITIQUE</span>
+      </div>
+      <div class="pb-body">
+        <div class="pb-where">plan-masse-canvas.js · render() L48852</div>
+        <p class="pb-desc">Le clipPath sur la parcelle (<code>pmc-tc</code>) existe et est utilisé correctement pour la grille et les courbes de niveau. Mais les polygones des blocs bâtiment eux-mêmes ne sont PAS clipés → un bloc rotationné ou redimensionné peut déborder visuellement.</p>
+        <div class="pb-code">// L48852 — clipPath parcelle bien défini
+&lt;clipPath id="pmc-tc"&gt;&lt;polygon points="${t.poly}"/&gt;&lt;/clipPath&gt;
+
+// L48860 — utilisé pour la grille ✓
+&lt;g opacity=".10" clip-path="url(#pmc-tc)"&gt;
+
+// L49029 — blocs bâtiment : pas de clip ✗
+parts.push(`&lt;polygon points="${pts}"...`); // ← hors clip !</div>
+        <div class="pb-fix"><b>Fix</b>
+// Envelopper le groupe de blocs dans le clip parcelle existant
+parts.push(`&lt;g clip-path="url(#pmc-tc)"&gt;`);
+// ... rendu tous les blocs ...
+parts.push(`&lt;/g&gt;`);</div>
+      </div>
+    </div>
+
+    <div class="pb" style="--pb-border:rgba(212,144,44,.25);--pb-accent:var(--warn)">
+      <div class="pb-hd">
+        <span class="pb-id" style="color:var(--warn)">P11</span>
+        <span class="pb-title">_rotateActiveBloc sans clamp enveloppe</span>
+        <span class="sev sev-hi">Important</span>
+      </div>
+      <div class="pb-body">
+        <div class="pb-where">plan-masse-canvas.js · _rotateActiveBloc() L50234</div>
+        <p class="pb-desc">La rotation du bloc actif peut faire sortir des sommets hors de l'enveloppe constructible. Le code commente explicitement : "Pas de clamp env dur : la rotation peut légèrement sortir un sommet".</p>
+        <div class="pb-code">// L50257 — commentaire reconnaissant le problème
+// Pas de clamp env dur : la rotation peut légèrement sortir un sommet,
+// l'utilisateur ramène le bloc via drag du corps.
+bl.polygon = newPoly; // ← sans vérification</div>
+        <div class="pb-fix"><b>Fix</b>
+// Après rotation, vérifier chaque sommet dans env.poly (ptInPoly)
+const env = this.computeEnv();
+if (env?.poly && newPoly.some(p => !ptInPoly(p.x, p.y, env.poly))) {
+  return; // bloquer la rotation qui sort du périmètre
+}</div>
+      </div>
+    </div>
+
+    <div class="pb" style="--pb-border:rgba(212,144,44,.25);--pb-accent:var(--warn)">
+      <div class="pb-hd">
+        <span class="pb-id" style="color:var(--warn)">P12</span>
+        <span class="pb-title">_resizeActiveBloc sans clamp enveloppe</span>
+        <span class="sev sev-hi">Important</span>
+      </div>
+      <div class="pb-body">
+        <div class="pb-where">plan-masse-canvas.js · _resizeActiveBloc() L50338</div>
+        <p class="pb-desc">Même problème que P11 pour le resize : le nouveau polygone rectangle est généré sans vérification qu'il reste dans l'enveloppe constructible. Un resize extrême peut déborder.</p>
+        <div class="pb-code">// L50379 — commentaire reconnaissant le problème
+// Pas de clamp env dur sur le resize : les polygones issus de stratégies
+// peuvent toujours ramener le bloc via drag de corps (clampé, lui).
+bl.polygon = newPoly; // ← sans vérification</div>
+        <div class="pb-fix"><b>Fix</b>
+// Sutherland-Hodgman clip du nouveau rect contre env.poly
+// OU limiter les dimensions max depuis l'enveloppe disponible</div>
+      </div>
+    </div>
+
+  </div><!-- /problems plan-masse -->
+</div>
+
+<!-- OFFSET 2M ─────────────────────────────────────── -->
+<div class="section" id="offset">
+  <div class="section-hd" style="border-top-color:var(--ok)">
+    <span class="s-num">03</span>
+    <h2 style="color:var(--ok)">Offset 2m — Pipeline corrigé</h2>
+  </div>
+
+  <h3>Problème initial</h3>
+  <p style="color:var(--t2);margin-bottom:16px;font-size:9.5px;line-height:1.5">
+    L'offset intérieur 2m (<code>insetPolygon</code>) peut produire : (a) des zones qui débordent hors du polygone bâtiment sur les coins concaves,
+    (b) des boucles auto-intersectées sur les sections étroites (&lt;4m), (c) des éperons aigus si le spike guard GeoUtils est absent.
+    Ces polygones corrompus étaient affichés tels quels — rouge partiel visible, morceaux hors polygone.
+  </p>
+
+  <h3>Pipeline final (implémenté dans l'atlas, à porter dans TERLAB)</h3>
+  <div class="pb-code" style="margin-bottom:16px;font-size:9px">
+// ── 1. Calcul offset brut ──────────────────────────────────────────────
+const off = computeOffset(pts, 10);  // 10px = 2m à l'échelle
+
+// ── 2. clipPath SVG sur le polygone original ──────────────────────────
+// Rien ne peut sortir du bâtiment, quelle que soit la dégénérescence.
+const clipId = `vc-${svg.id}`;
+&lt;defs&gt;
+  &lt;clipPath id="${clipId}" clipPathUnits="userSpaceOnUse"&gt;
+    &lt;polygon points="...pts..."/&gt;    ← masque = contour bâtiment exact
+  &lt;/clipPath&gt;
+&lt;/defs&gt;
+
+// ── 3. Groupe clipé ───────────────────────────────────────────────────
+&lt;g clip-path="url(#${clipId})"&gt;
+
+  // ── 4. fill-rule="evenodd" ─────────────────────────────────────────
+  // Élimine les boucles auto-intersectées (winding pair = 0, 2…)
+  // Seules les zones à winding impair (1, 3…) sont rendues → parties cohérentes
+  &lt;polygon points="...off..."
+    fill-rule="evenodd"
+    fill="rgba(76,168,112,0.08)"
+    stroke="#4ca870" stroke-dasharray="5,3"/&gt;
+
+&lt;/g&gt;
+
+// ── 5. Guard offset effondré ──────────────────────────────────────────
+if (polyArea(off) &lt; 6) {
+  // Pastille orange discrète — pas d'affichage partiel
+}
+  </div>
+
+  <h3>Résultats par type de coin</h3>
+  <table>
+    <thead><tr><th>Type coin</th><th>Angle intérieur</th><th>Comportement offset</th><th>clipPath</th><th>evenodd</th><th>Rendu final</th></tr></thead>
+    <tbody>
+      <tr><td>Convexe 90°</td><td>90°</td><td>Intersection normale</td><td>Rien à couper</td><td>Winding 1</td><td class="c-ok">✓ Vert uniforme</td></tr>
+      <tr><td>Concave 270°</td><td>270°</td><td>Offset peut déborder</td><td><b>Coupe le débordement</b></td><td>Winding 1</td><td class="c-ok">✓ Vert intérieur seulement</td></tr>
+      <tr><td>Auto-intersection interne</td><td>Variable</td><td>Boucle interne (winding 2)</td><td>Rien</td><td><b>Clippe la boucle</b></td><td class="c-ok">✓ Vert zone valide seulement</td></tr>
+      <tr><td>Section &lt; 4m</td><td>—</td><td>Offset croisé = collapse</td><td>Tout est coupé</td><td>Winding 0</td><td class="c-warn">● Pastille orange discrète</td></tr>
+      <tr><td>Coin aigu &lt; 30°</td><td>&lt;30°</td><td>Spike très long</td><td><b>Coupe le spike</b></td><td>Winding 1 tronqué</td><td class="c-ok">✓ Vert sans spike</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ATLAS FIXES ───────────────────────────────────── -->
+<div class="section" id="atlas">
+  <div class="section-hd" style="border-top-color:var(--ok)">
+    <span class="s-num">04</span>
+    <h2 style="color:var(--ok)">Fixes implémentés dans l'atlas — À porter dans TERLAB</h2>
+  </div>
+
+  <div class="atlas-grid">
+    <div class="impl">
+      <div class="impl-id">Fix A · PolygonEditor._hasSelfIntersect</div>
+      <div class="impl-title">Guard anti-croisement O(n²) dans drag</div>
+      <p class="impl-desc">Avant chaque render() dans pointermove : snapshot prevPts → update → si _hasSelfIntersect(this.pts) → revert. Bloque visuellement le drag à la limite de validité. Applicable dans gabarit-engine mousemove et plan-masse-canvas pointermove.</p>
+    </div>
+    <div class="impl">
+      <div class="impl-id">Fix B · _drawEdgePill (port HOUSEG-SPEECH)</div>
+      <div class="impl-title">Capsule pointillée au hover d'arête</div>
+      <p class="impl-desc">Port exact de drawInfluenceZone() (L3878 HOUSEG-SPEECH) en SVG : path M c1 L c2 A r r 0 0 1 c3 L c4 A r r 0 0 1 c1 Z, stroke-dasharray:5,4, fill orange léger, double flèche ⊥ + label "drag ⊥". Handle carré bleu → orange au hover.</p>
+    </div>
+    <div class="impl">
+      <div class="impl-id">Fix C · clipPath + evenodd offset</div>
+      <div class="impl-title">Offset toujours dans le polygone</div>
+      <p class="impl-desc">Dual-layer SVG : clipPath sur polygone original → groupe cliqué → polygon fill-rule="evenodd". SVG fait tout le travail : débordements invisibles, boucles éliminées, rendu toujours propre. Aucun calcul de clipping nécessaire en JS.</p>
+    </div>
+    <div class="impl">
+      <div class="impl-id">Fix D · isConcave() + rendu différencié</div>
+      <div class="impl-title">Handles rouges pour coins rentrants 270°</div>
+      <p class="impl-desc">Cross-product (prev→curr) × (curr→next) > 0 pour polygone CW → coin concave. Cercle rouge #e05030 pour les noeuds critiques. L'étudiant identifie immédiatement les jonctions L/T/X/Y à comportement particulier.</p>
+    </div>
+    <div class="impl">
+      <div class="impl-id">Fix E · Rotation globale + sous-forme</div>
+      <div class="impl-title">3 modes de rotation interactifs</div>
+      <p class="impl-desc">Handle ↻ (cercle doré) : rotation libre autour du centroïde. Snap configurable 15°/45°. Mode pivot ancré (pivotIdx) : rotation autour d'un sommet fixe. Mode sous-forme (subshapeIdx[]) : rotation d'un sous-ensemble de vertices — les autres restent fixés.</p>
+    </div>
+    <div class="impl">
+      <div class="impl-id">Fix F · Edge drag ⊥ (vs insert vertex)</div>
+      <div class="impl-title">Push d'arête perpendiculaire correct</div>
+      <p class="impl-desc">pointerdown sur handle arête → snap prevX/Y. pointermove → projeter delta souris sur normale ⊥ (nx=-ey/len, ny=ex/len) → déplacer exactement les 2 endpoints de proj*nx, proj*ny → guard anti-croisement → render. L'arête reste parallèle à elle-même.</p>
+    </div>
+    <div class="impl">
+      <div class="impl-id">Fix G · setPointerCapture</div>
+      <div class="impl-title">Drag fluide sans perte de focus</div>
+      <p class="impl-desc">svg.setPointerCapture(e.pointerId) dans pointerdown → le SVG reçoit tous les événements pointer même si la souris sort. Évite les "drop fantômes" quand le drag est rapide. svg.releasePointerCapture dans pointerup.</p>
+    </div>
+    <div class="impl">
+      <div class="impl-id">Fix H · Pas d'offset partiel visible</div>
+      <div class="impl-title">Silence sur les dégénérescences</div>
+      <p class="impl-desc">Suppression des zones rouges "offset partiel" et du label ⚠ textuel. Si l'offset est dégénéré, le clipPath+evenodd le gère silencieusement. Seule l'offset complètement effondrée (area&lt;6px²) affiche une pastille orange discrète.</p>
+    </div>
+  </div>
+</div>
+
+<!-- CLAUDE CODE PROMPT ────────────────────────────── -->
+<div class="section" id="prompt">
+  <div class="section-hd" style="border-top-color:var(--gold)">
+    <span class="s-num">05</span>
+    <h2 style="color:var(--gold)">Claude Code Prompt — VSCode</h2>
+  </div>
+
+  <div class="prompt-box">
+    <pre>
+# TERLAB · Corrections géométrie SVG — Mission Claude Code
+
+## CONTEXTE
+Stack : Vanilla JS ES2022+, SVG inline, pas de npm. Fichiers cibles :
+- components/gabarit-engine.js     (23Ko, modifié 2026-04-11)
+- services/plan-masse-canvas.js    (120Ko, modifié 2026-04-15)
+
+## RÈGLES IMPÉRATIVES TERLAB
+- Jamais de npm/bundler/framework
+- Fonctions utilitaires = globales ou dans FootprintHelpers (window.FootprintHelpers)
+- Pas de TypeScript, pas de classes ES6 (le code existant est object-literal + prototype)
+- SVG généré par concaténation de strings (pas de DOM createElement)
+
+## CORRECTIONS À APPORTER
+
+### [1] gabarit-engine.js — Guard anti-croisement dans drag vertex
+LOCALISATION: _initInteraction() → mousemove handler (après L18922)
+ACTION: Sauvegarder prevPt avant update. Après update, appeler checkSelfIntersect
+sur le polygone modifié. Si croisement détecté → restaurer prevPt, ne pas appeler _quickUpdate.
+RÉFÉRENCE: checkSelfIntersect existe déjà dans l'audit à L57990 — extraire en
+fonction globale réutilisable dans ce fichier.
+
+### [2] gabarit-engine.js — Edge-mid drag perpendiculaire (remplace insertVertex immédiat)
+LOCALISATION: _initInteraction() → mousedown, edge-mid case (L18901)
+ACTION: Au lieu d'appeler _insertVertex immédiatement au mousedown, démarrer
+un drag. Dans mousemove : projeter delta sur normale ⊥ de l'arête, déplacer
+les 2 endpoints, guard anti-croisement. Au mouseup sans drag significatif (< 3px) :
+alors seulement _insertVertex.
+
+### [3] gabarit-engine.js — insetPolygon : hisser polygonWinding hors de la boucle
+LOCALISATION: insetPolygon() L17667 — boucle for offsetLines
+ACTION: Déplacer `const winding = polygonWinding(poly)` et `const sign = ...`
+avant la boucle for. Supprimer le recalcul à chaque itération.
+
+### [4] gabarit-engine.js — insetPolygon : inline spike guard
+LOCALISATION: insetPolygon() L17695 — spike guard conditionnel
+ACTION: Copier la logique de removeAcuteSpikes en fonction locale dans ce fichier
+(angle entre arêtes adjacentes < minAngleDeg → supprimer le vertex).
+Remplacer le bloc `const GU = ...` par un appel inconditionnel à cette fonction locale.
+
+### [5] gabarit-engine.js — insetPolygon : guard dégénérescence complet
+LOCALISATION: insetPolygon() L17703 — après le check shoelaceArea
+ACTION: Après `if (shoelaceArea(result) < 0.01) return null;`, ajouter :
+`if (checkSelfIntersect_pairs(result)) return null;`
+où checkSelfIntersect_pairs est la version O(n²) avec paires non-adjacentes.
+
+### [6] gabarit-engine.js — _renderConstructible avec clipPath SVG
+LOCALISATION: _renderConstructible(polygon) L18567
+ACTION: Modifier la méthode pour :
+(a) Créer/mettre à jour un élément <defs> avec <clipPath id="gc-constructible-clip">
+    contenant le polygone union de la parcelle
+(b) Envelopper le path de la zone constructible dans <g clip-path="url(#gc-constructible-clip)">
+(c) Utiliser fill-rule="evenodd" sur le polygon de la zone constructible
+
+### [7] plan-masse-canvas.js — Contour intérieur 2m pour chaque bloc
+LOCALISATION: render() → section blocs (autour de L49029)
+ACTION: Après le rendu de chaque polygon de bloc, calculer insetPolygon(bl.polygon, 2).
+Si résultat valide (length >= 3, shoelaceArea > 0) :
+(a) Créer clipPath id="pmc-bloc-clip-{bi}" sur le polygon du bloc
+(b) Rendre le polygon offset dans <g clip-path="url(#pmc-bloc-clip-{bi})">
+    avec fill-rule="evenodd", fill="rgba(76,168,112,0.08)", stroke="#4ca870",
+    stroke-dasharray="5,3"
+insetPolygon est déjà disponible dans gabarit-engine.js — à exporter en global
+ou dupliquer comme _insetPolygon dans plan-masse-canvas.
+
+### [8] plan-masse-canvas.js — Blocs dans clipPath pmc-tc (parcelle)
+LOCALISATION: render() → section blocs (autour de L49029)
+ACTION: Envelopper l'ensemble du rendu des blocs bâtiment dans :
+`<g clip-path="url(#pmc-tc)">` (le clipPath pmc-tc est déjà défini à L48852)
+Fermer `</g>` après le dernier bloc.
+
+### [9] plan-masse-canvas.js — _rotateActiveBloc : clamp enveloppe après rotation
+LOCALISATION: _rotateActiveBloc() L50234 — après bl.polygon = newPoly
+ACTION: Après attribution du nouveau polygon, vérifier que tous les sommets
+sont dans env.poly via ptInPoly (déjà disponible dans footprint-helpers).
+Si au moins un sommet sort → ne pas appliquer la rotation (bl.polygon = snap.poly0).
+Si env non disponible → tolérer (dégradé gracieux).
+
+### [10] plan-masse-canvas.js — cycleEdge vs drag perpendiculaire
+LOCALISATION: pointerdown handler L49656 — gestion edgeIdx
+ACTION: Transformer le click arête en geste :
+- pointerdown sur arête → snapshot {edgeIdx, downX, downY, pts0}
+- pointermove → si |delta| > 4px → mode drag ⊥ (projeter delta sur normale,
+  déplacer les 2 endpoints, clamper dans env.poly)
+- pointerup → si jamais entré en mode drag → cycleEdge (comportement actuel)
+Cela préserve le cycle de type tout en ajoutant le drag perpendiculaire.
+
+## TESTS DE VALIDATION
+Après chaque correction, vérifier :
+1. Drag vertex rapide en spiral → polygone ne se croise pas
+2. Drag arête milieu → arête se déplace ⊥, les 2 endpoints suivent, le polygon reste valide
+3. Rotation bloc → aucun sommet ne dépasse l'enveloppe constructible
+4. Zone constructible hachuré reste toujours dans la parcelle
+5. Contour 2m visible pour chaque bloc, toujours à l'intérieur
+6. cycleEdge toujours fonctionnel (click court sur arête)
+    </pre>
+  </div>
+</div>
+
+<div style="padding:24px 56px 48px;color:var(--t3);font-size:8.5px;border-top:1px solid var(--border)">
+  TERLAB × MGA Architecture · ENSA La Réunion 2026 · Audit géométrie SVG · Session 2026-04-15
+  · <span style="color:var(--gold)">terlab_handlers_atlas_v2.html</span> → référence implémentation
+</div>
+
+</body>
+</html>

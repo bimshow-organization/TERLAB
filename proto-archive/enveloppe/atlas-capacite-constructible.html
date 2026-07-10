@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atlas de la Capacité Constructible · Méthodes & Outils pour Architectes</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inconsolata:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --p:#eae6dd;--p1:#f5f1e9;--p2:#ddd8cc;
+  --ink:#18130a;--ink2:#3c3220;--ink3:#6b5c3e;
+  --gold:#9a7820;--gold2:#c9a84c;
+  --card:#fbf8f2;--br:rgba(154,120,32,.18);--br2:rgba(154,120,32,.42);
+  --reg:#7a3025;--env:#1a4858;--for:#2a5848;--opt:#6b4f10;--num:#4a3880;--opp:#1e5828;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--p);color:var(--ink);font-family:'Cormorant Garamond',serif;line-height:1.5}
+
+/* ── HEADER ── */
+.atlas-hd{padding:72px 48px 56px;background:var(--p1);border-bottom:1px solid var(--br2);text-align:center;position:relative;overflow:hidden}
+.atlas-hd::before{content:'';position:absolute;inset:0;background:
+  radial-gradient(ellipse 50% 60% at 15% 85%,rgba(122,48,37,.06) 0%,transparent 70%),
+  radial-gradient(ellipse 40% 50% at 85% 15%,rgba(74,56,128,.05) 0%,transparent 70%),
+  radial-gradient(ellipse 35% 40% at 50% 50%,rgba(42,88,72,.04) 0%,transparent 70%)}
+.atlas-hd .rule{width:64px;height:1px;background:var(--gold2);margin:0 auto 28px}
+.atlas-hd h1{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,3.5vw,2.9rem);font-weight:400;letter-spacing:.02em;margin-bottom:6px}
+.atlas-hd h1 em{font-style:italic;color:var(--reg)}
+.atlas-hd .sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.1rem;color:var(--ink3);letter-spacing:.07em;margin-bottom:24px}
+.atlas-hd .meta{font-family:'Inconsolata',monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);opacity:.8}
+.atlas-hd .rule2{width:120px;height:1px;background:var(--br2);margin:28px auto 0}
+
+/* ── LEGEND ── */
+.legend{max-width:920px;margin:44px auto;padding:0 32px}
+.legend h3{font-family:'Playfair Display',serif;font-size:1rem;font-weight:600;letter-spacing:.05em;color:var(--env);margin-bottom:14px}
+.leg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:8px}
+.leg-item{background:var(--p1);border:1px solid var(--br);border-radius:2px;padding:8px 12px;display:flex;align-items:flex-start;gap:8px}
+.leg-swatch{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.leg-item .lk{font-family:'Inconsolata',monospace;font-size:.7rem;color:var(--gold);letter-spacing:.04em;display:block}
+.leg-item .lv{font-size:.78rem;color:var(--ink3);font-style:italic}
+
+/* ── SECTIONS ── */
+.section{padding:0 0 64px}
+.section-hd{padding:40px 48px 32px;border-top-width:2px;border-top-style:solid;display:flex;align-items:baseline;gap:20px;flex-wrap:wrap}
+.section.reg .section-hd{border-top-color:var(--reg);background:linear-gradient(180deg,rgba(122,48,37,.055) 0%,transparent 100%)}
+.section.env .section-hd{border-top-color:var(--env);background:linear-gradient(180deg,rgba(26,72,88,.055) 0%,transparent 100%)}
+.section.for .section-hd{border-top-color:var(--for);background:linear-gradient(180deg,rgba(42,88,72,.055) 0%,transparent 100%)}
+.section.opt .section-hd{border-top-color:var(--opt);background:linear-gradient(180deg,rgba(107,79,16,.055) 0%,transparent 100%)}
+.section.num .section-hd{border-top-color:var(--num);background:linear-gradient(180deg,rgba(74,56,128,.055) 0%,transparent 100%)}
+.section.opp .section-hd{border-top-color:var(--opp);background:linear-gradient(180deg,rgba(30,88,40,.055) 0%,transparent 100%)}
+.section-hd .num-badge{font-family:'Inconsolata',monospace;font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;background:var(--ink);color:var(--gold2);padding:3px 8px;border-radius:2px}
+.section-hd h2{font-family:'Playfair Display',serif;font-size:1.7rem;font-weight:400}
+.section.reg .section-hd h2 em{font-style:italic;color:var(--reg)}
+.section.env .section-hd h2 em{font-style:italic;color:var(--env)}
+.section.for .section-hd h2 em{font-style:italic;color:var(--for)}
+.section.opt .section-hd h2 em{font-style:italic;color:var(--opt)}
+.section.num .section-hd h2 em{font-style:italic;color:var(--num)}
+.section.opp .section-hd h2 em{font-style:italic;color:var(--opp)}
+.section-hd .sdesc{font-style:italic;font-size:.9rem;color:var(--ink3);margin-left:auto;text-align:right;max-width:360px}
+
+/* ── GRID + CARDS ── */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:16px;padding:0 48px}
+.card{background:var(--card);border:1px solid var(--br);border-radius:3px;padding:20px 14px 34px;display:flex;flex-direction:column;align-items:center;position:relative;transition:border-color .2s,box-shadow .2s,transform .2s;cursor:default}
+.card:hover{border-color:var(--gold2);box-shadow:0 4px 20px rgba(0,0,0,.09);transform:translateY(-2px)}
+.card .badge{position:absolute;top:8px;right:8px;font-family:'Inconsolata',monospace;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;border-radius:1px;color:rgba(255,255,255,.92)}
+.badge.reg{background:var(--reg)}.badge.env{background:var(--env)}.badge.for{background:var(--for)}
+.badge.opt{background:var(--opt)}.badge.num{background:var(--num)}.badge.opp{background:var(--opp)}
+.svg-wrap{width:110px;height:110px;display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.svg-wrap.tall{height:130px}
+.card .name{font-family:'Playfair Display',serif;font-size:.95rem;font-weight:600;color:var(--ink);text-align:center;letter-spacing:.01em;line-height:1.2;margin-bottom:3px}
+.card .labelEn{font-family:'Inconsolata',monospace;font-size:.68rem;color:var(--ink3);text-align:center;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
+.card .desc{font-size:.74rem;color:var(--ink3);text-align:center;margin-top:5px;line-height:1.35;font-style:italic}
+.card .formula{font-family:'Inconsolata',monospace;font-size:.66rem;color:var(--gold);text-align:center;margin-top:7px;line-height:1.5;letter-spacing:.03em;background:rgba(154,120,32,.07);border:1px solid rgba(154,120,32,.18);border-radius:2px;padding:5px 8px;width:100%}
+.card .theory{font-family:'Inconsolata',monospace;font-size:.62rem;color:var(--gold);text-align:center;margin-top:6px;opacity:.75;letter-spacing:.04em}
+.div{height:1px;background:var(--br);margin:48px 48px 0}
+
+/* ── OPPORTUNITES BLOCK ── */
+.opp-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:0 48px}
+.opp-card{background:var(--card);border:1px solid var(--br);border-radius:3px;padding:24px 22px;transition:border-color .2s,box-shadow .2s}
+.opp-card:hover{border-color:var(--gold2);box-shadow:0 4px 20px rgba(0,0,0,.09)}
+.opp-card h4{font-family:'Playfair Display',serif;font-size:1rem;font-weight:600;color:var(--ink);margin-bottom:6px}
+.opp-card .opp-tag{font-family:'Inconsolata',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.9);padding:2px 6px;border-radius:1px;margin-right:4px;margin-bottom:8px;display:inline-block}
+.opp-card p{font-size:.82rem;color:var(--ink3);font-style:italic;margin-bottom:10px;line-height:1.45}
+.opp-card ul{padding-left:0;list-style:none}
+.opp-card ul li{font-family:'Inconsolata',monospace;font-size:.68rem;color:var(--ink2);padding:3px 0;border-bottom:1px solid var(--br);letter-spacing:.02em}
+.opp-card ul li:last-child{border-bottom:none}
+.opp-card ul li::before{content:'→ ';color:var(--gold)}
+@media(max-width:640px){.opp-grid{grid-template-columns:1fr}.grid{padding:0 16px}.section-hd{padding:24px 16px 20px}.opp-grid{padding:0 16px}}
+
+/* ── MATH INLINE ── */
+.math-zone{max-width:920px;margin:0 auto 48px;padding:0 48px}
+.math-zone h3{font-family:'Playfair Display',serif;font-size:1rem;font-weight:600;letter-spacing:.05em;color:var(--for);margin-bottom:16px}
+.math-table{width:100%;border-collapse:collapse;font-size:.8rem}
+.math-table th{font-family:'Inconsolata',monospace;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);padding:8px 12px;text-align:left;border-bottom:1px solid var(--br2)}
+.math-table td{padding:8px 12px;border-bottom:1px solid var(--br);vertical-align:middle;color:var(--ink2)}
+.math-table td:first-child{font-family:'Inconsolata',monospace;font-size:.75rem;color:var(--for);font-weight:500}
+.math-table td.eq{font-family:'Inconsolata',monospace;font-size:.78rem;color:var(--ink);letter-spacing:.04em}
+.math-table tr:hover td{background:rgba(154,120,32,.04)}
+
+/* ── SVG classes ── */
+svg .plot{fill:rgba(190,175,140,.2);stroke:rgba(120,100,60,.55);stroke-width:1.5}
+svg .env{fill:rgba(42,88,72,.1);stroke:rgba(42,88,72,.55);stroke-width:1;stroke-dasharray:6,4}
+svg .bat{fill:rgba(74,56,128,.2);stroke:rgba(74,56,128,.65);stroke-width:1.5}
+svg .bat-reg{fill:rgba(122,48,37,.2);stroke:rgba(122,48,37,.65);stroke-width:1.5}
+svg .floor{fill:rgba(74,56,128,.12);stroke:rgba(74,56,128,.45);stroke-width:.8}
+svg .floor-alt{fill:rgba(74,56,128,.22);stroke:rgba(74,56,128,.55);stroke-width:.8}
+svg .ground{fill:rgba(150,130,90,.5);stroke:rgba(100,85,55,.7);stroke-width:1}
+svg .setback-v{stroke:rgba(122,48,37,.7);stroke-width:1.2;stroke-dasharray:8,5;fill:none}
+svg .setback-f{stroke:rgba(42,88,72,.7);stroke-width:1.2;stroke-dasharray:8,5;fill:none}
+svg .setback-l{stroke:rgba(26,72,138,.65);stroke-width:1.2;stroke-dasharray:5,4;fill:none}
+svg .perm{fill:rgba(42,120,50,.2);stroke:rgba(42,100,40,.4);stroke-width:.8}
+svg .imperm{fill:rgba(120,110,90,.35);stroke:rgba(90,80,60,.5);stroke-width:.8}
+svg .dim-line{stroke:rgba(90,70,40,.65);stroke-width:.8;fill:none}
+svg .dim-txt{font-family:'Inconsolata',monospace;font-size:7.5px;fill:rgba(90,70,40,.9)}
+svg .ax{stroke:rgba(154,120,32,.35);stroke-width:.7;stroke-dasharray:3,2;fill:none}
+svg .node-box{fill:rgba(250,245,238,.9);stroke:rgba(120,100,60,.5);stroke-width:.8;rx:2}
+svg .arrow-path{fill:none;stroke:rgba(154,120,32,.7);stroke-width:1;marker-end:url(#arr)}
+svg .dot-reg{fill:var(--reg);stroke:rgba(122,48,37,.4);stroke-width:1}
+svg .dot-env{fill:var(--env);stroke:rgba(26,72,88,.4);stroke-width:1}
+svg .dot-opt{fill:var(--opt);stroke:rgba(107,79,16,.4);stroke-width:1}
+svg .dot-num{fill:var(--num);stroke:rgba(74,56,128,.4);stroke-width:1}
+</style>
+</head>
+<body>
+
+<header class="atlas-hd">
+  <div class="rule"></div>
+  <h1><em>Atlas</em> de la Capacité Constructible</h1>
+  <p class="sub">Méthodes, Formules & Opportunités numériques · À l'usage des architectes praticiens et pédagogues</p>
+  <p class="meta">20 fiches · 5 sections · Réglementation PLU · Géométrie · Maths · Optimisation · Numérique · La Réunion</p>
+  <div class="rule2"></div>
+</header>
+
+<div class="legend">
+  <h3>Conventions graphiques — Lectures des schémas</h3>
+  <div class="leg-grid">
+    <div class="leg-item"><span class="leg-swatch" style="background:rgba(190,175,140,.5)"></span><span class="lk">Parcelle brute</span><span class="lv">Rectangle ocre clair</span></div>
+    <div class="leg-item"><span class="leg-swatch" style="background:rgba(42,88,72,.5)"></span><span class="lk">Enveloppe PLU</span><span class="lv">Vert tiretée</span></div>
+    <div class="leg-item"><span class="leg-swatch" style="background:rgba(74,56,128,.45)"></span><span class="lk">Bâtiment projeté</span><span class="lv">Violet translucide</span></div>
+    <div class="leg-item"><span class="leg-swatch" style="background:rgba(122,48,37,.55)"></span><span class="lk">Recul voie</span><span class="lv">Rouge tiretée</span></div>
+    <div class="leg-item"><span class="leg-swatch" style="background:rgba(26,72,138,.5)"></span><span class="lk">Recul latéral</span><span class="lv">Bleu tiretée</span></div>
+    <div class="leg-item"><span class="leg-swatch" style="background:rgba(42,120,50,.35)"></span><span class="lk">Zone perméable</span><span class="lv">Vert clair</span></div>
+    <div class="leg-item"><span class="leg-swatch" style="background:rgba(154,120,32,.5)"></span><span class="lk">Formule / axe</span><span class="lv">Or tiretée Inconsolata</span></div>
+    <div class="leg-item"><span class="leg-swatch" style="background:rgba(120,110,90,.45)"></span><span class="lk">Zone imperméable</span><span class="lv">Gris-brun</span></div>
+  </div>
+</div>
+
+<!-- ───────────────────────────────── §01 RÉGLEMENTAIRE ──────────────────────── -->
+<section class="section reg">
+  <div class="section-hd">
+    <span class="num-badge">§ 01</span>
+    <h2>Cadre <em>Réglementaire</em></h2>
+    <p class="sdesc">Les variables PLU, RTAA DOM &amp; SCoT qui définissent la capacité maximale admissible — 5 fiches</p>
+  </div>
+  <div class="grid">
+
+  <!-- EMPRISE SOL -->
+  <div class="card">
+    <span class="badge reg">PLU</span>
+    <div class="svg-wrap"><svg viewBox="0 0 110 110" width="110" height="110">
+      <defs><pattern id="hatch" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="rgba(122,48,37,.35)" stroke-width="1.5"/></pattern></defs>
+      <rect x="4" y="4" width="102" height="102" class="plot" rx="2"/>
+      <rect x="18" y="18" width="74" height="74" fill="url(#hatch)" stroke="rgba(122,48,37,.6)" stroke-width="1.2" rx="1">
+        <animate attributeName="opacity" values=".5;1;.5" dur="3s" repeatCount="indefinite"/>
+      </rect>
+      <rect x="18" y="18" width="74" height="74" fill="rgba(122,48,37,.08)" rx="1"/>
+      <text x="55" y="59" text-anchor="middle" class="dim-txt" font-size="14" font-weight="500" fill="rgba(122,48,37,.9)">60%</text>
+      <text x="55" y="72" text-anchor="middle" class="dim-txt" font-size="8">emprise sol max</text>
+      <!-- dim arrows -->
+      <line x1="4" y1="112" x2="106" y2="112" class="dim-line"/>
+      <line x1="4" y1="109" x2="4" y2="115" class="dim-line"/><line x1="106" y1="109" x2="106" y2="115" class="dim-line"/>
+      <text x="55" y="110" text-anchor="middle" class="dim-txt">parcelle 100%</text>
+    </svg></div>
+    <span class="name">Emprise sol max</span>
+    <span class="labelEn">Footprint max ratio</span>
+    <span class="desc">Part maximale de la parcelle couvrable par des constructions. En zone U Réunion : 40 à 70%.</span>
+    <div class="formula">ES = bat.l × bat.w / A_parcelle<br>ES ≤ PLU.emprMax</div>
+  </div>
+
+  <!-- HAUTEUR MAX → NIVEAUX -->
+  <div class="card">
+    <span class="badge reg">PLU / RTAA</span>
+    <div class="svg-wrap tall"><svg viewBox="0 0 110 130" width="110" height="130">
+      <rect x="20" y="2" width="70" height="6" rx="1" fill="rgba(90,75,55,.35)" stroke="rgba(65,50,30,.5)" stroke-width="1"/>
+      <!-- floors -->
+      <rect x="28" y="8"  width="54" height="28" class="floor-alt" rx="1"/>
+      <rect x="28" y="36" width="54" height="28" class="floor" rx="1"/>
+      <rect x="28" y="64" width="54" height="28" class="floor-alt" rx="1"/>
+      <!-- labels inside -->
+      <text x="55" y="27" text-anchor="middle" class="dim-txt" fill="rgba(74,56,128,.9)" font-weight="500">R+2</text>
+      <text x="55" y="55" text-anchor="middle" class="dim-txt" fill="rgba(74,56,128,.8)">R+1</text>
+      <text x="55" y="83" text-anchor="middle" class="dim-txt" fill="rgba(74,56,128,.8)">RdC</text>
+      <!-- h_max dashed -->
+      <line x1="2" y1="8" x2="88" y2="8" stroke="rgba(122,48,37,.6)" stroke-width="1" stroke-dasharray="5,3"/>
+      <text x="3" y="6" class="dim-txt" fill="rgba(122,48,37,.85)">h max 9m</text>
+      <!-- ground -->
+      <rect x="20" y="92" width="70" height="8" class="ground" rx="1"/>
+      <!-- dim H -->
+      <line x1="88" y1="8" x2="88" y2="92" class="dim-line"/>
+      <line x1="85" y1="8" x2="91" y2="8" class="dim-line"/><line x1="85" y1="92" x2="91" y2="92" class="dim-line"/>
+      <text x="94" y="54" class="dim-txt" transform="rotate(90,94,54)" text-anchor="middle">H bat = nNiv × 3m</text>
+      <!-- H_niv bracket -->
+      <line x1="18" y1="8" x2="18" y2="36" class="dim-line"/>
+      <line x1="15" y1="8" x2="21" y2="8" class="dim-line"/><line x1="15" y1="36" x2="21" y2="36" class="dim-line"/>
+      <text x="10" y="24" class="dim-txt" text-anchor="middle">3m</text>
+      <text x="55" y="115" text-anchor="middle" class="dim-txt" fill="rgba(154,120,32,.85)" font-size="8">nvMax = ⌊h_max / 3⌋</text>
+    </svg></div>
+    <span class="name">Hauteur max → niveaux</span>
+    <span class="labelEn">h_max → floor count</span>
+    <span class="desc">La hauteur PLU détermine le nombre de niveaux. H_niv = 3m structurel (RTAA DOM 2016).</span>
+    <div class="formula">nvMax = ⌊h_max / H_niv⌋<br>Réunion : H_niv = 3.0 m</div>
+  </div>
+
+  <!-- RECULS PLU -->
+  <div class="card">
+    <span class="badge reg">PLU Art.6-7</span>
+    <div class="svg-wrap"><svg viewBox="0 0 110 110" width="110" height="110">
+      <rect x="4" y="4" width="102" height="102" class="plot" rx="2"/>
+      <!-- bat inside -->
+      <rect x="24" y="18" width="62" height="72" fill="rgba(74,56,128,.15)" stroke="rgba(74,56,128,.5)" stroke-width="1" rx="1"/>
+      <!-- setback voie (south) -->
+      <line x1="4" y1="18" x2="106" y2="18" class="setback-v"/>
+      <!-- setback fond (north) -->
+      <line x1="4" y1="90" x2="106" y2="90" class="setback-f"/>
+      <!-- setback lat E -->
+      <line x1="86" y1="4" x2="86" y2="106" class="setback-l"/>
+      <!-- setback lat W -->
+      <line x1="24" y1="4" x2="24" y2="106" class="setback-l"/>
+      <!-- dim voie -->
+      <line x1="4" y1="4" x2="4" y2="18" class="dim-line"/>
+      <text x="8" y="13" class="dim-txt" fill="rgba(122,48,37,.85)">3m voie</text>
+      <!-- dim lat -->
+      <line x1="86" y1="4" x2="106" y2="4" class="dim-line"/>
+      <text x="86" y="10" class="dim-txt" fill="rgba(26,72,138,.85)">lat</text>
+      <!-- voie label -->
+      <text x="55" y="108" text-anchor="middle" class="dim-txt" fill="rgba(90,70,40,.7)">VOIE / RUE</text>
+      <!-- legend dots -->
+      <circle cx="10" cy="98" r="3" fill="rgba(122,48,37,.7)"/><text x="15" y="101" class="dim-txt" fill="rgba(122,48,37,.8)">voie</text>
+      <circle cx="10" cy="89" r="3" fill="rgba(42,88,72,.7)"/><text x="15" y="92" class="dim-txt" fill="rgba(42,88,72,.8)">fond</text>
+    </svg></div>
+    <span class="name">Reculs PLU</span>
+    <span class="labelEn">Setbacks — Art. 6, 7, 8</span>
+    <span class="desc">Marges imposées depuis voie, limites séparatives et fond. Varient selon commune et zone.</span>
+    <div class="formula">env = insetPoly(parcelle,<br>[r.voie, r.lat, r.fond…])</div>
+  </div>
+
+  <!-- PERMÉABILITÉ -->
+  <div class="card">
+    <span class="badge reg">PLU</span>
+    <div class="svg-wrap"><svg viewBox="0 0 110 110" width="110" height="110">
+      <rect x="4" y="4" width="102" height="102" class="plot" rx="2"/>
+      <!-- impermeable zone (bat + parking) -->
+      <rect x="4" y="4"  width="102" height="102" class="imperm" rx="2"/>
+      <!-- permeable zone -->
+      <rect x="4" y="4" width="102" height="62" class="perm" rx="2">
+        <animate attributeName="height" values="50;62;50" dur="4s" repeatCount="indefinite"/>
+      </rect>
+      <!-- label perm -->
+      <text x="55" y="36" text-anchor="middle" class="dim-txt" font-size="12" fill="rgba(42,100,45,.9)" font-weight="500">40%</text>
+      <text x="55" y="50" text-anchor="middle" class="dim-txt" fill="rgba(42,100,45,.8)">perméable</text>
+      <!-- label imperm -->
+      <text x="55" y="88" text-anchor="middle" class="dim-txt" font-size="10" fill="rgba(90,80,60,.9)" font-weight="500">60%</text>
+      <text x="55" y="99" text-anchor="middle" class="dim-txt" fill="rgba(90,80,60,.7)">imperméable</text>
+      <!-- wavy rain dots -->
+      <circle cx="30" cy="20" r="1.5" fill="rgba(50,100,200,.45)"/><circle cx="55" cy="15" r="1.5" fill="rgba(50,100,200,.45)"/><circle cx="80" cy="22" r="1.5" fill="rgba(50,100,200,.45)"/>
+    </svg></div>
+    <span class="name">Perméabilité min</span>
+    <span class="labelEn">Pervious surface ratio</span>
+    <span class="desc">Part du terrain devant rester perméable (végétation, sol nu). Réunion : 25 à 40% selon zone.</span>
+    <div class="formula">perm = 1 - (bat + pk_ext)<br>              / A_parcelle ≥ PLU.permMin</div>
+  </div>
+
+  <!-- DENSITÉ SCOT -->
+  <div class="card">
+    <span class="badge reg">SCoT TCO</span>
+    <div class="svg-wrap"><svg viewBox="0 0 110 110" width="110" height="110">
+      <rect x="4" y="4" width="102" height="102" fill="rgba(190,175,140,.15)" stroke="rgba(120,100,60,.4)" stroke-width="1" rx="2"/>
+      <!-- grid cells 6x5 = 30 units / ha (target) -->
+      <g id="units">
+        <animateTransform attributeName="transform" type="scale" values="0.95;1;0.95" dur="3.5s" repeatCount="indefinite" additive="sum"/>
+      </g>
+      <!-- 30 small building squares -->
+      <g fill="rgba(74,56,128,.5)" stroke="rgba(74,56,128,.7)" stroke-width=".6">
+        <rect x="9" y="9" width="10" height="10" rx="1"/><rect x="24" y="9" width="10" height="10" rx="1"/><rect x="39" y="9" width="10" height="10" rx="1"/><rect x="54" y="9" width="10" height="10" rx="1"/><rect x="69" y="9" width="10" height="10" rx="1"/><rect x="84" y="9" width="10" height="10" rx="1"/>
+        <rect x="9" y="24" width="10" height="10" rx="1"/><rect x="24" y="24" width="10" height="10" rx="1"/><rect x="39" y="24" width="10" height="10" rx="1"/><rect x="54" y="24" width="10" height="10" rx="1"/><rect x="69" y="24" width="10" height="10" rx="1"/><rect x="84" y="24" width="10" height="10" rx="1"/>
+        <rect x="9" y="39" width="10" height="10" rx="1"/><rect x="24" y="39" width="10" height="10" rx="1"/><rect x="39" y="39" width="10" height="10" rx="1"/><rect x="54" y="39" width="10" height="10" rx="1"/><rect x="69" y="39" width="10" height="10" rx="1"/><rect x="84" y="39" width="10" height="10" rx="1"/>
+        <rect x="9" y="54" width="10" height="10" rx="1"/><rect x="24" y="54" width="10" height="10" rx="1"/><rect x="39" y="54" width="10" height="10" rx="1"/><rect x="54" y="54" width="10" height="10" rx="1"/><rect x="69" y="54" width="10" height="10" rx="1"/><rect x="84" y="54" width="10" height="10" rx="1"/>
+        <rect x="9" y="69" width="10" height="10" rx="1"/><rect x="24" y="69" width="10" height="10" rx="1"/><rect x="39" y="69" width="10" height="10" rx="1"/><rect x="54" y="69" width="10" height="10" rx="1"/><rect x="69" y="69" width="10" height="10" rx="1"/><rect x="84" y="69" width="10" height="10" rx="1"/>
+      </g>
+      <text x="55" y="98" text-anchor="middle" class="dim-txt" font-size="9" fill="rgba(122,48,37,.9)" font-weight="500">≥ 30 lgts / ha</text>
+      <text x="55" y="108" text-anchor="middle" class="dim-txt" fill="rgba(90,70,40,.6)">densité nette SCoT TCO</text>
+    </svg></div>
+    <span class="name">Densité SCoT</span>
+    <span class="labelEn">SCoT net density target</span>
+    <span class="desc">Le SCoT TCO impose ≥ 30 logements / ha en zone U. Cible vérifiée après calcul de capacité.</span>
+    <div class="formula">dens = nLgts / (A / 10 000)<br>dens ≥ 30 l/ha</div>
+  </div>
+
+  </div><!-- /grid -->
+</section>
+
+<!-- ───────────────────────────── §02 ENVELOPPE CONSTRUCTIBLE ──────────────── -->
+<section class="section env">
+  <div class="section-hd">
+    <span class="num-badge">§ 02</span>
+    <h2>Géométrie de l'<em>Enveloppe</em></h2>
+    <p class="sdesc">Construction du polygone constructible par inset arête-à-arête — 4 fiches</p>
+  </div>
+  <div class="grid">
+
+  <!-- INSET POLY -->
+  <div class="card">
+    <span class="badge env">géométrie</span>
+    <div class="svg-wrap"><svg viewBox="0 0 110 110" width="110" height="110">
+      <style>@keyframes inset-anim{0%,100%{opacity:.4}50%{opacity:1}}</style>
+      <!-- outer poly (trapeze) -->
+      <polygon points="10,95 100,95 90,15 20,15" class="plot"/>
+      <!-- mid inset -->
+      <polygon points="19,82 91,82 83,26 27,26" fill="none" stroke="rgba(26,72,88,.4)" stroke-width=".8" stroke-dasharray="4,3"/>
+      <!-- inner envelope -->
+      <polygon points="28,69 82,69 76,37 34,37" class="env">
+        <animate attributeName="opacity" values=".5;1;.5" dur="3s" repeatCount="indefinite"/>
+      </polygon>
+      <!-- normal arrows per edge -->
+      <line x1="55" y1="95" x2="55" y2="69" stroke="rgba(122,48,37,.6)" stroke-width="1.2" stroke-dasharray="2,2"/>
+      <polygon points="55,67 52,72 58,72" fill="rgba(122,48,37,.65)"/>
+      <text x="59" y="84" class="dim-txt" fill="rgba(122,48,37,.85)">r.voie</text>
+      <line x1="10" y1="55" x2="28" y2="53" stroke="rgba(26,72,138,.5)" stroke-width=".8" stroke-dasharray="2,2"/>
+      <polygon points="29,52 24,50 25,56" fill="rgba(26,72,138,.55)"/>
+      <text x="6" y="46" class="dim-txt" fill="rgba(26,72,138,.85)">r.lat</text>
+    </svg></div>
+    <span class="name">Inset polygonal</span>
+    <span class="labelEn">Per-edge normal offset</span>
+    <span class="desc">Décalage perpendiculaire de chaque arête par son recul propre. Valide pour parcelles biais et trapèzes.</span>
+    <div class="formula">n_i = (-dy,dx)/|e| · r_i<br>env = intersect(edges_i)</div>
+  </div>
+
+  <!-- ARÊTE PAR ARÊTE -->
+  <div class="card">
+    <span class="badge env">vecteurs</span>
+    <div class="svg-wrap"><svg viewBox="0 0 110 110" width="110" height="110">
+      <!-- one edge example (oblique) -->
+      <line x1="15" y1="90" x2="95" y2="30" stroke="rgba(90,70,40,.6)" stroke-width="2"/>
+      <text x="30" y="92" class="dim-txt" fill="rgba(90,70,40,.85)">arête i</text>
+      <!-- direction vector -->
+      <line x1="55" y1="60" x2="80" y2="45" stroke="rgba(154,120,32,.7)" stroke-width="1.5"/>
+      <polygon points="81,44 75,43 77,49" fill="rgba(154,120,32,.8)"/>
+      <text x="72" y="64" class="dim-txt" fill="rgba(154,120,32,.9)">dx,dy</text>
+      <!-- normal vector -->
+      <line x1="55" y1="60" x2="67" y2="85" stroke="rgba(122,48,37,.75)" stroke-width="1.5"/>
+      <polygon points="68,86 63,81 69,80" fill="rgba(122,48,37,.8)"/>
+      <text x="66" y="93" class="dim-txt" fill="rgba(122,48,37,.9)">n_i (-dy,dx)</text>
+      <!-- r × n -->
+      <line x1="55" y1="60" x2="67" y2="85" stroke="rgba(42,88,72,.55)" stroke-width="3" stroke-dasharray="2,2" opacity=".6"/>
+      <!-- offset edge -->
+      <line x1="27" y1="102" x2="107" y2="42" stroke="rgba(42,88,72,.7)" stroke-width="1.5" stroke-dasharray="6,3"/>
+      <text x="80" y="96" class="dim-txt" fill="rgba(42,88,72,.85)">arête décalée</text>
+      <text x="55" y="16" text-anchor="middle" class="dim-txt" font-size="9" fill="rgba(154,120,32,.8)">n = (-dy,dx) / |e|</text>
+      <text x="55" y="28" text-anchor="middle" class="dim-txt" fill="rgba(122,48,37,.7)">p_offset = p + n × r</text>
+    </svg></div>
+    <span class="name">Normale interne</span>
+    <span class="labelEn">Inward edge normal</span>
+    <span class="desc">Pour polygone CCW (Y-haut), la normale interne de l'arête i→i+1 est (-dy, dx)/|e|. Invariant de signe.</span>
+    <div class="formula">len = √(dx²+dy²)<br>nx = -dy/len · r<br>ny =  dx/len · r</div>
+  </div>
+
+  <!-- INTERSECTION ARÊTES -->
+  <div class="card">
+    <span class="badge env">géométrie</span>
+    <div class="svg-wrap"><svg viewBox="0 0 110 110" width="110" height="110">
+      <!-- edge a -->
+      <line x1="10" y1="30" x2="90" y2="50" stroke="rgba(26,72,88,.55)" stroke-width="1.5"/>
+      <text x="10" y="25" class="dim-txt" fill="rgba(26,72,88,.85)">edge a</text>
+      <!-- edge b -->
+      <line x1="50" y1="10" x2="70" y2="100" stroke="rgba(42,88,72,.55)" stroke-width="1.5"/>
+      <text x="73" y="60" class="dim-txt" fill="rgba(42,88,72,.85)">edge b</text>
+      <!-- intersection point -->
+      <circle cx="62" cy="43" r="5" fill="rgba(154,120,32,.8)" stroke="rgba(90,70,40,.6)" stroke-width="1">
+        <animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite"/>
+      </circle>
+      <text x="70" y="40" class="dim-txt" fill="rgba(154,120,32,.95)" font-weight="500">vertex i</text>
+      <!-- cross param -->
+      <text x="55" y="88" text-anchor="middle" class="dim-txt" fill="rgba(90,70,40,.7)">cross = d1x·d2y − d1y·d2x</text>
+      <text x="55" y="98" text-anchor="middle" class="dim-txt" fill="rgba(90,70,40,.7)">t = [(x3−x1)·d2y − (y3−y1)·d2x]</text>
+      <text x="55" y="108" text-anchor="middle" class="dim-txt" fill="rgba(90,70,40,.7)">/cross</text>
+    </svg></div>
+    <span class="name">Intersection d'arêtes</span>
+    <span class="labelEn">Edge-edge intersection</span>
+    <span class="desc">Les arêtes décalées adjacentes sont intersectées (produit vectoriel) pour produire les sommets de l'enveloppe.</span>
+    <div class="formula">t = Δ·d2 / (d1×d2)<br>P = A + t·d1</div>
+  </div>
+
+  <!-- POINT IN POLYGON -->
+  <div class="card">
+    <span class="badge env">test</span>
+    <div class="svg-wrap"><svg viewBox="0 0 110 110" width="110" height="110">
+      <polygon points="10,95 100,95 90,15 20,15" class="env" opacity=".7"/>
+      <!-- ray from test point -->
+      <circle cx="52" cy="60" r="4.5" fill="rgba(42,88,72,.8)">
+        <animate attributeName="opacity" values="1;.4;1" dur="2s" repeatCount="indefinite"/>
+      </circle>
+      <text x="57" y="57" class="dim-txt" fill="rgba(42,88,72,.9)" font-weight="500">IN ✓</text>
+      <line x1="52" y1="60" x2="105" y2="60" stroke="rgba(42,88,72,.45)" stroke-width="1" stroke-dasharray="3,2"/>
+      <circle cx="52" cy="60" r="1.5" fill="rgba(154,120,32,.9)"/>
+      <!-- cross count -->
+      <circle cx="91" cy="60" r="3" fill="none" stroke="rgba(154,120,32,.8)" stroke-width="1.2"/>
+      <text x="91" y="73" text-anchor="middle" class="dim-txt" fill="rgba(154,120,32,.75)">×1</text>
+      <!-- out point -->
+      <circle cx="20" cy="75" r="4.5" fill="rgba(122,48,37,.6)"/>
+      <text x="25" y="72" class="dim-txt" fill="rgba(122,48,37,.9)">OUT ✗</text>
+      <line x1="20" y1="75" x2="105" y2="75" stroke="rgba(122,48,37,.35)" stroke-width="1" stroke-dasharray="3,2"/>
+      <circle cx="27" cy="75" r="3" fill="none" stroke="rgba(122,48,37,.6)" stroke-width="1.2"/>
+      <circle cx="90" cy="75" r="3" fill="none" stroke="rgba(122,48,37,.6)" stroke-width="1.2"/>
+      <text x="27" y="87" text-anchor="middle" class="dim-txt" fill="rgba(122,48,37,.6)">×2 → pair</text>
+      <text x="55" y="108" text-anchor="middle" class="dim-txt" fill="rgba(90,70,40,.7)">ray casting · parité croisements</text>
+    </svg></div>
+    <span class="name">Point-dans-polygone</span>
+    <span class="labelEn">Ray-casting · Winding</span>
+    <span class="desc">Test d'appartenance d'un coin de bâtiment à l'enveloppe par comptage de croisements de rayon horizontal.</span>
+    <div class="formula">inside = nb_cross(P,env) % 2 == 1<br>→ inEnv = corners.every(…)</div>
+  </div>
+
+  </div><!-- /grid -->
+</section>
+
+<!-- ───────────────────────────── §03 FORMULES FONDAMENTALES ──────────────── -->
+<section class="section for">
+  <div class="section-hd">
+    <span class="num-badge">§ 03</span>
+    <h2>Formules <em>Fondamentales</em></h2>
+    <p class="sdesc">Les équations reliant géométrie, réglementation et programme de logements — 5 fiches</p>
+  </div>
+  <div class="grid">
+
+  <!-- SDP -->
+  <div class="card">
+    <span class="badge for">SDP</span>
+    <div class="svg-wrap tall"><svg viewBox="0 0 110 130" width="110" height="130">
+      <!-- 3 floors stacked, different heights = Eff -->
+      <rect x="18" y="10"  width="74" height="26" class="floor-alt" rx="1"/>
+      <rect x="18" y="36"  width="74" height="26" class="floor" rx="1"/>
+      <rect x="18" y="62"  width="74" height="26" class="floor-alt" rx="1"/>
+      <rect x="18" y="88"  width="74" height="7"  fill="rgba(120,100,70,.35)" stroke="rgba(90,70,40,.5)" stroke-width=".8" rx="1"/>
+      <!-- efficiency shading inside floors -->
+      <rect x="18" y="10" width="63" height="26" fill="rgba(42,88,72,.15)" rx="1"/>
+      <rect x="18" y="36" width="63" height="26" fill="rgba(42,88,72,.15)" rx="1"/>
+      <rect x="18" y="62" width="63" height="26" fill="rgba(42,88,72,.15)" rx="1"/>
+      <text x="47" y="27" text-anchor="middle" class="dim-txt" font-size="8">SDP R+2</text>
+      <text x="47" y="53" text-anchor="middle" class="dim-txt" font-size="8">SDP R+1</text>
+      <text x="47" y="79" text-anchor="middle" class="dim-txt" font-size="8">SDP RdC</text>
+      <!-- Eff annotation -->
+      <line x1="82" y1="10" x2="92" y2="10" class="dim-line"/>
+      <line x1="82" y1="88" x2="92" y2="88" class="dim-line"/>
+      <line x1="87" y1="10" x2="87" y2="88" class="dim-line"/>
+      <text x="100" y="54" class="dim-txt" transform="rotate(90,100,54)" text-anchor="middle">η ≈ 0.82</text>
+      <rect x="18" y="95" width="74" height="10" fill="rgba(190,175,140,.4)" stroke="rgba(120,100,60,.5)" stroke-width="1" rx="1"/>
+      <text x="55" y="103" text-anchor="middle" class="dim-txt" font-size="8">Emprise sol</text>
+      <text x="55" y="120" text-anchor="middle" class="dim-txt" fill="rgba(42,88,72,.9)" font-size="9" font-weight="500">SDP = Emp × η × nNiv</text>
+    </svg></div>
+    <span class="name">Surface de plancher</span>
+    <span class="labelEn">GFA · SDP nette</span>
+    <span class="desc">Produit de l'emprise, du coefficient d'efficacité (déduction voiles, gainage) et du nombre de niveaux effectifs.</span>
+    <div class="formula">SDP = bat.w × bat.l × η × nvEff<br>η ≈ 0.80–0.88 selon sc.</div>
+  </div>
+
+  <!-- SP_MOY -->
+  <div class="card">
+    <span class="badge for">typologies</span>
+    <div class="svg-wrap"><svg viewBox="0 0 110 110" width="110" height="110">
+      <!-- bar chart T1-T4 -->
+      <!-- T1 17.5% × 31m² -->
+      <rect x="10" y="72" width="15" height="24" fill="rgba(122,48,37,.55)" stroke="rgba(122,48,37,.7)" stroke-width=".8" rx="1"/>
+      <text x="17" y="70" text-anchor="middle" class="dim-txt" fill="rgba(122,48,37,.85)">T1</text>
+      <text x="17" y="103" text-anchor="middle" class="dim-txt" font-size="7">17.5%</text>
+      <text x="17" y="111" text-anchor="middle" class="dim-txt" font-size="6">31m²</text>
+      <!-- T2 27.5% × 49m² -->
+      <rect x="32" y="54" width="15" height="42" fill="rgba(107,79,16,.5)" stroke="rgba(107,79,16,.7)" stroke-width=".8" rx="1"/>
+      <text x="39" y="52" text-anchor="middle" class="dim-txt" fill="rgba(107,79,16,.85)">T2</text>
+      <text x="39" y="103" text-anchor="middle" class="dim-txt" font-size="7">27.5%</text>
+      <text x="39" y="111" text-anchor="middle" class="dim-txt" font-size="6">49m²</text>
+      <!-- T3 32.5% × 68m² -->
+      <rect x="54" y="38" width="15" height="58" fill="rgba(42,88,72,.5)" stroke="rgba(42,88,72,.7)" stroke-width=".8" rx="1"/>
+      <text x="61" y="36" text-anchor="middle" class="dim-txt" fill="rgba(42,88,72,.85)">T3</text>
+      <text x="61" y="103" text-anchor="middle" class="dim-txt" font-size="7">32.5%</text>
+      <text x="61" y="111" text-anchor="middle" class="dim-txt" font-size="6">68m²</text>
+      <!-- T4 22.5% × 87m² -->
+      <rect x="76" y="20" width="15" height="76" fill="rgba(26,72,88,.5)" stroke="rgba(26,72,88,.7)" stroke-width=".8" rx="1"/>
+      <text x="83" y="18" text-anchor="middle" class="dim-txt" fill="rgba(26,72,88,.85)">T4</text>
+      <text x="83" y="103" text-anchor="middle" class="dim-txt" font-size="7">22.5%</text>
+      <text x="83" y="111" text-anchor="middle" class="dim-txt" font-size="6">87m²</text>
+      <!-- SP_moy line -->
+      <line x1="6" y1="58" x2="102" y2="58" stroke="rgba(154,120,32,.65)" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="4" y="56" class="dim-txt" fill="rgba(154,120,32,.9)">60.6m²</text>
+      <line x1="6" y1="96" x2="102" y2="96" stroke="rgba(90,70,40,.35)" stroke-width=".7"/>
+    </svg></div>
+    <span class="name">SP moyenne pondérée</span>
+    <span class="labelEn">Weighted avg surface</span>
+    <span class="desc">Surface programmée moyenne pondérée par les parts de chaque typologie (SRU LLTS/LLS/PLS/libre).</span>
+    <div class="formula">SP̄ = Σ αᵢ × Tᵢ<br>≈ 0.175×31 + 0.275×49<br>+ 0.325×68 + 0.225×87<br>= 60.6 m²</div>
+  </div>
+
+  <!-- nLGTS -->
+  <div class="card">
+    <span class="badge for">capacité</span>
+    <div class="svg-wrap"><svg viewBox="0 0 110 110" width="110" height="110">
+      <!-- SDP bar -->
+      <rect x="8" y="16" width="94" height="30" fill="rgba(42,88,72,.18)" stroke="rgba(42,88,72,.55)" stroke-width="1" rx="1"/>
+      <text x="55" y="28" text-anchor="middle" class="dim-txt" fill="rgba(42,88,72,.9)" font-weight="500">SDP = 900 m²</text>
+      <text x="55" y="40" text-anchor="middle" class="dim-txt" fill="rgba(42,88,72,.7)">Surface de plancher nette</text>
+      <!-- SP_moy divider -->
+      <line x1="55" y1="46" x2="55" y2="56" stroke="rgba(154,120,32,.7)" stroke-width="1"/>
+      <text x="55" y="54" text-anchor="middle" class="dim-txt" fill="rgba(154,120,32,.85)">÷ SP̄ = 60.6 m²</text>
+      <line x1="55" y1="56" x2="55" y2="64" stroke="rgba(154,120,32,.7)" stroke-width="1"/>
+      <polygon points="55,65 52,60 58,60" fill="rgba(154,120,32,.8)"/>
+      <!-- result -->
+      <rect x="20" y="68" width="70" height="28" fill="rgba(74,56,128,.15)" stroke="rgba(74,56,128,.6)" stroke-width="1.2" rx="2">
+        <animate attributeName="stroke-opacity" values=".4;1;.4" dur="2.5s" repeatCount="indefinite"/>
+      </rect>
+      <text x="55" y="83" text-anchor="middle" class="dim-txt" font-size="14" fill="rgba(74,56,128,.95)" font-weight="500">14</text>
+      <text x="55" y="93" text-anchor="middle" class="dim-txt" fill="rgba(74,56,128,.8)">logements</text>
+      <text x="55" y="110" text-anchor="middle" class="dim-txt" fill="rgba(90,70,40,.65)">⌊ SDP / SP̄ ⌋</text>
+    </svg></div>
+    <span class="name">Nombre de logements</span>
+    <span class="labelEn">Unit count estimate</span>
+    <span class="desc">Estimation par division de la SDP nette par la surface pondérée selon le mix social imposé par le PLU.</span>
+    <div class="formula">nLgts = ⌊ SDP_nette / SP̄ ⌋<br>type maison → nLgts = 1</div>
+  </div>
+
+  <!-- PARKING PLU -->
+  <div class="card">
+    <span class="badge for">stationnement</span>
+    <div class="svg-wrap"><svg viewBox="0 0 110 110" width="110" height="110">
+      <defs><pattern id="hatch2" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="rgba(90,70,40,.22)" stroke-width="1.5"/></pattern></defs>
+      <!-- parking grid 3×4 -->
+      <rect x="6" y="6" width="98" height="80" fill="url(#hatch2)" stroke="rgba(90,70,40,.4)" stroke-width="1" rx="1"/>
+      <!-- stalls std (blue) -->
+      <rect x="10" y="10" width="22" height="16" fill="rgba(26,72,88,.45)" stroke="rgba(26,72,88,.65)" stroke-width=".8" rx="1"/>
+      <rect x="36" y="10" width="22" height="16" fill="rgba(26,72,88,.45)" stroke="rgba(26,72,88,.65)" stroke-width=".8" rx="1"/>
+      <rect x="62" y="10" width="22" height="16" fill="rgba(26,72,88,.45)" stroke="rgba(26,72,88,.65)" stroke-width=".8" rx="1"/>
+      <rect x="10" y="30" width="22" height="16" fill="rgba(26,72,88,.45)" stroke="rgba(26,72,88,.65)" stroke-width=".8" rx="1"/>
+      <rect x="36" y="30" width="22" height="16" fill="rgba(26,72,88,.45)" stroke="rgba(26,72,88,.65)" stroke-width=".8" rx="1"/>
+      <rect x="62" y="30" width="22" height="16" fill="rgba(26,72,88,.45)" stroke="rgba(26,72,88,.65)" stroke-width=".8" rx="1"/>
+      <!-- stalls aide (amber) -->
+      <rect x="10" y="50" width="22" height="16" fill="rgba(107,79,16,.45)" stroke="rgba(107,79,16,.65)" stroke-width=".8" rx="1"/>
+      <rect x="36" y="50" width="22" height="16" fill="rgba(107,79,16,.45)" stroke="rgba(107,79,16,.65)" stroke-width=".8" rx="1"/>
+      <!-- stalls visit (green) -->
+      <rect x="62" y="50" width="22" height="16" fill="rgba(42,88,72,.45)" stroke="rgba(42,88,72,.65)" stroke-width=".8" rx="1"/>
+      <!-- labels -->
+      <text x="6"  y="92" class="dim-txt" fill="rgba(26,72,88,.85)">▪ libre ×2</text>
+      <text x="50" y="92" class="dim-txt" fill="rgba(107,79,16,.85)">▪ aidé ×1</text>
+      <text x="6"  y="102" class="dim-txt" fill="rgba(42,88,72,.85)">▪ visit. ×1/5 lots</text>
+      <text x="70" y="102" class="dim-txt" fill="rgba(90,70,40,.65)">25m²/pl</text>
+    </svg></div>
+    <span class="name">Norme stationnement</span>
+    <span class="labelEn">PLU parking requirement</span>
+    <span class="desc">Calcul réel depuis le PLU. Le taux varie par type de logement. Surface comptabilisée : 25m²/place.</span>
+    <div class="formula">nPK = nLib×p_std<br>    + nAid×p_aid<br>    + ⌈n/5⌉×p_vis<br>empPK = nPK × 25m²</div>
+  </div>
+
+  <!-- GIEP -->
+  <div class="card">
+    <span class="badge for">GIEP</span>
+    <div class="svg-wrap"><svg viewBox="0 0 110 110" width="110" height="110">
+      <!-- cloud / rain drops animés -->
+      <ellipse cx="40" cy="20" rx="22" ry="12" fill="rgba(50,100,200,.2)" stroke="rgba(30,80,180,.35)" stroke-width=".8"/>
+      <ellipse cx="62" cy="18" rx="18" ry="11" fill="rgba(50,100,200,.2)" stroke="rgba(30,80,180,.3)" stroke-width=".8"/>
+      <ellipse cx="50" cy="22" rx="28" ry="13" fill="rgba(50,100,200,.25)" stroke="rgba(30,80,180,.4)" stroke-width=".8"/>
+      <!-- rain drops -->
+      <line x1="25" y1="35" x2="22" y2="48" stroke="rgba(50,100,200,.55)" stroke-width="1.2" stroke-linecap="round"><animate attributeName="y1" values="35;38;35" dur="1.2s" repeatCount="indefinite"/><animate attributeName="y2" values="48;52;48" dur="1.2s" repeatCount="indefinite"/></line>
+      <line x1="40" y1="34" x2="37" y2="50" stroke="rgba(50,100,200,.55)" stroke-width="1.2" stroke-linecap="round"><animate attributeName="y1" values="34;38;34" dur="1.5s" repeatCount="indefinite"/><animate attributeName="y2" values="50;55;50" dur="1.5s" repeatCount="indefinite"/></line>
+      <line x1="55" y1="36" x2="52" y2="52" stroke="rgba(50,100,200,.55)" stroke-width="1.2" stroke-linecap="round"><animate attributeName="y1" values="36;39;36" dur="1.1s" repeatCount="indefinite"/><animate attributeName="y2" values="52;56;52" dur="1.1s" repeatCount="indefinite"/></line>
+      <line x1="70" y1="34" x2="67" y2="50" stroke="rgba(50,100,200,.55)" stroke-width="1.2" stroke-linecap="round"><animate attributeName="y1" values="34;37;34" dur="1.4s" repeatCount="indefinite"/><animate attributeName="y2" values="50;54;50" dur="1.4s" repeatCount="indefinite"/></line>
+      <!-- plot / noue -->
+      <rect x="6" y="72" width="98" height="24" fill="rgba(42,120,50,.25)" stroke="rgba(42,100,40,.5)" stroke-width="1" rx="2"/>
+      <text x="55" y="87" text-anchor="middle" class="dim-txt" fill="rgba(42,88,72,.9)">noue végétalisée</text>
+      <!-- Q arrow -->
+      <line x1="6" y1="63" x2="104" y2="63" stroke="rgba(50,100,200,.45)" stroke-width="2" stroke-dasharray="4,3"/>
+      <text x="55" y="70" text-anchor="middle" class="dim-txt" fill="rgba(30,80,180,.8)">Q = ψ × i × A_imp</text>
+    </svg></div>
+    <span class="name">Pré-dim. GIEP</span>
+    <span class="labelEn">Stormwater pre-sizing</span>
+    <span class="desc">Quantification du débit décennal et du volume de rétention nécessaire. Intensité 80mm/h à La Réunion.</span>
+    <div class="formula">Q = ψ × i × A_imp<br>ψ=0.9, i=80/3600 m/s<br>V=Q×600s, S_noue=V/0.30</div>
+  </div>
+
+  </div><!-- /grid -->
+
+  <!-- RÉCAPITULATIF MATHS -->
+  <div class="math-zone" style="margin-top:36px">
+    <h3>Tableau récapitulatif — Variables et domaines de définition</h3>
+    <table class="math-table">
+      <thead><tr><th>Variable</th><th>Formule / Définition</th><th>Domaine typique — Réunion</th></tr></thead>
+      <tbody>
+        <tr><td>nvMax</td><td class="eq">⌊ h_max / H_niv ⌋</td><td>h_max ∈ [7,15] m · H_niv = 3.0m → nv ∈ {1,2,3,4,5}</td></tr>
+        <tr><td>A_env</td><td class="eq">polyArea(insetPoly(parcelle, reculs))</td><td>50–90% A_parcelle selon r.voie, r.lat, r.fond</td></tr>
+        <tr><td>A_bat</td><td class="eq">bat.w × bat.l</td><td>bat.w ≤ RTAAw (10m Z1, 12m Z2) · bat.l ≤ profMax</td></tr>
+        <tr><td>SDP_nette</td><td class="eq">A_bat × η × nvEff</td><td>η ∈ [0.78,0.90] · nvEff = min(p.nvMax, nvMaxPLU)</td></tr>
+        <tr><td>SP̄</td><td class="eq">Σ αᵢ × Tᵢ pour T1–T4</td><td>≈ 55–70 m² selon programme social</td></tr>
+        <tr><td>nLgts</td><td class="eq">⌊ SDP_nette / SP̄ ⌋</td><td>1 (maison) → plusieurs dizaines (collectif R+3)</td></tr>
+        <tr><td>nPK</td><td class="eq">nLib×p_std + nAid×p_aid + ⌈n/5⌉×p_vis</td><td>p_std ∈ {1,2} · p_aid ∈ {0,1} · p_vis = 1</td></tr>
+        <tr><td>empPct</td><td class="eq">A_bat / A_parcelle × 100</td><td>≤ PLU.emprMax ∈ [40,70]%</td></tr>
+        <tr><td>permPct</td><td class="eq">(1 − (A_bat + A_pk) / A_parcelle) × 100</td><td>≥ PLU.permMin ∈ [25,40]%</td></tr>
+        <tr><td>dens</td><td class="eq">nLgts / (A_parcelle / 10 000)</td><td>≥ 30 l/ha (SCoT TCO) ou 20 l/ha (CASUD, CIREST)</td></tr>
+        <tr><td>gapMin</td><td class="eq">max(PLU.interBatMin, nvEff × H_niv / 2)</td><td>3–6 m selon niveaux · PLU.interBatMin ∈ [3,5] m</td></tr>
+        <tr><td>maxLgts</td><td class="eq">⌊ A_env × emprMax × η × nvMax / SP̄ ⌋</td><td>Capacité théorique max parcelle, toutes contraintes</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ───────────────────────────── §04 OPTIMISATION ──────────────────────── -->
+<section class="section opt">
+  <div class="section-hd">
+    <span class="num-badge">§ 04</span>
+    <h2>Méthodes d'<em>Optimisation</em></h2>
+    <p class="sdesc">Front de Pareto, scénarios multi-critères, Monte Carlo — 4 fiches</p>
+  </div>
+  <div class="grid">
+
+  <!-- PARETO -->
+  <div class="card">
+    <span class="badge opt">Pareto</span>
+    <div class="svg-wrap"><svg viewBox="0 0 110 110" width="110" height="110">
+      <!-- axes -->
+      <line x1="10" y1="100" x2="104" y2="100" stroke="rgba(90,70,40,.6)" stroke-width="1"/><polygon points="104,100 99,97 99,103" fill="rgba(90,70,40,.7)"/>
+      <line x1="10" y1="100" x2="10"  y2="6"  stroke="rgba(90,70,40,.6)" stroke-width="1"/><polygon points="10,6 7,11 13,11" fill="rgba(90,70,40,.7)"/>
+      <text x="107" y="103" class="dim-txt" fill="rgba(90,70,40,.7)">SDP</text>
+      <text x="3" y="5" class="dim-txt" transform="rotate(-90,3,5)" fill="rgba(90,70,40,.7)">Perm.</text>
+      <!-- dominated points (grey) -->
+      <circle cx="25" cy="78" r="3.5" fill="rgba(150,140,120,.6)"/>
+      <circle cx="35" cy="85" r="3.5" fill="rgba(150,140,120,.6)"/>
+      <circle cx="42" cy="72" r="3.5" fill="rgba(150,140,120,.6)"/>
+      <circle cx="55" cy="80" r="3.5" fill="rgba(150,140,120,.6)"/>
+      <!-- Pareto front points (colored) -->
+      <circle cx="28" cy="45" r="5" class="dot-num"/><text x="33" y="42" class="dim-txt" fill="rgba(74,56,128,.9)">A1</text>
+      <circle cx="50" cy="32" r="5" class="dot-env"/><text x="55" y="29" class="dim-txt" fill="rgba(26,72,88,.9)">B1</text>
+      <circle cx="70" cy="24" r="5" class="dot-opt"/><text x="75" y="21" class="dim-txt" fill="rgba(107,79,16,.9)">B2</text>
+      <circle cx="88" cy="18" r="5" class="dot-reg"/><text x="93" y="15" class="dim-txt" fill="rgba(122,48,37,.9)">C1</text>
+      <!-- Pareto curve -->
+      <path d="M28,45 Q48,28 70,24 Q82,20 88,18" fill="none" stroke="rgba(154,120,32,.6)" stroke-width="1" stroke-dasharray="3,2"/>
+    </svg></div>
+    <span class="name">Front de Pareto</span>
+    <span class="labelEn">Multi-objective frontier</span>
+    <span class="desc">Aucune solution dominante : augmenter la SDP réduit la perméabilité. L'architecte choisit sur le front.</span>
+    <div class="formula">S non-dominé par S' si<br>∄ S' : SDP(S')≥SDP(S)<br>∧ perm(S')≥perm(S)<br>∧ ≥1 strictement</div>
+  </div>
+
+  <!-- SCENARIOS A1-C1 -->
+  <div class="card">
+    <span class="badge opt">scénarios</span>
+    <div class="svg-wrap"><svg viewBox="0 0 110 110" width="110" height="110">
+      <!-- 2x2 quadrant -->
+      <line x1="55" y1="4" x2="55" y2="106" stroke="rgba(154,120,32,.35)" stroke-width=".8"/>
+      <line x1="4" y1="55" x2="106" y2="55" stroke="rgba(154,120,32,.35)" stroke-width=".8"/>
+      <!-- axis labels -->
+      <text x="55" y="3" text-anchor="middle" class="dim-txt" fill="rgba(154,120,32,.75)" font-size="7">densité ↑</text>
+      <text x="55" y="110" text-anchor="middle" class="dim-txt" fill="rgba(154,120,32,.75)" font-size="7">densité ↓</text>
+      <text x="2" y="55" class="dim-txt" fill="rgba(154,120,32,.75)" font-size="7">R+1</text>
+      <text x="82" y="55" class="dim-txt" fill="rgba(154,120,32,.75)" font-size="7">R+2/3 ↑</text>
+      <!-- A1 : haut-droite : collectif R+2 dense -->
+      <rect x="60" y="8" width="42" height="42" fill="rgba(74,56,128,.08)" rx="2"/>
+      <circle cx="82" cy="28" r="8" class="dot-num"/><text x="82" y="31" text-anchor="middle" class="dim-txt" fill="white" font-size="8" font-weight="500">A1</text>
+      <text x="82" y="48" text-anchor="middle" class="dim-txt" fill="rgba(74,56,128,.8)" font-size="7">Collectif R+2</text>
+      <!-- B1 : bas-droite : collectif R+1+C -->
+      <rect x="60" y="60" width="42" height="42" fill="rgba(26,72,88,.08)" rx="2"/>
+      <circle cx="82" cy="80" r="8" class="dot-env"/><text x="82" y="83" text-anchor="middle" class="dim-txt" fill="white" font-size="8" font-weight="500">B1</text>
+      <text x="82" y="99" text-anchor="middle" class="dim-txt" fill="rgba(26,72,88,.8)" font-size="7">Équilibré R+1+C</text>
+      <!-- B2 : bas-gauche -->
+      <rect x="8" y="60" width="42" height="42" fill="rgba(107,79,16,.08)" rx="2"/>
+      <circle cx="28" cy="80" r="8" class="dot-opt"/><text x="28" y="83" text-anchor="middle" class="dim-txt" fill="white" font-size="8" font-weight="500">B2</text>
+      <text x="28" y="99" text-anchor="middle" class="dim-txt" fill="rgba(107,79,16,.8)" font-size="7">Mixte R+1</text>
+      <!-- C1 : haut-gauche -->
+      <rect x="8" y="8" width="42" height="42" fill="rgba(42,88,72,.08)" rx="2"/>
+      <circle cx="28" cy="28" r="8" class="dot-env" style="fill:rgba(42,88,72,.7)"/><text x="28" y="31" text-anchor="middle" class="dim-txt" fill="white" font-size="8" font-weight="500">C1</text>
+      <text x="28" y="48" text-anchor="middle" class="dim-txt" fill="rgba(42,88,72,.8)" font-size="7">Bandes R+1</text>
+    </svg></div>
+    <span class="name">Scénarios A1/B1/B2/C1</span>
+    <span class="labelEn">Design scenario quadrant</span>
+    <span class="desc">Quatre archétypes positionnés sur les axes densité / hauteur. Chacun correspond à une stratégie d'efficacité η et d'aide différente.</span>
+    <div class="formula">A1: η=0.80, aid=70%<br>B1: η=0.82, aid=60%<br>B2: η=0.85, aid=55%<br>C1: η=0.88, aid=50%</div>
+  </div>
+
+  <!-- MAX THÉORIQUE -->
+  <div class="card">
+    <span class="badge opt">maxima</span>
+    <div class="svg-wrap"><svg viewBox="0 0 110 110" width="110" height="110">
+      <!-- funnel from area to units -->
+      <rect x="8"  y="6"  width="94" height="16" fill="rgba(190,175,140,.45)" stroke="rgba(120,100,60,.55)" stroke-width="1" rx="1"/>
+      <text x="55" y="17" text-anchor="middle" class="dim-txt" font-size="8">A_parcelle = 1596m²</text>
+      <path d="M8,22 L8,36 L28,36 L28,22Z" fill="rgba(122,48,37,.15)" stroke="none"/>
+      <path d="M102,22 L102,36 L82,36 L82,22Z" fill="rgba(122,48,37,.15)" stroke="none"/>
+      <line x1="8" y1="22" x2="28" y2="36" stroke="rgba(120,100,60,.35)" stroke-width=".7"/>
+      <line x1="102" y1="22" x2="82" y2="36" stroke="rgba(120,100,60,.35)" stroke-width=".7"/>
+      <rect x="28" y="36" width="54" height="14" fill="rgba(122,48,37,.15)" stroke="rgba(122,48,37,.45)" stroke-width=".8" rx="1"/>
+      <text x="55" y="46" text-anchor="middle" class="dim-txt" fill="rgba(122,48,37,.85)" font-size="8">×emprMax 60%</text>
+      <line x1="55" y1="50" x2="55" y2="58" stroke="rgba(120,100,60,.5)" stroke-width=".8"/>
+      <rect x="32" y="58" width="46" height="12" fill="rgba(107,79,16,.15)" stroke="rgba(107,79,16,.45)" stroke-width=".8" rx="1"/>
+      <text x="55" y="67" text-anchor="middle" class="dim-txt" fill="rgba(107,79,16,.85)" font-size="8">×η×nvMax</text>
+      <line x1="55" y1="70" x2="55" y2="78" stroke="rgba(120,100,60,.5)" stroke-width=".8"/>
+      <rect x="36" y="78" width="38" height="12" fill="rgba(42,88,72,.15)" stroke="rgba(42,88,72,.45)" stroke-width=".8" rx="1"/>
+      <text x="55" y="87" text-anchor="middle" class="dim-txt" fill="rgba(42,88,72,.85)" font-size="8">÷ SP̄</text>
+      <line x1="55" y1="90" x2="55" y2="98" stroke="rgba(120,100,60,.5)" stroke-width=".8"/>
+      <circle cx="55" cy="105" r="7" fill="rgba(74,56,128,.7)" stroke="rgba(74,56,128,.9)" stroke-width="1.2">
+        <animate attributeName="r" values="6;8;6" dur="2s" repeatCount="indefinite"/>
+      </circle>
+      <text x="55" y="108" text-anchor="middle" class="dim-txt" font-size="9" fill="white" font-weight="500">N</text>
+    </svg></div>
+    <span class="name">Capacité max théorique</span>
+    <span class="labelEn">Theoretical maximum yield</span>
+    <span class="desc">Capacité maximale si tout l'espace enveloppe est mobilisé au niveau PLU le plus haut. Borne supérieure du programme.</span>
+    <div class="formula">maxLgts = ⌊ A_env × emprMax<br>× η_max × nvMax / SP̄ ⌋</div>
+  </div>
+
+  <!-- DISTANCE INTER-BÂTIMENTS -->
+  <div class="card">
+    <span class="badge opt">PLU Art.8</span>
+    <div class="svg-wrap"><svg viewBox="0 0 110 110" width="110" height="110">
+      <!-- bat 1 -->
+      <rect x="4" y="22" width="38" height="66" class="bat" rx="1"/>
+      <text x="23" y="58" text-anchor="middle" class="dim-txt" fill="rgba(74,56,128,.9)">B1</text>
+      <!-- bat 2 -->
+      <rect x="68" y="22" width="38" height="66" class="bat" rx="1"/>
+      <text x="87" y="58" text-anchor="middle" class="dim-txt" fill="rgba(74,56,128,.9)">B2</text>
+      <!-- gap dimension -->
+      <line x1="42" y1="55" x2="68" y2="55" stroke="rgba(154,120,32,.8)" stroke-width="1.5"/>
+      <line x1="42" y1="51" x2="42" y2="59" stroke="rgba(154,120,32,.8)" stroke-width="1.5"/>
+      <line x1="68" y1="51" x2="68" y2="59" stroke="rgba(154,120,32,.8)" stroke-width="1.5"/>
+      <text x="55" y="70" text-anchor="middle" class="dim-txt" fill="rgba(154,120,32,.95)" font-weight="500">gap min</text>
+      <!-- h annotation -->
+      <line x1="4" y1="15" x2="42" y2="15" class="dim-line"/><line x1="4" y1="12" x2="4" y2="18" class="dim-line"/><line x1="42" y1="12" x2="42" y2="18" class="dim-line"/>
+      <text x="23" y="12" text-anchor="middle" class="dim-txt" fill="rgba(90,70,40,.7)">H bat</text>
+      <!-- floor count -->
+      <line x1="2" y1="22" x2="2" y2="88" class="dim-line"/>
+      <line x1="0" y1="22" x2="4" y2="22" class="dim-line"/><line x1="0" y1="88" x2="4" y2="88" class="dim-line"/>
+      <text x="2" y="58" class="dim-txt" transform="rotate(-90,2,58)" text-anchor="middle">nNiv×3m</text>
+      <text x="55" y="100" text-anchor="middle" class="dim-txt" fill="rgba(90,70,40,.65)" font-size="8">gapMin = max(PLU.iB, nNiv×3/2)</text>
+    </svg></div>
+    <span class="name">Distance inter-bâtiments</span>
+    <span class="labelEn">Building gap — PLU Art.8</span>
+    <span class="desc">La distance minimale entre deux constructions croît avec la hauteur. Réunion : max(3–5m PLU, nNiv×1.5m).</span>
+    <div class="formula">gapMin = max(PLU.interBatMin,<br>            nvEff × H_niv / 2)</div>
+  </div>
+
+  </div><!-- /grid -->
+</section>
+
+<!-- ───────────────────────────── §05 OPPORTUNITÉS NUMÉRIQUES ──────────────── -->
+<section class="section opp">
+  <div class="section-hd">
+    <span class="num-badge">§ 05</span>
+    <h2><em>Opportunités</em> Numériques</h2>
+    <p class="sdesc">Ressources, outils et pratiques émergentes pour automatiser et fiabiliser le calcul de capacité</p>
+  </div>
+  <div class="opp-grid">
+
+  <div class="opp-card">
+    <span class="opp-tag" style="background:var(--opp)">données ouvertes</span>
+    <h4>plu-rules-reunion.json — PLU machine-readable</h4>
+    <p>La compilation des règlements PLU des 24 communes en JSON structuré est le fondement de tout calcul automatisé. Structure hiérarchique : <code style="font-family:monospace;font-size:.75rem;color:var(--for)">communes → code_insee → zones → zone_plu → reculs / hauteurs / emprise / stationnement</code>.</p>
+    <ul>
+      <li>24 communes · Saint-Paul golden standard (48Ko)</li>
+      <li>Confidence score par zone (0–1)</li>
+      <li>Fallback gracieux si zone inconnue (similarZone)</li>
+      <li>PLUP07Adapter.resolve(code, zone, rtaa) → TerrainConfig</li>
+      <li>Mise à jour manuelle + validation VALIDATION.md</li>
+    </ul>
+  </div>
+
+  <div class="opp-card">
+    <span class="opp-tag" style="background:var(--env)">géométrie cadastrale</span>
+    <h4>GeoJSON IGN WFS → polygone local</h4>
+    <p>La géométrie cadastrale réelle (parcelle WGS84) peut être transformée en polygone métrique local via M_LAT/M_LON (même système que BIMSHOW). La rotation par le bearing_voie oriente le polygone avec la voie au sud, permettant l'inférence automatique des edgeTypes.</p>
+    <ul>
+      <li>dx = (lng−lng0) × M_LON(lat0)</li>
+      <li>dy = (lat−lat0) × M_LAT</li>
+      <li>rotation bearing_voie → axe X = direction voie</li>
+      <li>Translation SW → origine (0,0)</li>
+      <li>CCW garanti pour insetPoly()</li>
+    </ul>
+  </div>
+
+  <div class="opp-card">
+    <span class="opp-tag" style="background:var(--num)">LLM assisté</span>
+    <h4>Génération de capacité assistée par LLM</h4>
+    <p>Les grands modèles de langage (Claude, GPT-4) peuvent — avec un prompt bien structuré incluant parcelle, zone PLU, RTAA et programme — proposer des scénarios de capacité, détecter des incohérences réglementaires et rédiger des fiches pédagogiques. La qualité dépend du grounding réglementaire fourni.</p>
+    <ul>
+      <li>Prompt structuré : {commune, zone, poly, heMax, emprMax…}</li>
+      <li>Output JSON : nLgts, nvEff, SDP, parking, conformité</li>
+      <li>Vérification systématique vs règles PLU locales</li>
+      <li>Génération de variantes Pareto multi-scénarios</li>
+      <li>Rédiger CCTP, notices descriptives, rapports pédagogiques</li>
+    </ul>
+  </div>
+
+  <div class="opp-card">
+    <span class="opp-tag" style="background:var(--reg)">TERLAB p07</span>
+    <h4>Éditeur plan masse SVG interactif</h4>
+    <p>L'éditeur TERLAB p07 connecte directement la session (commune, zone PLU, parcelle GeoJSON) au calcul de capacité. Handles drag-and-drop, inset polygonal, switch Plan/Coupe, export SVG double (plan + coupe gabarit), vérifications PLU en temps réel.</p>
+    <ul>
+      <li>Plan masse SVG : handles 8 points, snap 0.5m, zoom/pan</li>
+      <li>Coupe gabarit plein écran animée (R+0→R+4)</li>
+      <li>Export plan.svg + coupe.svg simultané</li>
+      <li>Bridge BIMSHOW → IFC 2x3 gabarit volumétrique</li>
+      <li>Métriques temps réel : nLgts, SDP, densité, GIEP</li>
+    </ul>
+  </div>
+
+  <div class="opp-card">
+    <span class="opp-tag" style="background:var(--for)">SCoT / open data</span>
+    <h4>SCoT et données ouvertes de référence</h4>
+    <p>Les SCoT des intercommunalités réunionnaises (TCO, CINOR, CIREST, CASUD, CIVIS) fixent les densités cibles. Croisés avec les données open data (Géoportail Urbanisme, IGN, Géorisques), ils permettent de contextualiser tout calcul de capacité avant étude de faisabilité.</p>
+    <ul>
+      <li>SCoT TCO : ≥30 lgts/ha zones U, ≥20 lgts/ha AU</li>
+      <li>data.geopf.fr/wfs : parcelles IGN gratuites</li>
+      <li>data.geopf.fr/wmts : tuiles cadastre + ortho</li>
+      <li>Géoportail Urbanisme : couche PLU WMS (instable DOM)</li>
+      <li>scot-rules-tco.json : règles DOO machine-readable</li>
+    </ul>
+  </div>
+
+  <div class="opp-card">
+    <span class="opp-tag" style="background:var(--opt)">pratique architecturale</span>
+    <h4>Opportunités pédagogiques — TERLAB & ÉARL</h4>
+    <p>Le calcul de capacité est un exercice fondateur en Master Architecture. TERLAB p07 permet à chaque étudiant de partir de <em>sa propre parcelle</em> cadastrale pour produire en 2h un plan masse réglementaire, une coupe gabarit PLU et une fiche de capacité chiffrée — export directement intégrable dans le dossier de PC.</p>
+    <ul>
+      <li>Exercice TERLAB : 14 phases → 5 phases regroupées</li>
+      <li>Phase 3 (Esquisse) : plan masse + capacité + coupe en 2h</li>
+      <li>Export SVG A3 prêt à imprimer pour le jury</li>
+      <li>Bridge BIMSHOW pour volumétrie 3D complémentaire</li>
+      <li>Données PLU réelles vs scénarios pédagogiques comparés</li>
+    </ul>
+  </div>
+
+  </div><!-- /opp-grid -->
+</section>
+
+<div class="div"></div>
+<div style="text-align:center;padding:48px 32px 64px;color:var(--ink3);font-style:italic;font-size:.85rem">
+  <p style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--ink2);margin-bottom:8px">
+    « La capacité n'est pas un nombre — c'est une <em>négociation</em> entre géométrie, réglementation et programme. »
+  </p>
+  <p style="font-family:'Inconsolata',monospace;font-size:.68rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase">
+    MGA Architecture · TERLAB · ÉARL · La Réunion · 2026
+  </p>
+</div>
+
+</body>
+</html>

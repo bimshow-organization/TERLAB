@@ -1,9 +1,12 @@
-# PLU sources (données locales, ne pas commiter)
+# PLU sources (donnees locales, ne pas commiter)
 plu-sources/
 
 # Docs / references (PDFs, anciennes versions)
 .docs/
 docs/random-pdf/
+
+# EPUB sous DRM (copyright + 274 Mo) — jamais sur le repo public
+docs/EPUB/
 
 # Export audit logs
 TERLAB_export_audit_*.txt
@@ -15,8 +18,8 @@ __pycache__/
 lidar-fetcher/.venv/
 
 # Claude Code local config
-.claude/
-
+.claude/settings.local.json
+.claude/settings.local.json.bak
 # Stubs
 __stubs__/
 

@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>TERLAB-Gen · Prototype · Générateur d'architecture multi-couches</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root {
+    --bg-0: #0e0a06;
+    --bg-1: #181208;
+    --bg-2: #22180c;
+    --panel: #1a1308;
+    --border: #3a2a18;
+    --border-strong: #5a4228;
+    --gold: #c9a84c;
+    --gold-dim: #8a7540;
+    --text: #e8dcbe;
+    --text-dim: #a89878;
+    --text-faint: #6a5a3e;
+    --accent-jour: #5b8def;
+    --accent-nuit: #8b5cf6;
+    --accent-service: #f59e0b;
+    --accent-circ: #94a3b8;
+    --accent-ext: #10b981;
+    --red: #c54e30;
+    --green: #4ca870;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg-0); color: var(--text); font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif; }
+  #app { display: grid; grid-template-columns: 360px 1fr; height: 100vh; }
+
+  /* ─── Sidebar ─── */
+  #sidebar {
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  #sidebar::-webkit-scrollbar { width: 6px; }
+  #sidebar::-webkit-scrollbar-track { background: transparent; }
+  #sidebar::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+
+  .hdr {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, var(--bg-2), var(--panel));
+  }
+  .hdr h1 {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--gold);
+    margin-bottom: 2px;
+  }
+  .hdr p { font-size: 11px; color: var(--text-faint); letter-spacing: 0.3px; }
+
+  .section { border-bottom: 1px solid var(--border); }
+  .section-hd {
+    padding: 10px 16px 4px;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--gold-dim);
+    font-weight: 600;
+  }
+  .section-bd { padding: 8px 16px 14px; }
+
+  select, input[type=range], button {
+    font: inherit;
+    color: inherit;
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    outline: none;
+    transition: border-color 120ms, background 120ms;
+  }
+  select {
+    width: 100%;
+    padding: 7px 9px;
+    margin-bottom: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--gold-dim) 50%),
+                      linear-gradient(-45deg, transparent 50%, var(--gold-dim) 50%);
+    background-position: calc(100% - 14px) center, calc(100% - 10px) center;
+    background-size: 4px 4px, 4px 4px;
+    background-repeat: no-repeat;
+  }
+  select:hover { border-color: var(--gold-dim); }
+  select optgroup { background: var(--bg-0); color: var(--gold); }
+
+  .slider-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 11px; }
+  .slider-row label { flex: 0 0 80px; color: var(--text-dim); }
+  .slider-row input[type=range] { flex: 1; }
+  .slider-row .val { flex: 0 0 48px; text-align: right; color: var(--gold); font-variant-numeric: tabular-nums; font-size: 11px; }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    height: 4px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 0;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    background: var(--gold);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 0 1px var(--bg-0);
+  }
+
+  .btn-row { display: flex; gap: 6px; margin-top: 6px; }
+  button {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 11px;
+    letter-spacing: 0.4px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  button:hover { border-color: var(--gold-dim); background: var(--bg-2); }
+  button.primary { background: var(--gold); color: var(--bg-0); border-color: var(--gold); font-weight: 600; }
+  button.primary:hover { background: #ddc06a; }
+  button.active { background: var(--bg-2); border-color: var(--gold); color: var(--gold); }
+
+  /* ─── Organigramme card ─── */
+  .org-info {
+    padding: 10px 12px;
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-top: 8px;
+  }
+  .org-info .name { font-weight: 600; color: var(--gold); font-size: 13px; margin-bottom: 4px; }
+  .org-info .meta { font-size: 11px; color: var(--text-dim); margin-bottom: 6px; }
+  .org-info .schema { font-family: 'SF Mono', Consolas, monospace; font-size: 10px; color: var(--text-faint); background: var(--bg-0); padding: 5px 8px; border-radius: 3px; margin-top: 6px; word-break: break-word; }
+
+  /* ─── Graph viz ─── */
+  .graph-wrap {
+    background: var(--bg-0);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px;
+    margin-top: 8px;
+  }
+  #graph-svg { width: 100%; height: 180px; display: block; }
+  .graph-node { stroke: var(--bg-0); stroke-width: 2; cursor: move; }
+  .graph-node-label { fill: var(--text); font-size: 9px; font-weight: 500; pointer-events: none; text-anchor: middle; dominant-baseline: middle; }
+  .graph-edge { stroke: var(--gold-dim); stroke-width: 1.2; opacity: 0.5; fill: none; }
+  .graph-edge.must { stroke: var(--gold); opacity: 0.85; stroke-width: 1.6; }
+  .graph-edge.should { stroke: var(--gold-dim); opacity: 0.5; stroke-dasharray: 3,3; }
+
+  /* ─── Stats ─── */
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 11px; }
+  .stats .k { color: var(--text-faint); }
+  .stats .v { color: var(--gold); font-variant-numeric: tabular-nums; text-align: right; }
+
+  /* ─── Viewport ─── */
+  #viewport {
+    position: relative;
+    background: var(--bg-0);
+    overflow: hidden;
+  }
+  #canvas3d { width: 100%; height: 100%; display: block; }
+
+  .overlay {
+    position: absolute;
+    font-size: 11px;
+    padding: 6px 10px;
+    background: rgba(10, 8, 4, 0.85);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    backdrop-filter: blur(6px);
+    pointer-events: none;
+    user-select: none;
+  }
+  #overlay-top-left { top: 16px; left: 16px; min-width: 180px; pointer-events: auto; }
+  #overlay-top-right { top: 16px; right: 16px; }
+  #overlay-bottom { bottom: 16px; left: 16px; font-size: 10px; color: var(--text-faint); }
+  #overlay-legend { bottom: 16px; right: 16px; font-size: 10px; }
+  #overlay-top-left .title { color: var(--gold); font-weight: 600; margin-bottom: 4px; letter-spacing: 0.5px; }
+  #overlay-top-left .row { display: flex; justify-content: space-between; margin: 1px 0; }
+  #overlay-top-left .k { color: var(--text-faint); }
+  #overlay-top-left .v { color: var(--gold); font-variant-numeric: tabular-nums; margin-left: 10px; }
+
+  /* ─── Mode buttons (rendering modes) ─── */
+  .mode-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 4px;
+  }
+  .mode-group button { padding: 5px 4px; font-size: 10px; }
+
+  .legend-row { display: flex; align-items: center; gap: 6px; margin: 2px 0; font-size: 10px; }
+  .legend-sw { width: 10px; height: 10px; border-radius: 1px; }
+  .legend-sw.entree { background: #94a3b8; }
+  .legend-sw.sejour { background: #5b8def; }
+  .legend-sw.cuisine { background: #f97316; }
+  .legend-sw.chambre { background: #a78bfa; }
+  .legend-sw.chambre_parentale { background: #7c3aed; }
+  .legend-sw.sdb { background: #f59e0b; }
+  .legend-sw.wc { background: #fbbf24; }
+  .legend-sw.degagement { background: #475569; }
+  .legend-sw.varangue { background: #10b981; }
+  .legend-sw.patio { background: #65a30d; }
+  .legend-sw.salle_a_manger { background: #38bdf8; }
+  .legend-sw.dressing { background: #c4b5fd; }
+  .legend-sw.buanderie { background: #b45309; }
+
+  /* ─── Badges ─── */
+  .badge {
+    display: inline-block;
+    padding: 1px 6px;
+    font-size: 9px;
+    letter-spacing: 0.5px;
+    border-radius: 2px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .badge.converged { background: var(--green); color: var(--bg-0); }
+  .badge.running { background: var(--gold); color: var(--bg-0); }
+  .badge.idle { background: var(--border-strong); color: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- ────────── SIDEBAR ────────── -->
+  <aside id="sidebar">
+    <div class="hdr">
+      <h1>TERLAB-GEN · Proto</h1>
+      <p>Générateur multi-couches · Graphe → Seeds → Density → Voxels</p>
+    </div>
+
+    <div class="section">
+      <div class="section-hd">Organigramme</div>
+      <div class="section-bd">
+        <select id="org-select"></select>
+        <div class="org-info" id="org-info">
+          <div class="name" id="org-name">—</div>
+          <div class="meta" id="org-meta">—</div>
+          <div class="schema" id="org-schema">—</div>
+        </div>
+        <div class="graph-wrap">
+          <svg id="graph-svg" viewBox="0 0 320 180"></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-hd">Simulation</div>
+      <div class="section-bd">
+        <div class="slider-row">
+          <label>Surface</label>
+          <input id="sl-surface" type="range" min="25" max="200" step="5" value="70">
+          <span class="val" id="sl-surface-v">70 m²</span>
+        </div>
+        <div class="slider-row">
+          <label>Hauteur</label>
+          <input id="sl-height" type="range" min="2.4" max="3.6" step="0.1" value="2.7">
+          <span class="val" id="sl-height-v">2.7 m</span>
+        </div>
+        <div class="slider-row">
+          <label>Attraction</label>
+          <input id="sl-stiff" type="range" min="0.01" max="0.15" step="0.005" value="0.06">
+          <span class="val" id="sl-stiff-v">0.060</span>
+        </div>
+        <div class="slider-row">
+          <label>Répulsion</label>
+          <input id="sl-repel" type="range" min="0" max="2" step="0.1" value="1.0">
+          <span class="val" id="sl-repel-v">1.0</span>
+        </div>
+        <div class="slider-row">
+          <label>Amortiss.</label>
+          <input id="sl-damp" type="range" min="0.5" max="0.98" step="0.01" value="0.88">
+          <span class="val" id="sl-damp-v">0.88</span>
+        </div>
+        <div class="btn-row">
+          <button id="btn-playpause" class="primary">⏸ Pause</button>
+          <button id="btn-reset">↻ Re-roll</button>
+        </div>
+        <div class="btn-row">
+          <button id="btn-revoxel">Re-voxéliser</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-hd">Voxélisation</div>
+      <div class="section-bd">
+        <div class="slider-row">
+          <label>Résolution</label>
+          <input id="sl-vox" type="range" min="0.3" max="1.0" step="0.1" value="0.5">
+          <span class="val" id="sl-vox-v">0.5 m</span>
+        </div>
+        <div class="slider-row">
+          <label>Seuil</label>
+          <input id="sl-iso" type="range" min="0.1" max="0.9" step="0.05" value="0.5">
+          <span class="val" id="sl-iso-v">0.50</span>
+        </div>
+        <div class="slider-row">
+          <label>Rayon</label>
+          <input id="sl-sigma" type="range" min="0.8" max="2.5" step="0.1" value="1.4">
+          <span class="val" id="sl-sigma-v">1.4 ×</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-hd">Mode de rendu</div>
+      <div class="section-bd">
+        <div class="mode-group">
+          <button id="mode-seeds" class="active">Seeds</button>
+          <button id="mode-blocky">Voxels</button>
+          <button id="mode-merged">Fusion</button>
+        </div>
+        <div class="btn-row" style="margin-top:6px">
+          <button id="opt-wire">□ Wire</button>
+          <button id="opt-ground" class="active">■ Sol</button>
+          <button id="opt-rules">□ Règles</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-hd">Stats simulation</div>
+      <div class="section-bd">
+        <div class="stats">
+          <span class="k">Iterations</span><span class="v" id="st-iter">0</span>
+          <span class="k">Énergie</span><span class="v" id="st-energy">—</span>
+          <span class="k">Seeds</span><span class="v" id="st-seeds">0</span>
+          <span class="k">Voxels</span><span class="v" id="st-vox">0</span>
+          <span class="k">État</span><span class="v"><span class="badge idle" id="st-state">IDLE</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section" style="flex: 1">
+      <div class="section-hd">Légende pièces</div>
+      <div class="section-bd" id="legend"></div>
+    </div>
+  </aside>
+
+  <!-- ────────── VIEWPORT 3D ────────── -->
+  <main id="viewport">
+    <canvas id="canvas3d"></canvas>
+
+    <div class="overlay" id="overlay-top-left">
+      <div class="title" id="vp-title">—</div>
+      <div class="row"><span class="k">Enveloppe</span><span class="v" id="vp-env">—</span></div>
+      <div class="row"><span class="k">Niveau</span><span class="v" id="vp-level">RDC</span></div>
+      <div class="row"><span class="k">Emprise</span><span class="v" id="vp-foot">—</span></div>
+    </div>
+
+    <div class="overlay" id="overlay-top-right">
+      <span id="fps">— fps</span>
+    </div>
+
+    <div class="overlay" id="overlay-bottom">
+      Clic-gauche · rotation · Clic-droit · pan · Molette · zoom
+    </div>
+  </main>
+</div>
+
+<!-- ────────── LIBRAIRIE EMBARQUÉE ────────── -->
+<script id="orgs-data" type="application/json">{"topologies":{"LINEAIRE":"Pièces alignées le long d'un axe principal. Adapté aux terrains étroits.","COMPACT":"Bloc compact rectangulaire, minimum de circulation. T1-T2.","L":"Deux ailes perpendiculaires : jour + nuit. Séparation nette.","U":"Trois ailes autour d'un espace central. Grande maison.","PATIO":"Pièces autour d'un patio central. Ventilation naturelle.","NOYAU":"Hub central (couloir/dégagement) avec pièces en rayons.","SPINE":"Couloir-épine dorsale avec pièces de part et d'autre.","TRIANGULAIRE":"Trois zones en triangle : jour / nuit / service.","CROIX":"Quatre ailes depuis un noyau central."},"organigrammes":[{"id":"T1_COMPACT","name":"Studio compact","topology":"COMPACT","bedrooms":0,"surface":35,"est_surf_m":[30,40],"type":"plain-pied","schema":"E > SJ > CU + E ~ [SDB, WC]","nodes":[{"id":"e","type":"entree","group":"circulation","label":"Entrée","area_ratio":0.14},{"id":"s","type":"sejour","group":"jour","label":"Séjour","area_ratio":0.5},{"id":"c","type":"cuisine","group":"jour","label":"Cuisine","area_ratio":0.17},{"id":"b","type":"sdb","group":"service","label":"SDB","area_ratio":0.11},{"id":"w","type":"wc","group":"service","label":"WC","area_ratio":0.06}],"edges":[{"from":"e","to":"s","connectionType":"must"},{"from":"s","to":"c","connectionType":"must"},{"from":"e","to":"b","connectionType":"should"},{"from":"e","to":"w","connectionType":"should"}]},{"id":"T2_COMPACT","name":"T2 compact","topology":"COMPACT","bedrooms":1,"surface":50,"est_surf_m":[45,60],"type":"plain-pied","schema":"E > SJ > CU + SJ ~ CH + E ~ [SDB, WC]","nodes":[{"id":"e","type":"entree","group":"circulation","label":"Entrée","area_ratio":0.1},{"id":"s","type":"sejour","group":"jour","label":"Séjour","area_ratio":0.34},{"id":"c","type":"cuisine","group":"jour","label":"Cuisine","area_ratio":0.14},{"id":"ch","type":"chambre_parentale","group":"nuit","label":"Chambre","area_ratio":0.24},{"id":"b","type":"sdb","group":"service","label":"SDB","area_ratio":0.1},{"id":"w","type":"wc","group":"service","label":"WC","area_ratio":0.04}],"edges":[{"from":"e","to":"s","connectionType":"must"},{"from":"s","to":"c","connectionType":"must"},{"from":"s","to":"ch","connectionType":"should"},{"from":"e","to":"b","connectionType":"should"},{"from":"e","to":"w","connectionType":"should"}],"note":"T2 compact sans couloir — chambre parentale dessert via séjour (acceptable pour T2)"},{"id":"T2_CREOLE","name":"T2 créole avec varangue","topology":"LINEAIRE","bedrooms":1,"surface":55,"est_surf_m":[50,65],"type":"plain-pied","schema":"V > SJ + E > SJ > CU + SJ ~ CH + E ~ [SDB, WC]","nodes":[{"id":"v","type":"varangue","group":"jour","label":"Varangue","area_ratio":0.14},{"id":"e","type":"entree","group":"circulation","label":"Entrée","area_ratio":0.09},{"id":"s","type":"sejour","group":"jour","label":"Séjour","area_ratio":0.3},{"id":"c","type":"cuisine","group":"jour","label":"Cuisine","area_ratio":0.14},{"id":"ch","type":"chambre_parentale","group":"nuit","label":"Chambre","area_ratio":0.22},{"id":"b","type":"sdb","group":"service","label":"SDB","area_ratio":0.08},{"id":"w","type":"wc","group":"service","label":"WC","area_ratio":0.04}],"edges":[{"from":"v","to":"s","connectionType":"must"},{"from":"e","to":"s","connectionType":"must"},{"from":"s","to":"c","connectionType":"must"},{"from":"s","to":"ch","connectionType":"should"},{"from":"e","to":"b","connectionType":"should"},{"from":"e","to":"w","connectionType":"should"}]},{"id":"T3_COMPACT","name":"T3 compact avec couloir","topology":"COMPACT","bedrooms":2,"surface":70,"est_surf_m":[60,80],"type":"plain-pied","schema":"E > SJ > CU + E > DG > [CHP, CH1, SDB] + DG ~ WC","nodes":[{"id":"e","type":"entree","group":"circulation","label":"Entrée","area_ratio":0.07},{"id":"s","type":"sejour","group":"jour","label":"Séjour","area_ratio":0.27},{"id":"c","type":"cuisine","group":"jour","label":"Cuisine","area_ratio":0.11},{"id":"dg","type":"degagement","group":"circulation","label":"Couloir","area_ratio":0.07},{"id":"chp","type":"chambre_parentale","group":"nuit","label":"Ch. Parents","area_ratio":0.19},{"id":"ch1","type":"chambre","group":"nuit","label":"Chambre 2","area_ratio":0.14},{"id":"b","type":"sdb","group":"service","label":"SDB","area_ratio":0.07},{"id":"w","type":"wc","group":"service","label":"WC","area_ratio":0.03}],"edges":[{"from":"e","to":"s","connectionType":"must"},{"from":"s","to":"c","connectionType":"must"},{"from":"e","to":"dg","connectionType":"must"},{"from":"dg","to":"chp","connectionType":"must"},{"from":"dg","to":"ch1","connectionType":"must"},{"from":"dg","to":"b","connectionType":"must"},{"from":"dg","to":"w","connectionType":"should"}]},{"id":"T3_L","name":"T3 en L jour/nuit","topology":"L","bedrooms":2,"surface":75,"est_surf_m":[65,85],"type":"plain-pied","schema":"E > SJ > CU + SJ > DG > [CHP, CH1, SDB] + DG ~ WC","nodes":[{"id":"e","type":"entree","group":"circulation","label":"Entrée","area_ratio":0.07},{"id":"s","type":"sejour","group":"jour","label":"Séjour","area_ratio":0.27},{"id":"c","type":"cuisine","group":"jour","label":"Cuisine","area_ratio":0.12},{"id":"dg","type":"degagement","group":"circulation","label":"Couloir","area_ratio":0.06},{"id":"chp","type":"chambre_parentale","group":"nuit","label":"Ch. Parents","area_ratio":0.2},{"id":"ch1","type":"chambre","group":"nuit","label":"Chambre 2","area_ratio":0.14},{"id":"b","type":"sdb","group":"service","label":"SDB","area_ratio":0.07},{"id":"w","type":"wc","group":"service","label":"WC","area_ratio":0.03}],"edges":[{"from":"e","to":"s","connectionType":"must"},{"from":"s","to":"c","connectionType":"must"},{"from":"s","to":"dg","connectionType":"must"},{"from":"dg","to":"chp","connectionType":"must"},{"from":"dg","to":"ch1","connectionType":"must"},{"from":"dg","to":"b","connectionType":"must"},{"from":"dg","to":"w","connectionType":"should"}]},{"id":"T3_CREOLE","name":"T3 créole varangue + couloir","topology":"LINEAIRE","bedrooms":2,"surface":80,"est_surf_m":[70,90],"type":"plain-pied","schema":"V > SJ + E > SJ > CU + E > DG > [CHP, CH1, SDB] + DG ~ WC","nodes":[{"id":"v","type":"varangue","group":"jour","label":"Varangue","area_ratio":0.1},{"id":"e","type":"entree","group":"circulation","label":"Entrée","area_ratio":0.06},{"id":"s","type":"sejour","group":"jour","label":"Séjour","area_ratio":0.25},{"id":"c","type":"cuisine","group":"jour","label":"Cuisine","area_ratio":0.11},{"id":"dg","type":"degagement","group":"circulation","label":"Couloir","area_ratio":0.06},{"id":"chp","type":"chambre_parentale","group":"nuit","label":"Ch. Parents","area_ratio":0.18},{"id":"ch1","type":"chambre","group":"nuit","label":"Chambre 2","area_ratio":0.13},{"id":"b","type":"sdb","group":"service","label":"SDB","area_ratio":0.06},{"id":"w","type":"wc","group":"service","label":"WC","area_ratio":0.03}],"edges":[{"from":"v","to":"s","connectionType":"must"},{"from":"e","to":"s","connectionType":"must"},{"from":"s","to":"c","connectionType":"must"},{"from":"e","to":"dg","connectionType":"must"},{"from":"dg","to":"chp","connectionType":"must"},{"from":"dg","to":"ch1","connectionType":"must"},{"from":"dg","to":"b","connectionType":"must"},{"from":"dg","to":"w","connectionType":"should"}]},{"id":"T3_NOYAU","name":"T3 noyau central","topology":"NOYAU","bedrooms":2,"surface":72,"est_surf_m":[62,82],"type":"plain-pied","schema":"E > DG > [SJ, CHP, CH1, SDB] + SJ > CU + DG ~ [CU, WC]","nodes":[{"id":"e","type":"entree","group":"circulation","label":"Entrée","area_ratio":0.07},{"id":"dg","type":"degagement","group":"circulation","label":"Hall","area_ratio":0.1},{"id":"s","type":"sejour","group":"jour","label":"Séjour","area_ratio":0.26},{"id":"c","type":"cuisine","group":"jour","label":"Cuisine","area_ratio":0.11},{"id":"chp","type":"chambre_parentale","group":"nuit","label":"Ch. Parents","area_ratio":0.19},{"id":"ch1","type":"chambre","group":"nuit","label":"Chambre 2","area_ratio":0.14},{"id":"b","type":"sdb","group":"service","label":"SDB","area_ratio":0.07},{"id":"w","type":"wc","group":"service","label":"WC","area_ratio":0.03}],"edges":[{"from":"e","to":"dg","connectionType":"must"},{"from":"dg","to":"s","connectionType":"must"},{"from":"dg","to":"c","connectionType":"should"},{"from":"s","to":"c","connectionType":"must"},{"from":"dg","to":"chp","connectionType":"must"},{"from":"dg","to":"ch1","connectionType":"must"},{"from":"dg","to":"b","connectionType":"must"},{"from":"dg","to":"w","connectionType":"should"}],"note":"Le dégagement central distribue TOUT — noyau distributeur pur"},{"id":"T4_L","name":"T4 en L séparation jour/nuit","topology":"L","bedrooms":3,"surface":95,"est_surf_m":[85,110],"type":"plain-pied","schema":"E > SJ > CU + E > DG > [CHP, CH1, CH2, SDB] + CHP ~ SDB2 + DG ~ WC","nodes":[{"id":"e","type":"entree","group":"circulation","label":"Entrée","area_ratio":0.05},{"id":"s","type":"sejour","group":"jour","label":"Séjour","area_ratio":0.24},{"id":"c","type":"cuisine","group":"jour","label":"Cuisine","area_ratio":0.1},{"id":"dg","type":"degagement","group":"circulation","label":"Couloir","area_ratio":0.07},{"id":"chp","type":"chambre_parentale","group":"nuit","label":"Ch. Parents","area_ratio":0.16},{"id":"ch1","type":"chambre","group":"nuit","label":"Chambre 2","area_ratio":0.12},{"id":"ch2","type":"chambre","group":"nuit","label":"Chambre 3","area_ratio":0.11},{"id":"b1","type":"sdb","group":"service","label":"SDB","area_ratio":0.06},{"id":"b2","type":"sdb","group":"service","label":"SDB 2","area_ratio":0.04},{"id":"w","type":"wc","group":"service","label":"WC","area_ratio":0.02}],"edges":[{"from":"e","to":"s","connectionType":"must"},{"from":"s","to":"c","connectionType":"must"},{"from":"e","to":"dg","connectionType":"must"},{"from":"dg","to":"chp","connectionType":"must"},{"from":"dg","to":"ch1","connectionType":"must"},{"from":"dg","to":"ch2","connectionType":"must"},{"from":"dg","to":"b1","connectionType":"must"},{"from":"chp","to":"b2","connectionType":"should"},{"from":"dg","to":"w","connectionType":"should"}]},{"id":"T4_SPINE","name":"T4 spine dorsale","topology":"SPINE","bedrooms":3,"surface":100,"est_surf_m":[90,115],"type":"plain-pied","schema":"E > DG > [SJ > CU, CHP, CH1, CH2, SDB] + CU ~ SAM + DG ~ WC","nodes":[{"id":"e","type":"entree","group":"circulation","label":"Entrée","area_ratio":0.05},{"id":"dg","type":"degagement","group":"circulation","label":"Couloir","area_ratio":0.08},{"id":"s","type":"sejour","group":"jour","label":"Séjour","area_ratio":0.22},{"id":"c","type":"cuisine","group":"jour","label":"Cuisine","area_ratio":0.1},{"id":"sam","type":"salle_a_manger","group":"jour","label":"SAM","area_ratio":0.08},{"id":"chp","type":"chambre_parentale","group":"nuit","label":"Ch. Parents","area_ratio":0.15},{"id":"ch1","type":"chambre","group":"nuit","label":"Chambre 2","area_ratio":0.11},{"id":"ch2","type":"chambre","group":"nuit","label":"Chambre 3","area_ratio":0.1},{"id":"b","type":"sdb","group":"service","label":"SDB","area_ratio":0.05},{"id":"w","type":"wc","group":"service","label":"WC","area_ratio":0.02}],"edges":[{"from":"e","to":"dg","connectionType":"must"},{"from":"dg","to":"s","connectionType":"must"},{"from":"s","to":"c","connectionType":"must"},{"from":"c","to":"sam","connectionType":"should"},{"from":"dg","to":"chp","connectionType":"must"},{"from":"dg","to":"ch1","connectionType":"must"},{"from":"dg","to":"ch2","connectionType":"must"},{"from":"dg","to":"b","connectionType":"must"},{"from":"dg","to":"w","connectionType":"should"}],"note":"Couloir central = spine, pièces de jour à gauche, nuit à droite"},{"id":"T4_CREOLE","name":"T4 créole avec varangue","topology":"L","bedrooms":3,"surface":105,"est_surf_m":[95,120],"type":"plain-pied","schema":"V > SJ + E > SJ > CU + E > DG > [CHP, CH1, CH2, SDB] + DG ~ WC","nodes":[{"id":"v","type":"varangue","group":"jour","label":"Varangue","area_ratio":0.09},{"id":"e","type":"entree","group":"circulation","label":"Entrée","area_ratio":0.05},{"id":"s","type":"sejour","group":"jour","label":"Séjour","area_ratio":0.22},{"id":"c","type":"cuisine","group":"jour","label":"Cuisine","area_ratio":0.1},{"id":"dg","type":"degagement","group":"circulation","label":"Couloir","area_ratio":0.06},{"id":"chp","type":"chambre_parentale","group":"nuit","label":"Ch. Parents","area_ratio":0.16},{"id":"ch1","type":"chambre","group":"nuit","label":"Chambre 2","area_ratio":0.11},{"id":"ch2","type":"chambre","group":"nuit","label":"Chambre 3","area_ratio":0.1},{"id":"b","type":"sdb","group":"service","label":"SDB","area_ratio":0.05},{"id":"w","type":"wc","group":"service","label":"WC","area_ratio":0.02}],"edges":[{"from":"v","to":"s","connectionType":"must"},{"from":"e","to":"s","connectionType":"must"},{"from":"s","to":"c","connectionType":"must"},{"from":"e","to":"dg","connectionType":"must"},{"from":"dg","to":"chp","connectionType":"must"},{"from":"dg","to":"ch1","connectionType":"must"},{"from":"dg","to":"ch2","connectionType":"must"},{"from":"dg","to":"b","connectionType":"must"},{"from":"dg","to":"w","connectionType":"should"}]},{"id":"T4_NOYAU","name":"T4 noyau central distributeur","topology":"NOYAU","bedrooms":3,"surface":95,"est_surf_m":[85,110],"type":"plain-pied","schema":"E > DG > [SJ > CU, CHP, CH1, CH2, SDB] + DG ~ WC","nodes":[{"id":"e","type":"entree","group":"circulation","label":"Entrée","area_ratio":0.05},{"id":"dg","type":"degagement","group":"circulation","label":"Hall","area_ratio":0.1},{"id":"s","type":"sejour","group":"jour","label":"Séjour","area_ratio":0.23},{"id":"c","type":"cuisine","group":"jour","label":"Cuisine","area_ratio":0.1},{"id":"chp","type":"chambre_parentale","group":"nuit","label":"Ch. Parents","area_ratio":0.16},{"id":"ch1","type":"chambre","group":"nuit","label":"Chambre 2","area_ratio":0.12},{"id":"ch2","type":"chambre","group":"nuit","label":"Chambre 3","area_ratio":0.1},{"id":"b","type":"sdb","group":"service","label":"SDB","area_ratio":0.06},{"id":"w","type":"wc","group":"service","label":"WC","area_ratio":0.03}],"edges":[{"from":"e","to":"dg","connectionType":"must"},{"from":"dg","to":"s","connectionType":"must"},{"from":"s","to":"c","connectionType":"must"},{"from":"dg","to":"chp","connectionType":"must"},{"from":"dg","to":"ch1","connectionType":"must"},{"from":"dg","to":"ch2","connectionType":"must"},{"from":"dg","to":"b","connectionType":"must"},{"from":"dg","to":"w","connectionType":"should"}]},{"id":"T5_L","name":"T5 en L grande famille","topology":"L","bedrooms":4,"surface":120,"est_surf_m":[110,140],"type":"plain-pied","schema":"E > SJ > CU + SJ ~ SAM + E > DG > [CHP, CH1, CH2, CH3, SDB] + CHP ~ SDB2 + DG ~ WC","nodes":[{"id":"e","type":"entree","group":"circulation","label":"Entrée","area_ratio":0.04},{"id":"s","type":"sejour","group":"jour","label":"Séjour","area_ratio":0.21},{"id":"c","type":"cuisine","group":"jour","label":"Cuisine","area_ratio":0.09},{"id":"sam","type":"salle_a_manger","group":"jour","label":"SAM","area_ratio":0.07},{"id":"dg","type":"degagement","group":"circulation","label":"Couloir","area_ratio":0.07},{"id":"chp","type":"chambre_parentale","group":"nuit","label":"Ch. Parents","area_ratio":0.13},{"id":"ch1","type":"chambre","group":"nuit","label":"Chambre 2","area_ratio":0.1},{"id":"ch2","type":"chambre","group":"nuit","label":"Chambre 3","area_ratio":0.1},{"id":"ch3","type":"chambre","group":"nuit","label":"Chambre 4","area_ratio":0.08},{"id":"b1","type":"sdb","group":"service","label":"SDB","area_ratio":0.04},{"id":"b2","type":"sdb","group":"service","label":"SDB Parents","area_ratio":0.04},{"id":"w","type":"wc","group":"service","label":"WC","area_ratio":0.02}],"edges":[{"from":"e","to":"s","connectionType":"must"},{"from":"s","to":"c","connectionType":"must"},{"from":"s","to":"sam","connectionType":"should"},{"from":"e","to":"dg","connectionType":"must"},{"from":"dg","to":"chp","connectionType":"must"},{"from":"dg","to":"ch1","connectionType":"must"},{"from":"dg","to":"ch2","connectionType":"must"},{"from":"dg","to":"ch3","connectionType":"must"},{"from":"dg","to":"b1","connectionType":"must"},{"from":"chp","to":"b2","connectionType":"should"},{"from":"dg","to":"w","connectionType":"should"}]},{"id":"T5_U","name":"T5 en U autour jardin","topology":"U","bedrooms":4,"surface":130,"est_surf_m":[115,150],"type":"plain-pied","schema":"E > SJ > [CU, V] + CU ~ SAM + E > DG > [CHP, CH1, CH2, CH3, SDB] + CHP ~ SDB2 + DG ~ WC","nodes":[{"id":"e","type":"entree","group":"circulation","label":"Entrée","area_ratio":0.04},{"id":"s","type":"sejour","group":"jour","label":"Séjour","area_ratio":0.2},{"id":"c","type":"cuisine","group":"jour","label":"Cuisine","area_ratio":0.08},{"id":"sam","type":"salle_a_manger","group":"jour","label":"SAM","area_ratio":0.06},{"id":"v","type":"varangue","group":"jour","label":"Varangue","area_ratio":0.07},{"id":"dg","type":"degagement","group":"circulation","label":"Couloir","area_ratio":0.07},{"id":"chp","type":"chambre_parentale","group":"nuit","label":"Ch. Parents","area_ratio":0.13},{"id":"ch1","type":"chambre","group":"nuit","label":"Chambre 2","area_ratio":0.09},{"id":"ch2","type":"chambre","group":"nuit","label":"Chambre 3","area_ratio":0.09},{"id":"ch3","type":"chambre","group":"nuit","label":"Chambre 4","area_ratio":0.07},{"id":"b1","type":"sdb","group":"service","label":"SDB","area_ratio":0.04},{"id":"b2","type":"sdb","group":"service","label":"SDB Parents","area_ratio":0.04},{"id":"w","type":"wc","group":"service","label":"WC","area_ratio":0.02}],"edges":[{"from":"e","to":"s","connectionType":"must"},{"from":"s","to":"c","connectionType":"must"},{"from":"c","to":"sam","connectionType":"should"},{"from":"s","to":"v","connectionType":"must"},{"from":"e","to":"dg","connectionType":"must"},{"from":"dg","to":"chp","connectionType":"must"},{"from":"dg","to":"ch1","connectionType":"must"},{"from":"dg","to":"ch2","connectionType":"must"},{"from":"dg","to":"ch3","connectionType":"must"},{"from":"dg","to":"b1","connectionType":"must"},{"from":"chp","to":"b2","connectionType":"should"},{"from":"dg","to":"w","connectionType":"should"}]},{"id":"T5_SPINE_CREOLE","name":"T5 spine créole","topology":"SPINE","bedrooms":4,"surface":125,"est_surf_m":[110,140],"type":"plain-pied","schema":"V > SJ + E > DG > [SJ > CU, CHP, CH1, CH2, CH3, SDB] + CHP ~ [DRE, SDB2] + DG ~ WC","nodes":[{"id":"v","type":"varangue","group":"jour","label":"Varangue","area_ratio":0.08},{"id":"e","type":"entree","group":"circulation","label":"Entrée","area_ratio":0.04},{"id":"dg","type":"degagement","group":"circulation","label":"Couloir","area_ratio":0.08},{"id":"s","type":"sejour","group":"jour","label":"Séjour","area_ratio":0.19},{"id":"c","type":"cuisine","group":"jour","label":"Cuisine","area_ratio":0.08},{"id":"chp","type":"chambre_parentale","group":"nuit","label":"Ch. Parents","area_ratio":0.14},{"id":"dre","type":"dressing","group":"nuit","label":"Dressing","area_ratio":0.04},{"id":"ch1","type":"chambre","group":"nuit","label":"Chambre 2","area_ratio":0.09},{"id":"ch2","type":"chambre","group":"nuit","label":"Chambre 3","area_ratio":0.09},{"id":"ch3","type":"chambre","group":"nuit","label":"Chambre 4","area_ratio":0.07},{"id":"b1","type":"sdb","group":"service","label":"SDB","area_ratio":0.04},{"id":"b2","type":"sdb","group":"service","label":"SDB Parents","area_ratio":0.04},{"id":"w","type":"wc","group":"service","label":"WC","area_ratio":0.02}],"edges":[{"from":"v","to":"s","connectionType":"must"},{"from":"e","to":"dg","connectionType":"must"},{"from":"dg","to":"s","connectionType":"must"},{"from":"s","to":"c","connectionType":"must"},{"from":"dg","to":"chp","connectionType":"must"},{"from":"chp","to":"dre","connectionType":"should"},{"from":"chp","to":"b2","connectionType":"should"},{"from":"dg","to":"ch1","connectionType":"must"},{"from":"dg","to":"ch2","connectionType":"must"},{"from":"dg","to":"ch3","connectionType":"must"},{"from":"dg","to":"b1","connectionType":"must"},{"from":"dg","to":"w","connectionType":"should"}]},{"id":"T6_U_CREOLE","name":"T6 en U créole grande famille","topology":"U","bedrooms":5,"surface":160,"est_surf_m":[140,180],"type":"plain-pied","schema":"V > SJ + E > SJ > CU + CU ~ SAM + E > DG > [CHP, CH1, CH2, CH3, CH4, SDB] + CHP ~ [DRE, SDB2] + DG ~ WC","nodes":[{"id":"v","type":"varangue","group":"jour","label":"Varangue","area_ratio":0.07},{"id":"e","type":"entree","group":"circulation","label":"Entrée","area_ratio":0.03},{"id":"s","type":"sejour","group":"jour","label":"Séjour","area_ratio":0.17},{"id":"c","type":"cuisine","group":"jour","label":"Cuisine","area_ratio":0.07},{"id":"sam","type":"salle_a_manger","group":"jour","label":"SAM","area_ratio":0.05},{"id":"dg","type":"degagement","group":"circulation","label":"Couloir","area_ratio":0.07},{"id":"chp","type":"chambre_parentale","group":"nuit","label":"Ch. Parents","area_ratio":0.11},{"id":"dre","type":"dressing","group":"nuit","label":"Dressing","area_ratio":0.03},{"id":"ch1","type":"chambre","group":"nuit","label":"Chambre 2","area_ratio":0.08},{"id":"ch2","type":"chambre","group":"nuit","label":"Chambre 3","area_ratio":0.07},{"id":"ch3","type":"chambre","group":"nuit","label":"Chambre 4","area_ratio":0.07},{"id":"ch4","type":"chambre","group":"nuit","label":"Chambre 5","area_ratio":0.06},{"id":"b1","type":"sdb","group":"service","label":"SDB","area_ratio":0.04},{"id":"b2","type":"sdb","group":"service","label":"SDB Parents","area_ratio":0.03},{"id":"w","type":"wc","group":"service","label":"WC","area_ratio":0.02},{"id":"bua","type":"buanderie","group":"service","label":"Buanderie","area_ratio":0.02}],"edges":[{"from":"v","to":"s","connectionType":"must"},{"from":"e","to":"s","connectionType":"must"},{"from":"s","to":"c","connectionType":"must"},{"from":"c","to":"sam","connectionType":"should"},{"from":"e","to":"dg","connectionType":"must"},{"from":"dg","to":"chp","connectionType":"must"},{"from":"chp","to":"dre","connectionType":"should"},{"from":"chp","to":"b2","connectionType":"should"},{"from":"dg","to":"ch1","connectionType":"must"},{"from":"dg","to":"ch2","connectionType":"must"},{"from":"dg","to":"ch3","connectionType":"must"},{"from":"dg","to":"ch4","connectionType":"must"},{"from":"dg","to":"b1","connectionType":"must"},{"from":"dg","to":"w","connectionType":"should"},{"from":"c","to":"bua","connectionType":"may"}]},{"id":"T4_PATIO","name":"T4 avec patio central","topology":"PATIO","bedrooms":3,"surface":110,"est_surf_m":[100,125],"type":"plain-pied","schema":"E > SJ > CU + SJ ~ PA + E > DG > [CHP, CH1, CH2, SDB] + DG ~ WC","nodes":[{"id":"e","type":"entree","group":"circulation","label":"Entrée","area_ratio":0.05},{"id":"s","type":"sejour","group":"jour","label":"Séjour","area_ratio":0.2},{"id":"c","type":"cuisine","group":"jour","label":"Cuisine","area_ratio":0.09},{"id":"pa","type":"patio","group":"jour","label":"Patio","area_ratio":0.08},{"id":"dg","type":"degagement","group":"circulation","label":"Couloir","area_ratio":0.07},{"id":"chp","type":"chambre_parentale","group":"nuit","label":"Ch. Parents","area_ratio":0.16},{"id":"ch1","type":"chambre","group":"nuit","label":"Chambre 2","area_ratio":0.11},{"id":"ch2","type":"chambre","group":"nuit","label":"Chambre 3","area_ratio":0.1},{"id":"b","type":"sdb","group":"service","label":"SDB","area_ratio":0.06},{"id":"w","type":"wc","group":"service","label":"WC","area_ratio":0.03}],"edges":[{"from":"e","to":"s","connectionType":"must"},{"from":"s","to":"c","connectionType":"must"},{"from":"s","to":"pa","connectionType":"should"},{"from":"e","to":"dg","connectionType":"must"},{"from":"dg","to":"chp","connectionType":"must"},{"from":"dg","to":"ch1","connectionType":"must"},{"from":"dg","to":"ch2","connectionType":"must"},{"from":"dg","to":"b","connectionType":"must"},{"from":"dg","to":"w","connectionType":"should"}]}]}</script>
+
+<!-- ────────── THREE.JS ────────── -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ═══════════════════════════════════════════════════════════════════════
+// L0 — CHARGER LA LIBRAIRIE D'ORGANIGRAMMES
+// ═══════════════════════════════════════════════════════════════════════
+const LIB = JSON.parse(document.getElementById('orgs-data').textContent);
+
+// Couleurs par type de pièce (s'accorde avec le CSS .legend-sw.*)
+const ROOM_TYPES = {
+  entree:              { color: 0x94a3b8, vert: 1, group: 'circulation', label: 'Entrée' },
+  sejour:              { color: 0x5b8def, vert: 1, group: 'jour',        label: 'Séjour',     needsView: true },
+  cuisine:             { color: 0xf97316, vert: 1, group: 'jour',        label: 'Cuisine' },
+  salle_a_manger:      { color: 0x38bdf8, vert: 1, group: 'jour',        label: 'SàM' },
+  chambre:             { color: 0xa78bfa, vert: 1, group: 'nuit',        label: 'Chambre',    needsView: true },
+  chambre_parentale:   { color: 0x7c3aed, vert: 1, group: 'nuit',        label: 'Ch. parent', needsView: true },
+  sdb:                 { color: 0xf59e0b, vert: 1, group: 'service',     label: 'SDB' },
+  wc:                  { color: 0xfbbf24, vert: 1, group: 'service',     label: 'WC' },
+  degagement:          { color: 0x475569, vert: 1, group: 'circulation', label: 'Couloir' },
+  varangue:            { color: 0x10b981, vert: 1, group: 'exterieur',   label: 'Varangue',   external: true },
+  patio:               { color: 0x65a30d, vert: 1, group: 'exterieur',   label: 'Patio',      external: true, openTop: true },
+  dressing:            { color: 0xc4b5fd, vert: 1, group: 'service',     label: 'Dressing' },
+  buanderie:           { color: 0xb45309, vert: 1, group: 'service',     label: 'Buanderie' }
+};
+
+// Règles d'affinité entre groupes (en plus des arêtes déclarées)
+// Pour TOUTES les paires de nœuds, on calcule une affinité de base depuis les groupes
+function groupAffinity(gA, gB) {
+  if (gA === gB) return 0.15;                    // même groupe : attraction douce
+  if (gA === 'nuit' && gB === 'jour') return -0.25; // jour/nuit : séparation
+  if (gA === 'jour' && gB === 'nuit') return -0.25;
+  if (gA === 'service' && gB === 'jour') return -0.10;
+  if (gA === 'service' && gB === 'nuit') return 0.10; // service ↔ nuit OK
+  if (gA === 'circulation') return 0.05;         // hub : connecte un peu à tout
+  return 0;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// L1 — SEEDS (particules) + SIMULATION FORCE-DIRECTED 3D
+// ═══════════════════════════════════════════════════════════════════════
+class Seed {
+  constructor(node, idx, totalArea, params) {
+    this.id = node.id;
+    this.type = node.type;
+    this.label = node.label || node.id;
+    this.group = node.group || 'circulation';
+    const proto = ROOM_TYPES[node.type] || { color: 0x888888, vert: 1, group: 'circulation' };
+    this.color = proto.color;
+    this.external = !!proto.external;
+    this.openTop = !!proto.openTop;
+    this.needsView = !!proto.needsView;
+    this.node = node;
+    this.idx = idx;
+
+    // Surface cible et rayon effectif
+    this.area = (node.area_ratio || 0.1) * totalArea;  // m²
+    this.height = params.floorHeight;                  // m
+    // Rayon de la metaball : sqrt(area / π) ajusté
+    this.radius = Math.sqrt(this.area / Math.PI);      // m
+    this.volume = this.area * this.height;
+
+    // État physique
+    this.pos = new THREE.Vector3();
+    this.vel = new THREE.Vector3();
+    this.acc = new THREE.Vector3();
+    this.mass = this.area;
+
+    // Position initiale aléatoire dans une enveloppe
+    this.randomizeInEnvelope(params);
+  }
+
+  randomizeInEnvelope(params) {
+    const r = Math.sqrt(params.totalArea) * 0.7;
+    const angle = Math.random() * Math.PI * 2;
+    const rad = Math.random() * r;
+    this.pos.x = Math.cos(angle) * rad;
+    this.pos.z = Math.sin(angle) * rad;
+    this.pos.y = this.height / 2;  // au sol
+    this.vel.set(0, 0, 0);
+  }
+}
+
+class Simulation {
+  constructor(organigramme, params) {
+    this.org = organigramme;
+    this.params = params;
+    this.seeds = [];
+    this.edges = [];
+    this.iter = 0;
+    this.energy = Infinity;
+    this.converged = false;
+    this._buildSeeds();
+    this._buildEdges();
+  }
+
+  _buildSeeds() {
+    this.seeds = this.org.nodes.map((n, i) => new Seed(n, i, this.params.totalArea, this.params));
+  }
+
+  _buildEdges() {
+    // Arêtes explicites de l'organigramme
+    const idMap = Object.fromEntries(this.seeds.map(s => [s.id, s]));
+    this.edges = this.org.edges.map(e => ({
+      a: idMap[e.from],
+      b: idMap[e.to],
+      type: e.connectionType,
+      affinity: e.connectionType === 'must' ? 0.85 : 0.50
+    })).filter(e => e.a && e.b);
+  }
+
+  step(dt = 1/60) {
+    if (this.converged && this.params.pauseOnConverge) return;
+    const { stiffness, repulsion, damping, floorHeight, envelopeSize } = this.params;
+
+    // Reset accélérations
+    for (const s of this.seeds) s.acc.set(0, 0, 0);
+
+    // Forces entre paires de seeds
+    for (let i = 0; i < this.seeds.length; i++) {
+      for (let j = i + 1; j < this.seeds.length; j++) {
+        const a = this.seeds[i];
+        const b = this.seeds[j];
+        const d = a.pos.distanceTo(b.pos);
+        if (d < 0.001) continue;
+
+        // Arête explicite ?
+        const edge = this.edges.find(e => (e.a === a && e.b === b) || (e.a === b && e.b === a));
+        const groupAff = groupAffinity(a.group, b.group);
+        const affinity = edge ? edge.affinity + groupAff * 0.3 : groupAff;
+
+        const sumR = a.radius + b.radius;
+        const dir = b.pos.clone().sub(a.pos).normalize();
+
+        // Force attractive/répulsive basée sur affinité
+        // Distance cible : tangente si attraction, 2.5× sumR si répulsion
+        let targetDist;
+        let k;
+        if (affinity > 0) {
+          // Attraction : les seeds se touchent (tangentes)
+          targetDist = sumR * (1.0 + (1 - affinity) * 0.5);
+          k = affinity * stiffness;
+        } else if (affinity < 0) {
+          // Répulsion : éloigner jusqu'à 2× sumR
+          targetDist = sumR * 2.2;
+          k = Math.abs(affinity) * stiffness * 0.5;
+        } else {
+          // Neutre : tangentes seulement si overlap
+          if (d >= sumR) continue;
+          targetDist = sumR;
+          k = stiffness * 0.3;
+        }
+
+        const delta = d - targetDist;
+        const forceMag = delta * k;
+        const force = dir.clone().multiplyScalar(forceMag);
+        a.acc.add(force.clone().divideScalar(a.mass));
+        b.acc.sub(force.clone().divideScalar(b.mass));
+
+        // Répulsion dure anti-overlap (si seeds se chevauchent)
+        if (d < sumR) {
+          const overlap = sumR - d;
+          const pushForce = dir.clone().multiplyScalar(-overlap * repulsion);
+          a.acc.add(pushForce.clone().divideScalar(a.mass));
+          b.acc.sub(pushForce.clone().divideScalar(b.mass));
+        }
+      }
+
+      // Force de contrainte au sol (et hauteur étage)
+      const s = this.seeds[i];
+      const targetY = s.height / 2;
+      s.acc.y += (targetY - s.pos.y) * 0.3;
+
+      // Contrainte d'enveloppe (ramener vers le centre si trop loin)
+      const distXZ = Math.hypot(s.pos.x, s.pos.z);
+      const maxR = envelopeSize * 0.9;
+      if (distXZ > maxR) {
+        const pullDir = new THREE.Vector3(-s.pos.x, 0, -s.pos.z).normalize();
+        const excess = distXZ - maxR;
+        s.acc.add(pullDir.multiplyScalar(excess * 0.2));
+      }
+    }
+
+    // Intégration semi-implicite Euler + amortissement
+    let totalKE = 0;
+    for (const s of this.seeds) {
+      s.vel.add(s.acc.clone().multiplyScalar(dt));
+      s.vel.multiplyScalar(damping);
+      s.pos.add(s.vel.clone().multiplyScalar(dt * 60)); // position scale
+      totalKE += s.vel.lengthSq() * s.mass;
+    }
+
+    this.energy = totalKE;
+    this.iter++;
+    if (totalKE < 0.01 && this.iter > 100) this.converged = true;
+  }
+
+  reset(params) {
+    this.params = Object.assign(this.params, params);
+    for (const s of this.seeds) s.randomizeInEnvelope(this.params);
+    this.iter = 0;
+    this.energy = Infinity;
+    this.converged = false;
+  }
+
+  // Bounding box de l'ensemble des seeds
+  getBBox() {
+    const box = new THREE.Box3();
+    for (const s of this.seeds) {
+      const r = s.radius;
+      box.expandByPoint(new THREE.Vector3(s.pos.x - r, 0, s.pos.z - r));
+      box.expandByPoint(new THREE.Vector3(s.pos.x + r, s.height, s.pos.z + r));
+    }
+    return box;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// L2 + L3 — DENSITY FIELD + VOXELIZATION
+// ═══════════════════════════════════════════════════════════════════════
+class Voxelizer {
+  constructor() {
+    this.voxels = []; // { pos: Vector3, color: 0xhex, owner: Seed, density: number, size }
+    this.size = 0;
+    this.bbox = null;
+  }
+
+  voxelize(simulation, params) {
+    this.voxels = [];
+    const size = params.voxelSize;
+    this.size = size;
+
+    // Compute bbox from seeds + margin
+    const bbox = simulation.getBBox().expandByScalar(size * 2);
+    this.bbox = bbox;
+
+    // Sigma : influence radius multiplier
+    const sigmaMul = params.sigmaMul;
+    const iso = params.iso;
+
+    // Pour chaque voxel, trouve l'owner et décide si plein
+    const nx = Math.ceil((bbox.max.x - bbox.min.x) / size);
+    const ny = Math.ceil((bbox.max.y - bbox.min.y) / size);
+    const nz = Math.ceil((bbox.max.z - bbox.min.z) / size);
+
+    for (let ix = 0; ix < nx; ix++) {
+      for (let iy = 0; iy < ny; iy++) {
+        for (let iz = 0; iz < nz; iz++) {
+          const px = bbox.min.x + (ix + 0.5) * size;
+          const py = bbox.min.y + (iy + 0.5) * size;
+          const pz = bbox.min.z + (iz + 0.5) * size;
+
+          // Compute density + owner
+          let totalDensity = 0;
+          let bestDensity = 0;
+          let owner = null;
+
+          for (const s of simulation.seeds) {
+            const dx = px - s.pos.x;
+            const dy = py - s.pos.y;
+            const dz = pz - s.pos.z;
+            const d2 = dx*dx + dy*dy + dz*dz;
+            const sigma = s.radius * sigmaMul;
+            const contribution = Math.exp(-d2 / (2 * sigma * sigma));
+            totalDensity += contribution;
+            if (contribution > bestDensity) {
+              bestDensity = contribution;
+              owner = s;
+            }
+          }
+
+          if (!owner) continue;
+
+          // Si owner est openTop (patio) et qu'on est au-dessus de hauteur étage, ne pas remplir
+          if (owner.openTop && py > owner.height * 0.4) continue;
+
+          // Seuil d'inclusion
+          if (totalDensity < iso) continue;
+
+          // Classification
+          // - Si owner.external et qu'on est juste au niveau du sol : ok (varangue)
+          // - Tous les autres : normal
+          this.voxels.push({
+            pos: new THREE.Vector3(px, py, pz),
+            owner,
+            color: owner.color,
+            density: totalDensity,
+            confidence: bestDensity / totalDensity,
+            size,
+            indices: [ix, iy, iz]
+          });
+        }
+      }
+    }
+
+    return this.voxels.length;
+  }
+
+  // Retourne les groupes de voxels connexes par owner
+  getConnectedGroups() {
+    const map = new Map();
+    for (const v of this.voxels) map.set(v.indices.join(','), v);
+
+    const groups = new Map(); // owner.id -> Set<voxel>
+    const visited = new Set();
+
+    for (const v of this.voxels) {
+      const key = v.indices.join(',');
+      if (visited.has(key)) continue;
+      const stack = [v];
+      const group = [];
+      const ownerId = v.owner.id;
+      while (stack.length) {
+        const cur = stack.pop();
+        const k = cur.indices.join(',');
+        if (visited.has(k)) continue;
+        if (cur.owner.id !== ownerId) continue;
+        visited.add(k);
+        group.push(cur);
+        const [x, y, z] = cur.indices;
+        for (const [dx, dy, dz] of [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]) {
+          const nkey = [x+dx, y+dy, z+dz].join(',');
+          if (map.has(nkey) && !visited.has(nkey)) {
+            const neighbor = map.get(nkey);
+            if (neighbor.owner.id === ownerId) stack.push(neighbor);
+          }
+        }
+      }
+      if (!groups.has(ownerId)) groups.set(ownerId, []);
+      groups.get(ownerId).push(group);
+    }
+    return groups;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// L4 — RENDERER (Three.js)
+// ═══════════════════════════════════════════════════════════════════════
+class SceneRenderer {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x0e0a06);
+    this.scene.fog = new THREE.Fog(0x0e0a06, 30, 120);
+
+    this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 500);
+    this.camera.position.set(18, 14, 18);
+
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
+
+    this.controls = new OrbitControls(this.camera, canvas);
+    this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.08;
+    this.controls.target.set(0, 1.5, 0);
+
+    this._setupLights();
+    this._setupGroups();
+    this._setupGround();
+
+    this._resize();
+    window.addEventListener('resize', () => this._resize());
+    new ResizeObserver(() => this._resize()).observe(canvas.parentElement);
+  }
+
+  _setupLights() {
+    this.scene.add(new THREE.AmbientLight(0xffe4b4, 0.38));
+    const sun = new THREE.DirectionalLight(0xffe0a8, 1.15);
+    sun.position.set(16, 24, 12);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.left = -25;
+    sun.shadow.camera.right = 25;
+    sun.shadow.camera.top = 25;
+    sun.shadow.camera.bottom = -25;
+    sun.shadow.bias = -0.0005;
+    this.scene.add(sun);
+    this.scene.add(new THREE.HemisphereLight(0x87a0c0, 0x3a2817, 0.35));
+  }
+
+  _setupGroups() {
+    this.groundGroup = new THREE.Group();
+    this.seedsGroup = new THREE.Group();
+    this.voxelsGroup = new THREE.Group();
+    this.edgesGroup = new THREE.Group();
+    this.rulesGroup = new THREE.Group();
+    this.wireGroup = new THREE.Group();
+    this.scene.add(this.groundGroup, this.seedsGroup, this.voxelsGroup, this.edgesGroup, this.rulesGroup, this.wireGroup);
+  }
+
+  _setupGround() {
+    // Sol avec grille
+    const geo = new THREE.PlaneGeometry(100, 100);
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0x1a1208, roughness: 0.95, metalness: 0.02, side: THREE.DoubleSide
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.y = -0.01;
+    mesh.receiveShadow = true;
+    this.groundGroup.add(mesh);
+
+    const grid = new THREE.GridHelper(100, 100, 0x3a2a18, 0x22180c);
+    grid.material.transparent = true;
+    grid.material.opacity = 0.4;
+    this.groundGroup.add(grid);
+
+    // Flèche Nord
+    const arrow = new THREE.Mesh(
+      new THREE.ConeGeometry(0.4, 1.2, 4),
+      new THREE.MeshBasicMaterial({ color: 0xc54e30 })
+    );
+    arrow.position.set(-12, 0.1, -12);
+    arrow.rotation.x = -Math.PI / 2;
+    this.groundGroup.add(arrow);
+  }
+
+  _resize() {
+    const parent = this.canvas.parentElement;
+    if (!parent) return;
+    const w = parent.clientWidth, h = parent.clientHeight;
+    if (!w || !h) return;
+    this.renderer.setSize(w, h, false);
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+  }
+
+  clearGroup(g) {
+    while (g.children.length) {
+      const c = g.children[0];
+      g.remove(c);
+      if (c.geometry) c.geometry.dispose();
+      if (c.material) {
+        if (Array.isArray(c.material)) c.material.forEach(m => m.dispose());
+        else c.material.dispose();
+      }
+    }
+  }
+
+  // ─── Render seeds as spheres + edges between them ───
+  renderSeeds(sim, showEdges = true) {
+    this.clearGroup(this.seedsGroup);
+    this.clearGroup(this.edgesGroup);
+
+    for (const s of sim.seeds) {
+      const geo = new THREE.SphereGeometry(s.radius * 0.7, 16, 12);
+      const mat = new THREE.MeshStandardMaterial({
+        color: s.color,
+        roughness: 0.55,
+        metalness: 0.1,
+        transparent: true,
+        opacity: 0.85,
+        emissive: s.color,
+        emissiveIntensity: 0.15
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.copy(s.pos);
+      mesh.castShadow = true;
+      this.seedsGroup.add(mesh);
+
+      // Label (CSS3D serait mieux, mais pour le proto on fait un sprite canvas)
+      const sprite = this._makeTextSprite(s.label, s.color);
+      sprite.position.copy(s.pos).add(new THREE.Vector3(0, s.radius + 0.3, 0));
+      this.seedsGroup.add(sprite);
+    }
+
+    // Edges
+    if (showEdges) {
+      for (const e of sim.edges) {
+        const points = [e.a.pos.clone(), e.b.pos.clone()];
+        const geo = new THREE.BufferGeometry().setFromPoints(points);
+        const mat = new THREE.LineBasicMaterial({
+          color: e.type === 'must' ? 0xc9a84c : 0x8a7540,
+          transparent: true,
+          opacity: e.type === 'must' ? 0.8 : 0.4
+        });
+        const line = new THREE.Line(geo, mat);
+        this.edgesGroup.add(line);
+      }
+    }
+  }
+
+  _makeTextSprite(text, color) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256; canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = 'rgba(10,8,4,0.75)';
+    ctx.fillRect(0, 0, 256, 64);
+    ctx.font = 'bold 28px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#' + color.toString(16).padStart(6, '0');
+    ctx.fillText(text, 128, 32);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.minFilter = THREE.LinearFilter;
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(1.5, 0.37, 1);
+    return sprite;
+  }
+
+  // ─── Render voxels individually (blocky) ───
+  renderVoxelsBlocky(voxelizer) {
+    this.clearGroup(this.voxelsGroup);
+    if (voxelizer.voxels.length === 0) return;
+
+    const size = voxelizer.size;
+    const inset = size * 0.08;
+    const s = size - inset * 2;
+
+    // InstancedMesh par couleur (owner) pour perf
+    const byColor = new Map();
+    for (const v of voxelizer.voxels) {
+      if (!byColor.has(v.color)) byColor.set(v.color, []);
+      byColor.get(v.color).push(v);
+    }
+
+    for (const [color, voxels] of byColor) {
+      const geo = new THREE.BoxGeometry(s, s, s);
+      const mat = new THREE.MeshStandardMaterial({
+        color, roughness: 0.72, metalness: 0.04
+      });
+      const mesh = new THREE.InstancedMesh(geo, mat, voxels.length);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      const dummy = new THREE.Object3D();
+      voxels.forEach((v, i) => {
+        dummy.position.copy(v.pos);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      this.voxelsGroup.add(mesh);
+    }
+  }
+
+  // ─── Render voxels as merged blocks per (owner, floor level) ───
+  renderVoxelsMerged(voxelizer) {
+    this.clearGroup(this.voxelsGroup);
+    if (voxelizer.voxels.length === 0) return;
+
+    const size = voxelizer.size;
+    // Pour chaque owner, calcule bbox des voxels et fait un seul cube avec bon matériau
+    const byOwner = new Map();
+    for (const v of voxelizer.voxels) {
+      const key = v.owner.id + '_' + Math.floor(v.pos.y / v.owner.height);
+      if (!byOwner.has(key)) byOwner.set(key, { voxels: [], owner: v.owner });
+      byOwner.get(key).voxels.push(v);
+    }
+
+    for (const { voxels, owner } of byOwner.values()) {
+      const bbox = new THREE.Box3();
+      for (const v of voxels) {
+        bbox.expandByPoint(new THREE.Vector3(v.pos.x - size/2, v.pos.y - size/2, v.pos.z - size/2));
+        bbox.expandByPoint(new THREE.Vector3(v.pos.x + size/2, v.pos.y + size/2, v.pos.z + size/2));
+      }
+      const center = bbox.getCenter(new THREE.Vector3());
+      const s = bbox.getSize(new THREE.Vector3());
+      // Inset pour séparer visuellement
+      const inset = size * 0.08;
+      s.x = Math.max(0.1, s.x - inset);
+      s.y = Math.max(0.1, s.y - inset);
+      s.z = Math.max(0.1, s.z - inset);
+
+      // Transparent pour les extérieurs / ouvertTop
+      const isOpenTop = owner.openTop;
+      const isExternal = owner.external;
+
+      const geo = new THREE.BoxGeometry(s.x, s.y, s.z);
+      const mat = new THREE.MeshStandardMaterial({
+        color: owner.color,
+        roughness: 0.72,
+        metalness: 0.04,
+        transparent: isExternal || isOpenTop,
+        opacity: isOpenTop ? 0.15 : (isExternal ? 0.55 : 1.0)
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.copy(center);
+      mesh.castShadow = !isOpenTop;
+      mesh.receiveShadow = true;
+      this.voxelsGroup.add(mesh);
+
+      // Outline
+      const edgeGeo = new THREE.EdgesGeometry(geo);
+      const edgeMat = new THREE.LineBasicMaterial({
+        color: 0x000000, transparent: true, opacity: 0.35
+      });
+      const edges = new THREE.LineSegments(edgeGeo, edgeMat);
+      edges.position.copy(center);
+      this.voxelsGroup.add(edges);
+    }
+  }
+
+  // ─── Render wire bounds of each voxel (debug) ───
+  renderVoxelsWire(voxelizer) {
+    this.clearGroup(this.wireGroup);
+    if (voxelizer.voxels.length === 0) return;
+    const size = voxelizer.size;
+    const geo = new THREE.BoxGeometry(size, size, size);
+    const edges = new THREE.EdgesGeometry(geo);
+    const mat = new THREE.LineBasicMaterial({ color: 0xc9a84c, transparent: true, opacity: 0.12 });
+    for (const v of voxelizer.voxels) {
+      const line = new THREE.LineSegments(edges.clone(), mat);
+      line.position.copy(v.pos);
+      this.wireGroup.add(line);
+    }
+  }
+
+  // ─── L5 — Appliquer règles archi (toits, pilotis, sol) ───
+  renderRules(voxelizer, simulation) {
+    this.clearGroup(this.rulesGroup);
+    if (voxelizer.voxels.length === 0) return;
+
+    // Règle TOIT 4 pans : sur les groupes interior (non-external, non-openTop)
+    const groups = voxelizer.getConnectedGroups();
+    for (const [ownerId, clusterList] of groups) {
+      const seed = simulation.seeds.find(s => s.id === ownerId);
+      if (!seed) continue;
+      if (seed.external || seed.openTop) continue;
+      if (seed.group === 'circulation' && seed.type !== 'entree') continue;
+
+      for (const cluster of clusterList) {
+        // BBox du cluster
+        const bbox = new THREE.Box3();
+        for (const v of cluster) {
+          bbox.expandByPoint(new THREE.Vector3(v.pos.x, v.pos.y, v.pos.z));
+        }
+        const size = voxelizer.size;
+        bbox.min.addScalar(-size/2);
+        bbox.max.addScalar(size/2);
+        const center = bbox.getCenter(new THREE.Vector3());
+        const dim = bbox.getSize(new THREE.Vector3());
+
+        // Toit 4 pans au-dessus du cluster
+        const debord = 0.8;
+        const roofW = dim.x + debord * 2;
+        const roofD = dim.z + debord * 2;
+        const roofH = Math.min(roofW, roofD) * 0.3;
+        const roofGeo = new THREE.CylinderGeometry(0.01, 1, 1, 4, 1);
+        const roofMat = new THREE.MeshStandardMaterial({
+          color: 0xa84020, roughness: 0.88, metalness: 0.1
+        });
+        const roof = new THREE.Mesh(roofGeo, roofMat);
+        roof.rotation.y = Math.PI / 4;
+        roof.scale.set(roofW / 2, roofH, roofD / 2);
+        roof.position.set(center.x, bbox.max.y + roofH / 2, center.z);
+        roof.castShadow = true;
+        this.rulesGroup.add(roof);
+
+        // Sablière
+        const sabMat = new THREE.MeshStandardMaterial({ color: 0x6a5a48, roughness: 0.85 });
+        const sabH = 0.15, sabT = 0.1;
+        for (const [sw, sd, ox, oz] of [
+          [roofW, sabT, 0, roofD/2 - sabT/2],
+          [roofW, sabT, 0, -roofD/2 + sabT/2],
+          [sabT, roofD, roofW/2 - sabT/2, 0],
+          [sabT, roofD, -roofW/2 + sabT/2, 0]
+        ]) {
+          const sab = new THREE.Mesh(new THREE.BoxGeometry(sw, sabH, sd), sabMat);
+          sab.position.set(center.x + ox, bbox.max.y - sabH/2, center.z + oz);
+          sab.castShadow = true;
+          this.rulesGroup.add(sab);
+        }
+      }
+    }
+
+    // Règle SOL : dalle générale sous toute l'emprise
+    const overallBBox = new THREE.Box3();
+    for (const v of voxelizer.voxels) overallBBox.expandByPoint(v.pos);
+    overallBBox.min.addScalar(-voxelizer.size);
+    overallBBox.max.addScalar(voxelizer.size);
+    const slabSize = overallBBox.getSize(new THREE.Vector3());
+    const slabCenter = overallBBox.getCenter(new THREE.Vector3());
+    const slabGeo = new THREE.BoxGeometry(slabSize.x + 0.6, 0.25, slabSize.z + 0.6);
+    const slabMat = new THREE.MeshStandardMaterial({ color: 0x6a5a48, roughness: 0.9 });
+    const slab = new THREE.Mesh(slabGeo, slabMat);
+    slab.position.set(slabCenter.x, -0.13, slabCenter.z);
+    slab.castShadow = false;
+    slab.receiveShadow = true;
+    this.rulesGroup.add(slab);
+  }
+
+  setGroundVisible(v) { this.groundGroup.visible = v; }
+  setSeedsVisible(v) { this.seedsGroup.visible = v; }
+  setVoxelsVisible(v) { this.voxelsGroup.visible = v; }
+  setEdgesVisible(v) { this.edgesGroup.visible = v; }
+  setWireVisible(v) { this.wireGroup.visible = v; }
+  setRulesVisible(v) { this.rulesGroup.visible = v; }
+
+  frameCamera(bbox, padding = 1.5) {
+    if (!bbox) return;
+    const size = bbox.getSize(new THREE.Vector3());
+    const center = bbox.getCenter(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.z, size.y);
+    const dist = maxDim * padding;
+    this.camera.position.set(center.x + dist, center.y + dist * 0.7, center.z + dist);
+    this.controls.target.copy(center);
+    this.controls.update();
+  }
+
+  render() { this.renderer.render(this.scene, this.camera); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// GRAPH VIZ 2D (pour vérifier l'organigramme chargé)
+// ═══════════════════════════════════════════════════════════════════════
+function renderGraphSVG(org) {
+  const svg = document.getElementById('graph-svg');
+  svg.innerHTML = '';
+  if (!org) return;
+
+  // Layout force-directed rapide 2D
+  const nodes = org.nodes.map(n => ({
+    ...n,
+    x: 160 + (Math.random() - 0.5) * 160,
+    y: 90 + (Math.random() - 0.5) * 100,
+    vx: 0, vy: 0
+  }));
+  const map = Object.fromEntries(nodes.map(n => [n.id, n]));
+  const edges = org.edges.filter(e => map[e.from] && map[e.to]);
+
+  for (let iter = 0; iter < 150; iter++) {
+    for (const n of nodes) { n.vx *= 0.88; n.vy *= 0.88; }
+    // Repulsion
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i+1; j < nodes.length; j++) {
+        const a = nodes[i], b = nodes[j];
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const d = Math.sqrt(dx*dx + dy*dy) || 0.1;
+        const f = 600 / (d * d);
+        a.vx -= (dx/d) * f * 0.02;
+        a.vy -= (dy/d) * f * 0.02;
+        b.vx += (dx/d) * f * 0.02;
+        b.vy += (dy/d) * f * 0.02;
+      }
+    }
+    // Attraction sur arêtes
+    for (const e of edges) {
+      const a = map[e.from], b = map[e.to];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const d = Math.sqrt(dx*dx + dy*dy) || 0.1;
+      const target = e.connectionType === 'must' ? 40 : 60;
+      const f = (d - target) * 0.08;
+      a.vx += (dx/d) * f;
+      a.vy += (dy/d) * f;
+      b.vx -= (dx/d) * f;
+      b.vy -= (dy/d) * f;
+    }
+    for (const n of nodes) {
+      n.x += n.vx;
+      n.y += n.vy;
+      n.x = Math.max(20, Math.min(300, n.x));
+      n.y = Math.max(20, Math.min(160, n.y));
+    }
+  }
+
+  // Dessin
+  const svgns = 'http://www.w3.org/2000/svg';
+  // Arêtes
+  for (const e of edges) {
+    const a = map[e.from], b = map[e.to];
+    const line = document.createElementNS(svgns, 'line');
+    line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
+    line.setAttribute('x2', b.x); line.setAttribute('y2', b.y);
+    line.setAttribute('class', 'graph-edge ' + e.connectionType);
+    svg.appendChild(line);
+  }
+  // Nœuds
+  for (const n of nodes) {
+    const proto = ROOM_TYPES[n.type] || { color: 0x888888 };
+    const c = document.createElementNS(svgns, 'circle');
+    c.setAttribute('cx', n.x); c.setAttribute('cy', n.y);
+    c.setAttribute('r', 12);
+    c.setAttribute('fill', '#' + proto.color.toString(16).padStart(6,'0'));
+    c.setAttribute('class', 'graph-node');
+    svg.appendChild(c);
+    const t = document.createElementNS(svgns, 'text');
+    t.setAttribute('x', n.x); t.setAttribute('y', n.y + 1);
+    t.setAttribute('class', 'graph-node-label');
+    t.textContent = n.id.toUpperCase();
+    svg.appendChild(t);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// MAIN APPLICATION
+// ═══════════════════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const state = {
+  orgId: null,
+  renderMode: 'seeds',   // 'seeds' | 'blocky' | 'merged'
+  running: true,
+  showWire: false,
+  showGround: true,
+  showRules: false,
+  lastVoxelIter: -1
+};
+
+const params = {
+  totalArea: 70,
+  floorHeight: 2.7,
+  stiffness: 0.06,
+  repulsion: 1.0,
+  damping: 0.88,
+  envelopeSize: 14,
+  voxelSize: 0.5,
+  iso: 0.5,
+  sigmaMul: 1.4,
+  pauseOnConverge: true
+};
+
+let sim = null;
+let vox = new Voxelizer();
+let renderer = null;
+
+// ─── Populate organigramme selector ───
+function populateOrgSelect() {
+  const sel = $('org-select');
+  // Grouper par nombre de chambres
+  const byBedrooms = {};
+  for (const o of LIB.organigrammes) {
+    const key = o.bedrooms === 0 ? 'T1 (studio)' :
+                o.bedrooms === 1 ? 'T2' :
+                o.bedrooms === 2 ? 'T3' :
+                o.bedrooms === 3 ? 'T4' : 'T5+';
+    (byBedrooms[key] = byBedrooms[key] || []).push(o);
+  }
+  for (const [group, list] of Object.entries(byBedrooms)) {
+    const og = document.createElement('optgroup');
+    og.label = group;
+    for (const o of list) {
+      const opt = document.createElement('option');
+      opt.value = o.id;
+      opt.textContent = `${o.name} · ${o.topology} · ${o.surface}m²`;
+      og.appendChild(opt);
+    }
+    sel.appendChild(og);
+  }
+}
+
+function loadOrganigramme(id) {
+  const org = LIB.organigrammes.find(o => o.id === id);
+  if (!org) return;
+  state.orgId = id;
+
+  // Mise à jour UI
+  $('org-name').textContent = org.name;
+  $('org-meta').textContent = `${org.topology} · ${org.surface}m² · ${org.bedrooms} ch · ${org.type}`;
+  $('org-schema').textContent = org.schema || '—';
+
+  // Forcer surface au surface de l'org
+  params.totalArea = org.surface;
+  $('sl-surface').value = org.surface;
+  $('sl-surface-v').textContent = `${org.surface} m²`;
+  params.envelopeSize = Math.sqrt(org.surface) * 1.3;
+
+  // Graphe SVG
+  renderGraphSVG(org);
+
+  // Nouvelle simulation
+  sim = new Simulation(org, { ...params });
+  state.lastVoxelIter = -1;
+
+  // UI
+  $('vp-title').textContent = org.name.toUpperCase();
+  $('vp-env').textContent = org.topology;
+  $('vp-foot').textContent = `~${org.surface}m² · ${org.nodes.length} espaces`;
+
+  $('st-seeds').textContent = sim.seeds.length;
+  renderer.renderSeeds(sim);
+  renderer.frameCamera(sim.getBBox());
+}
+
+function renderLegend() {
+  const container = $('legend');
+  container.innerHTML = '';
+  const usedTypes = new Set();
+  if (sim) for (const s of sim.seeds) usedTypes.add(s.type);
+  const sortedTypes = [...usedTypes].sort();
+  for (const t of sortedTypes) {
+    const proto = ROOM_TYPES[t];
+    if (!proto) continue;
+    const row = document.createElement('div');
+    row.className = 'legend-row';
+    row.innerHTML = `<span class="legend-sw ${t}"></span><span>${proto.label}</span>`;
+    container.appendChild(row);
+  }
+}
+
+function voxelizeNow() {
+  if (!sim) return;
+  const n = vox.voxelize(sim, params);
+  $('st-vox').textContent = n;
+  if (state.renderMode === 'blocky') renderer.renderVoxelsBlocky(vox);
+  else if (state.renderMode === 'merged') renderer.renderVoxelsMerged(vox);
+  if (state.showWire) renderer.renderVoxelsWire(vox); else renderer.clearGroup(renderer.wireGroup);
+  if (state.showRules) renderer.renderRules(vox, sim); else renderer.clearGroup(renderer.rulesGroup);
+  state.lastVoxelIter = sim.iter;
+}
+
+function setMode(mode) {
+  state.renderMode = mode;
+  document.querySelectorAll('.mode-group button').forEach(b => b.classList.remove('active'));
+  $('mode-' + mode).classList.add('active');
+
+  if (mode === 'seeds') {
+    renderer.setSeedsVisible(true);
+    renderer.setEdgesVisible(true);
+    renderer.setVoxelsVisible(false);
+    renderer.setWireVisible(false);
+  } else {
+    renderer.setSeedsVisible(false);
+    renderer.setEdgesVisible(false);
+    renderer.setVoxelsVisible(true);
+    renderer.setWireVisible(state.showWire);
+    voxelizeNow();
+  }
+}
+
+// ─── Setup UI ───
+function setupUI() {
+  populateOrgSelect();
+
+  // Bind select
+  $('org-select').addEventListener('change', e => loadOrganigramme(e.target.value));
+
+  // Sliders
+  const sliders = [
+    ['sl-surface', 'totalArea', v => `${v} m²`, v => parseFloat(v)],
+    ['sl-height', 'floorHeight', v => `${parseFloat(v).toFixed(1)} m`, v => parseFloat(v)],
+    ['sl-stiff', 'stiffness', v => parseFloat(v).toFixed(3), v => parseFloat(v)],
+    ['sl-repel', 'repulsion', v => parseFloat(v).toFixed(1), v => parseFloat(v)],
+    ['sl-damp', 'damping', v => parseFloat(v).toFixed(2), v => parseFloat(v)],
+    ['sl-vox', 'voxelSize', v => `${parseFloat(v).toFixed(1)} m`, v => parseFloat(v)],
+    ['sl-iso', 'iso', v => parseFloat(v).toFixed(2), v => parseFloat(v)],
+    ['sl-sigma', 'sigmaMul', v => `${parseFloat(v).toFixed(1)} ×`, v => parseFloat(v)]
+  ];
+  for (const [id, key, fmt, parse] of sliders) {
+    const input = $(id);
+    const vspan = $(id + '-v');
+    input.addEventListener('input', e => {
+      params[key] = parse(e.target.value);
+      vspan.textContent = fmt(e.target.value);
+      if (sim) {
+        sim.params = { ...sim.params, ...params };
+        sim.converged = false;
+      }
+      if (key === 'totalArea' && sim) {
+        // Recréer la simulation avec nouvelle surface
+        params.envelopeSize = Math.sqrt(params.totalArea) * 1.3;
+        for (const s of sim.seeds) {
+          s.area = (s.node.area_ratio || 0.1) * params.totalArea;
+          s.radius = Math.sqrt(s.area / Math.PI);
+          s.mass = s.area;
+        }
+      }
+      if (state.renderMode !== 'seeds' && (key === 'voxelSize' || key === 'iso' || key === 'sigmaMul')) {
+        voxelizeNow();
+      }
+    });
+  }
+
+  // Buttons
+  $('btn-playpause').addEventListener('click', () => {
+    state.running = !state.running;
+    $('btn-playpause').textContent = state.running ? '⏸ Pause' : '▶ Play';
+    $('btn-playpause').classList.toggle('primary', state.running);
+    if (sim) sim.converged = false;
+  });
+
+  $('btn-reset').addEventListener('click', () => {
+    if (!sim) return;
+    sim.reset(params);
+    state.lastVoxelIter = -1;
+    state.running = true;
+    $('btn-playpause').textContent = '⏸ Pause';
+    $('btn-playpause').classList.add('primary');
+  });
+
+  $('btn-revoxel').addEventListener('click', () => voxelizeNow());
+
+  $('mode-seeds').addEventListener('click', () => setMode('seeds'));
+  $('mode-blocky').addEventListener('click', () => setMode('blocky'));
+  $('mode-merged').addEventListener('click', () => setMode('merged'));
+
+  $('opt-wire').addEventListener('click', () => {
+    state.showWire = !state.showWire;
+    $('opt-wire').classList.toggle('active', state.showWire);
+    $('opt-wire').textContent = (state.showWire ? '■ ' : '□ ') + 'Wire';
+    if (state.renderMode !== 'seeds') voxelizeNow();
+  });
+
+  $('opt-ground').addEventListener('click', () => {
+    state.showGround = !state.showGround;
+    $('opt-ground').classList.toggle('active', state.showGround);
+    $('opt-ground').textContent = (state.showGround ? '■ ' : '□ ') + 'Sol';
+    renderer.setGroundVisible(state.showGround);
+  });
+
+  $('opt-rules').addEventListener('click', () => {
+    state.showRules = !state.showRules;
+    $('opt-rules').classList.toggle('active', state.showRules);
+    $('opt-rules').textContent = (state.showRules ? '■ ' : '□ ') + 'Règles';
+    if (state.renderMode !== 'seeds') voxelizeNow();
+  });
+}
+
+// ─── Animation loop ───
+let fpsCounter = { last: performance.now(), frames: 0 };
+function loop() {
+  requestAnimationFrame(loop);
+
+  if (sim && state.running) {
+    // Plusieurs sub-steps pour convergence rapide
+    for (let i = 0; i < 3; i++) sim.step(1/60);
+    renderer.renderSeeds(sim, state.renderMode === 'seeds');
+
+    // Re-voxélisation périodique pendant la simulation (si mode non-seeds)
+    if (state.renderMode !== 'seeds') {
+      if (sim.iter - state.lastVoxelIter >= 10) voxelizeNow();
+    }
+
+    // UI
+    $('st-iter').textContent = sim.iter;
+    $('st-energy').textContent = sim.energy < 0.01 ? '→ 0' : sim.energy.toFixed(2);
+    const stateBadge = $('st-state');
+    if (sim.converged) {
+      stateBadge.textContent = 'CONVERGED';
+      stateBadge.className = 'badge converged';
+    } else {
+      stateBadge.textContent = 'RUNNING';
+      stateBadge.className = 'badge running';
+    }
+  }
+
+  renderer.render();
+
+  // FPS
+  fpsCounter.frames++;
+  const now = performance.now();
+  if (now - fpsCounter.last > 500) {
+    const fps = (fpsCounter.frames * 1000 / (now - fpsCounter.last)).toFixed(0);
+    $('fps').textContent = fps + ' fps';
+    fpsCounter.last = now;
+    fpsCounter.frames = 0;
+  }
+}
+
+// ─── Init ───
+function init() {
+  const canvas = $('canvas3d');
+  renderer = new SceneRenderer(canvas);
+  setupUI();
+
+  // Load default organigramme (T3_COMPACT pour avoir quelque chose de riche)
+  const defaultId = 'T3_COMPACT';
+  $('org-select').value = defaultId;
+  loadOrganigramme(defaultId);
+  renderLegend();
+
+  loop();
+}
+
+init();
+</script>
+
+</body>
+</html>

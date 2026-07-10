@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Atlas des Typologies · De l'Individuel au Collectif · TERLAB · ÉARL</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Inconsolata:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --p:#ede8dc;--p1:#f7f3eb;--p2:#e2dbcd;
+  --ink:#18130a;--ink2:#3c3220;--ink3:#6b5c3e;
+  --gold:#9a7820;--gold2:#c9a84c;
+  --card:#fcf9f3;--br:rgba(154,120,32,.2);--br2:rgba(154,120,32,.45);
+  /* catégories */
+  --ind:#5a3012;   /* individuel pur */
+  --ind2:#7a4520;
+  --hyb:#2a4858;   /* hybride */
+  --hyb2:#3a6878;
+  --col:#2a5848;   /* collectif */
+  --col2:#4a8868;
+  --int:#6a3060;   /* intermédiaire */
+  --int2:#8a5080;
+  --warn:#8a3010;
+  /* fonctions pièces */
+  --c-log:rgba(243,233,213,.88);
+  --c-mur:rgba(88,68,42,.72);
+  --c-circ:rgba(195,180,145,.55);
+  --c-var:rgba(105,170,90,.38);
+  --c-noyau:rgba(120,105,80,.55);
+  --c-cours:rgba(130,170,215,.42);
+  --c-ext:rgba(80,140,100,.25);
+  --c-park:rgba(148,163,184,.2);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--p);color:var(--ink);font-family:'Cormorant Garamond',serif;line-height:1.55}
+
+/* ── HEADER ─────────────────────────────────────────────────────── */
+.atlas-hd{padding:64px 48px 52px;background:var(--p1);border-bottom:1px solid var(--br2);text-align:center;position:relative;overflow:hidden}
+.atlas-hd::before{content:'';position:absolute;inset:0;background:
+  radial-gradient(ellipse 55% 60% at 15% 85%,rgba(90,48,18,.07) 0%,transparent 70%),
+  radial-gradient(ellipse 40% 50% at 85% 15%,rgba(42,88,72,.06) 0%,transparent 70%),
+  radial-gradient(ellipse 35% 45% at 50% 50%,rgba(42,72,88,.04) 0%,transparent 70%)}
+.atlas-hd .rule{width:64px;height:1px;background:var(--gold2);margin:0 auto 30px}
+.atlas-hd h1{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,3.5vw,3rem);font-weight:400;letter-spacing:.02em;color:var(--ink);margin-bottom:6px}
+.atlas-hd h1 em{font-style:italic;color:var(--col)}
+.atlas-hd .sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.1rem;color:var(--ink3);letter-spacing:.08em;margin-bottom:22px}
+.atlas-hd .meta{font-family:'Inconsolata',monospace;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);opacity:.8}
+.atlas-hd .rule2{width:120px;height:1px;background:var(--br2);margin:28px auto 0}
+
+/* ── SPECTRE (frise linéaire) ─────────────────────────────────────── */
+.spectre{max-width:960px;margin:44px auto;padding:0 36px}
+.spectre h3{font-family:'Playfair Display',serif;font-size:.9rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:18px;text-align:center}
+.spectre-bar{display:flex;height:10px;border-radius:5px;overflow:hidden;margin-bottom:16px;border:1px solid rgba(0,0,0,.08)}
+.spectre-bar .seg{flex:1}
+.seg-ind{background:var(--ind)}
+.seg-band{background:#7a4832}
+.seg-mais{background:#6a5828}
+.seg-int{background:var(--int)}
+.seg-coop{background:#1a5868}
+.seg-col{background:var(--col)}
+.spectre-labels{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;font-family:'Inconsolata',monospace;font-size:.6rem;letter-spacing:.04em;text-align:center;color:var(--ink3)}
+.spectre-legend{margin-top:14px;font-style:italic;font-size:.78rem;color:var(--ink3);text-align:center;line-height:1.5}
+.spectre-legend strong{color:var(--ink2);font-style:normal}
+.zone-label{display:inline-block;padding:1px 7px;border-radius:2px;font-family:'Inconsolata',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;vertical-align:middle}
+.zl-ind{background:rgba(90,48,18,.12);color:var(--ind)}
+.zl-int{background:rgba(106,48,96,.12);color:var(--int)}
+.zl-col{background:rgba(42,88,72,.12);color:var(--col)}
+.zl-hyb{background:rgba(42,72,88,.12);color:var(--hyb)}
+
+/* ── SECTIONS ────────────────────────────────────────────────────── */
+.section{padding:0 0 56px}
+.section-hd{padding:36px 48px 26px;border-top-width:2px;border-top-style:solid;display:flex;align-items:baseline;gap:20px;flex-wrap:wrap}
+.section.ind .section-hd{border-top-color:var(--ind);background:linear-gradient(180deg,rgba(90,48,18,.06) 0%,transparent 100%)}
+.section.band .section-hd{border-top-color:#7a4832;background:linear-gradient(180deg,rgba(122,72,50,.06) 0%,transparent 100%)}
+.section.int .section-hd{border-top-color:var(--int);background:linear-gradient(180deg,rgba(106,48,96,.06) 0%,transparent 100%)}
+.section.hyb .section-hd{border-top-color:var(--hyb);background:linear-gradient(180deg,rgba(42,72,88,.06) 0%,transparent 100%)}
+.section.col .section-hd{border-top-color:var(--col);background:linear-gradient(180deg,rgba(42,88,72,.06) 0%,transparent 100%)}
+.section.rules .section-hd{border-top-color:var(--gold);background:linear-gradient(180deg,rgba(154,120,32,.06) 0%,transparent 100%)}
+.section-hd .num{font-family:'Inconsolata',monospace;font-size:.68rem;letter-spacing:.15em;text-transform:uppercase;background:var(--ink);color:var(--gold2);padding:3px 8px;border-radius:2px}
+.section-hd h2{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:400;color:var(--ink)}
+.section.ind .section-hd h2 em{color:var(--ind)}
+.section.band .section-hd h2 em{color:#7a4832}
+.section.int .section-hd h2 em{color:var(--int)}
+.section.hyb .section-hd h2 em{color:var(--hyb)}
+.section.col .section-hd h2 em{color:var(--col)}
+.section.rules .section-hd h2 em{color:var(--gold)}
+.section-hd .sdesc{font-style:italic;font-size:.86rem;color:var(--ink3);margin-left:auto;text-align:right;max-width:400px;line-height:1.45}
+
+/* ── GRILLE CARDS ────────────────────────────────────────────────── */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;padding:0 40px}
+.card{background:var(--card);border:1px solid var(--br);border-radius:3px;padding:18px 14px 22px;display:flex;flex-direction:column;align-items:center;transition:border-color .2s,box-shadow .2s,transform .2s;cursor:default;position:relative}
+.card:hover{border-color:var(--gold2);box-shadow:0 4px 20px rgba(0,0,0,.1);transform:translateY(-2px)}
+.card .badge{position:absolute;top:8px;right:8px;font-family:'Inconsolata',monospace;font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;border-radius:1px;color:rgba(255,255,255,.9)}
+.badge.ind{background:var(--ind)}.badge.band{background:#7a4832}.badge.hyb{background:var(--hyb)}
+.badge.int{background:var(--int)}.badge.col{background:var(--col)}.badge.warn{background:var(--warn)}
+.badge.gold{background:var(--gold);color:var(--ink)}
+.svg-wrap{width:155px;height:148px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;flex-shrink:0}
+.svg-wrap.wide{width:100%;height:160px}
+.svg-wrap.tall{height:175px}
+.card .name{font-family:'Playfair Display',serif;font-size:.92rem;font-weight:600;color:var(--ink);text-align:center;letter-spacing:.01em;line-height:1.2;margin-bottom:2px}
+.card .labelEn{font-family:'Inconsolata',monospace;font-size:.6rem;color:var(--ink3);text-align:center;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
+.card .desc{font-size:.72rem;color:var(--ink3);text-align:center;margin-top:5px;line-height:1.35;font-style:italic}
+.card .specs{font-family:'Inconsolata',monospace;font-size:.6rem;color:var(--gold);text-align:center;margin-top:6px;opacity:.8;letter-spacing:.04em;line-height:1.6}
+.card.warn-card{border-color:rgba(138,48,16,.3)}
+.card.warn-card:hover{border-color:rgba(138,48,16,.6)}
+.warn-banner{font-family:'Inconsolata',monospace;font-size:.59rem;background:rgba(138,48,16,.1);color:var(--warn);padding:3px 8px;border-radius:2px;margin-top:5px;letter-spacing:.04em}
+
+/* RTAA pills */
+.rtaa-strip{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;justify-content:center}
+.rtaa-pill{font-family:'Inconsolata',monospace;font-size:.54rem;padding:1px 5px;border-radius:2px;letter-spacing:.05em}
+.rtaa-pill.ok{background:rgba(42,88,72,.15);color:#2a5848;border:1px solid rgba(42,88,72,.3)}
+.rtaa-pill.warn{background:rgba(138,48,16,.12);color:var(--warn);border:1px solid rgba(138,48,16,.3)}
+.rtaa-pill.na{background:rgba(100,80,45,.08);color:var(--ink3);border:1px solid var(--br)}
+
+/* houseg badge */
+.hg-badge{font-family:'Inconsolata',monospace;font-size:.58rem;background:rgba(42,88,72,.1);color:var(--col);border:1px solid rgba(42,88,72,.3);padding:2px 7px;border-radius:2px;margin-top:5px;letter-spacing:.06em}
+
+/* Section note */
+.section-note{max-width:720px;margin:0 48px 28px;font-style:italic;font-size:.84rem;color:var(--ink3);line-height:1.6;padding:12px 16px;border-left:2px solid var(--gold);background:rgba(154,120,32,.04)}
+
+/* Param controls */
+.param-panel{width:100%;background:rgba(154,120,32,.06);border:1px solid var(--br);border-radius:2px;padding:7px 9px;margin-bottom:8px}
+.param-row{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:2px 0}
+.param-row label{font-family:'Inconsolata',monospace;color:var(--ink3);font-size:.59rem;letter-spacing:.06em;white-space:nowrap;min-width:32px}
+.param-row input[type=range]{flex:1;height:3px;accent-color:var(--gold);cursor:pointer}
+.param-val{font-family:'Inconsolata',monospace;color:var(--gold);font-size:.61rem;min-width:28px;text-align:right}
+.param-toggle{display:flex;gap:4px;width:100%;margin-top:4px}
+.param-toggle button{flex:1;padding:3px 4px;border:1px solid var(--br);border-radius:2px;background:transparent;cursor:pointer;font-family:'Inconsolata',monospace;font-size:.57rem;letter-spacing:.06em;color:var(--ink3);transition:all .12s}
+.param-toggle button.on{background:var(--ink);color:var(--gold2);border-color:var(--ink)}
+
+/* Table référence */
+.ref-table{width:100%;max-width:880px;margin:0 auto;border-collapse:collapse;font-size:.78rem}
+.ref-table th{font-family:'Inconsolata',monospace;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);border-bottom:1px solid var(--br2);padding:8px 12px;text-align:left;font-weight:400}
+.ref-table td{padding:7px 12px;border-bottom:1px solid var(--br);color:var(--ink2);vertical-align:top}
+.ref-table tr:hover td{background:rgba(154,120,32,.04)}
+.ref-table .cat{font-family:'Inconsolata',monospace;font-size:.6rem;letter-spacing:.06em;padding:1px 5px;border-radius:2px}
+.ref-wrap{padding:0 48px;overflow-x:auto}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="atlas-hd">
+  <div class="rule"></div>
+  <h1>Du logement individuel au <em>collectif</em></h1>
+  <p class="sub">Atlas des typologies · Spectre continu, frontières floues, hybrides réunionnais</p>
+  <p class="meta">TERLAB · ÉARL La Réunion · HOUSE·G Speech · Réf. Samuely, Sherwood, Colquhoun, Eleb-Vidal</p>
+  <div class="rule2"></div>
+</header>
+
+<!-- SPECTRE -->
+<div class="spectre">
+  <h3>Le continuum typologique</h3>
+  <div class="spectre-bar">
+    <div class="seg seg-ind"></div>
+    <div class="seg seg-band"></div>
+    <div class="seg seg-mais"></div>
+    <div class="seg seg-int"></div>
+    <div class="seg seg-coop"></div>
+    <div class="seg seg-col"></div>
+  </div>
+  <div class="spectre-labels">
+    <span>Individuel pur</span>
+    <span>Maison en bande</span>
+    <span>Maisons groupées</span>
+    <span>Intermédiaire</span>
+    <span>Hab. coopératif</span>
+    <span>Collectif dense</span>
+  </div>
+  <p class="spectre-legend">
+    La frontière entre <strong>individuel</strong> et <strong>collectif</strong> n'existe pas en droit français — seul le <strong>permis de construire</strong> les distingue.<br>
+    La vraie discontinuité est <strong>constructive</strong> (structure commune), <strong>foncière</strong> (copropriété) et <strong>sociale</strong> (mutualisation des accès).<br>
+    À La Réunion, la <span class="zone-label zl-ind">maison individuelle</span> représente ~70 % du parc — mais la pression foncière pousse vers l'<span class="zone-label zl-int">intermédiaire</span> et le <span class="zone-label zl-col">collectif</span>.
+  </p>
+</div>
+
+<!-- ══ §01 INDIVIDUEL PUR ══════════════════════════════════════════ -->
+<section class="section ind">
+  <div class="section-hd">
+    <span class="num">§ 01</span>
+    <h2>Maison <em>individuelle</em></h2>
+    <span class="sdesc">Parcelle propre · Accès privatif · Aucune mitoyenneté · Structure indépendante</span>
+  </div>
+  <p class="section-note">Référence dominante à La Réunion (RTAA DOM 2016 calibré sur ce type). HOUSE·G Speech cible d'abord ce registre. Le générateur produit des plans T2→T5 directement depuis la zone constructible TERLAB.</p>
+  <div class="grid">
+
+    <!-- Maison compacte -->
+    <div class="card">
+      <span class="badge ind">individuel</span>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 140 120" xmlns="http://www.w3.org/2000/svg">
+          <!-- parcelle -->
+          <rect x="8" y="8" width="124" height="104" rx="1" fill="rgba(230,220,200,.5)" stroke="rgba(90,70,35,.3)" stroke-width=".8"/>
+          <!-- bâti -->
+          <rect x="28" y="22" width="84" height="62" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.5"/>
+          <!-- varangue -->
+          <rect x="28" y="84" width="84" height="16" rx="0" fill="var(--c-var)" stroke="rgba(105,170,90,.5)" stroke-width="1"/>
+          <!-- cloison intérieure schématique -->
+          <line x1="88" y1="22" x2="88" y2="84" stroke="rgba(88,68,42,.35)" stroke-width=".8"/>
+          <line x1="28" y1="55" x2="88" y2="55" stroke="rgba(88,68,42,.35)" stroke-width=".8"/>
+          <!-- accès -->
+          <rect x="62" y="100" width="16" height="10" fill="rgba(88,68,42,.2)" stroke="rgba(88,68,42,.4)" stroke-width=".7"/>
+          <!-- labels -->
+          <text x="70" y="45" text-anchor="middle" font-size="7" fill="rgba(88,68,42,.7)" font-family="Inconsolata,monospace">JOUR</text>
+          <text x="52" y="72" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.5)" font-family="Inconsolata,monospace">NUIT</text>
+          <text x="103" y="58" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.5)" font-family="Inconsolata,monospace">SERV.</text>
+          <text x="70" y="94" text-anchor="middle" font-size="6.5" fill="rgba(105,170,90,.9)" font-family="Inconsolata,monospace">varangue</text>
+        </svg>
+      </div>
+      <span class="name">Maison compacte</span>
+      <span class="labelEn">Compact detached · single storey</span>
+      <p class="desc">Plan rectangulaire R, toiture mono ou deux pentes. Forme de référence HOUSE·G. Zone constructible TERLAB direct.</p>
+      <p class="specs">T3→T5 · 80→130 m² · 1 niv. · CES ≤60%</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">Traversant</span>
+        <span class="rtaa-pill ok">Varangue</span>
+        <span class="rtaa-pill ok">Prof ≤13m</span>
+      </div>
+      <span class="hg-badge">★ House·G cible principale</span>
+    </div>
+
+    <!-- Maison créole linéaire -->
+    <div class="card">
+      <span class="badge ind">individuel</span>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 140 120" xmlns="http://www.w3.org/2000/svg">
+          <rect x="8" y="8" width="124" height="104" rx="1" fill="rgba(230,220,200,.5)" stroke="rgba(90,70,35,.3)" stroke-width=".8"/>
+          <!-- bâti linéaire -->
+          <rect x="12" y="30" width="116" height="42" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.5"/>
+          <!-- varangue devant -->
+          <rect x="12" y="72" width="116" height="14" fill="var(--c-var)" stroke="rgba(105,170,90,.5)" stroke-width="1"/>
+          <!-- cloisons -->
+          <line x1="46" y1="30" x2="46" y2="72" stroke="rgba(88,68,42,.35)" stroke-width=".8"/>
+          <line x1="80" y1="30" x2="80" y2="72" stroke="rgba(88,68,42,.35)" stroke-width=".8"/>
+          <line x1="104" y1="30" x2="104" y2="72" stroke="rgba(88,68,42,.35)" stroke-width=".8"/>
+          <!-- labels -->
+          <text x="29" y="53" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">CH·1</text>
+          <text x="63" y="53" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">JOUR</text>
+          <text x="92" y="53" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">CUIS.</text>
+          <text x="122" y="53" text-anchor="middle" font-size="5.5" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">S·B</text>
+          <text x="70" y="81" text-anchor="middle" font-size="6" fill="rgba(105,170,90,.9)" font-family="Inconsolata,monospace">varangue filante</text>
+        </svg>
+      </div>
+      <span class="name">Maison créole · Linéaire</span>
+      <span class="labelEn">Creole linear · Spine plan</span>
+      <p class="desc">Pièces en enfilade, varangue filante façade principale. Plan historique La Réunion — ratio très allongé (3:1+).</p>
+      <p class="specs">T3→T5 · 75→120 m² · SPINE · ratio 2.5:1+</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">Traversant</span>
+        <span class="rtaa-pill ok">Varangue</span>
+        <span class="rtaa-pill warn">Prof &gt;13m?</span>
+      </div>
+    </div>
+
+    <!-- Villa en L -->
+    <div class="card">
+      <span class="badge ind">individuel</span>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 140 120" xmlns="http://www.w3.org/2000/svg">
+          <rect x="8" y="8" width="124" height="104" rx="1" fill="rgba(230,220,200,.5)" stroke="rgba(90,70,35,.3)" stroke-width=".8"/>
+          <!-- forme L -->
+          <polygon points="20,20 120,20 120,65 70,65 70,100 20,100" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.5"/>
+          <!-- cloisons -->
+          <line x1="20" y1="60" x2="120" y2="60" stroke="rgba(88,68,42,.3)" stroke-width=".8"/>
+          <line x1="70" y1="20" x2="70" y2="65" stroke="rgba(88,68,42,.3)" stroke-width=".8"/>
+          <!-- patio angle -->
+          <rect x="70" y="65" width="50" height="35" rx="0" fill="var(--c-ext)" stroke="rgba(80,140,100,.4)" stroke-width=".8"/>
+          <!-- labels -->
+          <text x="45" y="43" text-anchor="middle" font-size="6.5" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">NUIT</text>
+          <text x="95" y="43" text-anchor="middle" font-size="6.5" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">JOUR</text>
+          <text x="45" y="83" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">SERV.</text>
+          <text x="95" y="83" text-anchor="middle" font-size="6.5" fill="rgba(80,140,100,.8)" font-family="Inconsolata,monospace">jardin</text>
+        </svg>
+      </div>
+      <span class="name">Villa en L · Patio d'angle</span>
+      <span class="labelEn">L-shape villa · Corner garden</span>
+      <p class="desc">Forme en L créant un jardin semi-privatif. Zones nuit et jour séparées par coude. Adapté aux parcelles carrées.</p>
+      <p class="specs">T4→T6 · 110→180 m² · EN_L</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">Traversant</span>
+        <span class="rtaa-pill ok">Varangue</span>
+        <span class="rtaa-pill ok">Patio</span>
+      </div>
+      <span class="hg-badge">★ House·G EN_L</span>
+    </div>
+
+    <!-- R+1 individuel -->
+    <div class="card">
+      <span class="badge ind">individuel</span>
+      <div class="svg-wrap tall">
+        <svg viewBox="0 0 140 135" xmlns="http://www.w3.org/2000/svg">
+          <rect x="8" y="8" width="124" height="119" rx="1" fill="rgba(230,220,200,.5)" stroke="rgba(90,70,35,.3)" stroke-width=".8"/>
+          <!-- RDC -->
+          <rect x="22" y="72" width="96" height="44" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.5"/>
+          <!-- R+1 -->
+          <rect x="22" y="22" width="96" height="44" rx="1" fill="rgba(243,233,213,.6)" stroke="var(--c-mur)" stroke-width="1.5" stroke-dasharray="4,2"/>
+          <!-- escalier -->
+          <rect x="86" y="72" width="14" height="44" fill="rgba(195,180,145,.6)" stroke="rgba(88,68,42,.4)" stroke-width=".8"/>
+          <!-- varangue RDC -->
+          <rect x="22" y="116" width="64" height="10" fill="var(--c-var)" stroke="rgba(105,170,90,.4)" stroke-width=".8"/>
+          <!-- labels -->
+          <text x="55" y="96" text-anchor="middle" font-size="6.5" fill="rgba(88,68,42,.65)" font-family="Inconsolata,monospace">RDC — JOUR</text>
+          <text x="55" y="46" text-anchor="middle" font-size="6.5" fill="rgba(88,68,42,.45)" font-family="Inconsolata,monospace">R+1 — NUIT</text>
+          <text x="93" y="98" text-anchor="middle" font-size="5.5" fill="rgba(88,68,42,.5)" font-family="Inconsolata,monospace">ESC.</text>
+          <text x="55" y="123" text-anchor="middle" font-size="6" fill="rgba(105,170,90,.9)" font-family="Inconsolata,monospace">varangue</text>
+        </svg>
+      </div>
+      <span class="name">Maison R+1 individuelle</span>
+      <span class="labelEn">Two-storey detached</span>
+      <p class="desc">Vie en RDC, chambres à l'étage. Empreinte réduite — adapté aux petites parcelles urbaines.</p>
+      <p class="specs">T4→T5 · 120→160 m² · 2 niv. · CES ≤40%</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">Traversant</span>
+        <span class="rtaa-pill ok">Varangue</span>
+        <span class="rtaa-pill na">Esc. priv.</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ §02 MAISONS EN BANDE ════════════════════════════════════════ -->
+<section class="section band">
+  <div class="section-hd">
+    <span class="num">§ 02</span>
+    <h2>Maisons <em>en bande</em></h2>
+    <span class="sdesc">Mitoyennetés latérales · Structure indépendante · Jardin privatif · PC individuel possible</span>
+  </div>
+  <p class="section-note">Premier pas vers la densification. Chaque unité garde son accès privatif et son jardin. La mitoyenneté latérale est la seule mutualisation. HOUSE·G les génère comme des maisons individuelles clipées sur une trame commune.</p>
+  <div class="grid">
+
+    <!-- Maison en bande standard -->
+    <div class="card">
+      <span class="badge band">en bande</span>
+      <div class="svg-wrap wide">
+        <svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+          <!-- 3 maisons en bande -->
+          <rect x="5" y="10" width="190" height="100" rx="1" fill="rgba(230,220,200,.4)" stroke="rgba(90,70,35,.25)" stroke-width=".7"/>
+          <!-- unité 1 -->
+          <rect x="8" y="18" width="56" height="60" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.4"/>
+          <rect x="8" y="78" width="56" height="14" fill="var(--c-var)" stroke="rgba(105,170,90,.4)" stroke-width=".8"/>
+          <!-- unité 2 -->
+          <rect x="64" y="18" width="72" height="60" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.4"/>
+          <rect x="64" y="78" width="72" height="14" fill="var(--c-var)" stroke="rgba(105,170,90,.4)" stroke-width=".8"/>
+          <!-- unité 3 -->
+          <rect x="136" y="18" width="57" height="60" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.4"/>
+          <rect x="136" y="78" width="57" height="14" fill="var(--c-var)" stroke="rgba(105,170,90,.4)" stroke-width=".8"/>
+          <!-- mitoyens -->
+          <line x1="64" y1="18" x2="64" y2="92" stroke="rgba(88,68,42,.55)" stroke-width="1.4"/>
+          <line x1="136" y1="18" x2="136" y2="92" stroke="rgba(88,68,42,.55)" stroke-width="1.4"/>
+          <!-- labels -->
+          <text x="36" y="50" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.65)" font-family="Inconsolata,monospace">T3</text>
+          <text x="100" y="50" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.65)" font-family="Inconsolata,monospace">T4</text>
+          <text x="164" y="50" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.65)" font-family="Inconsolata,monospace">T3</text>
+          <text x="36" y="87" text-anchor="middle" font-size="5.5" fill="rgba(105,170,90,.8)" font-family="Inconsolata,monospace">var.</text>
+          <text x="100" y="87" text-anchor="middle" font-size="5.5" fill="rgba(105,170,90,.8)" font-family="Inconsolata,monospace">varangue</text>
+          <text x="164" y="87" text-anchor="middle" font-size="5.5" fill="rgba(105,170,90,.8)" font-family="Inconsolata,monospace">var.</text>
+        </svg>
+      </div>
+      <span class="name">Bande standard · Lots inégaux</span>
+      <span class="labelEn">Row houses · Variable lots</span>
+      <p class="desc">3 à 6 unités mitoyennes, largeurs variables (6→9m). Varangue filante sur voirie. Jardin à l'arrière.</p>
+      <p class="specs">T2→T4 · 60→100 m² · w:6→9m · 1 niv.</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">Traversant</span>
+        <span class="rtaa-pill ok">Varangue</span>
+        <span class="rtaa-pill ok">Jardin priv.</span>
+      </div>
+      <span class="hg-badge">★ House·G EN_BANDE</span>
+    </div>
+
+    <!-- Système Beauchamp -->
+    <div class="card">
+      <span class="badge band">système</span>
+      <div class="svg-wrap wide">
+        <svg viewBox="0 0 200 130" xmlns="http://www.w3.org/2000/svg">
+          <!-- 2 duplex Beauchamp 7.43x12m -->
+          <rect x="10" y="8" width="88" height="112" rx="1" fill="rgba(230,220,200,.5)" stroke="rgba(90,70,35,.25)" stroke-width=".7"/>
+          <rect x="102" y="8" width="88" height="112" rx="1" fill="rgba(230,220,200,.5)" stroke="rgba(90,70,35,.25)" stroke-width=".7"/>
+          <!-- unité gauche RDC -->
+          <rect x="13" y="66" width="82" height="48" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.4"/>
+          <!-- unité gauche R+1 -->
+          <rect x="13" y="12" width="82" height="48" rx="1" fill="rgba(243,233,213,.62)" stroke="var(--c-mur)" stroke-width="1.4" stroke-dasharray="4,2"/>
+          <!-- escalier gauche -->
+          <rect x="78" y="66" width="14" height="24" fill="rgba(195,180,145,.55)" stroke="rgba(88,68,42,.3)" stroke-width=".7"/>
+          <!-- unité droite RDC -->
+          <rect x="105" y="66" width="82" height="48" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.4"/>
+          <!-- unité droite R+1 -->
+          <rect x="105" y="12" width="82" height="48" rx="1" fill="rgba(243,233,213,.62)" stroke="var(--c-mur)" stroke-width="1.4" stroke-dasharray="4,2"/>
+          <!-- escalier droite -->
+          <rect x="108" y="66" width="14" height="24" fill="rgba(195,180,145,.55)" stroke="rgba(88,68,42,.3)" stroke-width=".7"/>
+          <!-- mitoyen -->
+          <line x1="100" y1="8" x2="100" y2="120" stroke="rgba(88,68,42,.55)" stroke-width="1.8"/>
+          <!-- cote -->
+          <text x="54" y="90" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.65)" font-family="Inconsolata,monospace">RDC · JOUR</text>
+          <text x="54" y="38" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.5)" font-family="Inconsolata,monospace">R+1 · NUIT</text>
+          <text x="146" y="90" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.65)" font-family="Inconsolata,monospace">RDC · JOUR</text>
+          <text x="146" y="38" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.5)" font-family="Inconsolata,monospace">R+1 · NUIT</text>
+          <!-- cotes Beauchamp -->
+          <line x1="13" y1="122" x2="95" y2="122" stroke="rgba(154,120,32,.5)" stroke-width=".6"/>
+          <text x="54" y="128" text-anchor="middle" font-size="5.5" fill="rgba(154,120,32,.9)" font-family="Inconsolata,monospace">7,43 m</text>
+        </svg>
+      </div>
+      <span class="name">Système Beauchamp · SIDR</span>
+      <span class="labelEn">Beauchamp system · SIDR 2015</span>
+      <p class="desc">Trame unique 7,43×12m générant T2/T3/T4F selon subdivision interne. Duplex privé, escalier interne. Économie de chantier ++.</p>
+      <p class="specs">T2→T4F · 55→95 m² · 7.43×12m · 2 niv.</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">Traversant</span>
+        <span class="rtaa-pill ok">Esc. priv.</span>
+        <span class="rtaa-pill ok">Varangue</span>
+      </div>
+      <span class="hg-badge">★ Modèle SIDR Réunion</span>
+    </div>
+
+    <!-- Bande décalée -->
+    <div class="card">
+      <span class="badge band">en bande</span>
+      <div class="svg-wrap wide">
+        <svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5" y="5" width="190" height="110" rx="1" fill="rgba(230,220,200,.35)" stroke="rgba(90,70,35,.2)" stroke-width=".6"/>
+          <!-- alternance décalée -->
+          <rect x="8" y="12" width="58" height="55" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.4"/>
+          <rect x="8" y="67" width="58" height="14" fill="var(--c-var)" stroke="rgba(105,170,90,.4)" stroke-width=".7"/>
+          <rect x="66" y="20" width="58" height="55" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.4"/>
+          <rect x="66" y="75" width="58" height="14" fill="var(--c-var)" stroke="rgba(105,170,90,.4)" stroke-width=".7"/>
+          <rect x="124" y="12" width="68" height="55" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.4"/>
+          <rect x="124" y="67" width="68" height="14" fill="var(--c-var)" stroke="rgba(105,170,90,.4)" stroke-width=".7"/>
+          <!-- mitoyens -->
+          <line x1="66" y1="12" x2="66" y2="89" stroke="rgba(88,68,42,.5)" stroke-width="1.3"/>
+          <line x1="124" y1="12" x2="124" y2="89" stroke="rgba(88,68,42,.5)" stroke-width="1.3"/>
+          <!-- décalage flèche -->
+          <line x1="14" y1="10" x2="14" y2="18" stroke="rgba(154,120,32,.6)" stroke-width=".8"/>
+          <line x1="72" y1="10" x2="72" y2="26" stroke="rgba(154,120,32,.6)" stroke-width=".8"/>
+          <line x1="130" y1="10" x2="130" y2="18" stroke="rgba(154,120,32,.6)" stroke-width=".8"/>
+          <text x="100" y="50" text-anchor="middle" font-size="6.5" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T4</text>
+          <text x="37" y="41" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T3</text>
+        </svg>
+      </div>
+      <span class="name">Bande décalée · Stagger</span>
+      <span class="labelEn">Staggered row · Offset varangue</span>
+      <p class="desc">Décalage longitudinal 0.5→2m entre unités. Supprime le vis-à-vis des varangues. Animation de façade, ombrage mutuel.</p>
+      <p class="specs">T2→T4 · 65→110 m² · offset 0.5→2m</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">Traversant</span>
+        <span class="rtaa-pill ok">No vis-à-vis</span>
+        <span class="rtaa-pill ok">Varangue</span>
+      </div>
+    </div>
+
+    <!-- Bande peigne -->
+    <div class="card">
+      <span class="badge band">en bande</span>
+      <div class="svg-wrap wide">
+        <svg viewBox="0 0 200 130" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5" y="5" width="190" height="120" rx="1" fill="rgba(230,220,200,.35)" stroke="rgba(90,70,35,.2)" stroke-width=".6"/>
+          <!-- corps principal -->
+          <rect x="8" y="58" width="184" height="30" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.4"/>
+          <!-- dents perpendiculaires -->
+          <rect x="18" y="12" width="28" height="46" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.2"/>
+          <rect x="60" y="12" width="28" height="46" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.2"/>
+          <rect x="102" y="12" width="28" height="46" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.2"/>
+          <rect x="144" y="12" width="28" height="46" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.2"/>
+          <!-- jardins entre dents -->
+          <rect x="46" y="12" width="14" height="46" fill="var(--c-ext)" stroke="rgba(80,140,100,.3)" stroke-width=".6"/>
+          <rect x="88" y="12" width="14" height="46" fill="var(--c-ext)" stroke="rgba(80,140,100,.3)" stroke-width=".6"/>
+          <rect x="130" y="12" width="14" height="46" fill="var(--c-ext)" stroke="rgba(80,140,100,.3)" stroke-width=".6"/>
+          <!-- varangue corps -->
+          <rect x="8" y="88" width="184" height="14" fill="var(--c-var)" stroke="rgba(105,170,90,.4)" stroke-width=".7"/>
+          <text x="100" y="77" text-anchor="middle" font-size="5.5" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">CORPS COMMUN — JOUR / T2-T3</text>
+          <text x="32" y="34" text-anchor="middle" font-size="5" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T4</text>
+          <text x="74" y="34" text-anchor="middle" font-size="5" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T4</text>
+          <text x="53" y="30" text-anchor="middle" font-size="5" fill="rgba(80,140,100,.7)" font-family="Inconsolata,monospace">jard.</text>
+        </svg>
+      </div>
+      <span class="name">Peigne · Corps + dents</span>
+      <span class="labelEn">Comb plan · Spine + wings</span>
+      <p class="desc">Corps linéaire (T2/T3) + dents perpendiculaires (T4 duplex). Jardins semi-privatifs entre dents. Espacement RTAA par ombrage mutuel.</p>
+      <p class="specs">T2→T4 mix · 55→110 m² · corps + 4→8 dents</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">Traversant</span>
+        <span class="rtaa-pill ok">Jardins priv.</span>
+        <span class="rtaa-pill ok">Varangue</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ §03 HABITAT INTERMÉDIAIRE ════════════════════════════════════ -->
+<section class="section int">
+  <div class="section-hd">
+    <span class="num">§ 03</span>
+    <h2>Habitat <em>intermédiaire</em></h2>
+    <span class="sdesc">Entre individuel et collectif · Accès semi-privatifs · Structure souvent partagée · 2→4 niveaux</span>
+  </div>
+  <p class="section-note">Catégorie théorisée par Colquhoun et Miller (1970), Eleb-Vidal (1989). Caractéristiques : chaque logement a un accès direct depuis l'extérieur (pas de couloir collectif), mais structure et foncier sont partagés. Idéal pour les parcelles 400→800m² en UA/UB Réunion.</p>
+  <div class="grid">
+
+    <!-- Duplex superposés -->
+    <div class="card">
+      <span class="badge int">intermédiaire</span>
+      <div class="svg-wrap tall">
+        <svg viewBox="0 0 140 155" xmlns="http://www.w3.org/2000/svg">
+          <rect x="8" y="8" width="124" height="139" rx="1" fill="rgba(230,220,200,.4)" stroke="rgba(90,70,35,.25)" stroke-width=".7"/>
+          <!-- logement bas RDC -->
+          <rect x="16" y="88" width="108" height="48" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.5"/>
+          <!-- logement haut (R+1 accès ext) -->
+          <rect x="16" y="34" width="108" height="48" rx="1" fill="rgba(243,233,213,.68)" stroke="var(--c-mur)" stroke-width="1.5"/>
+          <!-- escalier extérieur (accès direct) -->
+          <rect x="100" y="34" width="10" height="54" fill="rgba(195,180,145,.65)" stroke="rgba(88,68,42,.4)" stroke-width=".8"/>
+          <line x1="100" y1="40" x2="110" y2="40" stroke="rgba(88,68,42,.3)" stroke-width=".5"/>
+          <line x1="100" y1="46" x2="110" y2="46" stroke="rgba(88,68,42,.3)" stroke-width=".5"/>
+          <line x1="100" y1="52" x2="110" y2="52" stroke="rgba(88,68,42,.3)" stroke-width=".5"/>
+          <line x1="100" y1="58" x2="110" y2="58" stroke="rgba(88,68,42,.3)" stroke-width=".5"/>
+          <line x1="100" y1="64" x2="110" y2="64" stroke="rgba(88,68,42,.3)" stroke-width=".5"/>
+          <line x1="100" y1="70" x2="110" y2="70" stroke="rgba(88,68,42,.3)" stroke-width=".5"/>
+          <line x1="100" y1="76" x2="110" y2="76" stroke="rgba(88,68,42,.3)" stroke-width=".5"/>
+          <!-- plancher séparation -->
+          <rect x="16" y="82" width="108" height="6" fill="rgba(88,68,42,.25)" stroke="none"/>
+          <!-- varangue bas -->
+          <rect x="16" y="136" width="80" height="10" fill="var(--c-var)" stroke="rgba(105,170,90,.4)" stroke-width=".8"/>
+          <!-- varangue haut (terrasse) -->
+          <rect x="16" y="24" width="80" height="10" fill="var(--c-var)" stroke="rgba(105,170,90,.4)" stroke-width=".8" stroke-dasharray="3,2"/>
+          <!-- labels -->
+          <text x="55" y="58" text-anchor="middle" font-size="6.5" fill="rgba(88,68,42,.65)" font-family="Inconsolata,monospace">LOG. HAUT · R+1</text>
+          <text x="55" y="112" text-anchor="middle" font-size="6.5" fill="rgba(88,68,42,.65)" font-family="Inconsolata,monospace">LOG. BAS · RDC</text>
+          <text x="105" y="90" text-anchor="middle" font-size="5" fill="rgba(88,68,42,.55)" font-family="Inconsolata,monospace">esc.</text>
+          <text x="55" y="142" text-anchor="middle" font-size="5.5" fill="rgba(105,170,90,.9)" font-family="Inconsolata,monospace">varangue</text>
+          <text x="55" y="21" text-anchor="middle" font-size="5.5" fill="rgba(105,170,90,.7)" font-family="Inconsolata,monospace">terrasse</text>
+        </svg>
+      </div>
+      <span class="name">Duplex superposés · Accès direct</span>
+      <span class="labelEn">Stacked duplexes · Direct access</span>
+      <p class="desc">2 duplex empilés. Logement haut : accès par escalier extérieur latéral. Aucun couloir commun. Structure mutualisée, foncier en copropriété.</p>
+      <p class="specs">T3→T4 × 2 · 70→100 m² · R+1 · SC commune</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">Accès direct</span>
+        <span class="rtaa-pill ok">Traversant</span>
+        <span class="rtaa-pill ok">Varangue/Terr.</span>
+      </div>
+    </div>
+
+    <!-- Villas superposées pente -->
+    <div class="card">
+      <span class="badge int">intermédiaire</span>
+      <div class="svg-wrap tall">
+        <svg viewBox="0 0 140 155" xmlns="http://www.w3.org/2000/svg">
+          <!-- talus pente -->
+          <polygon points="8,145 132,145 132,100 8,60" fill="rgba(180,165,130,.3)" stroke="rgba(90,70,35,.2)" stroke-width=".7"/>
+          <!-- niv. haut (niveau route amont) -->
+          <rect x="16" y="30" width="108" height="45" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.5"/>
+          <!-- niv. bas (accès aval) -->
+          <rect x="16" y="98" width="108" height="40" rx="1" fill="rgba(243,233,213,.68)" stroke="var(--c-mur)" stroke-width="1.5"/>
+          <!-- plancher dalle -->
+          <rect x="16" y="75" width="108" height="6" fill="rgba(88,68,42,.2)" stroke="none"/>
+          <!-- coteau / talus -->
+          <polygon points="8,145 8,80 16,75 16,138" fill="rgba(130,110,80,.25)" stroke="rgba(90,70,35,.3)" stroke-width=".7"/>
+          <!-- varangues -->
+          <rect x="16" y="15" width="108" height="15" fill="var(--c-var)" stroke="rgba(105,170,90,.4)" stroke-width=".8"/>
+          <rect x="16" y="138" width="80" height="7" fill="var(--c-var)" stroke="rgba(105,170,90,.4)" stroke-width=".8"/>
+          <!-- labels pente -->
+          <text x="70" y="52" text-anchor="middle" font-size="6.5" fill="rgba(88,68,42,.65)" font-family="Inconsolata,monospace">NIV. AMONT (route)</text>
+          <text x="70" y="116" text-anchor="middle" font-size="6.5" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">NIV. AVAL (jardin)</text>
+          <text x="70" y="20" text-anchor="middle" font-size="5.5" fill="rgba(105,170,90,.9)" font-family="Inconsolata,monospace">varangue amont</text>
+          <text x="50" y="143" text-anchor="middle" font-size="5.5" fill="rgba(105,170,90,.9)" font-family="Inconsolata,monospace">varangue aval</text>
+          <!-- pente indicator -->
+          <text x="4" y="100" font-size="7" fill="rgba(154,120,32,.7)" font-family="Inconsolata,monospace">↗</text>
+          <text x="4" y="107" font-size="5.5" fill="rgba(154,120,32,.7)" font-family="Inconsolata,monospace">pente</text>
+        </svg>
+      </div>
+      <span class="name">Villas étagées · Pente</span>
+      <span class="labelEn">Hillside stacked villas · Slope</span>
+      <p class="desc">Profite de la topographie réunionnaise. Chaque logement accède directement depuis son niveau de coteau. Aucune circulation commune. Vues dégagées garanties.</p>
+      <p class="specs">T3→T5 × 2 · 80→130 m² · pente ≥15% · accès directs</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">Accès direct</span>
+        <span class="rtaa-pill ok">Vue dégagée</span>
+        <span class="rtaa-pill ok">Pente favorable</span>
+      </div>
+      <span class="hg-badge">Topo TERLAB requis</span>
+    </div>
+
+    <!-- Triplex en couches -->
+    <div class="card">
+      <span class="badge int">intermédiaire</span>
+      <div class="svg-wrap tall">
+        <svg viewBox="0 0 140 155" xmlns="http://www.w3.org/2000/svg">
+          <rect x="8" y="8" width="124" height="139" rx="1" fill="rgba(230,220,200,.4)" stroke="rgba(90,70,35,.25)" stroke-width=".6"/>
+          <!-- 3 niveaux -->
+          <rect x="16" y="100" width="108" height="38" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.4"/>
+          <rect x="16" y="58" width="108" height="38" rx="1" fill="rgba(243,233,213,.72)" stroke="var(--c-mur)" stroke-width="1.4"/>
+          <rect x="16" y="16" width="108" height="38" rx="1" fill="rgba(243,233,213,.5)" stroke="var(--c-mur)" stroke-width="1.4"/>
+          <!-- planchers -->
+          <rect x="16" y="96" width="108" height="4" fill="rgba(88,68,42,.2)"/>
+          <rect x="16" y="54" width="108" height="4" fill="rgba(88,68,42,.2)"/>
+          <!-- escaliers latéraux alternés -->
+          <rect x="108" y="58" width="12" height="42" fill="rgba(195,180,145,.6)" stroke="rgba(88,68,42,.3)" stroke-width=".7"/>
+          <rect x="20" y="16" width="12" height="42" fill="rgba(195,180,145,.6)" stroke="rgba(88,68,42,.3)" stroke-width=".7"/>
+          <!-- labels -->
+          <text x="65" y="122" text-anchor="middle" font-size="6.5" fill="rgba(88,68,42,.65)" font-family="Inconsolata,monospace">T4 · RDC</text>
+          <text x="65" y="79" text-anchor="middle" font-size="6.5" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T3 · R+1</text>
+          <text x="65" y="36" text-anchor="middle" font-size="6.5" fill="rgba(88,68,42,.55)" font-family="Inconsolata,monospace">T2 · R+2</text>
+          <text x="114" y="80" text-anchor="middle" font-size="5" fill="rgba(88,68,42,.5)" font-family="Inconsolata,monospace">esc.</text>
+          <text x="26" y="38" text-anchor="middle" font-size="5" fill="rgba(88,68,42,.5)" font-family="Inconsolata,monospace">esc.</text>
+          <!-- accès direct badges -->
+          <text x="4" y="123" font-size="5.5" fill="rgba(42,88,72,.8)" font-family="Inconsolata,monospace">→</text>
+          <text x="136" y="80" font-size="5.5" fill="rgba(42,88,72,.8)" font-family="Inconsolata,monospace">→</text>
+          <text x="4" y="38" font-size="5.5" fill="rgba(42,88,72,.8)" font-family="Inconsolata,monospace">→</text>
+        </svg>
+      </div>
+      <span class="name">Triplex · Escaliers alternés</span>
+      <span class="labelEn">Triplex · Interlocking access</span>
+      <p class="desc">3 logements superposés avec escaliers extérieurs alternés (gauche/droite). Typologies décroissantes T4→T2 du bas vers le haut.</p>
+      <p class="specs">T2+T3+T4 · 50→100 m² · R+2 · 3 accès directs</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">Accès direct</span>
+        <span class="rtaa-pill ok">Mixité T</span>
+        <span class="rtaa-pill na">Esc. ext.</span>
+      </div>
+    </div>
+
+    <!-- Habitat groupé autour cour -->
+    <div class="card">
+      <span class="badge int">intermédiaire</span>
+      <div class="svg-wrap wide">
+        <svg viewBox="0 0 200 130" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5" y="5" width="190" height="120" rx="1" fill="rgba(230,220,200,.4)" stroke="rgba(90,70,35,.2)" stroke-width=".6"/>
+          <!-- cour centrale -->
+          <rect x="60" y="30" width="80" height="70" rx="2" fill="var(--c-ext)" stroke="rgba(80,140,100,.35)" stroke-width=".8"/>
+          <text x="100" y="68" text-anchor="middle" font-size="7" fill="rgba(80,140,100,.8)" font-family="Inconsolata,monospace">COUR</text>
+          <text x="100" y="78" text-anchor="middle" font-size="5.5" fill="rgba(80,140,100,.65)" font-family="Inconsolata,monospace">commune</text>
+          <!-- 4 logements autour -->
+          <rect x="8" y="18" width="52" height="94" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.3"/>
+          <rect x="140" y="18" width="52" height="94" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.3"/>
+          <rect x="60" y="8" width="80" height="22" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.3"/>
+          <rect x="60" y="100" width="80" height="22" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.3"/>
+          <!-- labels -->
+          <text x="34" y="65" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T4</text>
+          <text x="166" y="65" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T4</text>
+          <text x="100" y="22" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T3</text>
+          <text x="100" y="115" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T3</text>
+        </svg>
+      </div>
+      <span class="name">Habitat groupé · Cour partagée</span>
+      <span class="labelEn">Cluster housing · Shared courtyard</span>
+      <p class="desc">4→6 unités autour d'une cour commune végétalisée. Chaque logement a son entrée directe. Modèle "habitat participatif" léger. Mutualisation paysagère.</p>
+      <p class="specs">T3→T4 × 4→6 · 75→110 m² · 1 niv. · cour ~80m²</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">Accès direct</span>
+        <span class="rtaa-pill ok">Traversant</span>
+        <span class="rtaa-pill ok">Cour commune</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ §04 COLLECTIF DENSE ════════════════════════════════════════ -->
+<section class="section col">
+  <div class="section-hd">
+    <span class="num">§ 04</span>
+    <h2>Collectif <em>dense</em></h2>
+    <span class="sdesc">Circulation commune · Noyaux verticaux · Appartements superposés · R+2 à R+5 · PLU UA/UB</span>
+  </div>
+  <p class="section-note">Le collectif au sens strict : les logements partagent un accès commun (palier, couloir, cage d'escalier). HOUSE·G Speech génère <em>l'unité type</em> (appartement) que TERLAB instancie selon la stratégie d'implantation.</p>
+  <div class="grid">
+
+    <!-- Appartement traversant lame -->
+    <div class="card">
+      <span class="badge col">collectif</span>
+      <div class="svg-wrap wide">
+        <svg viewBox="0 0 200 115" xmlns="http://www.w3.org/2000/svg">
+          <!-- bâtiment lame -->
+          <rect x="5" y="10" width="190" height="95" rx="1" fill="rgba(230,220,200,.4)" stroke="rgba(90,70,35,.2)" stroke-width=".6"/>
+          <!-- coursive nord -->
+          <rect x="5" y="10" width="190" height="16" fill="var(--c-cours)" stroke="rgba(70,110,175,.4)" stroke-width=".8"/>
+          <text x="100" y="20" text-anchor="middle" font-size="6" fill="rgba(42,72,128,.8)" font-family="Inconsolata,monospace">COURSIVE NORD (service / alizés)</text>
+          <!-- 3 apparts traversants -->
+          <rect x="5" y="26" width="60" height="62" rx="0" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.2"/>
+          <rect x="65" y="26" width="70" height="62" rx="0" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.2"/>
+          <rect x="135" y="26" width="60" height="62" rx="0" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.2"/>
+          <!-- mitoyens -->
+          <line x1="65" y1="26" x2="65" y2="88" stroke="rgba(88,68,42,.5)" stroke-width="1.2"/>
+          <line x1="135" y1="26" x2="135" y2="88" stroke="rgba(88,68,42,.5)" stroke-width="1.2"/>
+          <!-- varangues sud -->
+          <rect x="5" y="88" width="60" height="12" fill="var(--c-var)" stroke="rgba(105,170,90,.4)" stroke-width=".7"/>
+          <rect x="65" y="88" width="70" height="12" fill="var(--c-var)" stroke="rgba(105,170,90,.4)" stroke-width=".7"/>
+          <rect x="135" y="88" width="60" height="12" fill="var(--c-var)" stroke="rgba(105,170,90,.4)" stroke-width=".7"/>
+          <!-- cloisons intérieures schéma -->
+          <line x1="5" y1="50" x2="65" y2="50" stroke="rgba(88,68,42,.2)" stroke-width=".7"/>
+          <line x1="65" y1="50" x2="135" y2="50" stroke="rgba(88,68,42,.2)" stroke-width=".7"/>
+          <line x1="135" y1="50" x2="195" y2="50" stroke="rgba(88,68,42,.2)" stroke-width=".7"/>
+          <!-- labels -->
+          <text x="35" y="60" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T3 · 65m²</text>
+          <text x="100" y="60" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T4 · 85m²</text>
+          <text x="165" y="60" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T3 · 65m²</text>
+          <text x="100" y="96" text-anchor="middle" font-size="6" fill="rgba(105,170,90,.9)" font-family="Inconsolata,monospace">varangues sud</text>
+          <text x="6" y="106" font-size="5.5" fill="rgba(42,88,72,.7)" font-family="Inconsolata,monospace">PROF ≤13m ✓  |  RTAA Art.4 ✓</text>
+        </svg>
+      </div>
+      <span class="name">Lame traversante · Plateau</span>
+      <span class="labelEn">Linear bar · Cross-ventilated floor</span>
+      <p class="desc">Coursive nord (alizés/service), varangues sud (vue/confort). 3→5 logements par plateau. Ventilation traversante parfaite. Type RTAA de référence.</p>
+      <p class="specs">T2→T4 · 55→90 m² · prof ≤13m · R+1→R+3</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">Traversant</span>
+        <span class="rtaa-pill ok">Coursive ext.</span>
+        <span class="rtaa-pill ok">Prof ≤13m</span>
+      </div>
+      <span class="hg-badge">★ House·G LAME type</span>
+    </div>
+
+    <!-- Plot compact noyau -->
+    <div class="card">
+      <span class="badge col">collectif</span>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 140 130" xmlns="http://www.w3.org/2000/svg">
+          <rect x="8" y="8" width="124" height="114" rx="1" fill="rgba(230,220,200,.4)" stroke="rgba(90,70,35,.2)" stroke-width=".6"/>
+          <!-- 4 logements autour noyau -->
+          <rect x="12" y="12" width="52" height="50" rx="0" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.3"/>
+          <rect x="76" y="12" width="56" height="50" rx="0" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.3"/>
+          <rect x="12" y="70" width="52" height="46" rx="0" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.3"/>
+          <rect x="76" y="70" width="56" height="46" rx="0" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.3"/>
+          <!-- noyau central -->
+          <rect x="64" y="58" width="12" height="12" fill="var(--c-noyau)" stroke="rgba(75,60,35,.6)" stroke-width=".8"/>
+          <!-- palier -->
+          <rect x="64" y="12" width="12" height="46" fill="var(--c-circ)" stroke="rgba(120,95,55,.3)" stroke-width=".6"/>
+          <rect x="64" y="70" width="12" height="46" fill="var(--c-circ)" stroke="rgba(120,95,55,.3)" stroke-width=".6"/>
+          <rect x="12" y="58" width="52" height="12" fill="var(--c-circ)" stroke="rgba(120,95,55,.3)" stroke-width=".6"/>
+          <rect x="76" y="58" width="56" height="12" fill="var(--c-circ)" stroke="rgba(120,95,55,.3)" stroke-width=".6"/>
+          <!-- labels -->
+          <text x="38" y="40" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T2</text>
+          <text x="104" y="40" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T3</text>
+          <text x="38" y="97" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T3</text>
+          <text x="104" y="97" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T2</text>
+          <text x="70" y="66" text-anchor="middle" font-size="5" fill="rgba(75,60,35,.8)" font-family="Inconsolata,monospace">ASC</text>
+        </svg>
+      </div>
+      <span class="name">Plot compact · 4 logts / plateau</span>
+      <span class="labelEn">Compact cluster · Central core</span>
+      <p class="desc">Noyau central (esc+asc). 4 logements par plateau, 3 façades exposées chacun. Excellent bioclimatique. Parcelles carrées UA.</p>
+      <p class="specs">T2→T3 × 4 · 45→75 m² · R+2→R+4 · asc. R+3+</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">3 façades</span>
+        <span class="rtaa-pill ok">Traversant</span>
+        <span class="rtaa-pill na">Asc. R+3+</span>
+      </div>
+    </div>
+
+    <!-- Patio en U -->
+    <div class="card">
+      <span class="badge col">collectif</span>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 140 130" xmlns="http://www.w3.org/2000/svg">
+          <rect x="8" y="8" width="124" height="114" rx="1" fill="rgba(230,220,200,.4)" stroke="rgba(90,70,35,.2)" stroke-width=".6"/>
+          <!-- U shape : ailes + fond -->
+          <rect x="12" y="12" width="28" height="100" rx="0" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.3"/>
+          <rect x="100" y="12" width="28" height="100" rx="0" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.3"/>
+          <rect x="12" y="12" width="116" height="30" rx="0" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.3"/>
+          <!-- patio central -->
+          <rect x="40" y="42" width="60" height="70" rx="2" fill="var(--c-ext)" stroke="rgba(80,140,100,.35)" stroke-width=".8"/>
+          <!-- noyau angle -->
+          <rect x="40" y="12" width="10" height="30" fill="var(--c-noyau)" stroke="rgba(75,60,35,.5)" stroke-width=".7"/>
+          <rect x="90" y="12" width="10" height="30" fill="var(--c-noyau)" stroke="rgba(75,60,35,.5)" stroke-width=".7"/>
+          <!-- labels -->
+          <text x="26" y="68" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.65)" font-family="Inconsolata,monospace">aile</text>
+          <text x="114" y="68" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.65)" font-family="Inconsolata,monospace">aile</text>
+          <text x="70" y="75" text-anchor="middle" font-size="6.5" fill="rgba(80,140,100,.75)" font-family="Inconsolata,monospace">PATIO</text>
+          <text x="70" y="85" text-anchor="middle" font-size="5.5" fill="rgba(80,140,100,.6)" font-family="Inconsolata,monospace">tropical</text>
+          <text x="70" y="27" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">fond commun</text>
+          <text x="45" y="26" text-anchor="middle" font-size="5" fill="rgba(75,60,35,.7)" font-family="Inconsolata,monospace">N</text>
+        </svg>
+      </div>
+      <span class="name">Patio tropical · En U</span>
+      <span class="labelEn">Tropical courtyard · U-shape</span>
+      <p class="desc">Effet cheminée du patio : −2°C mesuré SIDR Saint-Denis. Toutes ailes traversantes. Prof logement ≤8m excellent RTAA. Parcelles profondes UA.</p>
+      <p class="specs">T2→T3 · 50→75 m² · prof ≤8m · patio ~80m² min</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">Cheminée</span>
+        <span class="rtaa-pill ok">Traversant</span>
+        <span class="rtaa-pill ok">Prof ≤8m</span>
+      </div>
+    </div>
+
+    <!-- Appartement type paramétrique -->
+    <div class="card">
+      <span class="badge gold">house·g cible</span>
+      <div class="svg-wrap">
+        <svg id="svg-appt" viewBox="0 0 140 130" xmlns="http://www.w3.org/2000/svg">
+          <!-- Appartement type paramétrique -->
+          <rect id="appt-env" x="10" y="12" width="120" height="100" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.5"/>
+          <!-- cloisons dynamiques -->
+          <line id="appt-sep1" x1="50" y1="12" x2="50" y2="112" stroke="rgba(88,68,42,.35)" stroke-width=".9"/>
+          <line id="appt-sep2" x1="50" y1="62" x2="130" y2="62" stroke="rgba(88,68,42,.35)" stroke-width=".9"/>
+          <!-- varangue -->
+          <rect id="appt-var" x="10" y="100" width="120" height="12" rx="0" fill="var(--c-var)" stroke="rgba(105,170,90,.4)" stroke-width=".8"/>
+          <!-- coursive -->
+          <rect x="10" y="6" width="120" height="6" fill="var(--c-cours)" stroke="rgba(70,110,175,.35)" stroke-width=".6"/>
+          <!-- labels -->
+          <text id="appt-lbl-jour" x="84" y="40" text-anchor="middle" font-size="6.5" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">SÉJOUR/CUIS.</text>
+          <text id="appt-lbl-nuit" x="30" y="68" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.55)" font-family="Inconsolata,monospace">NUIT</text>
+          <text id="appt-lbl-serv" x="84" y="84" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.55)" font-family="Inconsolata,monospace">SDB/WC</text>
+          <text id="appt-lbl-var" x="70" y="108" text-anchor="middle" font-size="5.5" fill="rgba(105,170,90,.9)" font-family="Inconsolata,monospace">varangue</text>
+          <text x="70" y="3" text-anchor="middle" font-size="4.5" fill="rgba(42,72,128,.8)" font-family="Inconsolata,monospace">coursive</text>
+          <text id="appt-size" x="70" y="125" text-anchor="middle" font-size="6.5" fill="rgba(154,120,32,.9)" font-family="Inconsolata,monospace">T3 · 72m² · 7.4×12m</text>
+        </svg>
+      </div>
+      <span class="name">Appartement type · Paramétrique</span>
+      <span class="labelEn">Standard flat · Parametric unit</span>
+      <div class="param-panel">
+        <div class="param-row">
+          <label>LARG.</label>
+          <input type="range" id="sl-w" min="60" max="90" value="74" step="1" oninput="updAppt()">
+          <span class="param-val" id="vl-w">7.4m</span>
+        </div>
+        <div class="param-row">
+          <label>PROF.</label>
+          <input type="range" id="sl-d" min="80" max="130" value="120" step="5" oninput="updAppt()">
+          <span class="param-val" id="vl-d">12m</span>
+        </div>
+        <div class="param-toggle">
+          <button class="on" id="btn-t2" onclick="setT(2,this)">T2</button>
+          <button class="on" id="btn-t3" onclick="setT(3,this)" style="background:var(--ink);color:var(--gold2)">T3</button>
+          <button id="btn-t4" onclick="setT(4,this)">T4</button>
+        </div>
+      </div>
+      <p class="desc">Unité de base générée par HOUSE·G Speech, instanciée N fois dans le bâtiment collectif par TERLAB.</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">Traversant</span>
+        <span class="rtaa-pill ok">Prof ≤13m</span>
+        <span class="rtaa-pill ok">Varangue</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ §05 HYBRIDES ════════════════════════════════════════════════ -->
+<section class="section hyb">
+  <div class="section-hd">
+    <span class="num">§ 05</span>
+    <h2>Projets <em>hybrides</em></h2>
+    <span class="sdesc">Mixités typologiques · Individuel + collectif sur même parcelle · Stratégies Réunion</span>
+  </div>
+  <p class="section-note">La Réunion favorise les hybrides : contraintes foncières urbaines + aspiration à la maison individuelle = formats innovants. On trouve souvent des petits collectifs (R+2) sur des parcelles qui auraient autrefois porté une maison. Ces typologies combinent les avantages des deux registres.</p>
+  <div class="grid">
+
+    <!-- Lame + plot tête -->
+    <div class="card">
+      <span class="badge hyb">hybride</span>
+      <div class="svg-wrap wide">
+        <svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5" y="5" width="190" height="110" rx="1" fill="rgba(230,220,200,.35)" stroke="rgba(90,70,35,.2)" stroke-width=".6"/>
+          <!-- lame linéaire -->
+          <rect x="8" y="30" width="110" height="55" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.3"/>
+          <!-- coursive -->
+          <rect x="8" y="15" width="110" height="15" fill="var(--c-cours)" stroke="rgba(70,110,175,.3)" stroke-width=".7"/>
+          <!-- plot en tête -->
+          <rect x="130" y="15" width="60" height="80" rx="1" fill="rgba(243,233,213,.75)" stroke="var(--c-mur)" stroke-width="1.3"/>
+          <!-- noyau plot -->
+          <rect x="152" y="38" width="16" height="22" fill="var(--c-noyau)" stroke="rgba(75,60,35,.4)" stroke-width=".8"/>
+          <!-- varangues lame -->
+          <rect x="8" y="85" width="110" height="10" fill="var(--c-var)" stroke="rgba(105,170,90,.35)" stroke-width=".7"/>
+          <!-- labels -->
+          <text x="62" y="58" text-anchor="middle" font-size="6.5" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">LAME T2/T3</text>
+          <text x="160" y="65" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">PLOT T4</text>
+          <text x="160" y="50" text-anchor="middle" font-size="5" fill="rgba(75,60,35,.7)" font-family="Inconsolata,monospace">N+ASC</text>
+          <text x="8" y="12" font-size="5.5" fill="rgba(42,72,128,.8)" font-family="Inconsolata,monospace">coursive</text>
+          <text x="62" y="93" text-anchor="middle" font-size="5.5" fill="rgba(105,170,90,.9)" font-family="Inconsolata,monospace">varangues</text>
+          <text x="6" y="106" font-size="5.5" fill="rgba(42,72,88,.7)" font-family="Inconsolata,monospace">1 seul ascenseur pour la lame entière</text>
+        </svg>
+      </div>
+      <span class="name">Lame + plot tête · Économie</span>
+      <span class="labelEn">Bar + compact head · Mixed type</span>
+      <p class="desc">Lame T2/T3 traversante + plot compact T4 en tête. 1 seul ascenseur pour toute la lame. Adapté parcelles longues avec terrain en pente.</p>
+      <p class="specs">T2+T3+T4 mix · R+2→R+3 · 1 ASC mutualisé</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">Traversant</span>
+        <span class="rtaa-pill ok">Mixité T</span>
+        <span class="rtaa-pill ok">ASC mutualisé</span>
+      </div>
+    </div>
+
+    <!-- RDC collectif + étage individuel -->
+    <div class="card">
+      <span class="badge hyb">hybride</span>
+      <div class="svg-wrap tall">
+        <svg viewBox="0 0 140 155" xmlns="http://www.w3.org/2000/svg">
+          <rect x="8" y="8" width="124" height="139" rx="1" fill="rgba(230,220,200,.4)" stroke="rgba(90,70,35,.2)" stroke-width=".6"/>
+          <!-- RDC : commerces/services -->
+          <rect x="12" y="100" width="116" height="40" rx="1" fill="rgba(42,72,88,.12)" stroke="rgba(42,72,88,.4)" stroke-width="1.3"/>
+          <!-- R+1-R+2 : logements -->
+          <rect x="12" y="45" width="116" height="52" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.3"/>
+          <!-- Attique recul -->
+          <rect x="28" y="16" width="84" height="29" rx="1" fill="rgba(243,233,213,.65)" stroke="var(--c-mur)" stroke-width="1.2" stroke-dasharray="3,2"/>
+          <!-- cloisons niv 1 -->
+          <line x1="70" y1="45" x2="70" y2="97" stroke="rgba(88,68,42,.3)" stroke-width=".8"/>
+          <!-- noyau -->
+          <rect x="12" y="72" width="12" height="25" fill="var(--c-noyau)" stroke="rgba(75,60,35,.4)" stroke-width=".7"/>
+          <!-- labels -->
+          <text x="70" y="70" text-anchor="middle" font-size="6.5" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">LOGEMENTS R+1</text>
+          <text x="70" y="128" text-anchor="middle" font-size="6.5" fill="rgba(42,72,88,.7)" font-family="Inconsolata,monospace">RDC ACTIF</text>
+          <text x="70" y="138" text-anchor="middle" font-size="5.5" fill="rgba(42,72,88,.55)" font-family="Inconsolata,monospace">commerce / bureau</text>
+          <text x="70" y="33" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.5)" font-family="Inconsolata,monospace">ATTIQUE R+2</text>
+          <text x="18" y="86" text-anchor="middle" font-size="5" fill="rgba(75,60,35,.7)" font-family="Inconsolata,monospace">ESC</text>
+        </svg>
+      </div>
+      <span class="name">Mixité verticale · RDC actif</span>
+      <span class="labelEn">Vertical mix · Active ground floor</span>
+      <p class="desc">RDC commerces/bureaux, R+1→R+2 logements, attique recul. Favorise la vitalité urbaine. Règlement PLU UA souvent prescriptif sur ce point.</p>
+      <p class="specs">RDC ≠ logement · T2→T4 R+1→R+2 · attique T4+terr.</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">RDC actif</span>
+        <span class="rtaa-pill ok">Mixité fonct.</span>
+        <span class="rtaa-pill na">PLU UA req.</span>
+      </div>
+    </div>
+
+    <!-- Villa + studio jardin -->
+    <div class="card">
+      <span class="badge hyb">hybride</span>
+      <div class="svg-wrap wide">
+        <svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+          <rect x="5" y="5" width="190" height="110" rx="1" fill="rgba(230,220,200,.4)" stroke="rgba(90,70,35,.2)" stroke-width=".6"/>
+          <!-- maison principale -->
+          <rect x="8" y="20" width="95" height="70" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.4"/>
+          <rect x="8" y="90" width="95" height="12" fill="var(--c-var)" stroke="rgba(105,170,90,.4)" stroke-width=".8"/>
+          <!-- jardin entre -->
+          <rect x="103" y="20" width="25" height="82" fill="var(--c-ext)" stroke="rgba(80,140,100,.3)" stroke-width=".7"/>
+          <!-- studio en fond -->
+          <rect x="128" y="35" width="64" height="55" rx="1" fill="rgba(243,233,213,.75)" stroke="var(--c-mur)" stroke-width="1.2"/>
+          <rect x="128" y="90" width="64" height="12" fill="var(--c-var)" stroke="rgba(105,170,90,.35)" stroke-width=".7"/>
+          <!-- labels -->
+          <text x="55" y="58" text-anchor="middle" font-size="6.5" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">MAISON T4</text>
+          <text x="115" y="65" text-anchor="middle" font-size="5.5" fill="rgba(80,140,100,.7)" font-family="Inconsolata,monospace">jard.</text>
+          <text x="160" y="65" text-anchor="middle" font-size="6" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">STUDIO T1</text>
+          <text x="55" y="98" text-anchor="middle" font-size="5.5" fill="rgba(105,170,90,.8)" font-family="Inconsolata,monospace">varangue</text>
+          <text x="160" y="98" text-anchor="middle" font-size="5.5" fill="rgba(105,170,90,.8)" font-family="Inconsolata,monospace">var.</text>
+          <text x="7" y="112" font-size="5.5" fill="rgba(42,72,88,.65)" font-family="Inconsolata,monospace">Commun : accès voirie uniquement</text>
+        </svg>
+      </div>
+      <span class="name">Villa + studio jardin</span>
+      <span class="labelEn">Main house + garden studio</span>
+      <p class="desc">Maison principale T4 + studio T1 indépendant en fond de parcelle. PC unique ou separate. Réunion : pratique très fréquente (famille étendue, location).</p>
+      <p class="specs">T4 + T1→T2 · 110→150m² + 25→45m² · 1 parcelle</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">Indépendant</span>
+        <span class="rtaa-pill ok">Jardin privatif</span>
+        <span class="rtaa-pill na">PC commun?</span>
+      </div>
+    </div>
+
+    <!-- Habitat participatif -->
+    <div class="card">
+      <span class="badge hyb">coopératif</span>
+      <div class="svg-wrap">
+        <svg viewBox="0 0 140 130" xmlns="http://www.w3.org/2000/svg">
+          <rect x="8" y="8" width="124" height="114" rx="1" fill="rgba(230,220,200,.4)" stroke="rgba(90,70,35,.2)" stroke-width=".6"/>
+          <!-- 5 unités autour espace commun -->
+          <rect x="12" y="12" width="45" height="40" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.2"/>
+          <rect x="83" y="12" width="49" height="40" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.2"/>
+          <rect x="12" y="80" width="45" height="42" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.2"/>
+          <rect x="83" y="80" width="49" height="42" rx="1" fill="var(--c-log)" stroke="var(--c-mur)" stroke-width="1.2"/>
+          <!-- espace partagé central -->
+          <rect x="57" y="12" width="26" height="110" rx="1" fill="rgba(195,180,145,.55)" stroke="rgba(120,95,55,.35)" stroke-width=".8"/>
+          <!-- commun en haut -->
+          <rect x="12" y="52" width="120" height="28" rx="1" fill="rgba(42,88,72,.12)" stroke="rgba(42,88,72,.3)" stroke-width=".8"/>
+          <text x="70" y="68" text-anchor="middle" font-size="6.5" fill="rgba(42,88,72,.75)" font-family="Inconsolata,monospace">ESPACE COMMUN</text>
+          <text x="70" y="38" text-anchor="middle" font-size="5" fill="rgba(120,95,55,.7)" font-family="Inconsolata,monospace">CIRCULATION</text>
+          <!-- labels logements -->
+          <text x="34" y="34" text-anchor="middle" font-size="5.5" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T3</text>
+          <text x="107" y="34" text-anchor="middle" font-size="5.5" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T4</text>
+          <text x="34" y="104" text-anchor="middle" font-size="5.5" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T3</text>
+          <text x="107" y="104" text-anchor="middle" font-size="5.5" fill="rgba(88,68,42,.6)" font-family="Inconsolata,monospace">T2</text>
+        </svg>
+      </div>
+      <span class="name">Habitat participatif · OFS/BRS</span>
+      <span class="labelEn">Cooperative housing · Shared spaces</span>
+      <p class="desc">4→8 logements autour d'un espace partagé mutualisé (buanderie, salle commune, jardin nourricier). Statut OFS/BRS en essor à La Réunion.</p>
+      <p class="specs">T2→T4 · 50→90 m² · commun ≥20m² · OFS/BRS</p>
+      <div class="rtaa-strip">
+        <span class="rtaa-pill ok">Commun qual.</span>
+        <span class="rtaa-pill ok">Accès direct</span>
+        <span class="rtaa-pill ok">OFS Réunion</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ §06 TABLE DE RÉFÉRENCE ═══════════════════════════════════════ -->
+<section class="section rules">
+  <div class="section-hd">
+    <span class="num">§ 06</span>
+    <h2>Table de <em>référence</em></h2>
+    <span class="sdesc">Critères de classement · Seuils réglementaires · Compatibilité HOUSE·G Speech</span>
+  </div>
+  <div class="ref-wrap">
+    <table class="ref-table">
+      <thead>
+        <tr>
+          <th>Typologie</th>
+          <th>Accès logement</th>
+          <th>Structure</th>
+          <th>Foncier</th>
+          <th>Ventilation</th>
+          <th>PC</th>
+          <th>House·G</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="cat" style="background:rgba(90,48,18,.1);color:var(--ind)">Indiv. isolée</span></td>
+          <td>Depuis rue, privatif</td>
+          <td>Indépendante</td>
+          <td>1 parcelle / 1 proprio</td>
+          <td>Libre</td>
+          <td>Individuel</td>
+          <td>★ Cible principale</td>
+        </tr>
+        <tr>
+          <td><span class="cat" style="background:rgba(122,72,50,.1);color:#7a4832">Bande / mitoyen</span></td>
+          <td>Depuis rue, privatif</td>
+          <td>Murs mitoyens</td>
+          <td>Lots individuels contigus</td>
+          <td>Traversante ✓</td>
+          <td>Individuel (chaque lot)</td>
+          <td>★ EN_BANDE</td>
+        </tr>
+        <tr>
+          <td><span class="cat" style="background:rgba(106,48,96,.1);color:var(--int)">Intermédiaire</span></td>
+          <td>Direct extérieur</td>
+          <td>Partiellement commune</td>
+          <td>Copropriété / div. vol.</td>
+          <td>Traversante ✓</td>
+          <td>Collectif ou indiv.</td>
+          <td>Unité HOUSEG + contexte TERLAB</td>
+        </tr>
+        <tr>
+          <td><span class="cat" style="background:rgba(42,72,88,.1);color:var(--hyb)">Hybride</span></td>
+          <td>Mixte (direct + commun)</td>
+          <td>Variable</td>
+          <td>Variable</td>
+          <td>Variable</td>
+          <td>Au cas par cas</td>
+          <td>Composition de modules</td>
+        </tr>
+        <tr>
+          <td><span class="cat" style="background:rgba(42,88,72,.1);color:var(--col)">Collectif</span></td>
+          <td>Via circulation commune</td>
+          <td>Commune (poteaux/voiles)</td>
+          <td>Copropriété obligatoire</td>
+          <td>Traversante RTAA req.</td>
+          <td>Collectif</td>
+          <td>Appartement type × N</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="padding:24px 48px 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
+    <div class="section-note" style="margin:0">
+      <strong>RTAA DOM 2016</strong> — profondeur logement ≤13m, 2 façades exposées minimum, ventilation naturelle traversante. S'applique à <em>tout</em> logement collectif neuf. La lame traversante est le type de référence.
+    </div>
+    <div class="section-note" style="margin:0">
+      <strong>Seuil ascenseur</strong> — obligatoire à partir de R+3 (3 niveaux au-dessus du RDC). Impacte fortement l'économie : coût +20→40k€ par opération, exige gaine dédiée dans la structure.
+    </div>
+    <div class="section-note" style="margin:0">
+      <strong>HOUSE·G Speech → Collectif</strong> — génère l'appartement type (T2→T4) paramétrique. TERLAB le réplique N fois dans la lame/plot selon le programme. La limite individuel/collectif est dans le nombre d'unités et la structure, pas dans le plan lui-même.
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer style="padding:36px 48px;border-top:1px solid var(--br2);text-align:center;margin-top:32px">
+  <p style="font-family:'Inconsolata',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);opacity:.7">
+    TERLAB · Atlas des Typologies · ÉARL La Réunion · MGA Architecture 2026<br>
+    Réf. : Eleb-Vidal (1989) · Samuely &amp; Kahn (1950) · Sherwood (1978) · CAUE Réunion · RTAA DOM 2016 · SIDR · OFS Réunion
+  </p>
+</footer>
+
+<script>
+// ── Appartement paramétrique ──────────────────────────────────────
+let apptT = 3;
+function updAppt() {
+  const w = (+document.getElementById('sl-w').value / 10).toFixed(1);
+  const d = (+document.getElementById('sl-d').value / 10).toFixed(0);
+  document.getElementById('vl-w').textContent = w + 'm';
+  document.getElementById('vl-d').textContent = d + 'm';
+  const area = (w * d * 0.78).toFixed(0); // ~78% d'efficacité
+  const T = apptT;
+  const typLabel = 'T' + T + ' · ' + area + 'm² · ' + w + '×' + d + 'm';
+  document.getElementById('appt-size').textContent = typLabel;
+
+  // Mettre à jour les cloisons schématiques
+  const sv = document.getElementById('svg-appt');
+  const wPx = 10 + parseFloat(w) * 8.5; // approximation px dans viewBox 140
+  const dPx = 12 + parseFloat(d) * 6.2;
+
+  // Ajuster la profondeur de l'enveloppe
+  const env = document.getElementById('appt-env');
+  const h = Math.min(parseFloat(d) * 7, 100);
+  env.setAttribute('height', h);
+
+  // Mettre à jour la varangue
+  const varEl = document.getElementById('appt-var');
+  varEl.setAttribute('y', 12 + h);
+
+  // Labels zones
+  document.getElementById('appt-lbl-jour').setAttribute('y', 12 + h * 0.35);
+  document.getElementById('appt-lbl-nuit').setAttribute('y', 12 + h * 0.65);
+  document.getElementById('appt-lbl-serv').setAttribute('y', 12 + h * 0.82);
+  document.getElementById('appt-lbl-var').setAttribute('y', 18 + h);
+  document.getElementById('appt-size').setAttribute('y', 132);
+}
+
+function setT(n, btn) {
+  apptT = n;
+  document.querySelectorAll('.param-toggle button').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  btn.style.background = 'var(--ink)';
+  btn.style.color = 'var(--gold2)';
+  btn.style.borderColor = 'var(--ink)';
+
+  // Ajuster les labels selon T
+  const labels = {
+    2: {jour:'SÉJOUR/CUIS.', nuit:'CHAMBRE', serv:'SDB/WC'},
+    3: {jour:'SÉJOUR/CUIS.', nuit:'NUIT × 2', serv:'SDB/WC'},
+    4: {jour:'SÉJOUR/CUIS.', nuit:'NUIT × 3', serv:'SDB/WC×2'},
+  };
+  if(labels[n]) {
+    document.getElementById('appt-lbl-jour').textContent = labels[n].jour;
+    document.getElementById('appt-lbl-nuit').textContent = labels[n].nuit;
+    document.getElementById('appt-lbl-serv').textContent = labels[n].serv;
+  }
+  updAppt();
+}
+updAppt();
+</script>
+</body>
+</html>
