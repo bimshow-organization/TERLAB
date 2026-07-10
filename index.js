@@ -124,6 +124,8 @@ import GeoJsonPanel          from './components/geojson-panel.js';
 // ─── Data Providers Réunion (Sprint intégration 2026-04) ────
 import BdTopoService         from './services/bdtopo-service.js';
 import CadastreContextService from './services/cadastre-context-service.js';
+// EdfService : API OpenDataSoft morte (410) mais MIX_ELECTRIQUE statique
+// toujours consomme par P09 carbone (window.EdfService)
 import EdfService            from './services/edf-service.js';
 import GpuService            from './services/gpu-service.js';
 import BiodiversiteService   from './services/biodiversite-service.js';
