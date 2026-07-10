@@ -12,3 +12,7 @@ ici plutôt que supprimés pour référence. Ne pas importer depuis `archives/`.
 | `p11-fin-de-vie.html` | phases/ (`.html.archived`) | Phase P11 fin-de-vie retirée du parcours (remplacée par p11-esquisse). Suffixe `.archived` normalisé. |
 | `export_terlab.py` | racine | Script d'export v1, remplacé par le pipeline print.css + Puppeteer (`scripts/random-terrain-pdf.js`). Référencé uniquement par la doc v1. |
 | `test_p01.mjs` | racine | Test isolé jamais intégré ni exécuté en CI (seul `npm run test:random` vit). |
+
+`archives/local/` (non versionné, patterns .gitignore par nom de fichier) :
+vieux logs `TERLAB_export_audit_*.txt`, scratch, modèles YOLO `.pt` (~220 Mo)
+— jamais référencés par le code ni les scripts.
