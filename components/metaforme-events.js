@@ -35,6 +35,20 @@ export function bindEvents(svg, engine, renderer, opts = {}) {
   let panDrag = null;
   let lastPolyClick = 0;
 
+  // ── Tactile ──────────────────────────────────────────────────
+  // Pas de clavier ni de hover au doigt : appui long sur un sommet =
+  // suppression, appui long sur une arête = insertion de sommet,
+  // pinch 2 doigts = zoom. Le SVG gère lui-même pan/zoom/drag.
+  svg.style.touchAction = 'none';
+  const touchPts = new Map();       // pointerId → {x, y}
+  let pinch = null;                 // {dist, zoom} au départ du pinch
+  let longPress = null;             // {timer, x, y}
+  const LONG_PRESS_MS = 550, LONG_PRESS_TOL = 9;
+
+  function cancelLongPress() {
+    if (longPress) { clearTimeout(longPress.timer); longPress = null; }
+  }
+
   // ── Apply viewBox with pan/zoom ──────────────────────────────
   function applyViewBox() {
     svg.setAttribute('viewBox',
@@ -44,6 +58,17 @@ export function bindEvents(svg, engine, renderer, opts = {}) {
 
   // ── pointerdown ──────────────────────────────────────────────
   function onPointerDown(e) {
+    if (e.pointerType === 'touch') {
+      touchPts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touchPts.size === 2 && enablePanZoom) {
+        // Second doigt → pinch zoom : annule drag/pan/appui-long en cours
+        cancelLongPress();
+        state.drag = null; panDrag = null;
+        const [a, b] = [...touchPts.values()];
+        pinch = { dist: Math.hypot(a.x - b.x, a.y - b.y), zoom: state.svgZoom };
+        return;
+      }
+    }
     const t = e.target;
     const type = t.dataset?.type;
 
@@ -142,11 +167,71 @@ export function bindEvents(svg, engine, renderer, opts = {}) {
         startEdges: JSON.parse(JSON.stringify(poly.edges)),
       };
     }
+
+    // Appui long tactile (équivalent Shift+clic) : sommet → suppression,
+    // arête → insertion de sommet au point d'appui. Si le doigt bouge
+    // au-delà de la tolérance, l'appui-long est annulé et le drag continue.
+    if (e.pointerType === 'touch' && (type === 'vertex' || type === 'edge')) {
+      cancelLongPress();
+      const idx = +t.dataset.idx;
+      longPress = {
+        x: e.clientX, y: e.clientY,
+        timer: setTimeout(() => {
+          longPress = null;
+          state.drag = null; state._snapTarget = null; state._crossing = null;
+          const pi = engine.state.activePolyIdx;
+          if (type === 'vertex') {
+            engine.doDeleteVertex(pi, idx);
+            renderer.render(); onChange('delete');
+          } else {
+            const lp = engine.ap();
+            if (!lp) return;
+            const ln = lp.verts.length;
+            const lj = (idx + 1) % ln;
+            const [x1, y1] = lp.verts[idx], [x2, y2] = lp.verts[lj];
+            const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy);
+            if (len < 0.2) return;
+            const vx = dx / len, vy = dy / len;
+            const proj = Math.max(0.1, Math.min(len - 0.1, (p.x - x1) * vx + (p.y - y1) * vy));
+            engine.doInsertVertex(pi, idx, x1 + vx * proj, y1 + vy * proj);
+            renderer.render(); onChange('insert');
+          }
+        }, LONG_PRESS_MS),
+      };
+    }
     renderer.render();
   }
 
   // ── pointermove ──────────────────────────────────────────────
   function onPointerMove(e) {
+    // Pinch zoom 2 doigts (même logique de recentrage que onWheel)
+    if (e.pointerType === 'touch' && touchPts.has(e.pointerId)) {
+      touchPts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pinch && touchPts.size === 2) {
+        const [a, b] = [...touchPts.values()];
+        const dist = Math.hypot(a.x - b.x, a.y - b.y);
+        if (dist > 1) {
+          const newZoom = Math.max(0.25, Math.min(8, pinch.zoom * pinch.dist / dist));
+          if (newZoom !== state.svgZoom) {
+            const mid = svgPt(svg, { clientX: (a.x + b.x) / 2, clientY: (a.y + b.y) / 2 });
+            const f = newZoom / state.svgZoom;
+            state.svgPan.x = mid.x + (state.svgPan.x - mid.x) * f;
+            state.svgPan.y = mid.y + (state.svgPan.y - mid.y) * f;
+            state.svgZoom = newZoom;
+            applyViewBox();
+          }
+        }
+        return;
+      }
+    }
+    // Appui-long en attente : immobile → on attend, mouvement → drag normal
+    if (longPress) {
+      if (Math.hypot(e.clientX - longPress.x, e.clientY - longPress.y) > LONG_PRESS_TOL) {
+        cancelLongPress();
+      } else {
+        return;
+      }
+    }
     const p = svgPt(svg, e);
     // Pan en cours
     if (panDrag) {
@@ -226,6 +311,11 @@ export function bindEvents(svg, engine, renderer, opts = {}) {
   // ── pointerup ────────────────────────────────────────────────
   function onPointerUp(e) {
     try { svg.releasePointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+    if (e.pointerType === 'touch') {
+      touchPts.delete(e.pointerId);
+      if (touchPts.size < 2) pinch = null;
+    }
+    cancelLongPress();
     if (panDrag) { panDrag = null; svg.style.cursor = ''; return; }
     const wasCrossing = state._crossing;
     const hadDrag = !!state.drag;
@@ -242,7 +332,12 @@ export function bindEvents(svg, engine, renderer, opts = {}) {
     }
   }
 
-  function onPointerCancel() {
+  function onPointerCancel(e) {
+    if (e?.pointerType === 'touch') {
+      touchPts.delete(e.pointerId);
+      if (touchPts.size < 2) pinch = null;
+    }
+    cancelLongPress();
     state.drag = null; state._crossing = null;
     panDrag = null; svg.style.cursor = '';
   }

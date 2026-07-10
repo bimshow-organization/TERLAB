@@ -32,6 +32,7 @@ const MobileController = {
     this._bindDragHandle();
     this._bindBackdropClose();
     this._bindResizeObserver();
+    this._bindVirtualKeyboard();
 
     // Init indicateur phase
     this.updatePhaseIndicator();
@@ -248,11 +249,44 @@ const MobileController = {
   },
 
   // ── Fermer en cliquant la carte (backdrop) ────────────────────
+  // Un tap sur un marqueur, une popup ou un contrôle Mapbox est une
+  // interaction carte volontaire : on ne referme pas le sheet dessus.
   _bindBackdropClose() {
     document.getElementById('map')
-      ?.addEventListener('click', () => {
+      ?.addEventListener('click', (ev) => {
+        if (ev.target.closest?.('.mapboxgl-marker, .mapboxgl-popup, .mapboxgl-ctrl')) return;
         if (this._isOpen) this.closeSheet();
       });
+  },
+
+  // ── Clavier virtuel ───────────────────────────────────────────
+  // Le sheet est position:fixed;bottom:0 : quand le clavier iOS/Android
+  // s'ouvre, il recouvre les champs du bas. On compense la hauteur du
+  // clavier via visualViewport et on remonte le champ focusé dans la vue.
+  _bindVirtualKeyboard() {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const sheet = () => document.getElementById('mob-sheet');
+
+    const onResize = () => {
+      const s = sheet();
+      if (!s || !this._isOpen) return;
+      // Hauteur masquée par le clavier (0 quand il est fermé)
+      const hidden = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      s.style.bottom = hidden ? `${hidden}px` : '';
+    };
+    vv.addEventListener('resize', onResize);
+    vv.addEventListener('scroll', onResize);
+
+    // Remonter le champ focusé une fois le clavier déployé
+    document.addEventListener('focusin', (e) => {
+      if (!this._isMobile || !this._isOpen) return;
+      const t = e.target;
+      if (!t.matches?.('input, select, textarea')) return;
+      if (!sheet()?.contains(t)) return;
+      setTimeout(() => t.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
+    });
   },
 
   // ── Resize observer (passage desktop/mobile) ─────────────────

@@ -10,6 +10,7 @@ import { OrbitControls }    from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader }       from 'three/addons/loaders/GLTFLoader.js';
 import { GLTFExporter }     from 'three/addons/exporters/GLTFExporter.js';
 import { EffectComposer }   from 'three/addons/postprocessing/EffectComposer.js';
+import { getDeviceCaps }    from '../utils/device-caps.js';
 import { RenderPass }       from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass }  from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass }       from 'three/addons/postprocessing/OutputPass.js';
@@ -148,7 +149,7 @@ const Terlab3DViewer = {
       alpha: true,
       preserveDrawingBuffer: true,
     });
-    this._renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this._renderer.setPixelRatio(Math.min(window.devicePixelRatio, getDeviceCaps().pixelRatioCap));
     this._renderer.setSize(canvas.clientWidth, canvas.clientHeight);
     this._renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this._renderer.toneMappingExposure = 1.15;

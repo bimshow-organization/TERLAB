@@ -140,7 +140,7 @@
   .topbar .phase-label,
   #topbar .phase-label {
     font-family: var(--font-mono);
-    font-size: 9px;
+    font-size: 10px;
     letter-spacing: .1em;
     text-transform: uppercase;
     color: var(--accent);
@@ -161,7 +161,7 @@
     align-items: center;
     gap: 4px;
     font-family: var(--font-mono);
-    font-size: 8px;
+    font-size: 10px;
     color: var(--faint);
     background: var(--raised);
     border: 1px solid var(--border);
@@ -198,7 +198,7 @@
   }
   .tb-brand #tb-phase-label .tb-phase-num {
     font-family: var(--font-mono);
-    font-size: 9px;
+    font-size: 10px;
     letter-spacing: .12em;
     color: var(--accent);
     text-transform: uppercase;
@@ -284,7 +284,7 @@
   }
 
   .mob-tab .mob-tl {
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 500;
     white-space: nowrap;
   }
@@ -356,7 +356,7 @@
 
   .mob-phase-indicator {
     font-family: var(--font-mono);
-    font-size: 9px;
+    font-size: 10px;
     color: var(--muted);
     white-space: nowrap;
     min-width: 32px;
@@ -426,7 +426,7 @@
     flex-shrink: 0;
     padding: 8px 16px;
     font-family: var(--font-mono);
-    font-size: 9px;
+    font-size: 10px;
     letter-spacing: .08em;
     text-transform: uppercase;
     color: var(--faint);
@@ -527,7 +527,7 @@
   }
   .mob-step-num {
     font-family: var(--font-mono);
-    font-size: 9px;
+    font-size: 10px;
     letter-spacing: .08em;
     color: var(--accent);
     background: var(--accent2);
@@ -584,7 +584,7 @@
   .mob-tip-card .tip-label {
     display: block;
     font-family: var(--font-mono);
-    font-size: 8px;
+    font-size: 10px;
     letter-spacing: .1em;
     text-transform: uppercase;
     color: var(--accent);
@@ -818,12 +818,10 @@
     display: none !important;
   }
 
-  /* ── Theme switcher (dark/ivory/earth) masque en responsive :
-        UI compacte, le theme se change depuis desktop. ── */
-  #theme-switcher,
-  .theme-switcher {
-    display: none !important;
-  }
+  /* ── Theme switcher (dark/ivory/earth) : conserve en mobile —
+        le mode ivory est le bon theme en plein soleil sur le terrain
+        (usage cible etudiants). Le theme est stocke par appareil :
+        le masquer bloquerait un telephone reste en dark. ── */
 
   /* ── 3D panel full screen on mobile ── */
   .terlab-3d-panel {

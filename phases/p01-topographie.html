@@ -1817,6 +1817,17 @@ const P01 = {
         .m3-cbtn:hover { background:var(--gold-10,rgba(201,168,76,.1));border-color:var(--gold-dim,#8a6e28) }
         .m3-cbtn.active { background:var(--gold-20,rgba(201,168,76,.2));border-color:var(--gold,#c9a84c);color:var(--gold-bright,#f0c960) }
         .m3-loading { position:absolute;bottom:12px;left:12px;font-family:var(--font-mono);font-size:10px;color:var(--gold,#c9a84c);background:var(--bg-2,#1e1810);padding:4px 10px;border-radius:var(--r-md,4px);border:1px solid var(--border,rgba(201,168,76,.22));display:none }
+        /* Mobile : plein écran, panneau empilé sous la 3D (au lieu de 220px latéraux) */
+        @media (max-width: 800px) {
+          .m3-box { width:100vw;height:100dvh;max-width:none;border-radius:0;border:none }
+          .m3-body { flex-direction:column }
+          .m3-panel { width:100%;max-height:40dvh;border-left:none;border-top:1px solid var(--border,rgba(201,168,76,.22));padding-bottom:calc(12px + env(safe-area-inset-bottom)) }
+          .m3-close { min-width:44px;min-height:44px }
+          .m3-lrow { padding:9px 8px }
+          .m3-lrow input[type=checkbox] { width:18px;height:18px }
+          .m3-slider::-webkit-slider-thumb { width:20px;height:20px }
+          .m3-slider::-moz-range-thumb { width:20px;height:20px }
+        }
       </style>
       <div class="m3-box">
         <div class="m3-head">

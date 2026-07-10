@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { OrbitControls }  from 'three/addons/controls/OrbitControls.js';
 import { GLTFExporter }   from 'three/addons/exporters/GLTFExporter.js';
+import { getDeviceCaps }  from '../utils/device-caps.js';
 
 const DEG = Math.PI / 180;
 
@@ -68,7 +69,7 @@ const Buildings3DViewer = {
 
     // Renderer
     this._renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
-    this._renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this._renderer.setPixelRatio(Math.min(window.devicePixelRatio, getDeviceCaps().pixelRatioCap));
     this._renderer.shadowMap.enabled = true;
     this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this._renderer.setClearColor(this.BG_COLOR, 1);

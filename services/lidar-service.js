@@ -5,6 +5,7 @@
 
 import { tilesForBboxWgs84, bboxWgs84ToUtm } from '../utils/copc-tile-index.js';
 import { readPointsBbox } from '../utils/copc-reader.js';
+import { getDeviceCaps } from '../utils/device-caps.js';
 
 const LIDAR_CFG = {
   USE_LOCAL_SERVER: false,           // true → fallback vers localhost:8000
@@ -134,7 +135,10 @@ const LidarService = {
     if (!bbox) throw new Error('Impossible de calculer la bbox depuis le GeoJSON');
 
     const classes = options.classes ?? '2';
-    const maxPoints = options.maxPoints ?? LIDAR_CFG.DEFAULT_MAX_POINTS;
+    // Plafond terminal faible (téléphones) : un maxPoints explicite reste
+    // borné par le budget device pour éviter l'OOM mobile
+    const deviceCap = getDeviceCaps().lidarMaxPoints;
+    const maxPoints = Math.min(options.maxPoints ?? LIDAR_CFG.DEFAULT_MAX_POINTS, deviceCap);
     const onProgress = options.onProgress ?? null;
 
     // ── Mode serveur local forcé ───────────────────────────────────

@@ -74,6 +74,20 @@ const MobileStepper = {
       this._steps.push({ el: fs, title, type: 'form' });
     });
 
+    // Steps N+ : blocs-outils top-level hors .form-section (P01 : LiDAR,
+    // coupes, bioclim…). Sans étape dédiée ils resteraient affichés sur
+    // TOUTES les étapes et surchargeraient le sheet.
+    Array.from(scrollWrap.children).forEach(c => {
+      if (c === lpHead || (lpHead && c.contains(lpHead))) return;
+      if (c.matches('.form-section')) return;          // déjà une étape
+      if (c.querySelector('.form-section')) return;    // conteneur d'étapes
+      if (['SCRIPT', 'STYLE', 'TEMPLATE', 'LINK'].includes(c.tagName)) return;
+      if (!c.textContent?.trim() && !c.querySelector('canvas, svg, img')) return;
+      const title = c.querySelector('.fs-head, .sec-title, h2, h3, h4')
+        ?.textContent?.trim() || 'Outils';
+      this._steps.push({ el: c, title, type: 'tool' });
+    });
+
     // Last step : val-block
     const leftPanel = document.querySelector('.left-panel');
     const valBlock  = leftPanel?.querySelector('.val-block');
@@ -164,6 +178,10 @@ const MobileStepper = {
     // Scroll sheet body to top
     const sheetBody = document.getElementById('mob-sheet-body');
     if (sheetBody) sheetBody.scrollTo(0, 0);
+
+    // Les canvas/viewers 3D initialisés dans une étape cachée (display:none)
+    // ont un clientWidth de 0 : on force un resize à l'affichage de l'étape.
+    requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
   },
 
   _nextStep() {

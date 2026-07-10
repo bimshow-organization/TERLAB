@@ -324,3 +324,19 @@
 .edit-edge:active {
   cursor: grabbing;
 }
+
+/* Tactile : le drag d'un élément interactif ne doit pas scroller/pincher la
+   page (pointer events). Les zones vides du SVG restent scrollables. */
+.edit-node,
+.edit-node-hit,
+.edit-edge,
+.edit-handle,
+[data-type="building-body"] {
+  touch-action: none;
+}
+/* Cibles tactiles élargies sur écran tactile (le hit-circle invisible
+   .edit-node-hit porte le rayon réel de saisie) */
+@media (pointer: coarse) {
+  .edit-node-hit { r: 18; }
+  .edit-edge     { stroke-width: 22; }
+}

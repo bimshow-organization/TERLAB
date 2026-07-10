@@ -8,6 +8,7 @@
 
 import RoofBuilder from '../services/roof-builder.js';
 import FootprintAnalyzer from '../services/footprint-analyzer.js';
+import { getDeviceCaps } from '../utils/device-caps.js';
 
 export class GabaritThree {
   constructor(canvasEl) {
@@ -28,7 +29,7 @@ export class GabaritThree {
     this.camera.lookAt(0, 0, 0);
 
     this.renderer = new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true });
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio, getDeviceCaps().pixelRatioCap));
     this.renderer.setSize(w, h);
     this.renderer.shadowMap.enabled = true;
 

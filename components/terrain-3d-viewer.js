@@ -10,6 +10,7 @@ import SlopesService from '../services/slopes-service.js';
 import SunCalcService from '../services/sun-calc-service.js';
 import GeoStatusBar from './geo-status-bar.js';
 import GLBExporter from '../utils/glb-exporter.js';
+import { getDeviceCaps } from '../utils/device-caps.js';
 import ContourService from '../services/contour-service.js';
 import BILTerrain from '../services/bil-terrain.js';
 import BdTopoService from '../services/bdtopo-service.js';
@@ -83,7 +84,7 @@ const Terrain3D = {
 
     // Renderer
     this._renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, preserveDrawingBuffer: true });
-    this._renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this._renderer.setPixelRatio(Math.min(window.devicePixelRatio, getDeviceCaps().pixelRatioCap));
     this._renderer.shadowMap.enabled = true;
     this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this._renderer.toneMapping = THREE.ACESFilmicToneMapping;

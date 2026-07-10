@@ -3612,9 +3612,12 @@ const EsquisseCanvas = {
   },
 
   // ── EVENEMENTS ─────────────────────────────────────────────────
+  // Pointer events (souris + tactile). touch-action:none est posé en CSS sur
+  // les éléments interactifs (nodes/edges/handles) pour que le drag au doigt
+  // ne déclenche pas le scroll — les zones vides du SVG restent scrollables.
   _bindEvents() {
     // Drag des noeuds, handles, et body
-    this._svg.addEventListener('mousedown', e => {
+    this._svg.addEventListener('pointerdown', e => {
       const rect = this._canvas?.getBoundingClientRect() ?? { left: 0, top: 0 };
 
       // ── AABB body drag (move bâtiment) ─────────────────────────
@@ -3626,8 +3629,9 @@ const EsquisseCanvas = {
           prevX: e.clientX - rect.left, prevY: e.clientY - rect.top,
           bat0: { ...this._buildingAABB },
         };
-        document.addEventListener('mousemove', this._boundDrag);
-        document.addEventListener('mouseup',   this._boundDragEnd);
+        document.addEventListener('pointermove',   this._boundDrag);
+        document.addEventListener('pointerup',     this._boundDragEnd);
+        document.addEventListener('pointercancel', this._boundDragEnd);
         e.preventDefault();
         return;
       }
@@ -3641,8 +3645,9 @@ const EsquisseCanvas = {
           prevX: e.clientX - rect.left, prevY: e.clientY - rect.top,
           bat0: { ...this._buildingAABB },
         };
-        document.addEventListener('mousemove', this._boundDrag);
-        document.addEventListener('mouseup',   this._boundDragEnd);
+        document.addEventListener('pointermove',   this._boundDrag);
+        document.addEventListener('pointerup',     this._boundDragEnd);
+        document.addEventListener('pointercancel', this._boundDragEnd);
         e.preventDefault();
         return;
       }
@@ -3655,8 +3660,9 @@ const EsquisseCanvas = {
           startX: e.clientX, startY: e.clientY,
           prevX: e.clientX - rect.left, prevY: e.clientY - rect.top,
         };
-        document.addEventListener('mousemove', this._boundDrag);
-        document.addEventListener('mouseup',   this._boundDragEnd);
+        document.addEventListener('pointermove',   this._boundDrag);
+        document.addEventListener('pointerup',     this._boundDragEnd);
+        document.addEventListener('pointercancel', this._boundDragEnd);
         e.preventDefault();
       }
       // ── Polygon edge drag ──────────────────────────────────────
@@ -3668,8 +3674,9 @@ const EsquisseCanvas = {
           startX: e.clientX, startY: e.clientY,
           prevX: e.clientX - rect.left, prevY: e.clientY - rect.top,
         };
-        document.addEventListener('mousemove', this._boundDrag);
-        document.addEventListener('mouseup',   this._boundDragEnd);
+        document.addEventListener('pointermove',   this._boundDrag);
+        document.addEventListener('pointerup',     this._boundDragEnd);
+        document.addEventListener('pointercancel', this._boundDragEnd);
         e.preventDefault();
       }
     });
@@ -3853,8 +3860,9 @@ const EsquisseCanvas = {
 
   _onDragEnd() {
     this._dragging = null;
-    document.removeEventListener('mousemove', this._boundDrag);
-    document.removeEventListener('mouseup',   this._boundDragEnd);
+    document.removeEventListener('pointermove',   this._boundDrag);
+    document.removeEventListener('pointerup',     this._boundDragEnd);
+    document.removeEventListener('pointercancel', this._boundDragEnd);
 
     // Sync AABB → _prog → métriques (sliders suivent le drag)
     this._syncState('aabb');
@@ -4077,8 +4085,9 @@ const EsquisseCanvas = {
     if (this._map && this._boundRender) {
       this._map.off('render', this._boundRender);
     }
-    document.removeEventListener('mousemove', this._boundDrag);
-    document.removeEventListener('mouseup',   this._boundDragEnd);
+    document.removeEventListener('pointermove',   this._boundDrag);
+    document.removeEventListener('pointerup',     this._boundDragEnd);
+    document.removeEventListener('pointercancel', this._boundDragEnd);
     if (this._svg) {
       this._svg.innerHTML = '';
     }
@@ -4184,10 +4193,10 @@ const EsquisseCanvas = {
       const off = (ev) => {
         if (!pop.contains(ev.target)) {
           this._closeEdgePopup();
-          document.removeEventListener('mousedown', off, true);
+          document.removeEventListener('pointerdown', off, true);
         }
       };
-      document.addEventListener('mousedown', off, true);
+      document.addEventListener('pointerdown', off, true);
     }, 0);
   },
 
