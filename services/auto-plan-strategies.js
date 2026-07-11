@@ -386,39 +386,26 @@ const AutoPlanStrategies = {
     }];
   },
 
-  // ── Stratégie : T-Shape (intersection 2 rect orthogonaux) ────────
-  // Bar horizontal (traversant) + bar vertical (central court)
-  tShape(env, bearing = null, lRatio = 0.55, wRatio = 0.45) {
-    if (!env || env.length < 3) return [];
-    const envXY = env.map(p => FH.toXY(p));
-    const theta = bearing != null ? bearing : FH.obb(envXY).theta;
-
-    // Bar principal aligné sur theta — emprise du rect inscrit orienté
-    const primary = FH.maxInscribedRotAABB(envXY, theta * Math.PI / 180);
-    if (!primary || primary.length < 3) return [];
-    const c = FH.centroid(primary);
-    const rot = FH.rotatePoly(primary, c.x, c.y, -theta);
-    const bb = FH.aabb(rot);
-    const Wp = bb.w, Lp = bb.l;
-    const wBar = Wp * wRatio, lBar = Lp;                 // bar horizontal (fin, long)
-    const wStem = Wp, lStem = Lp * lRatio;                // bar vertical (large, court)
-
-    const bar = FH.rectCentered(c.x, c.y, wBar, lBar, theta);
-    const stem = FH.rectCentered(c.x, c.y, wStem, lStem, theta);
-    const barClip = FH.clipPolygon(bar, envXY);
-    const stemClip = FH.clipPolygon(stem, envXY);
-    const out = [];
-    if (barClip.length >= 3 && FH.area(barClip) >= MIN_W * MIN_L * 0.5) {
-      out.push({ polygon: barClip, theta, w: wBar, l: lBar, strategy: 'tShape', shapeType: 'tShape', part: 'bar', areaM2: FH.area(barClip) });
-    }
-    if (stemClip.length >= 3 && FH.area(stemClip) >= MIN_W * MIN_L * 0.5) {
-      out.push({ polygon: stemClip, theta, w: wStem, l: lStem, strategy: 'tShape', shapeType: 'tShape', part: 'stem', areaM2: FH.area(stemClip) });
-    }
-    return out.length ? out : [];
+  // ── Stratégie : T-Shape — UN polygone en T ─────────────────────────
+  // Barre traversante + descente centrale, en un seul polygone.
+  // L'ancienne version superposait 2 rects centrés sur le même point :
+  // le cœur était compté deux fois dans l'emprise (audit RC2, 10/10
+  // parcelles en chevauchement) et, faute de cible transmise, la forme
+  // remplissait tout le rect inscrit.
+  // opts : { cibleM2, rtaaW } — épaisseur des ailes capée RTAA.
+  tShape(env, bearing = null, opts = {}) {
+    return this._composedShape(env, bearing, opts, 'tShape');
   },
 
-  // ── Stratégie : Cross (+ intersection 2 rect orthogonaux centrés) ──
-  cross(env, bearing = null, armRatio = 0.35) {
+  // ── Stratégie : Croix — UN polygone en X (2 bras perpendiculaires) ──
+  cross(env, bearing = null, opts = {}) {
+    return this._composedShape(env, bearing, opts, 'cross');
+  },
+
+  // Forme composée T / X : polygone unique construit dans le repère du rect
+  // inscrit orienté, épaisseurs de bras ≤ rtaaW (ventilation traversante),
+  // W×L réduits par bissection si l'union dépasse cibleM2.
+  _composedShape(env, bearing, opts, kind) {
     if (!env || env.length < 3) return [];
     const envXY = env.map(p => FH.toXY(p));
     const theta = bearing != null ? bearing : FH.obb(envXY).theta;
@@ -427,22 +414,66 @@ const AutoPlanStrategies = {
     const c = FH.centroid(primary);
     const rot = FH.rotatePoly(primary, c.x, c.y, -theta);
     const bb = FH.aabb(rot);
-    const Wp = bb.w, Lp = bb.l;
-    const wH = Wp * armRatio, lH = Lp;         // bras horizontal fin
-    const wV = Wp, lV = Lp * armRatio;          // bras vertical fin
+    const rtaaW = opts.rtaaW ?? 12;
+    const cible = opts.cibleM2 ?? Infinity;
 
-    const horiz = FH.rectCentered(c.x, c.y, wH, lH, theta);
-    const vert = FH.rectCentered(c.x, c.y, wV, lV, theta);
-    const hClip = FH.clipPolygon(horiz, envXY);
-    const vClip = FH.clipPolygon(vert, envXY);
-    const out = [];
-    if (hClip.length >= 3 && FH.area(hClip) >= MIN_W * MIN_L * 0.5) {
-      out.push({ polygon: hClip, theta, w: wH, l: lH, strategy: 'cross', shapeType: 'cross', part: 'horiz', areaM2: FH.area(hClip) });
+    // Aire de l'union (identique T et X) : W·tBar + tArm·(L − tBar)
+    const dims = (k) => {
+      const W = bb.w * k, L = bb.l * k;
+      const tArm = Math.min(rtaaW, W * 0.45);
+      const tBar = Math.min(rtaaW, L * 0.45);
+      return { W, L, tArm, tBar, area: W * tBar + tArm * (L - tBar) };
+    };
+    // Bissection sur k pour viser cibleM2 (aire monotone en k)
+    let k = 1;
+    if (dims(1).area > cible) {
+      let lo = 0.3, hi = 1;
+      for (let it = 0; it < 24; it++) {
+        const mid = (lo + hi) / 2;
+        if (dims(mid).area > cible) hi = mid; else lo = mid;
+      }
+      k = lo;
     }
-    if (vClip.length >= 3 && FH.area(vClip) >= MIN_W * MIN_L * 0.5) {
-      out.push({ polygon: vClip, theta, w: wV, l: lV, strategy: 'cross', shapeType: 'cross', part: 'vert', areaM2: FH.area(vClip) });
+    let { W, L, tArm, tBar } = dims(k);
+    // Plancher : ailes constructibles (≥ MIN_W) et descente ≥ MIN_L
+    if (tArm < MIN_W || tBar < MIN_W || L - tBar < MIN_L) {
+      ({ W, L, tArm, tBar } = dims(Math.min(1, k * 1.4)));
+      if (tArm < MIN_W || tBar < MIN_W) return [];
     }
-    return out.length ? out : [];
+
+    // Polygone local (centré 0,0 ; y+ = haut du repère theta)
+    const hW = W / 2, hL = L / 2, hA = tArm / 2, hB = tBar / 2;
+    const local = kind === 'tShape'
+      ? [ // barre en haut + descente centrale
+        [-hW, hL], [hW, hL], [hW, hL - tBar], [hA, hL - tBar],
+        [hA, -hL], [-hA, -hL], [-hA, hL - tBar], [-hW, hL - tBar],
+      ]
+      : [ // croix centrée
+        [-hA, hL], [hA, hL], [hA, hB], [hW, hB],
+        [hW, -hB], [hA, -hB], [hA, -hL], [-hA, -hL],
+        [-hA, -hB], [-hW, -hB], [-hW, hB], [-hA, hB],
+      ];
+    const raw = FH.rotatePoly(local.map(([x, y]) => ({ x: c.x + x, y: c.y + y })), c.x, c.y, theta);
+
+    let clipped = FH.clipPolygon(raw, envXY);
+    // Rétrécissement progressif si le clip détruit la forme
+    let scale = 1.0;
+    while ((clipped.length < 3 || FH.area(clipped) < MIN_W * MIN_L) && scale > 0.4) {
+      scale *= 0.85;
+      const d2 = dims(k * scale);
+      const hW2 = d2.W / 2, hL2 = d2.L / 2, hA2 = d2.tArm / 2, hB2 = d2.tBar / 2;
+      const loc2 = kind === 'tShape'
+        ? [[-hW2, hL2], [hW2, hL2], [hW2, hL2 - d2.tBar], [hA2, hL2 - d2.tBar], [hA2, -hL2], [-hA2, -hL2], [-hA2, hL2 - d2.tBar], [-hW2, hL2 - d2.tBar]]
+        : [[-hA2, hL2], [hA2, hL2], [hA2, hB2], [hW2, hB2], [hW2, -hB2], [hA2, -hB2], [hA2, -hL2], [-hA2, -hL2], [-hA2, -hB2], [-hW2, -hB2], [-hW2, hB2], [-hA2, hB2]];
+      clipped = FH.clipPolygon(FH.rotatePoly(loc2.map(([x, y]) => ({ x: c.x + x, y: c.y + y })), c.x, c.y, theta), envXY);
+    }
+    if (clipped.length < 3) return [];
+
+    return [{
+      polygon: clipped, theta, w: W, l: L,
+      strategy: kind, shapeType: kind,
+      areaM2: FH.area(clipped),
+    }];
   },
 
   // ── Stratégie : Bi-barre reliée (2 bars + noyau central) ─────────

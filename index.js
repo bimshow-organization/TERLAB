@@ -69,6 +69,7 @@ import FootprintAnalyzer      from './services/footprint-analyzer.js';
 import FootprintHelpers       from './services/footprint-helpers.js';
 import GeoUtils               from './services/geo-utils.js';
 import GeomInlet              from './services/geom-inlet.js';
+import CapacitePolygone       from './services/capacite-polygone.js';
 import Parking                from './services/parking.js';
 import AutoPlanStrategies     from './services/auto-plan-strategies.js';
 import                             './data/strategies.js';

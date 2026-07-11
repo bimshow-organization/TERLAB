@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Étude de capacité — v0</title>
+
+<!--
+  TOOL : étude de capacité urbaine/architecturale autonome.
+  ─────────────────────────────────────────────────────────
+  Fusionne :
+    • parcelle + PLU + reculs        → terlab_parcelles_v4h.html
+    • zonage PLU + diagnostic         → p07-esquisse.html
+    • typologies bâtiment paramétrées → organigramme-viewer-collectif.html (LAME / ARTICULE / PLOT / PATIO / DUPLEX)
+  Trois vues séparées : Parcelle (plan masse) · Bâtiment (étage par étage) · Axonométrie.
+  Pas de dépendance externe — pure SVG.
+-->
+
+<style>
+:root {
+  --bg: #0a0e18; --bg-2: #11172a; --bg-3: #1a223d;
+  --panel: #131a2e; --line: #1f2945;
+  --fg: #d8e1f5; --fg-2: #8b97b6;
+  --accent: #5b9eff; --accent-2: #8c5bff;
+  --grow: #5be0a0; --warn: #f59e0b; --err: #ff5b75; --gold: #ffc857;
+  --shadow: 0 6px 24px rgba(0,0,0,.45);
+  --r: 10px;
+  /* Atlas palette (papier tropical, identique à organigramme-viewer-collectif) */
+  --p-fond: #fcfaf3; --p-mur: #58442a; --p-text: #3a2e1c; --p-text2: #7a6040;
+  --p-logt: rgba(243,233,213,.88); --p-cours: rgba(130,170,215,.42);
+  --p-var: rgba(105,170,90,.36); --p-esc: rgba(185,170,135,.55);
+  --p-asc: rgba(195,180,148,.55); --p-noyau: rgba(118,102,76,.5);
+  --p-pal: rgba(195,180,145,.52); --p-patio: rgba(135,200,115,.32);
+  --p-jardin: rgba(105,165,85,.28); --p-park: rgba(175,165,140,.45);
+  --p-zone: rgba(91,158,255,.10); --p-zone-stroke: rgba(91,158,255,.5);
+  --p-recul: rgba(245,158,11,.15); --p-voie: #c43a3a;
+  --p-lat: #5b9eff; --p-fond-edge: #5be0a0;
+  --p-build: rgba(140,95,55,.45); --p-build-stroke: #58442a;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono','SF Mono',Consolas,monospace; font-size: 13px; overflow: hidden; }
+button, input, select { font-family: inherit; }
+
+#app {
+  display: grid; grid-template-rows: 56px 1fr 32px;
+  grid-template-columns: 1fr 320px;
+  grid-template-areas: "top top" "main side" "bot bot";
+  height: 100vh;
+}
+#topbar {
+  grid-area: top; background: linear-gradient(90deg, var(--bg-2), var(--bg-3));
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; padding: 0 14px; gap: 14px;
+}
+#main { grid-area: main; position: relative; display: flex; flex-direction: column; overflow: hidden; }
+#side { grid-area: side; background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding: 12px; }
+#bottombar { grid-area: bot; background: var(--bg-2); border-top: 1px solid var(--line); display: flex; align-items: center; padding: 0 12px; gap: 10px; font-size: 11px; color: var(--fg-2); }
+
+.brand { display: flex; align-items: center; gap: 10px; font-weight: bold; }
+.brand .dot { width: 12px; height: 12px; border-radius: 50%; background: conic-gradient(var(--accent), var(--accent-2), var(--grow), var(--gold), var(--accent)); animation: spin 6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.brand .name { letter-spacing: 1px; }
+.brand .tag { color: var(--fg-2); font-weight: normal; font-size: 11px; }
+
+.tabs { display: flex; gap: 2px; background: var(--bg); border-radius: var(--r); padding: 3px; border: 1px solid var(--line); }
+.tab-btn { background: transparent; border: 0; color: var(--fg-2); padding: 6px 14px; font-size: 11px; border-radius: 7px; cursor: pointer; transition: all .12s; }
+.tab-btn:hover { color: var(--fg); background: var(--bg-3); }
+.tab-btn.active { background: linear-gradient(180deg, var(--accent), #2c66c9); color: white; box-shadow: 0 2px 8px rgba(91,158,255,.35); }
+
+.btn { background: var(--bg-3); border: 1px solid var(--line); color: var(--fg); padding: 6px 12px; border-radius: 7px; cursor: pointer; font-size: 11px; transition: all .12s; }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.btn.primary { background: linear-gradient(180deg, var(--accent), #2c66c9); border-color: transparent; color: white; }
+.btn.icon { padding: 5px 8px; }
+
+.canvas-head { padding: 8px 14px; background: var(--bg-2); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.canvas-head h2 { margin: 0; font-size: 14px; }
+.canvas-head .quick { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.pill { background: var(--bg); border: 1px solid var(--line); padding: 3px 9px; border-radius: 12px; font-size: 10px; color: var(--fg-2); }
+.pill .v { color: var(--gold); font-weight: bold; }
+.pill.ok { border-color: var(--grow); color: var(--grow); } .pill.ok .v { color: var(--grow); }
+.pill.err { border-color: var(--err); color: var(--err); } .pill.err .v { color: var(--err); }
+.pill.warn { border-color: var(--warn); color: var(--warn); } .pill.warn .v { color: var(--warn); }
+
+.level-nav { display: flex; align-items: center; gap: 4px; background: var(--bg-3); border: 1px solid var(--line); border-radius: 7px; padding: 2px 4px; font-size: 11px; }
+.level-nav .nav-btn { background: transparent; border: 0; color: var(--fg-2); cursor: pointer; padding: 4px 6px; border-radius: 4px; font-size: 12px; line-height: 1; }
+.level-nav .nav-btn:hover { color: var(--accent); background: var(--bg); }
+.level-nav .nav-btn:disabled { color: var(--bg-3); cursor: not-allowed; }
+.level-nav .level-label { min-width: 70px; text-align: center; color: var(--gold); font-weight: bold; letter-spacing: .5px; }
+
+.canvas-area { flex: 1; padding: 12px; display: flex; align-items: center; justify-content: center; background: #fcfaf3 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><circle cx='1' cy='1' r='0.5' fill='%23d6cfb8'/></svg>"); overflow: auto; }
+.canvas-area svg { max-width: 100%; max-height: 100%; }
+
+.section { border: 1px solid var(--line); border-radius: var(--r); margin-bottom: 10px; overflow: hidden; background: var(--bg-2); }
+.section-title { padding: 7px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--fg-2); background: var(--bg-3); border-bottom: 1px solid var(--line); }
+.section-body { padding: 10px; }
+.field-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.field-row:last-child { margin-bottom: 0; }
+.field-label { display: flex; justify-content: space-between; font-size: 10px; color: var(--fg-2); }
+.field-label .v { color: var(--accent); font-weight: bold; }
+input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 4px; background: var(--bg-3); border-radius: 2px; outline: none; }
+input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; box-shadow: 0 0 0 3px rgba(91,158,255,.18); }
+input[type="range"]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; border: 0; }
+select { background: var(--bg); border: 1px solid var(--line); color: var(--fg); padding: 5px 8px; border-radius: 5px; font-size: 11px; width: 100%; }
+select:focus { outline: none; border-color: var(--accent); }
+.toggle-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.toggle { flex: 1; min-width: 60px; background: var(--bg); border: 1px solid var(--line); color: var(--fg-2); padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 10px; transition: all .12s; text-align: center; }
+.toggle:hover { border-color: var(--accent); }
+.toggle.on { background: var(--accent); border-color: var(--accent); color: white; }
+.toggle.on.grow { background: var(--grow); border-color: var(--grow); color: #062018; }
+
+.kv { display: flex; justify-content: space-between; padding: 2px 0; font-size: 11px; }
+.kv .k { color: var(--fg-2); } .kv .v { color: var(--fg); font-weight: bold; }
+.kv .v.gold { color: var(--gold); } .kv .v.err { color: var(--err); } .kv .v.grow { color: var(--grow); }
+.diag-list { margin: 0; padding-left: 16px; font-size: 10px; line-height: 1.5; color: var(--fg-2); }
+.diag-list li { margin: 2px 0; }
+.diag-list li.ok::marker { content: '✓ '; color: var(--grow); }
+.diag-list li.warn::marker { content: '⚠ '; color: var(--warn); }
+.diag-list li.err::marker { content: '✗ '; color: var(--err); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--line); }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="topbar">
+    <div class="brand">
+      <div class="dot"></div>
+      <div>
+        <div class="name">ÉTUDE DE CAPACITÉ</div>
+        <div class="tag">parcelle · PLU · bâtiment · axo · v0</div>
+      </div>
+    </div>
+
+    <div class="tabs" id="tabs">
+      <button class="tab-btn active" data-tab="parcelle">🌍 Parcelle</button>
+      <button class="tab-btn" data-tab="batiment">🏢 Bâtiment</button>
+      <button class="tab-btn" data-tab="axo">📐 Axonométrie</button>
+    </div>
+
+    <div style="flex:1"></div>
+
+    <button class="btn" id="btn-reseed">🎲 Re-seed parcelle</button>
+    <button class="btn" id="btn-reset">↺ Reset</button>
+    <button class="btn primary" id="btn-export">⬇ SVG</button>
+  </div>
+
+  <div id="main">
+    <div class="canvas-head">
+      <h2 id="canvas-title">Parcelle</h2>
+      <div class="level-nav" id="level-nav" style="display:none">
+        <button class="nav-btn" id="btn-level-down">▼</button>
+        <span class="level-label" id="level-label">—</span>
+        <button class="nav-btn" id="btn-level-up">▲</button>
+      </div>
+      <div class="quick" id="canvas-quick"></div>
+    </div>
+    <div class="canvas-area" id="canvas-area"></div>
+  </div>
+
+  <div id="side">
+    <div id="params-host"></div>
+  </div>
+
+  <div id="bottombar">
+    <span id="status-msg">prêt</span>
+    <div style="flex:1"></div>
+    <span id="hint">tabs ↑ : Parcelle (PLU) · Bâtiment (étages) · Axo (vue 3D)</span>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* =============================================================================
+   §1 — PLU DATA + TYPOLOGIES MÉTADONNÉES
+============================================================================= */
+const PLU_ZONES = {
+  UAa: { recul_voie: 0,  recul_lat: 3, recul_fond: 4, ces_max: 0.7, cos_max: 2.0, h_max: 12, h_egout: 9,  note: 'Urbaine dense' },
+  UB:  { recul_voie: 4,  recul_lat: 3, recul_fond: 4, ces_max: 0.4, cos_max: 0.8, h_max: 9,  h_egout: 6,  note: 'Urbaine résidentielle' },
+  UC:  { recul_voie: 5,  recul_lat: 3, recul_fond: 5, ces_max: 0.3, cos_max: 0.5, h_max: 7,  h_egout: 4,  note: 'Périphérique' },
+  N:   { recul_voie: 8,  recul_lat: 5, recul_fond: 8, ces_max: 0.1, cos_max: 0.2, h_max: 5,  h_egout: 3,  note: 'Naturelle' },
+  custom: { recul_voie: 4, recul_lat: 3, recul_fond: 4, ces_max: 0.5, cos_max: 1.0, h_max: 9, h_egout: 6, note: 'Custom' }
+};
+
+const TYPOLOGIES = {
+  LAME_SIMPLE: { label: 'Lame simple', perFloor: { min:2, max:6, def:4 }, levels: { min:1, max:5, def:3 }, profondeur: { min:7, max:13, def:11 } },
+  ARTICULE_COURSIVE: { label: 'Lame articulée', perFloor: { min:2, max:8, def:6 }, levels: { min:1, max:4, def:3 }, profondeur: { min:7, max:13, def:11 } },
+  PLOT_4LOGTS: { label: 'Plot 4 logts', perFloor: { min:4, max:4, def:4 }, levels: { min:2, max:5, def:4 }, profondeur: { min:16, max:22, def:20 } },
+  PATIO_U:     { label: 'Patio U',      perFloor: { min:6, max:12, def:8 }, levels: { min:3, max:5, def:4 }, profondeur: { min:10, max:14, def:12 } },
+  DUPLEX_GROUPE:{ label: 'Duplex groupé',perFloor: { min:4, max:6, def:4 }, levels: { min:2, max:2, def:2 }, profondeur: { min:7, max:9, def:7.4 } },
+};
+
+const LOGT_W = { T1: 5.0, T2: 7.0, T3: 8.5, T4: 10.0, T5: 12.0, T6: 14.0, DX_T3: 7.4, DX_T4: 7.4 };
+const LOGT_MIN_W = 4.2;
+const SEC_MAX_DIST = 25;
+const ESC_SEC_W = 3;
+
+function labelForWidth(w) { if (w >= 14) return 'T6'; if (w >= 12) return 'T5'; if (w >= 10) return 'T4'; if (w >= 8) return 'T3'; if (w >= 6.5) return 'T2'; if (w >= 4.2) return 'T1'; return 'T0'; }
+
+/* =============================================================================
+   §2 — PRNG + GEOMETRY UTILS
+============================================================================= */
+function makeRng(seed) {
+  let s = (seed | 0) || 1;
+  return () => { s = (Math.imul(s, 1664525) + 1013904223) | 0; return ((s >>> 0) % 1000000) / 1000000; };
+}
+
+function polyArea(pts) { let a = 0; for (let i=0;i<pts.length;i++){ const [x1,y1]=pts[i],[x2,y2]=pts[(i+1)%pts.length]; a += x1*y2 - x2*y1; } return Math.abs(a)*0.5; }
+function polyCentroid(pts) { let cx=0,cy=0,a=0; for (let i=0;i<pts.length;i++){ const [x1,y1]=pts[i],[x2,y2]=pts[(i+1)%pts.length]; const cr = x1*y2 - x2*y1; a += cr; cx += (x1+x2)*cr; cy += (y1+y2)*cr; } a*=0.5; if (!a) { let sx=0,sy=0; for (const[x,y] of pts){ sx+=x; sy+=y; } return [sx/pts.length, sy/pts.length]; } return [cx/(6*a), cy/(6*a)]; }
+function polyBounds(pts) { let minX=1e9, minY=1e9, maxX=-1e9, maxY=-1e9; for (const[x,y] of pts){ if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y; } return { minX, minY, maxX, maxY, w: maxX-minX, h: maxY-minY }; }
+function pointInPoly(p, poly) { let inside = false; for (let i=0,j=poly.length-1; i<poly.length; j=i++) { const [xi,yi]=poly[i],[xj,yj]=poly[j]; if (((yi>p[1])!==(yj>p[1])) && (p[0] < (xj-xi)*(p[1]-yi)/(yj-yi) + xi)) inside = !inside; } return inside; }
+
+// Demi-plan clip de Sutherland–Hodgman pour offset polygone simple
+function clipBy(pts, A, B, C) {  // half-plane : Ax + By + C >= 0
+  const out = [];
+  for (let i=0; i<pts.length; i++) {
+    const cur = pts[i], nxt = pts[(i+1)%pts.length];
+    const dCur = A*cur[0] + B*cur[1] + C;
+    const dNxt = A*nxt[0] + B*nxt[1] + C;
+    if (dCur >= 0) out.push(cur);
+    if ((dCur >= 0) !== (dNxt >= 0)) {
+      const t = dCur / (dCur - dNxt);
+      out.push([cur[0] + t*(nxt[0]-cur[0]), cur[1] + t*(nxt[1]-cur[1])]);
+    }
+  }
+  return out;
+}
+
+/* =============================================================================
+   §3 — PARCELLE GENERATORS (5 types depuis terlab_parcelles_v4h)
+============================================================================= */
+const PARCELLE_TYPES = ['rectangle','trapeze','pentagone','biais','irregulier'];
+
+function genParcelle(type, seed) {
+  const rng = makeRng(seed);
+  if (type === 'rectangle') {
+    const w = 18 + rng() * 14, h = 22 + rng() * 18;
+    return { points: [[0,0],[w,0],[w,h],[0,h]], voieIdxs: [0] };  // arête voie = 0→1 (front)
+  }
+  if (type === 'trapeze') {
+    const w = 18 + rng() * 14, h = 22 + rng() * 18;
+    const skew = (rng() - 0.5) * w * 0.3;
+    return { points: [[0,0],[w,0],[w-Math.abs(skew),h],[Math.abs(skew)*0.5,h]], voieIdxs: [0] };
+  }
+  if (type === 'pentagone') {
+    const w = 18 + rng() * 14, h = 22 + rng() * 18;
+    const peak = w/2 + (rng() - 0.5) * w * 0.3;
+    return { points: [[0,0],[w,0],[w,h*0.7],[peak,h],[0,h*0.7]], voieIdxs: [0] };
+  }
+  if (type === 'biais') {
+    const w = 18 + rng() * 14, h = 22 + rng() * 18;
+    const dx1 = (rng() - 0.5) * 6, dx2 = (rng() - 0.5) * 6;
+    return { points: [[0,0],[w,0],[w+dx2,h],[dx1,h]], voieIdxs: [0] };
+  }
+  // irregulier (5 sommets aléatoires sur un disque)
+  const points = [];
+  const N = 5 + Math.floor(rng() * 2);
+  const cx = 15, cy = 18, baseR = 14;
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2 + (rng() - 0.5) * 0.4;
+    const r = baseR * (0.7 + rng() * 0.6);
+    points.push([cx + r * Math.cos(a) + 16, cy + r * Math.sin(a) + 18]);
+  }
+  return { points, voieIdxs: [0] };
+}
+
+// Détecte arêtes : voie / fond / lat (avec side gauche/droite pour mitoyenneté)
+function classifyEdges(parcelle) {
+  const pts = parcelle.points;
+  const voieIdxs = parcelle.voieIdxs || [0];
+  const N = pts.length;
+  const b = polyBounds(pts);
+  const cx = (b.minX + b.maxX) / 2;
+  const edges = [];
+  for (let i = 0; i < N; i++) {
+    const j = (i + 1) % N;
+    const [x1,y1] = pts[i], [x2,y2] = pts[j];
+    const my = (y1 + y2) / 2, mx = (x1 + x2) / 2;
+    const dy = y2 - y1, dx = x2 - x1;
+    const horiz = Math.abs(dy) < Math.abs(dx);
+    let kind, side = null;
+    if (voieIdxs.includes(i)) kind = 'voie';
+    else if (horiz && my > 5) kind = 'fond';
+    else { kind = 'lat'; side = (mx < cx) ? 'left' : 'right'; }
+    edges.push({ idx: i, kind, side, p1: pts[i], p2: pts[j] });
+  }
+  return edges;
+}
+
+/* =============================================================================
+   §4 — ZONE CONSTRUCTIBLE (offset par arête + mitoyenneté optionnelle)
+============================================================================= */
+function zoneConstructible(parcelle, plu, mitG, mitD) {
+  const edges = classifyEdges(parcelle);
+  let zone = parcelle.points.slice();
+  for (const e of edges) {
+    const [x1,y1] = e.p1, [x2,y2] = e.p2;
+    const dx = x2 - x1, dy = y2 - y1;
+    const len = Math.hypot(dx, dy);
+    if (len < 0.001) continue;
+    let nx = -dy / len, ny = dx / len;
+    if (polySignedArea(parcelle.points) < 0) { nx = -nx; ny = -ny; }
+    let recul;
+    if (e.kind === 'voie') recul = plu.recul_voie;
+    else if (e.kind === 'fond') recul = plu.recul_fond;
+    else if (e.kind === 'lat') {
+      // Mitoyenneté : recul 0 sur l'arête latérale concernée
+      if (e.side === 'left'  && mitG) recul = 0;
+      else if (e.side === 'right' && mitD) recul = 0;
+      else recul = plu.recul_lat;
+    } else recul = 0;
+    if (recul <= 0) continue;
+    const C = -(nx*x1 + ny*y1) - recul;
+    zone = clipBy(zone, nx, ny, C);
+    if (zone.length < 3) return [];
+  }
+  return zone;
+}
+
+function polySignedArea(pts) { let a = 0; for (let i=0;i<pts.length;i++){ const [x1,y1]=pts[i],[x2,y2]=pts[(i+1)%pts.length]; a += x1*y2 - x2*y1; } return a*0.5; }
+
+// Plus grand rectangle axe-aligné dans le polygone (greedy via raster)
+function maxAARect(zone) {
+  if (!zone || zone.length < 3) return null;
+  const b = polyBounds(zone);
+  const grid = 32;
+  const sx = b.w / grid, sy = b.h / grid;
+  // Marque les cellules dans la zone
+  const ok = [];
+  for (let i = 0; i < grid; i++) {
+    ok.push([]);
+    for (let j = 0; j < grid; j++) {
+      const px = b.minX + (i + 0.5) * sx, py = b.minY + (j + 0.5) * sy;
+      ok[i].push(pointInPoly([px, py], zone));
+    }
+  }
+  // Histogramme par colonne, plus grand rectangle dans histogramme
+  const heights = new Array(grid).fill(0);
+  let best = { area: 0 };
+  for (let j = 0; j < grid; j++) {
+    for (let i = 0; i < grid; i++) heights[i] = ok[i][j] ? heights[i] + 1 : 0;
+    // Stack-based largest rect histogram
+    const st = [];
+    for (let i = 0; i <= grid; i++) {
+      const h = (i === grid) ? 0 : heights[i];
+      while (st.length && heights[st[st.length-1]] > h) {
+        const top = st.pop();
+        const w = st.length ? i - st[st.length-1] - 1 : i;
+        const area = heights[top] * w;
+        if (area > best.area) {
+          const i0 = st.length ? st[st.length-1] + 1 : 0;
+          const x = b.minX + i0 * sx;
+          const y = b.minY + (j + 1 - heights[top]) * sy;
+          best = { area, x, y, w: w * sx, h: heights[top] * sy };
+        }
+      }
+      st.push(i);
+    }
+  }
+  return best.area > 0 ? best : null;
+}
+
+/* =============================================================================
+   §5 — BUILDING TYPOLOGY GENERATORS (extraits de organigramme-viewer-collectif)
+   Chaque générateur produit { width, depth, items, north_arrow_deg, _meta }.
+============================================================================= */
+const PAL = {
+  fond: '#fcfaf3', mur: '#58442a', text: '#3a2e1c',
+  logement: 'rgba(243,233,213,.88)', logement_T1: 'rgba(243,225,200,.88)', logement_T2: 'rgba(243,233,213,.88)',
+  logement_T3: 'rgba(238,225,195,.88)', logement_T4: 'rgba(225,210,175,.88)', logement_T5: 'rgba(215,195,160,.88)',
+  varangue: 'rgba(105,170,90,.36)', coursive: 'rgba(130,170,215,.42)',
+  escalier: 'rgba(185,170,135,.55)', ascenseur: 'rgba(195,180,148,.55)', noyau: 'rgba(118,102,76,.5)',
+  palier: 'rgba(195,180,145,.52)', patio: 'rgba(135,200,115,.32)', sechoir: 'rgba(215,200,170,.65)',
+  parking: 'rgba(175,165,140,.45)', local_co: 'rgba(175,160,130,.45)',
+  hall: 'rgba(130,170,215,.55)', velo: 'rgba(175,165,140,.55)', poub: 'rgba(140,120,100,.55)', tech: 'rgba(155,150,140,.55)',
+  fond_void: '#fcfaf3', gold: '#ffc857',
+};
+
+function colorFor(type, subtype) {
+  if (type === 'logement') {
+    if (subtype === 'T1') return PAL.logement_T1; if (subtype === 'T2') return PAL.logement_T2;
+    if (subtype === 'T3') return PAL.logement_T3; if (subtype === 'T4') return PAL.logement_T4;
+    if (subtype === 'T5' || subtype === 'T6') return PAL.logement_T5;
+    return PAL.logement;
+  }
+  return PAL[type] || PAL.local_co;
+}
+
+function getMixCounts(perFloor, preset) {
+  const presets = {
+    mixte:    [{ type: 'T2', ratio: 0.4 }, { type: 'T3', ratio: 0.6 }],
+    compact:  [{ type: 'T2', ratio: 1.0 }],
+    familial: [{ type: 'T3', ratio: 0.5 }, { type: 'T4', ratio: 0.5 }],
+    social:   [{ type: 'T1', ratio: 0.3 }, { type: 'T2', ratio: 0.4 }, { type: 'T3', ratio: 0.3 }],
+    T1_only:  [{ type: 'T1', ratio: 1.0 }],   // mix de secours pour réduction max
+  };
+  const p = presets[preset] || presets.mixte;
+  const out = {}; let leftover = perFloor;
+  const sorted = p.slice().sort((a,b) => b.ratio - a.ratio);
+  for (const m of sorted) { const c = Math.max(1, Math.round(perFloor * m.ratio)); out[m.type] = Math.min(leftover, c); leftover -= out[m.type]; }
+  if (leftover > 0 && sorted[0]) out[sorted[0].type] += leftover;
+  return Object.entries(out).map(([type, count]) => ({ type, count }));
+}
+
+function widthsFromMix(perFloor, mixPreset) {
+  const mix = getMixCounts(perFloor, mixPreset);
+  const widths = [];
+  for (const m of mix) for (let i = 0; i < m.count; i++) widths.push({ type: m.type, w: LOGT_W[m.type] || 8 });
+  return widths;
+}
+
+const GEN = {};
+
+// ── LAME_SIMPLE ─────────────────────────────────────────────────────────────
+GEN.LAME_SIMPLE = (p) => {
+  const items = [];
+  const noyauW = 4, coursH = p.coursH ?? 1.50;
+  const varH = p.varangue ? 1.5 : 0;
+  const interiorH = p.profondeur - coursH - varH;
+  const widths = widthsFromMix(p.perFloor, p.mixPreset);
+  const totalLogW = widths.reduce((s,x) => s + x.w, 0);
+  const isRDC = p.currentLevel === 0;
+  // Distance porte→ESC
+  const lastL = widths[widths.length-1];
+  const maxDist = lastL ? noyauW + totalLogW - lastL.w/2 - 2 : 0;
+  const needSec = (p.secondaire_escalier === true) || maxDist > SEC_MAX_DIST;
+  const totalW = noyauW + totalLogW + (needSec ? ESC_SEC_W : 0);
+
+  items.push({ type:'noyau', x:0, y:0, w:noyauW, d:p.profondeur, label:'Noyau' });
+  items.push({ type:'escalier',  x:0.4, y:0.4, w:2.5, d:2.5, label:'ESC' });
+  items.push({ type:'ascenseur', x:0.4, y:3.2, w:2.0, d:2.0, label:'ASC' });
+  items.push({ type:'palier',    x:0.4, y:5.4, w:noyauW-0.8, d:p.profondeur-5.6, label:'Pal.' });
+  items.push({ type:'coursive', x:noyauW, y:0, w:totalLogW, d:coursH, label:'Coursive NE' });
+
+  let cx = noyauW;
+  for (let i = 0; i < widths.length; i++) {
+    const l = widths[i];
+    if (isRDC && i === 0) {
+      items.push({ type:'hall', x:cx, y:coursH, w:l.w, d:interiorH, label:'Hall', door:{side:'top', offset:l.w/2} });
+    } else if (isRDC && i === 1) {
+      const halfH = interiorH/2 - 0.05;
+      items.push({ type:'velo', x:cx, y:coursH, w:l.w, d:halfH, label:'Vélos' });
+      items.push({ type:'poub', x:cx, y:coursH + interiorH/2 + 0.05, w:l.w, d:halfH, label:'Poub.' });
+    } else {
+      items.push({ type:'logement', subtype:l.type, x:cx, y:coursH, w:l.w, d:interiorH, label:l.type, door:{side:'top', offset:l.w/2} });
+      if (p.sechoir && l.w > 4) items.push({ type:'sechoir', x:cx+0.2, y:coursH+0.2, w:1.4, d:1.4, label:'S' });
+    }
+    cx += l.w;
+  }
+
+  if (p.varangue) items.push({ type:'varangue', x:noyauW, y:p.profondeur-varH, w:totalLogW, d:varH, label:'Varangues SO' });
+  if (needSec) items.push({ type:'escalier', x:noyauW+totalLogW, y:0, w:ESC_SEC_W, d:p.profondeur, label:'ESC 2' });
+
+  return { width: totalW, depth: p.profondeur, items, north_arrow_deg: 45, _meta: { maxDist, needSec, totalLogW } };
+};
+
+// ── PLOT_4LOGTS ─────────────────────────────────────────────────────────────
+GEN.PLOT_4LOGTS = (p) => {
+  const items = [];
+  const side = p.profondeur;     // carré
+  const noyauSide = 5;
+  const half = side / 2;
+  const cxN = (side - noyauSide) / 2, cyN = (side - noyauSide) / 2;
+  const cornerVA = 1.5;
+  const widths = widthsFromMix(4, p.mixPreset);
+  const types = []; for (const m of getMixCounts(4, p.mixPreset)) for (let i=0; i<m.count; i++) types.push(m.type);
+  while (types.length < 4) types.push('T2');
+
+  items.push({ type:'logement', subtype:types[0], x:0,    y:0,    w:half, d:half, label:types[0]+' NO', door:{side:'right', offset:half-1.5} });
+  items.push({ type:'logement', subtype:types[1], x:half, y:0,    w:half, d:half, label:types[1]+' NE', door:{side:'left',  offset:half-1.5} });
+  items.push({ type:'logement', subtype:types[2], x:0,    y:half, w:half, d:half, label:types[2]+' SO', door:{side:'right', offset:1.5} });
+  items.push({ type:'logement', subtype:types[3], x:half, y:half, w:half, d:half, label:types[3]+' SE', door:{side:'left',  offset:1.5} });
+
+  items.push({ type:'noyau',     x:cxN,        y:cyN,        w:noyauSide, d:noyauSide, label:'Noyau' });
+  items.push({ type:'palier',    x:cxN+0.3,    y:cyN+0.3,    w:noyauSide-0.6, d:noyauSide-0.6, label:'Pal.' });
+  items.push({ type:'escalier',  x:cxN+0.4,    y:cyN+0.4,    w:1.8, d:1.8, label:'ESC' });
+  items.push({ type:'ascenseur', x:cxN+noyauSide-2.2, y:cyN+0.4, w:1.8, d:1.8, label:'ASC' });
+
+  if (p.varangue) {
+    items.push({ type:'varangue', x:0, y:0, w:cornerVA, d:cornerVA, label:'V' });
+    items.push({ type:'varangue', x:side-cornerVA, y:0, w:cornerVA, d:cornerVA, label:'V' });
+    items.push({ type:'varangue', x:0, y:side-cornerVA, w:cornerVA, d:cornerVA, label:'V' });
+    items.push({ type:'varangue', x:side-cornerVA, y:side-cornerVA, w:cornerVA, d:cornerVA, label:'V' });
+  }
+  return { width: side, depth: side, items, north_arrow_deg: 0, _meta: { maxDist: half/2, needSec: false } };
+};
+
+// ── PATIO_U ─────────────────────────────────────────────────────────────────
+GEN.PATIO_U = (p) => {
+  const items = [];
+  const profondeur = p.profondeur;
+  const coursH = p.coursH ?? 1.50;
+  const varH = p.varangue ? 1.5 : 0;
+  const noyauW = 4, noyauD = 4;
+  const minW = LOGT_MIN_W;
+  const N = Math.max(6, Math.min(12, p.perFloor || 8));
+  const top = 2;
+  const sideEach = Math.max(1, Math.round((N - 4) / 2));
+  const bottom = Math.max(1, N - top - 2 * sideEach);
+  const widths = widthsFromMix(N, p.mixPreset);
+  while (widths.length < N) widths.push({ type:'T2', w:LOGT_W.T2 });
+  const topApts = widths.slice(0, top);
+  const bottomApts = widths.slice(top, top + bottom);
+  const leftApts = widths.slice(top + bottom, top + bottom + sideEach);
+  const rightApts = widths.slice(top + bottom + sideEach, top + bottom + 2*sideEach);
+  const sumW = a => a.reduce((s,l) => s + Math.max(minW, l.w), 0);
+  const topSpan = noyauW + sumW(topApts), bottomSpan = sumW(bottomApts);
+  const leftSpan = sumW(leftApts), rightSpan = sumW(rightApts);
+  const sideSpan = Math.max(leftSpan, rightSpan, 4 * minW);
+  const W = Math.max(topSpan, bottomSpan + 2*profondeur, 2*profondeur + 4);
+  const D = profondeur + sideSpan + profondeur;
+  const patioW = W - 2*profondeur, patioH = sideSpan;
+
+  items.push({ type:'patio', x:profondeur, y:profondeur, w:patioW, d:patioH, label:'Patio' });
+  items.push({ type:'coursive', x:profondeur, y:profondeur-coursH, w:patioW, d:coursH, label:'Coursive' });
+  const noyauX = (W - noyauW) / 2;
+  items.push({ type:'noyau', x:noyauX, y:0, w:noyauW, d:noyauD, label:'Noyau' });
+  items.push({ type:'escalier', x:noyauX+0.3, y:0.3, w:1.7, d:noyauD-0.6, label:'ESC' });
+  items.push({ type:'ascenseur', x:noyauX+2.2, y:0.3, w:1.4, d:1.4, label:'ASC' });
+  // top apts
+  if (topApts[0]) { const apW = noyauX, ovX = (profondeur + noyauX) / 2; items.push({ type:'logement', subtype:topApts[0].type, x:0, y:0, w:apW, d:profondeur-coursH, label:topApts[0].type, door:{side:'bottom', offset:Math.max(1, Math.min(apW-1, ovX))} }); }
+  if (topApts[1]) { const sX = noyauX+noyauW, apW = W - sX, ovX = (sX + W - profondeur) / 2; items.push({ type:'logement', subtype:topApts[1].type, x:sX, y:0, w:apW, d:profondeur-coursH, label:topApts[1].type, door:{side:'bottom', offset:Math.max(1, Math.min(apW-1, ovX-sX))} }); }
+  // bottom apts
+  const bottomY = profondeur + patioH;
+  items.push({ type:'coursive', x:profondeur, y:bottomY, w:patioW, d:coursH, label:'Coursive' });
+  let bx = profondeur;
+  const bs = bottomSpan > 0 ? patioW / bottomSpan : 1;
+  for (const apt of bottomApts) { const apW = Math.max(minW, apt.w) * bs; items.push({ type:'logement', subtype:apt.type, x:bx, y:bottomY+coursH, w:apW, d:profondeur-coursH-varH, label:apt.type, door:{side:'top', offset:apW/2} }); bx += apW; }
+  // left/right
+  items.push({ type:'coursive', x:profondeur-coursH, y:profondeur, w:coursH, d:patioH });
+  items.push({ type:'coursive', x:W-profondeur, y:profondeur, w:coursH, d:patioH });
+  let ly = profondeur; const ls = leftSpan > 0 ? patioH / leftSpan : 1;
+  for (const apt of leftApts) { const aH = Math.max(minW, apt.w) * ls; items.push({ type:'logement', subtype:apt.type, x:0, y:ly, w:profondeur-coursH, d:aH, label:apt.type, door:{side:'right', offset:aH/2} }); ly += aH; }
+  let ry = profondeur; const rs = rightSpan > 0 ? patioH / rightSpan : 1;
+  for (const apt of rightApts) { const aH = Math.max(minW, apt.w) * rs; items.push({ type:'logement', subtype:apt.type, x:W-profondeur+coursH, y:ry, w:profondeur-coursH, d:aH, label:apt.type, door:{side:'left', offset:aH/2} }); ry += aH; }
+  if (p.varangue) items.push({ type:'varangue', x:0, y:D-varH, w:W, d:varH, label:'Varangues SO' });
+
+  return { width: W, depth: D, items, north_arrow_deg: 0, _meta: { maxDist: Math.max(patioW, patioH)/2, needSec: false } };
+};
+
+// ── ARTICULE_COURSIVE (avec miter joints + merge biais) ─────────────────────
+GEN.ARTICULE_COURSIVE = (p) => {
+  const items = [];
+  const coursH = p.coursH ?? 1.50, varH = p.varangue ? 1.5 : 0;
+  const interiorY = coursH, interiorH = p.profondeur - coursH - varH;
+  const noyauW = 4;
+  const nSeg = Math.max(2, Math.min(3, p.nSegments || 2));
+  const segAngles = [p.angle1 || 30, p.angle2 || 30];
+  const allWidths = widthsFromMix(p.perFloor, p.mixPreset);
+  if (allWidths.length < nSeg) while (allWidths.length < nSeg) allWidths.push({ type: 'T2', w: 7 });
+  const perSeg = Math.ceil(allWidths.length / nSeg);
+  const segments = [];
+  for (let s = 0; s < nSeg; s++) segments.push(allWidths.slice(s*perSeg, Math.min(allWidths.length, (s+1)*perSeg)));
+
+  items.push({ type:'noyau', x:0, y:0, w:noyauW, d:p.profondeur, label:'Noyau' });
+  items.push({ type:'escalier', x:0.4, y:0.4, w:2.5, d:2.5, label:'ESC' });
+  items.push({ type:'ascenseur', x:0.4, y:3.2, w:2.0, d:2.0, label:'ASC' });
+  items.push({ type:'palier', x:0.4, y:5.4, w:noyauW-0.8, d:p.profondeur-5.6, label:'Pal.' });
+
+  let originX = noyauW, originY = 0, cumulAngle = 0;
+  let minX=0, minY=0, maxX=noyauW, maxY=p.profondeur;
+  let mergedNotice = false;
+
+  function mkPoints(item, ox, oy, segLen, leftTan, rightTan) {
+    const yT = item.y, yB = item.y + item.d, sT = yT - oy, sB = yB - oy;
+    const xTL = leftTan>0 ? ox+leftTan*sT : item.x, xBL = leftTan>0 ? ox+leftTan*sB : item.x;
+    const xTR = rightTan>0 ? ox+segLen-rightTan*sT : item.x+item.w, xBR = rightTan>0 ? ox+segLen-rightTan*sB : item.x+item.w;
+    return [[xTL,yT],[xTR,yT],[xBR,yB],[xBL,yB]];
+  }
+
+  for (let s = 0; s < nSeg; s++) {
+    let segLogts = segments[s]; if (segLogts.length === 0) continue;
+    const isLastSeg = (s === nSeg-1);
+    const leftTan = (s>0) ? Math.tan((segAngles[s-1]||0) * Math.PI/360) : 0;
+    const rightTan = !isLastSeg ? Math.tan((segAngles[s]||0) * Math.PI/360) : 0;
+
+    const innerY = p.profondeur - varH;
+    while (rightTan > 0 && segLogts.length >= 2) {
+      const last = segLogts[segLogts.length-1];
+      if (last.w - rightTan*innerY >= LOGT_MIN_W) break;
+      const prev = segLogts[segLogts.length-2];
+      segLogts = [...segLogts.slice(0, -2), { type: labelForWidth(prev.w + last.w), w: prev.w + last.w }];
+      mergedNotice = true;
+    }
+    while (leftTan > 0 && segLogts.length >= 2) {
+      const first = segLogts[0];
+      if (first.w - leftTan*innerY >= LOGT_MIN_W) break;
+      const next = segLogts[1];
+      segLogts = [{ type: labelForWidth(first.w + next.w), w: first.w + next.w }, ...segLogts.slice(2)];
+      mergedNotice = true;
+    }
+
+    const segLen = segLogts.reduce((sum, l) => sum + l.w, 0);
+    const transform = { rotate: cumulAngle, ox: originX, oy: originY };
+
+    function maybeM(it) {
+      const isFirstX = (it.x === originX), isLastX = (it.x + it.w === originX + segLen);
+      const lt = isFirstX ? leftTan : 0, rt = isLastX ? rightTan : 0;
+      if (lt > 0 || rt > 0) it.points = mkPoints(it, originX, originY, segLen, lt, rt);
+      return it;
+    }
+
+    items.push(maybeM({ type:'coursive', x:originX, y:originY, w:segLen, d:coursH, transform, label: s===0?'Coursive':'' }));
+    let cx = originX;
+    for (let i = 0; i < segLogts.length; i++) {
+      const l = segLogts[i];
+      const isFirst = (i === 0), isLast = (i === segLogts.length - 1);
+      const it = { type:'logement', subtype:l.type, x:cx, y:originY+interiorY, w:l.w, d:interiorH, transform, label:l.type, door:{side:'top', offset:l.w/2} };
+      const lt2 = isFirst ? leftTan : 0, rt2 = isLast ? rightTan : 0;
+      if (lt2 > 0 || rt2 > 0) it.points = mkPoints(it, originX, originY, segLen, lt2, rt2);
+      items.push(it);
+      cx += l.w;
+    }
+    if (p.varangue) items.push(maybeM({ type:'varangue', x:originX, y:originY+p.profondeur-varH, w:segLen, d:varH, transform, label: s===0?'Varangues':'' }));
+
+    // bounds
+    const a = cumulAngle * Math.PI/180, cosA = Math.cos(a), sinA = Math.sin(a);
+    const corners = [[originX, originY], [originX + segLen*cosA, originY + segLen*sinA], [originX + segLen*cosA - p.profondeur*sinA, originY + segLen*sinA + p.profondeur*cosA], [originX - p.profondeur*sinA, originY + p.profondeur*cosA]];
+    for (const [px, py] of corners) { if (px<minX)minX=px; if (px>maxX)maxX=px; if (py<minY)minY=py; if (py>maxY)maxY=py; }
+    if (!isLastSeg) { originX += segLen*cosA; originY += segLen*sinA; cumulAngle += segAngles[s] || 0; }
+  }
+
+  const pad = 1.5;
+  return { items, width: maxX-minX, depth: maxY-minY, north_arrow_deg: 0, skipFootprint: true,
+    viewBoxX: minX-pad, viewBoxY: minY-pad, viewBoxW: maxX-minX+2*pad, viewBoxH: maxY-minY+2*pad,
+    _meta: { maxDist: maxX-minX, needSec: false, mergedAtBiais: mergedNotice } };
+};
+
+// ── DUPLEX_GROUPE ───────────────────────────────────────────────────────────
+GEN.DUPLEX_GROUPE = (p) => {
+  const items = [];
+  const trame = 7.4, escW = 3, palStripH = 1.5;
+  const D = p.profondeur, varH = p.varangue ? 1.5 : 0;
+  const types = []; for (const m of getMixCounts(p.perFloor, p.mixPreset)) for (let i=0; i<m.count; i++) types.push(m.type);
+  const totalLogW = types.length * trame, W = escW + totalLogW;
+
+  items.push({ type:'escalier', x:0, y:0, w:escW, d:D, label:'ESC' });
+  items.push({ type:'palier', x:escW, y:0, w:totalLogW, d:palStripH, label:'Palier' });
+  let cx = escW;
+  for (const t of types) {
+    items.push({ type:'logement', subtype:t, x:cx, y:palStripH, w:trame, d:D-palStripH-varH, label:t, door:{side:'top', offset:trame/2} });
+    cx += trame;
+  }
+  if (p.varangue) items.push({ type:'varangue', x:escW, y:D-varH, w:totalLogW, d:varH, label:'Varangues SO' });
+  return { width: W, depth: D, items, north_arrow_deg: 45, _meta: { maxDist: totalLogW, needSec: false } };
+};
+
+/* =============================================================================
+   §6 — SVG RENDERERS
+============================================================================= */
+function ptsToStr(pts) { return pts.map(p => p[0].toFixed(2) + ',' + p[1].toFixed(2)).join(' '); }
+function escTxt(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+
+// Renderer général (réutilisable pour le bâtiment 2D)
+function renderBatiment2D(plan) {
+  const W = plan.width, D = plan.depth;
+  const sw = 0.05, fs = 0.55;
+  const parts = [];
+  const tx = it => it.transform ? `<g transform="rotate(${it.transform.rotate} ${it.transform.ox} ${it.transform.oy})">` : '';
+  const tc = it => it.transform ? '</g>' : '';
+
+  if (!plan.skipFootprint) parts.push(`<rect x="0" y="0" width="${W}" height="${D}" fill="${PAL.fond}" stroke="${PAL.mur}" stroke-width="${sw*2.5}" />`);
+
+  for (const item of plan.items) {
+    const out = [];
+    const fill = colorFor(item.type, item.subtype);
+    if (item.points) {
+      out.push(`<polygon points="${ptsToStr(item.points)}" fill="${fill}" stroke="${PAL.mur}" stroke-width="${sw}" stroke-linejoin="miter" />`);
+    } else {
+      out.push(`<rect x="${item.x}" y="${item.y}" width="${item.w}" height="${item.d}" fill="${fill}" stroke="${PAL.mur}" stroke-width="${sw}" />`);
+    }
+    if (item.type === 'escalier') { out.push(`<line x1="${item.x}" y1="${item.y}" x2="${item.x+item.w}" y2="${item.y+item.d}" stroke="${PAL.mur}" stroke-width="${sw*1.2}" />`); out.push(`<line x1="${item.x+item.w}" y1="${item.y}" x2="${item.x}" y2="${item.y+item.d}" stroke="${PAL.mur}" stroke-width="${sw*1.2}" />`); }
+    if (item.type === 'ascenseur') { const cx = item.x+item.w/2, cy = item.y+item.d/2, r = Math.min(item.w, item.d)*0.32; out.push(`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${PAL.mur}" stroke-width="${sw*1.2}" />`); }
+    if (item.type === 'patio') { for (let dx = item.w*0.2; dx < item.w; dx += item.w*0.18) for (let dy = item.d*0.2; dy < item.d; dy += item.d*0.18) out.push(`<circle cx="${item.x+dx}" cy="${item.y+dy}" r="0.08" fill="rgba(105,165,85,.55)" />`); }
+    if (item.label && item.w >= 1.8 && item.d >= 0.8) { const cx = item.x+item.w/2, cy = item.y+item.d/2; const fz = Math.min(fs, item.w*0.18, item.d*0.4); out.push(`<text x="${cx}" y="${cy + fz*0.35}" text-anchor="middle" font-size="${fz}" fill="${PAL.text}" font-family="JetBrains Mono">${escTxt(item.label)}</text>`); }
+    parts.push(tx(item) + out.join('\n') + tc(item));
+  }
+
+  // Doors
+  for (const item of plan.items) {
+    if (!item.door) continue;
+    const d = item.door, sz = 0.45;
+    let hx, hy, ndx, ndy;
+    if (d.side === 'top') { hx = item.x + d.offset; hy = item.y; ndx = 0; ndy = 1; }
+    else if (d.side === 'bottom') { hx = item.x + d.offset; hy = item.y + item.d; ndx = 0; ndy = -1; }
+    else if (d.side === 'left') { hx = item.x; hy = item.y + d.offset; ndx = 1; ndy = 0; }
+    else if (d.side === 'right') { hx = item.x + item.w; hy = item.y + d.offset; ndx = -1; ndy = 0; }
+    else continue;
+    const px = -ndy, py = ndx, gx1 = hx+px*sz, gy1 = hy+py*sz, gx2 = hx-px*sz, gy2 = hy-py*sz, ax = hx+ndx*sz, ay = hy+ndy*sz;
+    const dpts = `<line x1="${gx1}" y1="${gy1}" x2="${gx2}" y2="${gy2}" stroke="${PAL.fond}" stroke-width="${sw*3.2}" stroke-linecap="round" /><polygon points="${gx1},${gy1} ${gx2},${gy2} ${ax},${ay}" fill="${PAL.gold}" stroke="${PAL.mur}" stroke-width="${sw*0.8}" />`;
+    parts.push(tx(item) + dpts + tc(item));
+  }
+
+  const vbX = plan.viewBoxX !== undefined ? plan.viewBoxX : -0.5;
+  const vbY = plan.viewBoxY !== undefined ? plan.viewBoxY : -0.5;
+  const vbW = plan.viewBoxW !== undefined ? plan.viewBoxW : W + 1;
+  const vbH = plan.viewBoxH !== undefined ? plan.viewBoxH : D + 1;
+  // North arrow
+  parts.push(`<g transform="translate(${vbX+vbW-1.5},${vbY+1.5}) rotate(${plan.north_arrow_deg||0})"><circle cx="0" cy="0" r="0.8" fill="${PAL.fond}" stroke="${PAL.mur}" stroke-width="0.04" /><polygon points="0,-0.68 0.2,0.32 0,0.12 -0.2,0.32" fill="${PAL.mur}" /><text x="0" y="0.68" text-anchor="middle" font-size="0.44" fill="${PAL.mur}" font-family="JetBrains Mono">N</text></g>`);
+
+  return `<svg viewBox="${vbX} ${vbY} ${vbW} ${vbH}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%">${parts.join('\n')}</svg>`;
+}
+
+// Renderer parcelle (multi-bâtiments + mitoyenneté visuelle)
+function renderParcelle(parcelle, plu, buildings, st) {
+  const pts = parcelle.points;
+  const b = polyBounds(pts);
+  const pad = 6;
+  const vbX = b.minX - pad, vbY = b.minY - pad;
+  const vbW = b.w + 2*pad, vbH = b.h + 2*pad;
+  const parts = [];
+  parts.push(`<rect x="${vbX}" y="${vbY}" width="${vbW}" height="${vbH}" fill="${PAL.fond}" />`);
+  parts.push(`<polygon points="${ptsToStr(pts)}" fill="rgba(245,225,180,.35)" />`);
+
+  // Edges colorés (mitoyens en rouge pointillé épais)
+  const edges = classifyEdges(parcelle);
+  const COL = { voie: '#c43a3a', lat: '#5b9eff', fond: '#5be0a0' };
+  for (const e of edges) {
+    const isMit = (e.kind === 'lat' && ((e.side === 'left' && st.mitG) || (e.side === 'right' && st.mitD)));
+    if (isMit) {
+      parts.push(`<line x1="${e.p1[0]}" y1="${e.p1[1]}" x2="${e.p2[0]}" y2="${e.p2[1]}" stroke="#ff5b75" stroke-width="0.7" stroke-dasharray="0.6 0.3" />`);
+      const mx = (e.p1[0]+e.p2[0])/2, my = (e.p1[1]+e.p2[1])/2;
+      const offX = (e.side === 'left') ? -1.5 : 1.5;
+      parts.push(`<text x="${mx + offX}" y="${my}" text-anchor="${e.side === 'left' ? 'end' : 'start'}" font-size="0.9" fill="#ff5b75" font-family="JetBrains Mono" font-weight="bold">MITOYEN ${e.side === 'left' ? 'G' : 'D'}</text>`);
+    } else {
+      parts.push(`<line x1="${e.p1[0]}" y1="${e.p1[1]}" x2="${e.p2[0]}" y2="${e.p2[1]}" stroke="${COL[e.kind]}" stroke-width="0.4" />`);
+    }
+  }
+
+  // Zone constructible
+  const zone = zoneConstructible(parcelle, plu, st.mitG, st.mitD);
+  if (zone.length >= 3) {
+    parts.push(`<polygon points="${ptsToStr(zone)}" fill="rgba(91,158,255,.12)" stroke="rgba(91,158,255,.6)" stroke-width="0.18" stroke-dasharray="0.6 0.4" />`);
+    const c = polyCentroid(zone);
+    parts.push(`<text x="${c[0]}" y="${c[1] - polyBounds(zone).h*0.45}" text-anchor="middle" font-size="0.9" fill="rgba(91,158,255,.7)" font-family="JetBrains Mono">zone constructible</text>`);
+  }
+
+  // Buildings (foreach, sélectionné = bleu, autres = brun)
+  for (const bld of buildings) {
+    if (!bld.placed) continue;
+    const bf = bld.placed;
+    const isSel = (bld.id === st.selectedBuildingId);
+    const fits = bf.fits !== false;
+    const fill = isSel ? 'rgba(91,158,255,.40)' : 'rgba(140,95,55,.40)';
+    const stroke = !fits ? '#ff5b75' : (isSel ? '#5b9eff' : PAL.mur);
+    const sw = isSel ? 0.4 : 0.25;
+    parts.push(`<rect x="${bf.x}" y="${bf.y}" width="${bf.w}" height="${bf.h}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" stroke-dasharray="${fits ? '0.5 0.3' : '0.3 0.2'}" data-bid="${bld.id}" style="cursor:pointer" />`);
+    parts.push(`<text x="${bf.x + bf.w/2}" y="${bf.y + bf.h/2 - 0.2}" text-anchor="middle" font-size="1.1" fill="${PAL.text}" font-family="JetBrains Mono" font-weight="bold" pointer-events="none">${bld.typoLabel}</text>`);
+    parts.push(`<text x="${bf.x + bf.w/2}" y="${bf.y + bf.h/2 + 1}" text-anchor="middle" font-size="0.7" fill="${PAL.text}" opacity="0.7" font-family="JetBrains Mono" pointer-events="none">${bf.w.toFixed(0)} × ${bf.h.toFixed(0)} m</text>`);
+    if (!fits) parts.push(`<text x="${bf.x + bf.w/2}" y="${bf.y - 0.5}" text-anchor="middle" font-size="0.8" fill="#ff5b75" font-family="JetBrains Mono" font-weight="bold">⚠ déborde zone</text>`);
+  }
+
+  // North + scale
+  parts.push(`<g transform="translate(${vbX + vbW - 4}, ${vbY + 4})"><circle cx="0" cy="0" r="2" fill="${PAL.fond}" stroke="${PAL.mur}" stroke-width="0.1" /><polygon points="0,-1.7 0.5,0.8 0,0.3 -0.5,0.8" fill="${PAL.mur}" /><text x="0" y="1.7" text-anchor="middle" font-size="1.1" fill="${PAL.mur}" font-family="JetBrains Mono">N</text></g>`);
+  parts.push(`<g><line x1="${vbX+2}" y1="${vbY+vbH-2}" x2="${vbX+12}" y2="${vbY+vbH-2}" stroke="${PAL.mur}" stroke-width="0.15" /><line x1="${vbX+2}" y1="${vbY+vbH-2.5}" x2="${vbX+2}" y2="${vbY+vbH-1.5}" stroke="${PAL.mur}" stroke-width="0.15" /><line x1="${vbX+12}" y1="${vbY+vbH-2.5}" x2="${vbX+12}" y2="${vbY+vbH-1.5}" stroke="${PAL.mur}" stroke-width="0.15" /><text x="${vbX+7}" y="${vbY+vbH-2.7}" text-anchor="middle" font-size="0.9" fill="${PAL.text}" font-family="JetBrains Mono">10 m</text></g>`);
+  return `<svg viewBox="${vbX} ${vbY} ${vbW} ${vbH}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%">${parts.join('\n')}</svg>`;
+}
+
+// Renderer axonométrie cabinet (multi-bâtiments)
+//   Projection : world (x, y, z) → screen (x + 0.5z, y − 0.866z) en mètres
+function renderAxo(parcelle, buildings, st) {
+  const pts = parcelle.points;
+  const heightM = 3;
+  function proj(x, y, z) { return [x + 0.5 * z, y - 0.866 * z]; }
+
+  // Bounds : parcelle + tous les bâtiments empilés
+  let minX=1e9, minY=1e9, maxX=-1e9, maxY=-1e9;
+  for (const [x, y] of pts) {
+    const [sx, sy] = proj(x, y, 0);
+    if (sx<minX)minX=sx; if (sx>maxX)maxX=sx; if (sy<minY)minY=sy; if (sy>maxY)maxY=sy;
+  }
+  for (const bld of buildings) {
+    if (!bld.placed) continue;
+    const bf = bld.placed; const totalH = bld.bp.levels * heightM;
+    const corners = [[bf.x, bf.y], [bf.x+bf.w, bf.y], [bf.x+bf.w, bf.y+bf.h], [bf.x, bf.y+bf.h]];
+    for (const [x, y] of corners) for (const z of [0, totalH]) {
+      const [sx, sy] = proj(x, y, z);
+      if (sx<minX)minX=sx; if (sx>maxX)maxX=sx; if (sy<minY)minY=sy; if (sy>maxY)maxY=sy;
+    }
+  }
+  const pad = 4;
+  const vbX = minX-pad, vbY = minY-pad, vbW = (maxX-minX)+2*pad, vbH = (maxY-minY)+2*pad;
+  const parts = [];
+  parts.push(`<rect x="${vbX}" y="${vbY}" width="${vbW}" height="${vbH}" fill="${PAL.fond}" />`);
+
+  // Parcelle au sol
+  const groundPts = pts.map(([x,y]) => proj(x, y, 0));
+  parts.push(`<polygon points="${ptsToStr(groundPts)}" fill="rgba(245,225,180,.45)" stroke="${PAL.mur}" stroke-width="0.18" />`);
+
+  // Edges au sol (mitoyens en rouge épais)
+  const edges = classifyEdges(parcelle);
+  const COL = { voie: '#c43a3a', lat: '#5b9eff', fond: '#5be0a0' };
+  for (const e of edges) {
+    const isMit = (e.kind === 'lat' && ((e.side === 'left' && st.mitG) || (e.side === 'right' && st.mitD)));
+    const p1 = proj(e.p1[0], e.p1[1], 0), p2 = proj(e.p2[0], e.p2[1], 0);
+    parts.push(`<line x1="${p1[0]}" y1="${p1[1]}" x2="${p2[0]}" y2="${p2[1]}" stroke="${isMit ? '#ff5b75' : COL[e.kind]}" stroke-width="${isMit ? 0.7 : 0.45}" ${isMit ? 'stroke-dasharray="0.6 0.3"' : ''} />`);
+  }
+
+  // Tri painter : bâtiments du plus loin (y faible) au plus près (y haut)
+  const sorted = buildings.filter(b => b.placed).slice().sort((a, b) => a.placed.y - b.placed.y);
+
+  for (const bld of sorted) {
+    const bf = bld.placed;
+    const levels = bld.bp.levels;
+    const isSel = (bld.id === st.selectedBuildingId);
+    const cur = bld.bp.currentLevel ?? 1;
+    for (let k = 0; k < levels; k++) {
+      const z0 = k * heightM, z1 = (k + 1) * heightM;
+      const isCur = isSel && (k === cur);
+      const isRDC = (k === 0);
+      const fillFront = isCur ? 'rgba(91,158,255,.50)' : (isRDC ? 'rgba(195,180,148,.6)' : 'rgba(216,200,165,.45)');
+      const fillSide = isCur ? 'rgba(60,110,200,.55)' : 'rgba(140,120,95,.45)';
+      const stroke = isCur ? '#2c66c9' : PAL.mur;
+      const sw = isCur ? 0.25 : 0.12;
+      // Front
+      const fp = [proj(bf.x, bf.y, z0), proj(bf.x+bf.w, bf.y, z0), proj(bf.x+bf.w, bf.y, z1), proj(bf.x, bf.y, z1)];
+      parts.push(`<polygon points="${ptsToStr(fp)}" fill="${fillFront}" stroke="${stroke}" stroke-width="${sw}" />`);
+      // Right side
+      const rp = [proj(bf.x+bf.w, bf.y, z0), proj(bf.x+bf.w, bf.y+bf.h, z0), proj(bf.x+bf.w, bf.y+bf.h, z1), proj(bf.x+bf.w, bf.y, z1)];
+      parts.push(`<polygon points="${ptsToStr(rp)}" fill="${fillSide}" stroke="${stroke}" stroke-width="${sw}" />`);
+      // Top (only at top level)
+      if (k === levels - 1) {
+        const tp = [proj(bf.x, bf.y, z1), proj(bf.x+bf.w, bf.y, z1), proj(bf.x+bf.w, bf.y+bf.h, z1), proj(bf.x, bf.y+bf.h, z1)];
+        parts.push(`<polygon points="${ptsToStr(tp)}" fill="rgba(195,180,145,.85)" stroke="${PAL.mur}" stroke-width="0.18" />`);
+      }
+      // Label étage
+      const lbl = isRDC ? 'RDC' : `R+${k}`;
+      const cp = proj(bf.x+bf.w/2, bf.y, (z0+z1)/2);
+      parts.push(`<text x="${cp[0]}" y="${cp[1]+0.4}" text-anchor="middle" font-size="0.9" fill="${isCur ? 'white' : PAL.text}" font-family="JetBrains Mono" font-weight="${isCur?'bold':'normal'}" data-bid="${bld.id}" data-level="${k}" style="cursor:pointer">${lbl}</text>`);
+    }
+    // Label typologie au-dessus
+    const labelP = proj(bf.x+bf.w/2, bf.y, levels * heightM + 1);
+    parts.push(`<text x="${labelP[0]}" y="${labelP[1]}" text-anchor="middle" font-size="1.0" fill="${isSel ? '#5b9eff' : PAL.text}" font-family="JetBrains Mono" font-weight="bold" pointer-events="none">${bld.typoLabel}</text>`);
+  }
+
+  // North arrow
+  parts.push(`<g transform="translate(${vbX+vbW-4},${vbY+4})"><circle cx="0" cy="0" r="1.7" fill="${PAL.fond}" stroke="${PAL.mur}" stroke-width="0.1" /><polygon points="0,-1.5 0.4,0.7 0,0.2 -0.4,0.7" fill="${PAL.mur}" /><text x="0" y="1.5" text-anchor="middle" font-size="1" fill="${PAL.mur}" font-family="JetBrains Mono">N</text></g>`);
+
+  return `<svg viewBox="${vbX} ${vbY} ${vbW} ${vbH}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet" style="width:100%;height:100%">${parts.join('\n')}</svg>`;
+}
+
+/* =============================================================================
+   §7 — STATE + LOGIC (multi-bâtiments + mitoyenneté)
+============================================================================= */
+const state = {
+  tab: 'parcelle',
+  parcelleType: 'rectangle',
+  parcelleSeed: 1234,
+  parcelle: null,
+  pluZone: 'UB',
+  plu: null,
+  mitG: false,                       // mitoyenneté limite gauche
+  mitD: false,                       // mitoyenneté limite droite
+  buildings: [],                     // [{ id, typoId, bp, plan, placed, typoLabel }]
+  selectedBuildingId: null,
+};
+
+function getDefaultsBP(typoId) {
+  const T = TYPOLOGIES[typoId];
+  return {
+    perFloor: T.perFloor.def, levels: T.levels.def, profondeur: T.profondeur.def,
+    mixPreset: 'mixte', varangue: true, sechoir: true,
+    coursH: 1.50, coursive_type: 'accolee', noyau_position: 'extremite',
+    secondaire_escalier: false, last_logt_option: 'none',
+    nSegments: 2, angle1: 30, angle2: 30,
+    currentLevel: Math.min(1, T.levels.def - 1),
+  };
+}
+
+let _bidCounter = 0;
+function newBuildingId() { _bidCounter++; return 'b' + _bidCounter; }
+
+function getSelected() {
+  return state.buildings.find(b => b.id === state.selectedBuildingId) || state.buildings[0] || null;
+}
+
+function addBuilding(typoId = 'LAME_SIMPLE') {
+  const id = newBuildingId();
+  state.buildings.push({ id, typoId, bp: getDefaultsBP(typoId), plan: null, placed: null, typoLabel: TYPOLOGIES[typoId].label });
+  state.selectedBuildingId = id;
+  computeAllBuildings();
+}
+
+function removeBuilding(id) {
+  state.buildings = state.buildings.filter(b => b.id !== id);
+  if (state.selectedBuildingId === id) state.selectedBuildingId = state.buildings[0]?.id || null;
+  computeAllBuildings();
+}
+
+function regenAll() {
+  state.parcelle = genParcelle(state.parcelleType, state.parcelleSeed);
+  state.plu = { ...PLU_ZONES[state.pluZone] };
+  computeAllBuildings();
+  render();
+}
+
+// Place chaque bâtiment dans la zone constructible. Pour N bâtiments, on découpe
+// le plus grand rectangle inscriptible en N sous-rectangles le long de l'axe le
+// plus long, et on centre chaque bâtiment à ses dimensions ENVELOPPE COMPLÈTES
+// (aucun rognage : la parcelle et le tab Bâtiment partagent exactement les mêmes
+// W × D plan.width × plan.depth).
+// Place chaque bâtiment :
+//   1. Itère perFloor à la baisse jusqu'à ce que le plan tienne dans son sous-rectangle de zone.
+//   2. Aligne le bâtiment contre les bords de la zone (recul OU limite mitoyenne) — jamais entre.
+//      → outer building (premier/dernier) collé à son bord externe ; outer y collé à voie.
+function computeAllBuildings() {
+  // Reset clamp tracking
+  for (const b of state.buildings) {
+    b.actualPerFloor = b.bp.perFloor;
+    b.clampReason = null;
+  }
+  if (state.buildings.length === 0) return;
+  if (!state.parcelle || !state.plu) { state.buildings.forEach(b => b.placed = null); return; }
+  const zone = zoneConstructible(state.parcelle, state.plu, state.mitG, state.mitD);
+  if (zone.length < 3) { state.buildings.forEach(b => b.placed = null); return; }
+  const rect = maxAARect(zone);
+  if (!rect) { state.buildings.forEach(b => b.placed = null); return; }
+
+  const N = state.buildings.length;
+  const splitH = rect.w >= rect.h;
+  const interBat = 6;     // distance min entre 2 bâtiments (RTAA proposé)
+
+  for (let i = 0; i < N; i++) {
+    const b = state.buildings[i];
+    const T = TYPOLOGIES[b.typoId];
+    // sub-rectangle disponible pour CE bâtiment (split du maxAARect en N parts)
+    let subX, subY, subW, subH;
+    if (splitH) {
+      const slotW = rect.w / N - (N > 1 ? interBat * (N-1) / N : 0);
+      subW = slotW; subH = rect.h;
+      subX = rect.x + i * (slotW + (N > 1 ? interBat / (N > 1 ? 1 : 1) : 0));
+      // simpler : even split with interBat inserted
+      subX = rect.x + i * (rect.w / N) + (i > 0 ? interBat/2 : 0);
+      subW = rect.w / N - ((i === 0 || i === N-1) ? interBat/2 : interBat);
+      if (subW < 0) subW = rect.w / N;
+      subY = rect.y;
+    } else {
+      subX = rect.x; subW = rect.w;
+      subY = rect.y + i * (rect.h / N) + (i > 0 ? interBat/2 : 0);
+      subH = rect.h / N - ((i === 0 || i === N-1) ? interBat/2 : interBat);
+      if (subH < 0) subH = rect.h / N;
+    }
+
+    // Itère 3 phases : (1) perFloor↓, (2) profondeur↓, (3) mix→T1_only puis re-itère pf+prof.
+    // ARTICULE_COURSIVE peut descendre à 1+1 logements (= perFloor 2) avec T1 (5m) si besoin.
+    let pf = b.bp.perFloor, prof = b.bp.profondeur, mix = b.bp.mixPreset;
+    const tryFit = () => {
+      const plan = GEN[b.typoId]({ ...b.bp, perFloor: pf, profondeur: prof, mixPreset: mix });
+      return { plan, fits: plan.width <= subW + 0.01 && plan.depth <= subH + 0.01 };
+    };
+    let r = tryFit();
+    // Phase 1 : perFloor↓
+    while (!r.fits && pf > T.perFloor.min) { pf--; r = tryFit(); }
+    // Phase 2 : profondeur↓
+    while (!r.fits && prof > T.profondeur.min) { prof = Math.max(T.profondeur.min, prof - 0.5); r = tryFit(); }
+    // Phase 3 : si toujours pas, on force le mix en T1 et on recommence pf+prof depuis le départ
+    let mixForced = false;
+    if (!r.fits && mix !== 'T1_only') {
+      mix = 'T1_only'; mixForced = true;
+      pf = b.bp.perFloor; prof = b.bp.profondeur;
+      r = tryFit();
+      while (!r.fits && pf > T.perFloor.min) { pf--; r = tryFit(); }
+      while (!r.fits && prof > T.profondeur.min) { prof = Math.max(T.profondeur.min, prof - 0.5); r = tryFit(); }
+    }
+    const reasons = [];
+    if (pf < b.bp.perFloor) reasons.push(`logts ${b.bp.perFloor}→${pf}`);
+    if (prof < b.bp.profondeur) reasons.push(`prof ${b.bp.profondeur}→${prof.toFixed(1)}m`);
+    if (mixForced) reasons.push(`mix → T1 only`);
+    b.clampReason = reasons.length > 0 ? `réduit pour tenir zone : ${reasons.join(', ')}` : null;
+    b.actualPerFloor = pf;
+    b.actualProf = prof;
+    b.plan = r.plan;
+    b.typoLabel = TYPOLOGIES[b.typoId].label;
+    const plan = r.plan;
+
+    const fits = (plan.width <= subW + 0.01 && plan.depth <= subH + 0.01);
+
+    if (!fits) {
+      // Refuse de placer un bâtiment qui ne tient pas dans la zone, même au minimum.
+      b.placed = null;
+      b.fitError = `Ne tient pas — min possible ${plan.width.toFixed(1)}×${plan.depth.toFixed(1)} m, dispo ${subW.toFixed(1)}×${subH.toFixed(1)} m`;
+      continue;
+    }
+    b.fitError = null;
+
+    // Alignement contre les bords de la zone : jamais entre limite et recul
+    let px, py;
+    if (splitH) {
+      if (i === 0)             px = subX;
+      else if (i === N - 1)    px = subX + subW - plan.width;
+      else                     px = subX + (subW - plan.width) / 2;
+      py = subY;
+    } else {
+      px = subX;
+      if (i === 0)             py = subY;
+      else if (i === N - 1)    py = subY + subH - plan.depth;
+      else                     py = subY + (subH - plan.depth) / 2;
+    }
+
+    b.placed = { x: px, y: py, w: plan.width, h: plan.depth, fits: true };
+  }
+}
+
+/* =============================================================================
+   §8 — RENDER MAIN
+============================================================================= */
+function render() {
+  const area = document.getElementById('canvas-area');
+  const title = document.getElementById('canvas-title');
+  const levelNav = document.getElementById('level-nav');
+  const sel = getSelected();
+  if (state.tab === 'parcelle') {
+    title.textContent = `🌍 Parcelle — plan masse  ·  ${state.buildings.length} bâtiment(s)`;
+    levelNav.style.display = 'none';
+    area.innerHTML = renderParcelle(state.parcelle, state.plu, state.buildings, state);
+    // Click sur bâtiment → sélectionne
+    area.querySelectorAll('rect[data-bid]').forEach(el => {
+      el.addEventListener('click', e => { state.selectedBuildingId = e.target.dataset.bid; render(); });
+    });
+  } else if (state.tab === 'batiment') {
+    title.textContent = sel ? `🏢 Bâtiment — ${sel.typoLabel} (${sel.id})` : '🏢 Bâtiment — aucun';
+    levelNav.style.display = sel ? 'flex' : 'none';
+    area.innerHTML = sel?.plan ? renderBatiment2D(sel.plan) : '<div style="color:#999;padding:40px">Aucun bâtiment — clique « + Ajouter bâtiment »</div>';
+  } else {
+    title.textContent = `📐 Axonométrie  ·  ${state.buildings.length} bâtiment(s)`;
+    levelNav.style.display = sel ? 'flex' : 'none';
+    area.innerHTML = renderAxo(state.parcelle, state.buildings, state);
+    // Click sur étage → sélectionne le bâtiment + le niveau
+    area.querySelectorAll('text[data-level]').forEach(el => {
+      el.addEventListener('click', e => {
+        const bid = e.target.dataset.bid;
+        const lvl = +e.target.dataset.level;
+        state.selectedBuildingId = bid;
+        const sb = getSelected(); if (sb) sb.bp.currentLevel = lvl;
+        render();
+      });
+    });
+  }
+  renderParams();
+  updateQuick();
+}
+
+function updateQuick() {
+  const quick = document.getElementById('canvas-quick');
+  const sel = getSelected();
+  const m = computeMetrics();
+  if (!sel) { quick.innerHTML = `<span class="pill">aucun bâtiment</span>`; return; }
+  const bp = sel.bp;
+  const pfA = sel.actualPerFloor ?? bp.perFloor;
+  const totalLogts = pfA * bp.levels;
+  const allLogts = state.buildings.reduce((s, b) => s + (b.actualPerFloor ?? b.bp.perFloor) * b.bp.levels, 0);
+  quick.innerHTML = `
+    <span class="pill"><span class="v">${state.buildings.length}</span> bât.</span>
+    <span class="pill"><span class="v">${allLogts}</span> logts total</span>
+    <span class="pill"><span class="v">${m.empriseM2.toFixed(0)}</span> m² emprise</span>
+    <span class="pill ${m.cesOK ? 'ok' : 'err'}"><span class="v">${(m.ces*100).toFixed(0)}%</span> CES</span>
+    <span class="pill ${m.cosOK ? 'ok' : 'err'}"><span class="v">${m.cos.toFixed(2)}</span> COS</span>
+  `;
+  // Level nav (selected building)
+  if (state.tab !== 'parcelle' && sel) {
+    const lvl = bp.currentLevel ?? 1;
+    const lvlText = lvl === 0 ? 'RDC' : `R+${lvl}`;
+    document.getElementById('level-label').textContent = `${lvlText} / R+${bp.levels - 1}`;
+    document.getElementById('btn-level-up').disabled = lvl >= bp.levels - 1;
+    document.getElementById('btn-level-down').disabled = lvl <= 0;
+  }
+}
+
+// Métriques agrégées : somme emprise + SHAB sur tous les bâtiments
+function computeMetrics() {
+  const parcArea = state.parcelle ? polyArea(state.parcelle.points) : 0;
+  let empriseM2 = 0, sdpTotal = 0, nLogts = 0, hautMax = 0;
+  for (const b of state.buildings) {
+    if (!b.placed) continue;
+    empriseM2 += b.placed.w * b.placed.h;
+    let logtM2 = 0;
+    if (b.plan && b.plan.items) for (const it of b.plan.items) if (it.type === 'logement') { logtM2 += it.w * it.d; nLogts++; }
+    sdpTotal += logtM2 * b.bp.levels;
+    hautMax = Math.max(hautMax, b.bp.levels * 3);
+  }
+  const ces = parcArea > 0 ? empriseM2 / parcArea : 0;
+  const cos = parcArea > 0 ? sdpTotal / parcArea : 0;
+  return {
+    parcArea, empriseM2, sdpTotal, ces, cos, nLogts,
+    cesOK: ces <= state.plu.ces_max,
+    cosOK: cos <= state.plu.cos_max,
+    haut: hautMax,
+    hautOK: hautMax <= state.plu.h_max,
+  };
+}
+
+/* =============================================================================
+   §9 — UI : SIDE PANEL (PARAMS)
+============================================================================= */
+function renderParams() {
+  const host = document.getElementById('params-host');
+  const sel = getSelected();
+  const m = computeMetrics();
+
+  const parcOpts = PARCELLE_TYPES.map(t => `<option value="${t}" ${t===state.parcelleType?'selected':''}>${t}</option>`).join('');
+  const pluOpts = Object.keys(PLU_ZONES).map(z => `<option value="${z}" ${z===state.pluZone?'selected':''}>${z} — ${PLU_ZONES[z].note}</option>`).join('');
+
+  // Diagnostic global (PLU agrégé)
+  const diag = [];
+  if (m.cesOK) diag.push({ kind:'ok', text:`CES projet ${(m.ces*100).toFixed(0)}% ≤ ${(state.plu.ces_max*100).toFixed(0)}%` });
+  else diag.push({ kind:'err', text:`CES projet ${(m.ces*100).toFixed(0)}% > ${(state.plu.ces_max*100).toFixed(0)}% (PLU)` });
+  if (m.cosOK) diag.push({ kind:'ok', text:`COS projet ${m.cos.toFixed(2)} ≤ ${state.plu.cos_max.toFixed(2)}` });
+  else diag.push({ kind:'err', text:`COS projet ${m.cos.toFixed(2)} > ${state.plu.cos_max.toFixed(2)} (PLU)` });
+  if (m.hautOK) diag.push({ kind:'ok', text:`H max ${m.haut}m ≤ ${state.plu.h_max}m` });
+  else diag.push({ kind:'err', text:`H max ${m.haut}m > ${state.plu.h_max}m (PLU)` });
+  if ((state.mitG || state.mitD) && state.pluZone !== 'UAa') diag.push({ kind:'warn', text:`Mitoyenneté forcée hors zone UA (réservée à ${PLU_ZONES.UAa.note})` });
+  for (const b of state.buildings) {
+    if (b.fitError) diag.push({ kind:'err', text:`${b.id} : ${b.fitError} → non dessiné. Réduire la typologie ou agrandir la parcelle.` });
+    if (b.clampReason) diag.push({ kind:'warn', text:`${b.id} : ${b.clampReason}` });
+    if (b.bp.profondeur > 13) diag.push({ kind:'err', text:`${b.id} : profondeur ${b.bp.profondeur}m > 13m (RTAA)` });
+    if (b.plan?._meta?.needSec) diag.push({ kind:'ok', text:`${b.id} : ESC 2 (sans ASC) ajouté` });
+    if (b.plan?._meta?.mergedAtBiais) diag.push({ kind:'warn', text:`${b.id} : biais → merge logts en T plus grand` });
+    if (b.bp.coursive_type === 'accolee' && (b.typoId === 'LAME_SIMPLE' || b.typoId === 'ARTICULE_COURSIVE'))
+      diag.push({ kind:'warn', text:`${b.id} : coursive accolée → 1 façade seule (passerelle/loggia recommandée)` });
+  }
+
+  // Section paramètres bâtiment sélectionné (rendu conditionnel)
+  let bldSection = '';
+  if (sel) {
+    const T = TYPOLOGIES[sel.typoId];
+    const bp = sel.bp;
+    const typoOpts = Object.keys(TYPOLOGIES).map(t => `<option value="${t}" ${t===sel.typoId?'selected':''}>${TYPOLOGIES[t].label}</option>`).join('');
+    const mixOpts = ['mixte','compact','familial','social'].map(p => `<option value="${p}" ${p===bp.mixPreset?'selected':''}>${p}</option>`).join('');
+    const showArtic = (sel.typoId === 'ARTICULE_COURSIVE');
+    const showCoursive = (sel.typoId === 'LAME_SIMPLE' || sel.typoId === 'ARTICULE_COURSIVE' || sel.typoId === 'PATIO_U');
+
+    const pfShown = sel.actualPerFloor ?? bp.perFloor;
+    const profShown = sel.actualProf ?? bp.profondeur;
+    const pfClamped = pfShown !== bp.perFloor;
+    const profClamped = Math.abs(profShown - bp.profondeur) > 0.01;
+    bldSection = `
+    <div class="section">
+      <div class="section-title">🏢 Bâtiment ${sel.id} — paramètres</div>
+      <div class="section-body">
+        <div class="field-row"><label class="field-label">Typologie</label><select id="sel-typo">${typoOpts}</select></div>
+        <div class="field-row"><label class="field-label"><span>Logts / niveau</span><span class="v">${pfShown}${pfClamped ? `<span style="color:var(--warn);font-size:9px;font-weight:normal"> ←${bp.perFloor}</span>` : ''}</span></label><input type="range" id="rg-pf" min="${T.perFloor.min}" max="${T.perFloor.max}" value="${pfShown}" step="1" /></div>
+        <div class="field-row"><label class="field-label">Niveaux <span class="v">${bp.levels}</span></label><input type="range" id="rg-lv" min="${T.levels.min}" max="${T.levels.max}" value="${bp.levels}" step="1" /></div>
+        <div class="field-row"><label class="field-label"><span>Profondeur (m)</span><span class="v">${profShown.toFixed(1)}${profClamped ? `<span style="color:var(--warn);font-size:9px;font-weight:normal"> ←${bp.profondeur.toFixed(1)}</span>` : ''}</span></label><input type="range" id="rg-prof" min="${T.profondeur.min}" max="${T.profondeur.max}" value="${profShown}" step="0.5" /></div>
+        <div class="field-row"><label class="field-label">Mix</label><select id="sel-mix">${mixOpts}</select></div>
+        <div class="toggle-row" style="margin-top:6px">
+          <button class="toggle ${bp.varangue?'on grow':''}" id="t-var">Varangue</button>
+          <button class="toggle ${bp.sechoir?'on':''}" id="t-sec">Séchoir</button>
+        </div>
+      </div>
+    </div>
+    ${showArtic ? `
+    <div class="section"><div class="section-title">📐 Articulation</div><div class="section-body">
+      <div class="field-row"><label class="field-label">Segments <span class="v">${bp.nSegments}</span></label><input type="range" id="rg-nseg" min="2" max="3" value="${bp.nSegments}" step="1" /></div>
+      <div class="field-row"><label class="field-label">Angle 1 (°) <span class="v">${bp.angle1}</span></label><input type="range" id="rg-a1" min="0" max="120" value="${bp.angle1}" step="5" /></div>
+      ${bp.nSegments >= 3 ? `<div class="field-row"><label class="field-label">Angle 2 (°) <span class="v">${bp.angle2}</span></label><input type="range" id="rg-a2" min="0" max="120" value="${bp.angle2}" step="5" /></div>` : ''}
+    </div></div>` : ''}
+    ${showCoursive ? `
+    <div class="section"><div class="section-title">🚪 Coursive (RTAA 2 façades)</div><div class="section-body">
+      <div class="field-row"><label class="field-label">Largeur (m) <span class="v">${bp.coursH.toFixed(2)}</span></label><input type="range" id="rg-cH" min="1.40" max="1.50" value="${bp.coursH}" step="0.01" /></div>
+      <div class="toggle-row">
+        <button class="toggle ${bp.coursive_type==='accolee'?'on':''}" data-ct="accolee">Accolée</button>
+        <button class="toggle ${bp.coursive_type==='passerelle'?'on grow':''}" data-ct="passerelle">Passerelle</button>
+        <button class="toggle ${bp.coursive_type==='loggia_tampon'?'on grow':''}" data-ct="loggia_tampon">Loggia ≥5m²</button>
+      </div>
+    </div></div>` : ''}
+    `;
+  }
+
+  // Liste des bâtiments — affiche aussi actualPerFloor + clampReason si réduction
+  const buildingsList = state.buildings.length === 0
+    ? `<div style="font-size:11px;color:var(--fg-2);padding:8px 0">Aucun bâtiment — clique « + Ajouter »</div>`
+    : state.buildings.map(b => {
+        const isSel = (b.id === state.selectedBuildingId);
+        const noFit = !b.placed && b.fitError;
+        const pfActual = b.actualPerFloor ?? b.bp.perFloor;
+        const pfClamp = pfActual !== b.bp.perFloor;
+        const totalLogts = pfActual * b.bp.levels;
+        return `<div style="display:flex;gap:6px;align-items:center;padding:5px 8px;margin-bottom:4px;background:${noFit ? 'rgba(255,91,117,.10)' : (isSel ? 'rgba(91,158,255,.15)' : 'var(--bg-3)')};border:1px solid ${noFit ? 'var(--err)' : (isSel ? 'var(--accent)' : 'var(--line)')};border-radius:5px;cursor:pointer" data-bid-card="${b.id}">
+          <div style="flex:1">
+            <div style="font-size:11px;color:${noFit ? 'var(--err)' : (isSel ? 'var(--accent)' : 'var(--fg)')};font-weight:bold">${b.id} · ${b.typoLabel}${noFit ? ' ✗ non placé' : ''}</div>
+            <div style="font-size:9px;color:var(--fg-2)">${pfActual}${pfClamp ? '<span style="color:var(--warn)"> ←' + b.bp.perFloor + '</span>' : ''}×${b.bp.levels} = ${totalLogts} logts</div>
+            ${b.fitError ? `<div style="font-size:9px;color:var(--err);margin-top:2px">✗ ${escTxt(b.fitError)}</div>` : (b.clampReason ? `<div style="font-size:9px;color:var(--warn);margin-top:2px">⚠ ${escTxt(b.clampReason)}</div>` : '')}
+          </div>
+          <button class="btn icon" data-bid-rm="${b.id}" title="Retirer">×</button>
+        </div>`;
+      }).join('');
+
+  host.innerHTML = `
+    <div class="section">
+      <div class="section-title">🌍 Parcelle</div>
+      <div class="section-body">
+        <div class="field-row"><label class="field-label">Type</label><select id="sel-parc">${parcOpts}</select></div>
+        <div class="field-row"><label class="field-label">Seed <span class="v">${state.parcelleSeed}</span></label><input type="range" id="rg-seed" min="1" max="9999" value="${state.parcelleSeed}" /></div>
+        <div class="kv"><span class="k">Surface</span><span class="v gold">${m.parcArea.toFixed(0)} m²</span></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">📐 PLU</div>
+      <div class="section-body">
+        <div class="field-row"><label class="field-label">Zone</label><select id="sel-plu">${pluOpts}</select></div>
+        <div class="kv"><span class="k">Recul voie</span><span class="v">${state.plu.recul_voie} m</span></div>
+        <div class="kv"><span class="k">Recul lat.</span><span class="v">${state.plu.recul_lat} m ${state.mitG||state.mitD ? '<span style="color:#ff5b75">(mitoyen)</span>' : ''}</span></div>
+        <div class="kv"><span class="k">Recul fond</span><span class="v">${state.plu.recul_fond} m</span></div>
+        <div class="kv"><span class="k">CES max</span><span class="v">${(state.plu.ces_max*100).toFixed(0)}%</span></div>
+        <div class="kv"><span class="k">COS max</span><span class="v">${state.plu.cos_max.toFixed(2)}</span></div>
+        <div class="kv"><span class="k">H max</span><span class="v">${state.plu.h_max} m</span></div>
+        <div style="font-size:9px;color:var(--fg-2);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.5px">Mitoyenneté ${state.pluZone === 'UAa' ? '(autorisée en UAa)' : '(simul.)'}</div>
+        <div class="toggle-row">
+          <button class="toggle ${state.mitG?'on grow':''}" id="t-mitG">← Limite G</button>
+          <button class="toggle ${state.mitD?'on grow':''}" id="t-mitD">Limite D →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">🏗 Bâtiments
+        <button class="btn" id="btn-add-bld" style="float:right;font-size:10px;padding:3px 8px">+ Ajouter</button>
+      </div>
+      <div class="section-body">
+        ${buildingsList}
+      </div>
+    </div>
+
+    ${bldSection}
+
+    <div class="section">
+      <div class="section-title">📊 Métriques globales</div>
+      <div class="section-body">
+        <div class="kv"><span class="k">Bâtiments</span><span class="v">${state.buildings.length}</span></div>
+        <div class="kv"><span class="k">Logements total</span><span class="v gold">${state.buildings.reduce((s,b) => s + (b.actualPerFloor ?? b.bp.perFloor)*b.bp.levels, 0)}</span></div>
+        <div class="kv"><span class="k">Emprise totale</span><span class="v">${m.empriseM2.toFixed(0)} m²</span></div>
+        <div class="kv"><span class="k">SHAB total</span><span class="v gold">${m.sdpTotal.toFixed(0)} m²</span></div>
+        <div class="kv"><span class="k">CES projet</span><span class="v ${m.cesOK?'grow':'err'}">${(m.ces*100).toFixed(1)}%</span></div>
+        <div class="kv"><span class="k">COS projet</span><span class="v ${m.cosOK?'grow':'err'}">${m.cos.toFixed(2)}</span></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">✅ Diagnostic</div>
+      <div class="section-body">
+        <ul class="diag-list">${diag.map(d => `<li class="${d.kind}">${escTxt(d.text)}</li>`).join('')}</ul>
+      </div>
+    </div>
+  `;
+
+  // Bindings parcelle/PLU
+  document.getElementById('sel-parc').addEventListener('change', e => { state.parcelleType = e.target.value; regenAll(); });
+  document.getElementById('rg-seed').addEventListener('input', e => { state.parcelleSeed = +e.target.value; regenAll(); });
+  document.getElementById('sel-plu').addEventListener('change', e => { state.pluZone = e.target.value; regenAll(); });
+  document.getElementById('t-mitG').addEventListener('click', () => { state.mitG = !state.mitG; regenAll(); });
+  document.getElementById('t-mitD').addEventListener('click', () => { state.mitD = !state.mitD; regenAll(); });
+
+  // Bindings bâtiments (liste)
+  document.getElementById('btn-add-bld').addEventListener('click', () => { addBuilding(sel?.typoId || 'LAME_SIMPLE'); render(); });
+  document.querySelectorAll('[data-bid-card]').forEach(el => el.addEventListener('click', e => {
+    if (e.target.dataset.bidRm) return;
+    state.selectedBuildingId = el.dataset.bidCard; render();
+  }));
+  document.querySelectorAll('[data-bid-rm]').forEach(el => el.addEventListener('click', e => {
+    e.stopPropagation(); removeBuilding(e.target.dataset.bidRm); render();
+  }));
+
+  // Bindings paramètres bâtiment sélectionné
+  if (sel) {
+    const bp = sel.bp;
+    document.getElementById('sel-typo').addEventListener('change', e => {
+      sel.typoId = e.target.value;
+      sel.bp = getDefaultsBP(sel.typoId);
+      sel.typoLabel = TYPOLOGIES[sel.typoId].label;
+      computeAllBuildings(); render();
+    });
+    const bind = (id, key) => {
+      const el = document.getElementById(id); if (!el) return;
+      el.addEventListener('input', e => { bp[key] = +e.target.value; computeAllBuildings(); render(); });
+    };
+    bind('rg-pf', 'perFloor'); bind('rg-lv', 'levels'); bind('rg-prof', 'profondeur');
+    bind('rg-nseg', 'nSegments'); bind('rg-a1', 'angle1'); bind('rg-a2', 'angle2'); bind('rg-cH', 'coursH');
+    const sm = document.getElementById('sel-mix'); if (sm) sm.addEventListener('change', e => { bp.mixPreset = e.target.value; computeAllBuildings(); render(); });
+    const tv = document.getElementById('t-var'); if (tv) tv.addEventListener('click', () => { bp.varangue = !bp.varangue; computeAllBuildings(); render(); });
+    const ts = document.getElementById('t-sec'); if (ts) ts.addEventListener('click', () => { bp.sechoir = !bp.sechoir; computeAllBuildings(); render(); });
+    document.querySelectorAll('[data-ct]').forEach(btn => btn.addEventListener('click', () => { bp.coursive_type = btn.dataset.ct; computeAllBuildings(); render(); }));
+  }
+}
+
+/* =============================================================================
+   §10 — TOP UI BINDINGS
+============================================================================= */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.tab = btn.dataset.tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+    render();
+  });
+});
+document.getElementById('btn-reseed').addEventListener('click', () => { state.parcelleSeed = (Math.random() * 9999) | 0; regenAll(); });
+document.getElementById('btn-reset').addEventListener('click', () => {
+  const sel = getSelected();
+  if (sel) { sel.bp = getDefaultsBP(sel.typoId); computeAllBuildings(); render(); }
+});
+document.getElementById('btn-export').addEventListener('click', () => {
+  const svg = document.querySelector('#canvas-area svg');
+  if (!svg) return;
+  const xml = svg.outerHTML.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+  const blob = new Blob([xml], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `etude-capacite-${state.tab}-${Date.now()}.svg`; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+document.getElementById('btn-level-up').addEventListener('click', () => {
+  const sel = getSelected(); if (!sel) return;
+  const max = sel.bp.levels - 1;
+  sel.bp.currentLevel = Math.min(max, (sel.bp.currentLevel ?? 1) + 1); render();
+});
+document.getElementById('btn-level-down').addEventListener('click', () => {
+  const sel = getSelected(); if (!sel) return;
+  sel.bp.currentLevel = Math.max(0, (sel.bp.currentLevel ?? 1) - 1); render();
+});
+
+/* =============================================================================
+   §11 — BOOT
+============================================================================= */
+// Ordre important : parcelle + PLU d'abord, puis bâtiments (qui dépendent d'eux)
+state.parcelle = genParcelle(state.parcelleType, state.parcelleSeed);
+state.plu = { ...PLU_ZONES[state.pluZone] };
+addBuilding('LAME_SIMPLE');           // 1 bâtiment par défaut, place + render appellent computeAllBuildings une fois parcelle prête
+render();
+document.getElementById('status-msg').textContent = 'prêt · multi-bâtiments + mitoyenneté · onglets Parcelle / Bâtiment / Axo';
+
+</script>
+</body>
+</html>

@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Étude de capacité v2 — TERLAB</title>
+
+<!--
+  ÉTUDE DE CAPACITÉ v2 — « 3 scénarios, 1 choix »
+  ────────────────────────────────────────────────
+  La capacité MAX n'est qu'une proposition parmi trois partis contrastés :
+    A · Capacité max      — multi-fronts lames, hauteur PLU, prospect mini H/2
+    B · Équilibré         — 2 lames max + 1 plot, prospect H, parking ext
+    C · Qualité résid.    — 1 lame + plots familiaux, prospect 1.5H, paysager
+  Chaque scénario : lames articulées (capacite-polygone) + PLOTS 4 logts dans
+  les reliquats (alignés aux limites), PARKING DESSINÉ (nappes voie + rampe SS),
+  prospects fonction de la hauteur, score bioclimatique alizés (SE 135°).
+  Vue « Planche » = restitution client imprimable (plan masse + comparatif + axo).
+  Nécessite le serveur local du repo (imports ../services/*.js).
+-->
+
+<style>
+:root {
+  --bg: #0a0e18; --bg-2: #11172a; --bg-3: #1a223d;
+  --panel: #131a2e; --line: #1f2945;
+  --fg: #d8e1f5; --fg-2: #8b97b6;
+  --accent: #5b9eff; --grow: #5be0a0; --warn: #f59e0b; --err: #ff5b75; --gold: #ffc857;
+  --r: 10px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: 'JetBrains Mono','SF Mono',Consolas,monospace; font-size: 13px; overflow: hidden; }
+button, input, select, textarea { font-family: inherit; }
+#app { display: grid; grid-template-rows: 50px 86px 1fr 26px; grid-template-columns: 1fr 316px; grid-template-areas: "top top" "scen scen" "center right" "bot bot"; height: 100vh; }
+#topbar { grid-area: top; display: flex; align-items: center; gap: 14px; padding: 0 16px; background: var(--bg-2); border-bottom: 1px solid var(--line); }
+#topbar h1 { font-size: 14px; margin: 0; }
+#topbar .sub { font-size: 10px; color: var(--fg-2); }
+.tabs { display: flex; gap: 4px; background: var(--bg-3); border-radius: 8px; padding: 3px; }
+.tab { padding: 5px 14px; border: none; background: none; color: var(--fg-2); border-radius: 6px; cursor: pointer; font-size: 12px; }
+.tab.on { background: var(--accent); color: #fff; }
+.btn { padding: 6px 12px; background: var(--bg-3); color: var(--fg); border: 1px solid var(--line); border-radius: 7px; cursor: pointer; font-size: 11px; }
+.btn:hover { border-color: var(--accent); }
+#scenbar { grid-area: scen; display: flex; gap: 10px; padding: 8px 16px; background: var(--bg-2); border-bottom: 1px solid var(--line); align-items: stretch; }
+.scen { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 2px; background: var(--bg-3); border: 2px solid var(--line); border-radius: var(--r); padding: 7px 14px; cursor: pointer; transition: border-color .12s; }
+.scen.on { border-color: var(--accent); background: #1c2a4a; }
+.scen .t { display: flex; align-items: baseline; gap: 8px; }
+.scen .name { font-size: 11.5px; font-weight: bold; letter-spacing: .04em; }
+.scen .logts { margin-left: auto; font-size: 19px; font-weight: bold; color: var(--gold); }
+.scen .logts small { font-size: 9px; color: var(--fg-2); font-weight: normal; }
+.scen .m { display: flex; gap: 9px; font-size: 9.5px; color: var(--fg-2); flex-wrap: wrap; }
+.scen .m b { color: var(--fg); font-weight: 600; }
+.scen .m .ok { color: var(--grow); }
+.scen .m .bad { color: var(--err); }
+#center { grid-area: center; display: flex; flex-direction: column; min-width: 0; }
+#canvas-head { display: flex; align-items: center; gap: 10px; padding: 7px 14px; background: var(--bg-2); border-bottom: 1px solid var(--line); }
+#canvas-title { font-size: 12px; }
+#level-nav { display: none; gap: 6px; align-items: center; margin-left: auto; }
+#level-nav button { width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg-3); color: var(--fg); cursor: pointer; }
+#level-nav button:disabled { opacity: .3; }
+#canvas-area { flex: 1; background: #f4f0e6; min-height: 0; overflow: auto; }
+#right { grid-area: right; overflow-y: auto; background: var(--panel); border-left: 1px solid var(--line); padding: 10px; }
+.sec { margin-bottom: 10px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r); padding: 9px 12px; }
+.sec h2 { font-size: 10px; margin: 0 0 7px; color: var(--accent); letter-spacing: .1em; text-transform: uppercase; }
+.row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.row label { font-size: 10.5px; color: var(--fg-2); flex: 1; }
+.row .val { font-size: 10.5px; color: var(--gold); min-width: 40px; text-align: right; }
+.row input[type=range] { flex: 1.4; accent-color: var(--accent); }
+.row select { background: var(--bg-3); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 3px 7px; font-size: 10.5px; flex: 1.6; }
+textarea { width: 100%; height: 48px; background: var(--bg-3); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; font-size: 9px; padding: 5px; resize: vertical; }
+#metrics table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+#metrics td { padding: 2.5px 2px; border-bottom: 1px solid var(--line); color: var(--fg-2); }
+#metrics td:last-child { text-align: right; color: var(--fg); font-weight: bold; }
+#metrics tr.hero td { color: var(--gold); font-size: 12px; }
+#metrics tr.err td:last-child { color: var(--err); }
+#warns { font-size: 9.5px; color: var(--warn); line-height: 1.5; margin-top: 5px; }
+#botbar { grid-area: bot; display: flex; align-items: center; gap: 18px; padding: 0 16px; background: var(--bg-2); border-top: 1px solid var(--line); font-size: 10px; color: var(--fg-2); }
+.hint { font-size: 9px; color: var(--fg-2); line-height: 1.4; margin-top: 3px; }
+/* ── Planche (restitution client) ── */
+#planche { background: #fff; color: #222; font-family: 'JetBrains Mono', monospace; padding: 26px 32px; min-height: 100%; }
+#planche header { display: flex; justify-content: space-between; border-bottom: 3px solid #222; padding-bottom: 8px; margin-bottom: 14px; }
+#planche h1 { font-size: 19px; margin: 0; }
+#planche .ph-sub { font-size: 10px; color: #666; }
+#planche .cols { display: grid; grid-template-columns: 1.35fr 1fr; gap: 20px; }
+#planche .frame { border: 1px solid #999; }
+#planche h3 { font-size: 11px; margin: 12px 0 6px; text-transform: uppercase; letter-spacing: .08em; }
+#planche table { width: 100%; border-collapse: collapse; font-size: 10px; }
+#planche th, #planche td { border: 1px solid #bbb; padding: 3.5px 6px; text-align: right; }
+#planche th { background: #eee; text-align: center; }
+#planche td:first-child { text-align: left; color: #444; }
+#planche tr.sel td { background: #eef4ff; font-weight: bold; }
+#planche .note { font-size: 8.5px; color: #888; margin-top: 12px; font-style: italic; }
+@media print {
+  body { overflow: visible; }
+  #app { display: block; height: auto; }
+  #topbar, #scenbar, #right, #botbar, #canvas-head { display: none !important; }
+  #canvas-area { overflow: visible; background: #fff; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div><h1>🏗 ÉTUDE DE CAPACITÉ <span style="color:var(--accent)">v2</span></h1>
+      <div class="sub" id="top-sub">—</div></div>
+    <div class="tabs">
+      <button class="tab on" data-tab="plan">Plan masse</button>
+      <button class="tab" data-tab="etage">Étage</button>
+      <button class="tab" data-tab="axo">Axo</button>
+      <button class="tab" data-tab="planche">📄 Planche</button>
+    </div>
+    <div style="flex:1"></div>
+    <button class="btn" id="btn-print">🖨 Imprimer</button>
+    <button class="btn" id="btn-svg">↓ SVG</button>
+  </div>
+
+  <div id="scenbar"></div>
+
+  <div id="center">
+    <div id="canvas-head">
+      <div id="canvas-title">Plan masse</div>
+      <div id="level-nav">
+        <button id="lvl-down">−</button>
+        <span id="lvl-label" style="font-size:11px;min-width:72px;text-align:center">R+1</span>
+        <button id="lvl-up">+</button>
+      </div>
+    </div>
+    <div id="canvas-area"></div>
+  </div>
+
+  <div id="right">
+    <div class="sec">
+      <h2>Parcelle</h2>
+      <div class="row"><select id="p-preset" style="flex:1"></select><span class="val" id="p-area">—</span></div>
+      <textarea id="p-geojson" placeholder="Coller un GeoJSON parcelle (WGS84) puis Charger"></textarea>
+      <div class="row" style="margin-top:5px"><button class="btn" id="p-load" style="flex:1">Charger le GeoJSON</button></div>
+      <div class="hint">Vue Plan : <b>clic sur une limite</b> = voie → lat → mitoyen → fond · <b>clic bâtiment</b> = sélection · molette zoom, drag pan.</div>
+    </div>
+    <div class="sec">
+      <h2>Règles PLU</h2>
+      <div class="row"><label>Recul voie</label><input type="range" id="r-voie" min="0" max="10" step="0.5" value="5"><span class="val" id="r-voie-v">5 m</span></div>
+      <div class="row"><label>Recul lat.</label><input type="range" id="r-lat" min="0" max="8" step="0.5" value="3"><span class="val" id="r-lat-v">3 m</span></div>
+      <div class="row"><label>Recul fond</label><input type="range" id="r-fond" min="0" max="10" step="0.5" value="4"><span class="val" id="r-fond-v">4 m</span></div>
+      <div class="row"><label>CES max</label><input type="range" id="r-ces" min="20" max="80" step="5" value="50"><span class="val" id="r-ces-v">50 %</span></div>
+      <div class="row"><label>Pleine terre min</label><input type="range" id="r-perm" min="10" max="50" step="5" value="25"><span class="val" id="r-perm-v">25 %</span></div>
+      <div class="row"><label>Hauteur max</label><input type="range" id="r-hmax" min="6" max="15" step="1" value="12"><span class="val" id="r-hmax-v">12 m</span></div>
+    </div>
+    <div class="sec">
+      <h2>Options</h2>
+      <div class="row"><label>Profondeur lames</label><input type="range" id="b-prof" min="9" max="13" step="0.5" value="10.5"><span class="val" id="b-prof-v">10.5 m</span></div>
+      <div class="row"><label>Parking / logt</label>
+        <select id="b-pk"><option value="1">1 place</option><option value="1.5" selected>1,5 place</option><option value="2">2 places</option></select></div>
+      <div class="row"><label>Mix (scénarios A·B)</label>
+        <select id="b-mix"><option value="mixte" selected>Mixte T2/T3</option><option value="compact">Compact T2</option><option value="social">Social T1-T3</option></select></div>
+    </div>
+    <div class="sec" id="metrics"><h2 id="m-title">Scénario</h2><table id="m-table"></table><div id="warns"></div></div>
+  </div>
+
+  <div id="botbar">
+    <span>TERLAB · étude de faisabilité — 3 scénarios de capacité</span>
+    <span id="status" style="margin-left:auto"></span>
+  </div>
+</div>
+
+<script type="module">
+import CAP from '../services/capacite-polygone.js';
+import GeomInlet from '../services/geom-inlet.js';
+import FH from '../services/footprint-helpers.js';
+import TA from '../services/terrain-p07-adapter.js';
+
+/* ═══ Présets parcelles 1000-3000 m² ═══ */
+const S = (pts, k) => pts.map(([x, y]) => [x * k, y * k]);
+function arcEdge(cx, cy, r, a0, a1, n) {
+  const o = [];
+  for (let s = 0; s <= n; s++) { const a = a0 + (a1 - a0) * s / n; o.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); }
+  return o;
+}
+const PRESETS = {
+  'Rectangle 1350 m²': { poly: S([[0,0],[30,0],[30,20],[0,20]], 1.5), types: ['voie','lat','fond','lat'] },
+  'Trapèze oblique 1900 m²': { poly: S([[0,6],[34,0],[36,24],[2,26]], 1.55), types: ['voie','lat','fond','lat'] },
+  'L concave 1580 m²': { poly: S([[0,0],[32,0],[32,14],[16,14],[16,30],[0,30]], 1.5), types: ['voie','lat','fond','lat','fond','lat'] },
+  'Drapeau 1590 m²': { poly: S([[12,0],[17,0],[17,14],[30,14],[30,34],[0,34],[0,14],[12,14]], 1.4), types: ['voie','lat','lat','lat','fond','lat','lat','lat'] },
+  'Limite courbe 2570 m²': (() => {
+    const arc = arcEdge(38, 14, 24, Math.PI * 0.72, Math.PI * 1.28, 10);
+    const poly = [[10,0],[34,2],[32,26],[12,28], ...arc.slice(1,-1).map(([x,y]) => [x-24, y])];
+    return { poly: S(poly, 1.5), types: ['voie','lat','fond', ...Array(poly.length-3).fill('lat')] };
+  })(),
+  'Octogone 2500 m²': { poly: S([[2,0],[30,2],[36,12],[28,16],[32,28],[14,32],[10,20],[0,18]], 1.9), types: ['voie','lat','lat','lat','fond','lat','lat','lat'] },
+  'Grand rect 2880 m²': { poly: S([[0,0],[30,0],[30,20],[0,20]], 2.19), types: ['voie','lat','fond','lat'] },
+};
+
+/* ═══ Géométrie locale ═══ */
+function polyArea(p) { let a = 0; for (let i = 0; i < p.length; i++) { const [x1,y1] = p[i], [x2,y2] = p[(i+1)%p.length]; a += x1*y2 - x2*y1; } return Math.abs(a)/2; }
+function ptInPoly(x, y, poly) { let ins = false; for (let i = 0, j = poly.length-1; i < poly.length; j = i++) { const [xi,yi] = poly[i], [xj,yj] = poly[j]; if ((yi>y)!==(yj>y) && x < (xj-xi)*(y-yi)/(yj-yi)+xi) ins = !ins; } return ins; }
+function distPtSeg(px, py, x1, y1, x2, y2) { const dx = x2-x1, dy = y2-y1, l2 = dx*dx+dy*dy; if (l2 < 1e-10) return Math.hypot(px-x1, py-y1); const t = Math.max(0, Math.min(1, ((px-x1)*dx+(py-y1)*dy)/l2)); return Math.hypot(px-(x1+t*dx), py-(y1+t*dy)); }
+function rotAt(cx, cy, th) { const c = Math.cos(th), s = Math.sin(th); return ([x, y]) => [cx + x*c - y*s, cy + x*s + y*c]; }
+const LOGT_SU = CAP.LOGT_SU;
+
+/* ═══ State ═══ */
+const state = {
+  tab: 'plan', presetKey: Object.keys(PRESETS)[0],
+  poly: null, types: null, mitoyen: null,
+  reculs: { voie: 5, lat: 3, fond: 4 }, cesMax: 50, permMin: 25, hMax: 12,
+  prof: 10.5, pkRatio: 1.5, mix: 'mixte',
+  scen: 'B', level: 1, selB: 0,
+  env: null, scenarios: {},
+  viewT: { plan: { z:1,x:0,y:0 }, etage: { z:1,x:0,y:0 }, axo: { z:1,x:0,y:0 } },
+  _suppressClick: false,
+};
+function loadPreset(key) {
+  const p = PRESETS[key];
+  state.presetKey = key;
+  state.poly = p.poly.map(q => [...q]);
+  state.types = [...p.types];
+  state.mitoyen = new Array(p.poly.length).fill(false);
+  recompute();
+}
+function edgeRecul(i) {
+  const t = state.types[i];
+  if (t === 'lat') return state.mitoyen[i] ? 0 : state.reculs.lat;
+  return state.reculs[t] ?? 0;
+}
+function computeEnv() {
+  const R = state.types.map((_, i) => edgeRecul(i));
+  try {
+    const inlet = GeomInlet.inletPolyline(state.poly, R, { arcSteps: 8 });
+    if (inlet.length >= 3 && polyArea(inlet) > 5 && inletContained(inlet, state.poly)) return inlet;
+  } catch (_) {}
+  try {
+    const z = FH.buildZone(state.poly.map(([x,y]) => ({x,y})), R);
+    if (z?.length >= 3) return z.map(p => [p.x, p.y]);
+  } catch (_) {}
+  return null;
+}
+function inletContained(inlet, parc) {
+  if (polyArea(inlet) > polyArea(parc) * 1.001) return false;
+  for (const [x, y] of inlet) {
+    if (ptInPoly(x, y, parc)) continue;
+    let d = Infinity;
+    for (let i = 0; i < parc.length && d >= 0.05; i++) {
+      const [x1,y1] = parc[i], [x2,y2] = parc[(i+1)%parc.length];
+      d = Math.min(d, distPtSeg(x, y, x1, y1, x2, y2));
+    }
+    if (d >= 0.05) return false;
+  }
+  return true;
+}
+
+/* ═══ PLOTS 4 logts — placement dans les reliquats, alignés aux limites ═══ */
+function plotBuilding(cx, cy, side, th) {
+  const R = rotAt(cx, cy, th);
+  const h = side / 2;
+  const footprint = [R([-h,-h]), R([h,-h]), R([h,h]), R([-h,h])];
+  const sub = side / 2 >= 7.5 ? 'T3' : 'T2';
+  const items = [
+    { type: 'logement', subtype: sub, label: sub, poly: [R([-h,0]), R([0,0]), R([0,h]), R([-h,h])] },
+    { type: 'logement', subtype: sub, label: sub, poly: [R([0,0]), R([h,0]), R([h,h]), R([0,h])] },
+    { type: 'logement', subtype: sub, label: sub, poly: [R([-h,-h]), R([0,-h]), R([0,0]), R([-h,0])] },
+    { type: 'logement', subtype: sub, label: sub, poly: [R([0,-h]), R([h,-h]), R([h,0]), R([0,0])] },
+    { type: 'noyau', label: 'Noyau', poly: [R([-2,-2]), R([2,-2]), R([2,2]), R([-2,2])] },
+  ];
+  return {
+    kind: 'plot', footprint, items, axis: null,
+    metrics: { perFloor: 4, counts: { [sub]: 4 }, emprise: side*side, su_par_niveau: 4 * (LOGT_SU[sub] ?? 49), needSec: false },
+    warnings: [],
+  };
+}
+// Aligne le plot sur l'arête d'enveloppe la plus proche ; score = coller aux limites
+function placePlots(env, obstacles, side, gap, maxN) {
+  const xs = env.map(p => p[0]), ys = env.map(p => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const placed = [];
+  const obst = obstacles.map(o => o);
+  for (let n = 0; n < maxN; n++) {
+    let best = null;
+    for (let gx = x0 + side/2; gx <= x1 - side/2 + 0.01; gx += 2) {
+      for (let gy = y0 + side/2; gy <= y1 - side/2 + 0.01; gy += 2) {
+        if (!ptInPoly(gx, gy, env)) continue;
+        // arête env la plus proche → orientation
+        let bd = Infinity, th = 0;
+        for (let i = 0; i < env.length; i++) {
+          const [ax, ay] = env[i], [bx2, by2] = env[(i+1)%env.length];
+          const d = distPtSeg(gx, gy, ax, ay, bx2, by2);
+          if (d < bd) { bd = d; th = Math.atan2(by2 - ay, bx2 - ax); }
+        }
+        const R = rotAt(gx, gy, th);
+        const h = side / 2 + 0.15;
+        const corners = [R([-h,-h]), R([h,-h]), R([h,h]), R([-h,h])];
+        if (!corners.every(([px, py]) => ptInPoly(px, py, env))) continue;
+        const fp = [R([-side/2,-side/2]), R([side/2,-side/2]), R([side/2,side/2]), R([-side/2,side/2])];
+        if (!obst.every(o => CAP._lameSpacingOK(fp, o, gap))) continue;
+        // score : coller aux limites (bd petit) puis remplir depuis un coin
+        const score = -bd * 10 - gx - gy;
+        if (!best || score > best.score) best = { score, cx: gx, cy: gy, th, fp };
+      }
+    }
+    if (!best) break;
+    placed.push(plotBuilding(best.cx, best.cy, side, best.th));
+    obst.push(best.fp);
+  }
+  return placed;
+}
+
+/* ═══ PARKING en poches desservies — délégué au service TERLAB
+   (services/parking.js · layoutPockets, NF P 91-120). ═══ */
+function layoutParkingPockets(nPlaces, buildings) {
+  return Parking.layoutPockets({
+    parcelPoly: state.poly, edgeTypes: state.types, reculs: state.reculs,
+    nPlaces, buildings, prof: state.prof,
+  });
+}
+
+/* ═══ Score bioclimatique : alizés SE (135°) ⊥ façades = traversant ═══ */
+const ALIZE = 135 * Math.PI / 180; // provenance SE (compass) → vecteur vent
+function bioclimScore(buildings) {
+  // vent d'où : SE → souffle vers NO ; direction du vent en repère math (x=E, y=N)
+  const wd = [Math.sin(ALIZE + Math.PI), Math.cos(ALIZE + Math.PI)];
+  let num = 0, den = 0;
+  for (const b of buildings) {
+    let dir;
+    if (b.axis && b.axis.length >= 2) {
+      const [x1, y1] = b.axis[0], [x2, y2] = b.axis[b.axis.length-1];
+      dir = [x2-x1, y2-y1];
+    } else {
+      const [p0, p1] = [b.footprint[0], b.footprint[1]];
+      dir = [p1[0]-p0[0], p1[1]-p0[1]];
+    }
+    const l = Math.hypot(...dir) || 1;
+    // façade ⊥ vent = axe ⊥ direction du vent → |sin| max
+    const s = Math.abs(dir[0]/l * wd[1] - dir[1]/l * wd[0]);
+    const w = b.metrics.perFloor;
+    num += s * w; den += w;
+  }
+  return den ? Math.round(num / den * 100) : 0;
+}
+
+/* ═══ Scénarios ═══ */
+const SCEN_DEFS = [
+  { key: 'A', name: 'A · Capacité max', niveauxF: nv => nv, maxLames: 3, interF: h => Math.max(4, h/2), plotsMax: 2, plotSide: 14, mixF: m => m, note: 'Remplissage multi-fronts, prospect minimum' },
+  { key: 'B', name: 'B · Équilibré', niveauxF: nv => Math.min(2, nv), maxLames: 2, interF: h => Math.max(6, h), plotsMax: 1, plotSide: 14, mixF: m => m, note: 'Densité raisonnée, prospect = hauteur' },
+  { key: 'C', name: 'C · Qualité résidentielle', niveauxF: nv => Math.min(2, nv), maxLames: 1, interF: h => Math.max(8, 1.5*h), plotsMax: 2, plotSide: 15, mixF: () => 'familial', note: 'Habitat aéré, plots familiaux, cœur paysager' },
+];
+function computeScenario(def) {
+  const nvMaxPLU = Math.max(1, Math.floor(state.hMax / 3));
+  const niveaux = def.niveauxF(nvMaxPLU);
+  const h = niveaux * 3;
+  const interBat = def.interF(h);
+  const params = {
+    profondeur: state.prof, coursH: 1.5, varangue: true,
+    mixPreset: def.mixF(state.mix), niveaux, fill: true,
+    maxLames: def.maxLames, interBat,
+  };
+  const buildings = [];
+  const warnings = [];
+  if (state.env) {
+    const multi = CAP.capaciteMulti(state.poly, state.types, state.env, params);
+    if (multi.ok) {
+      for (const l of multi.lames) buildings.push({ kind: 'lame', ...l });
+      warnings.push(...multi.warnings);
+    } else warnings.push(...multi.warnings);
+    // plots dans les reliquats
+    const obstacles = buildings.map(b => b.footprint);
+    const plots = placePlots(state.env, obstacles, def.plotSide, interBat, def.plotsMax);
+    buildings.push(...plots);
+  }
+  // métriques
+  const parcArea = polyArea(state.poly);
+  const m = { niveaux, interBat, parcArea, warnings: [...new Set(warnings)] };
+  m.perFloor = buildings.reduce((s, b) => s + b.metrics.perFloor, 0);
+  m.emprise = buildings.reduce((s, b) => s + b.metrics.emprise, 0);
+  m.counts = {};
+  for (const b of buildings) for (const [t, c] of Object.entries(b.metrics.counts)) m.counts[t] = (m.counts[t] ?? 0) + c;
+  // RDC : hall+locaux sur les lames (lame 1 : −2, autres lames : −1, plots : 0)
+  let li = 0, rdcLogts = 0;
+  for (const b of buildings) {
+    if (b.kind === 'lame') { rdcLogts += Math.max(0, b.metrics.perFloor - (li === 0 ? 2 : 1)); li++; }
+    else rdcLogts += b.metrics.perFloor;
+  }
+  m.logts = rdcLogts + m.perFloor * (niveaux - 1);
+  m.su = Math.round(buildings.reduce((s, b) => s + b.metrics.su_par_niveau, 0) * (niveaux - 1)
+       + buildings.reduce((s, b) => s + b.metrics.su_par_niveau * ((b.kind === 'lame' ? Math.max(0, b.metrics.perFloor - 2) : b.metrics.perFloor) / Math.max(1, b.metrics.perFloor)), 0));
+  m.sdp = Math.round(m.emprise * niveaux * 0.87);
+  m.ces = m.emprise / parcArea * 100;
+  m.cesOK = m.ces <= state.cesMax + 0.5;
+  m.hauteur = h;
+  m.densite = Math.round(m.logts / (parcArea / 10000));
+  // parking dessiné
+  m.pkNeeded = Math.ceil(m.logts * state.pkRatio);
+  const parking = layoutParkingPockets(m.pkNeeded, buildings);
+  m.pkExt = parking.placed;
+  m.pkSS = parking.under.length;
+  m.pkMissing = Math.max(0, m.pkNeeded - m.pkExt - m.pkSS);
+  // imperméable réel : allées + places (2,30×5,00 = 11,5 m²) + rampe
+  const pkArea = parking.aisles.reduce((s, a) => s + polyArea(a), 0)
+    + m.pkExt * 11.5 + (parking.ramp ? polyArea(parking.ramp) : 0);
+  m.pleineTerre = Math.max(0, parcArea - m.emprise - pkArea);
+  m.pleineTerrePct = m.pleineTerre / parcArea * 100;
+  m.permOK = m.pleineTerrePct >= state.permMin - 0.5;
+  m.bioclim = bioclimScore(buildings);
+  if (state.prof > 12) m.warnings.push(`prof. ${state.prof} m > 12 m : RTAA à vérifier`);
+  if (m.pkSS > 0) m.warnings.push(`${m.pkSS} places en sous-sol (allée + rampe dessinées)`);
+  if (parking.senUnique) m.warnings.push('desserte parking en sens unique (2,80 m — NF P 91-120)');
+  if (parking.rampShort) m.warnings.push('rampe SS courte (< 15 m) : pente > 18 % probable — à approfondir');
+  if (m.pkMissing > 0) m.warnings.push(`${m.pkMissing} places non casées — agrandir la poche ou réduire le programme`);
+  if (!m.cesOK) m.warnings.push(`CES ${m.ces.toFixed(0)} % > ${state.cesMax} %`);
+  if (!m.permOK) m.warnings.push(`pleine terre ${m.pleineTerrePct.toFixed(0)} % < ${state.permMin} %`);
+  return { def, buildings, parking, metrics: m };
+}
+function recompute() {
+  state.env = computeEnv();
+  state.scenarios = {};
+  for (const def of SCEN_DEFS) state.scenarios[def.key] = computeScenario(def);
+  const sc = state.scenarios[state.scen];
+  state.level = Math.min(state.level, (sc?.metrics.niveaux ?? 1) - 1);
+  state.selB = Math.min(state.selB, Math.max(0, (sc?.buildings.length ?? 1) - 1));
+  render();
+}
+
+/* ═══ Rendu ═══ */
+const ITEM_FILL = {
+  logement_T1: '#f3e1c8', logement_T2: '#f3e9d5', logement_T3: '#eee1c3', logement_T4: '#e1d2af', logement_T5: '#d7c3a0',
+  coursive: 'rgba(130,170,215,.55)', varangue: 'rgba(105,170,90,.42)',
+  noyau: 'rgba(118,102,76,.55)', escalier: 'rgba(185,170,135,.8)', ascenseur: 'rgba(195,180,148,.8)',
+  hall: 'rgba(130,170,215,.6)', locaux: 'rgba(175,165,140,.6)',
+};
+const itemFill = it => it.type === 'logement' ? (ITEM_FILL['logement_' + it.subtype] ?? '#f3e9d5') : (ITEM_FILL[it.type] ?? '#ddd');
+const MUR = '#58442a', TXT = '#3a2e1c';
+function makeFit(pts, W, H, M) {
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const k = Math.min((W-2*M)/Math.max(1, x1-x0), (H-2*M)/Math.max(1, y1-y0));
+  const ox = (W-k*(x1-x0))/2, oy = (H-k*(y1-y0))/2;
+  return { w2s: (x, y) => [ox+(x-x0)*k, H-oy-(y-y0)*k], k };
+}
+const fmt = w2s => pts => pts.map(([x,y]) => w2s(x,y).map(v => v.toFixed(1)).join(',')).join(' ');
+function levelItems(b, isFirstLame) {
+  const items = b.items.map(it => ({ ...it }));
+  if (b.kind === 'lame' && state.level === 0) {
+    const nRepl = isFirstLame ? 2 : 1;
+    let done = 0;
+    for (const it of items) {
+      if (it.type !== 'logement' || done >= nRepl) continue;
+      if (done === 0) { it.type = 'hall'; it.subtype = null; it.label = 'Hall'; }
+      else { it.type = 'locaux'; it.subtype = null; it.label = 'Vélos·OM'; }
+      done++;
+    }
+  }
+  return items;
+}
+function bindPanZoom(svg) {
+  const vt = state.viewT[state.tab];
+  if (!vt) return;
+  const g = svg.querySelector('#vp');
+  if (!g) return;
+  const apply = () => g.setAttribute('transform', `translate(${vt.x} ${vt.y}) scale(${vt.z})`);
+  apply();
+  svg.addEventListener('wheel', e => {
+    e.preventDefault();
+    const r = svg.getBoundingClientRect();
+    const mx = e.clientX-r.left, my = e.clientY-r.top;
+    const nz = Math.min(10, Math.max(0.25, vt.z * (e.deltaY < 0 ? 1.15 : 1/1.15)));
+    vt.x = mx-(mx-vt.x)*(nz/vt.z); vt.y = my-(my-vt.y)*(nz/vt.z); vt.z = nz;
+    apply();
+  }, { passive: false });
+  let drag = null;
+  svg.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, vx: vt.x, vy: vt.y, moved: false }; svg.setPointerCapture(e.pointerId); });
+  svg.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const dx = e.clientX-drag.x, dy = e.clientY-drag.y;
+    if (Math.hypot(dx, dy) > 3) drag.moved = true;
+    if (drag.moved) { vt.x = drag.vx+dx; vt.y = drag.vy+dy; apply(); }
+  });
+  svg.addEventListener('pointerup', () => { if (drag?.moved) { state._suppressClick = true; setTimeout(() => state._suppressClick = false, 50); } drag = null; });
+  svg.addEventListener('dblclick', () => { vt.z = 1; vt.x = 0; vt.y = 0; apply(); });
+}
+
+function planSVG(sc, W, H, interactive) {
+  const { w2s, k } = makeFit(state.poly, W, H, 44);
+  const F = fmt(w2s);
+  const parts = [];
+  const COL = { voie: '#c43a3a', lat: '#5b9eff', fond: '#3aa06a' };
+  parts.push(`<polygon points="${F(state.poly)}" fill="rgba(245,225,180,.5)" stroke="rgba(88,68,42,.65)" stroke-width="1.5"/>`);
+  if (state.env) parts.push(`<polygon points="${F(state.env)}" fill="rgba(91,158,255,.07)" stroke="rgba(91,158,255,.55)" stroke-width="1.1" stroke-dasharray="7,4"/>`);
+  // Parking — poche : allée remplie + flèche de circulation + bataille
+  if (sc.parking) {
+    for (const a of sc.parking.aisles) {
+      parts.push(`<polygon points="${F(a)}" fill="rgba(200,194,178,.45)" stroke="rgba(120,112,90,.4)" stroke-width="0.5"/>`);
+    }
+    for (const l of sc.parking.lanes) {
+      const pts = l.map(([x,y]) => w2s(x,y));
+      parts.push(`<path d="M${pts.map(p => p.map(v=>v.toFixed(1)).join(',')).join(' L')}" fill="none" stroke="rgba(90,84,66,.6)" stroke-width="1" stroke-dasharray="6,4"/>`);
+      const [e1, e2] = [pts[pts.length-2], pts[pts.length-1]];
+      const dx = e2[0]-e1[0], dy = e2[1]-e1[1], dl = Math.hypot(dx,dy)||1;
+      const [vx2, vy2] = [dx/dl, dy/dl];
+      parts.push(`<polygon points="${e2[0]},${e2[1]} ${e2[0]-vx2*7-vy2*3.5},${e2[1]-vy2*7+vx2*3.5} ${e2[0]-vx2*7+vy2*3.5},${e2[1]-vy2*7-vx2*3.5}" fill="rgba(90,84,66,.6)"/>`);
+    }
+    for (const s of sc.parking.stalls) parts.push(`<polygon points="${F(s)}" fill="rgba(175,168,148,.4)" stroke="rgba(120,112,90,.55)" stroke-width="0.6"/>`);
+    if (sc.parking.ramp) {
+      parts.push(`<polygon points="${F(sc.parking.ramp)}" fill="rgba(100,110,140,.4)" stroke="rgba(70,80,110,.75)" stroke-width="0.8"/>`);
+      const c = sc.parking.ramp.reduce((s2, p) => [s2[0]+p[0]/4, s2[1]+p[1]/4], [0,0]);
+      const [rx2, ry2] = w2s(...c);
+      parts.push(`<text x="${rx2.toFixed(1)}" y="${ry2.toFixed(1)}" text-anchor="middle" font-size="8" font-weight="700" fill="#2c3658" font-family="JetBrains Mono" pointer-events="none">rampe SS</text>`);
+    }
+    if (sc.parking.access) {
+      const [axx, ayy] = w2s(sc.parking.access[0], sc.parking.access[1]);
+      parts.push(`<text x="${axx.toFixed(1)}" y="${(ayy+13).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="700" fill="#c43a3a" font-family="JetBrains Mono" pointer-events="none">▲ accès</text>`);
+    }
+  }
+  // Bâtiments
+  let li = -1;
+  sc.buildings.forEach((b, bi) => {
+    if (b.kind === 'lame') li++;
+    const isSel = interactive && bi === state.selB;
+    if (b.axis) parts.push(`<path d="M${b.axis.map(([x,y]) => w2s(x,y).map(v=>v.toFixed(1)).join(',')).join(' L')}" fill="none" stroke="#c8961e" stroke-width="1.6" stroke-dasharray="2,4" opacity=".6"/>`);
+    for (const it of levelItems(b, b.kind === 'lame' && li === 0)) parts.push(`<polygon points="${F(it.poly)}" fill="${itemFill(it)}" stroke="rgba(88,68,42,.5)" stroke-width="0.6"/>`);
+    parts.push(`<polygon points="${F(b.footprint)}" fill="transparent" stroke="${isSel ? '#2c66c9' : MUR}" stroke-width="${isSel ? 2.4 : 1.6}" ${interactive ? `data-b="${bi}" style="cursor:pointer"` : ''}/>`);
+    for (const it of levelItems(b, b.kind === 'lame' && li === 0)) {
+      if (it.type !== 'logement' && it.type !== 'hall') continue;
+      const cx = it.poly.reduce((s,p) => s+p[0], 0)/it.poly.length;
+      const cy = it.poly.reduce((s,p) => s+p[1], 0)/it.poly.length;
+      const [sx, sy] = w2s(cx, cy);
+      parts.push(`<text x="${sx.toFixed(1)}" y="${sy.toFixed(1)}" text-anchor="middle" font-size="${9.5*Math.min(1.2, k/6)}" font-weight="700" fill="${TXT}" font-family="JetBrains Mono" pointer-events="none">${it.subtype ?? it.label}</text>`);
+    }
+    const fyMax = Math.max(...b.footprint.map(p => p[1]));
+    const fcx = b.footprint.reduce((s,p) => s+p[0], 0)/b.footprint.length;
+    const [lx2, ly2] = w2s(fcx, fyMax + 1.3);
+    const tag = b.kind === 'lame' ? `L${li+1}` : `Plot`;
+    parts.push(`<text x="${lx2.toFixed(1)}" y="${ly2.toFixed(1)}" text-anchor="middle" font-size="9" font-weight="700" fill="${isSel ? '#2c66c9' : 'rgba(88,68,42,.7)'}" font-family="JetBrains Mono" pointer-events="none">${tag} · ${b.metrics.perFloor}/niv</text>`);
+  });
+  // Limites typées
+  const n = state.poly.length;
+  for (let i = 0; i < n; i++) {
+    const [x1,y1] = state.poly[i], [x2,y2] = state.poly[(i+1)%n];
+    const [sx1,sy1] = w2s(x1,y1), [sx2,sy2] = w2s(x2,y2);
+    const isMit = state.types[i] === 'lat' && state.mitoyen[i];
+    const col = isMit ? '#ff5b75' : COL[state.types[i]] ?? '#888';
+    parts.push(`<line x1="${sx1.toFixed(1)}" y1="${sy1.toFixed(1)}" x2="${sx2.toFixed(1)}" y2="${sy2.toFixed(1)}" stroke="${col}" stroke-width="${isMit ? 4 : 2.6}" ${isMit ? 'stroke-dasharray="7,4"' : ''} stroke-linecap="round"/>`);
+    if (interactive) parts.push(`<line x1="${sx1.toFixed(1)}" y1="${sy1.toFixed(1)}" x2="${sx2.toFixed(1)}" y2="${sy2.toFixed(1)}" stroke="transparent" stroke-width="15" data-edge="${i}" style="cursor:pointer"/>`);
+  }
+  // Stationnement sous bâtiment : allée de circulation + bataille pointillées
+  if (sc.parking?.under?.length) {
+    for (const l of (sc.parking.underLanes ?? [])) {
+      const pts = l.map(([x,y]) => w2s(x,y));
+      parts.push(`<path d="M${pts.map(p => p.map(v=>v.toFixed(1)).join(',')).join(' L')}" fill="none" stroke="rgba(60,72,110,.6)" stroke-width="1" stroke-dasharray="5,3"/>`);
+    }
+    for (const s of sc.parking.under) parts.push(`<polygon points="${F(s)}" fill="none" stroke="rgba(60,72,110,.7)" stroke-width="0.7" stroke-dasharray="3,2"/>`);
+    const q0 = sc.parking.under[0];
+    const [lx3, ly3] = w2s(q0[0][0], q0[0][1]);
+    parts.push(`<text x="${lx3.toFixed(1)}" y="${(ly3 - 5).toFixed(1)}" font-size="8" font-weight="700" fill="#3a4468" font-family="JetBrains Mono" pointer-events="none">${sc.parking.under.length} pl. sous bât. (SS)</text>`);
+  }
+  // Rose alizés
+  { const [rx2, ry2] = [W - 46, 42];
+    const a = ALIZE + Math.PI; // vers où souffle
+    const dx = Math.sin(a), dy = -Math.cos(a); // écran y-down
+    parts.push(`<circle cx="${rx2}" cy="${ry2}" r="17" fill="rgba(255,255,255,.75)" stroke="#888" stroke-width="0.8"/>`);
+    parts.push(`<line x1="${rx2-dx*12}" y1="${ry2-dy*12}" x2="${rx2+dx*12}" y2="${ry2+dy*12}" stroke="#3a7" stroke-width="1.6"/>`);
+    parts.push(`<polygon points="${rx2+dx*12},${ry2+dy*12} ${rx2+dx*6-dy*3},${ry2+dy*6+dx*3} ${rx2+dx*6+dy*3},${ry2+dy*6-dx*3}" fill="#3a7"/>`);
+    parts.push(`<text x="${rx2}" y="${ry2+28}" text-anchor="middle" font-size="7.5" fill="#3a7" font-family="JetBrains Mono">alizés SE</text>`); }
+  // Échelle
+  parts.push(`<line x1="18" y1="${H-14}" x2="${18+k*10}" y2="${H-14}" stroke="${MUR}" stroke-width="2"/><text x="${18+k*5}" y="${H-19}" text-anchor="middle" font-size="9" fill="${MUR}" font-family="JetBrains Mono">10 m</text>`);
+  return parts.join('');
+}
+
+function renderPlan(el) {
+  const W = el.clientWidth || 900, H = el.clientHeight || 620;
+  const sc = state.scenarios[state.scen];
+  el.innerHTML = `<svg width="${W}" height="${H}"><g id="vp">${planSVG(sc, W, H, true)}</g></svg>`;
+  bindPanZoom(el.querySelector('svg'));
+  el.querySelectorAll('[data-edge]').forEach(l => l.addEventListener('click', e => {
+    if (state._suppressClick) return;
+    cycleEdge(+e.target.dataset.edge);
+  }));
+  el.querySelectorAll('[data-b]').forEach(l => l.addEventListener('click', e => {
+    if (state._suppressClick) return;
+    state.selB = +e.target.dataset.b;
+    render();
+  }));
+}
+function cycleEdge(i) {
+  const t = state.types[i], mit = state.mitoyen[i];
+  if (t === 'voie') { state.types[i] = 'lat'; state.mitoyen[i] = false; }
+  else if (t === 'lat' && !mit) state.mitoyen[i] = true;
+  else if (t === 'lat' && mit) { state.types[i] = 'fond'; state.mitoyen[i] = false; }
+  else { state.types[i] = 'voie'; state.mitoyen[i] = false; }
+  recompute();
+}
+function renderEtage(el) {
+  const W = el.clientWidth || 900, H = el.clientHeight || 620;
+  const sc = state.scenarios[state.scen];
+  const b = sc?.buildings[state.selB];
+  if (!b) { el.innerHTML = '<div style="color:#777;padding:40px">Aucun bâtiment.</div>'; return; }
+  const { w2s } = makeFit(b.footprint, W, H, 56);
+  const F = fmt(w2s);
+  const parts = [`<polygon points="${F(b.footprint)}" fill="#fcfaf3" stroke="${MUR}" stroke-width="2"/>`];
+  const firstLameIdx = sc.buildings.findIndex(x => x.kind === 'lame');
+  for (const it of levelItems(b, state.selB === firstLameIdx)) {
+    parts.push(`<polygon points="${F(it.poly)}" fill="${itemFill(it)}" stroke="${MUR}" stroke-width="0.9"/>`);
+    const cx = it.poly.reduce((s,p) => s+p[0], 0)/it.poly.length;
+    const cy = it.poly.reduce((s,p) => s+p[1], 0)/it.poly.length;
+    const [sx, sy] = w2s(cx, cy);
+    if (it.type === 'escalier') parts.push(`<line x1="${sx-8}" y1="${sy-8}" x2="${sx+8}" y2="${sy+8}" stroke="${MUR}" stroke-width="1"/><line x1="${sx+8}" y1="${sy-8}" x2="${sx-8}" y2="${sy+8}" stroke="${MUR}" stroke-width="1"/>`);
+    if (it.type === 'ascenseur') parts.push(`<circle cx="${sx}" cy="${sy}" r="7" fill="none" stroke="${MUR}" stroke-width="1"/>`);
+    if (it.label) parts.push(`<text x="${sx.toFixed(1)}" y="${(sy+4).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="${TXT}" font-family="JetBrains Mono">${it.label}</text>`);
+  }
+  el.innerHTML = `<svg width="${W}" height="${H}"><g id="vp">${parts.join('')}</g></svg>`;
+  bindPanZoom(el.querySelector('svg'));
+}
+function axoSVG(sc, W, H) {
+  const hTot = sc.metrics.niveaux * 3;
+  const proj = (x, y, z) => [x + 0.5*z, y + 0.866*z];
+  const iso = state.poly.map(([x,y]) => proj(x,y,0));
+  for (const b of sc.buildings) for (const [x,y] of b.footprint) { iso.push(proj(x,y,0)); iso.push(proj(x,y,hTot)); }
+  const { w2s } = makeFit(iso, W, H, 40);
+  const P = (x,y,z) => { const [ix,iy] = proj(x,y,z); return w2s(ix,iy); };
+  const F3 = (pts, z) => pts.map(([x,y]) => P(x,y,z).map(v => v.toFixed(1)).join(',')).join(' ');
+  const parts = [`<polygon points="${F3(state.poly, 0)}" fill="rgba(245,225,180,.55)" stroke="${MUR}" stroke-width="1.1"/>`];
+  if (sc.parking) for (const s of sc.parking.stalls) parts.push(`<polygon points="${F3(s, 0)}" fill="rgba(175,168,148,.45)" stroke="rgba(120,112,90,.4)" stroke-width="0.4"/>`);
+  const ordered = sc.buildings.map((b, i) => ({ b, i, d: b.footprint.reduce((s,p) => s+p[1], 0)/b.footprint.length })).sort((a, x) => x.d - a.d);
+  for (const { b, i } of ordered) {
+    const fp = b.footprint, nf = fp.length;
+    const faces = [];
+    for (let j = 0; j < nf; j++) faces.push({ a: fp[j], b: fp[(j+1)%nf], d: (fp[j][1]+fp[(j+1)%nf][1])/2 });
+    faces.sort((f, g) => g.d - f.d);
+    for (const f of faces) {
+      const pts = [P(...f.a, 0), P(...f.b, 0), P(...f.b, hTot), P(...f.a, hTot)];
+      parts.push(`<polygon points="${pts.map(p => p.map(v => v.toFixed(1)).join(',')).join(' ')}" fill="${i === state.selB ? 'rgba(160,180,220,.75)' : 'rgba(216,200,165,.72)'}" stroke="${MUR}" stroke-width="0.6"/>`);
+      for (let l2 = 1; l2 < sc.metrics.niveaux; l2++) {
+        parts.push(`<line x1="${P(...f.a, l2*3)[0].toFixed(1)}" y1="${P(...f.a, l2*3)[1].toFixed(1)}" x2="${P(...f.b, l2*3)[0].toFixed(1)}" y2="${P(...f.b, l2*3)[1].toFixed(1)}" stroke="rgba(88,68,42,.35)" stroke-width="0.45"/>`);
+      }
+    }
+    parts.push(`<polygon points="${F3(fp, hTot)}" fill="rgba(195,180,145,.9)" stroke="${MUR}" stroke-width="0.9"/>`);
+  }
+  return parts.join('');
+}
+function renderAxo(el) {
+  const W = el.clientWidth || 900, H = el.clientHeight || 620;
+  el.innerHTML = `<svg width="${W}" height="${H}"><g id="vp">${axoSVG(state.scenarios[state.scen], W, H)}</g></svg>`;
+  bindPanZoom(el.querySelector('svg'));
+}
+
+/* ═══ Planche client ═══ */
+function renderPlanche(el) {
+  const sc = state.scenarios[state.scen];
+  const m = sc.metrics;
+  const date = new Date().toLocaleDateString('fr-FR');
+  const rows = SCEN_DEFS.map(d => {
+    const s = state.scenarios[d.key], mm = s.metrics;
+    const mix = Object.entries(mm.counts).map(([t,c]) => `${c}×${t}`).join(' ');
+    return `<tr class="${d.key === state.scen ? 'sel' : ''}">
+      <td>${d.name}</td><td>${mm.logts}</td><td>R+${mm.niveaux-1}</td><td>${mm.ces.toFixed(0)} %</td>
+      <td>${mm.sdp}</td><td>${mm.su}</td><td>${mm.pkExt}${mm.pkSS ? '+' + mm.pkSS + ' SS' : ''}</td>
+      <td>${mm.pleineTerrePct.toFixed(0)} %</td><td>${mm.bioclim}</td><td style="font-size:8.5px;text-align:left">${mix}</td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<div id="planche">
+    <header>
+      <div><h1>Étude de capacité — esquisse de faisabilité</h1>
+        <div class="ph-sub">Parcelle ${state.presetKey} · ${polyArea(state.poly).toFixed(0)} m² · reculs V${state.reculs.voie}/L${state.reculs.lat}/F${state.reculs.fond} m · CES ≤ ${state.cesMax} % · H ≤ ${state.hMax} m · pleine terre ≥ ${state.permMin} %</div></div>
+      <div style="text-align:right"><div style="font-size:11px;font-weight:bold">TERLAB · MGA Architecture</div><div class="ph-sub">${date} · document d'étude — non contractuel</div></div>
+    </header>
+    <div class="cols">
+      <div>
+        <h3>Plan masse — scénario ${state.scen} (${sc.def.note})</h3>
+        <div class="frame"><svg width="100%" viewBox="0 0 760 560">${planSVG(sc, 760, 560, false)}</svg></div>
+      </div>
+      <div>
+        <h3>Comparatif des scénarios</h3>
+        <table>
+          <tr><th style="text-align:left">Scénario</th><th>Logts</th><th>Niv.</th><th>CES</th><th>SDP m²</th><th>SHAB m²</th><th>Pkg</th><th>Pl. terre</th><th>Alizés</th><th>Mix / niveau</th></tr>
+          ${rows}
+        </table>
+        <h3>Axonométrie — scénario ${state.scen}</h3>
+        <div class="frame"><svg width="100%" viewBox="0 0 560 380">${axoSVG(sc, 560, 380)}</svg></div>
+        <div class="note">Étude de capacité générée par TERLAB (enveloppe réglementaire, lames traversantes RTAA, plots, stationnement dessiné selon NF P 91-120 : bataille 2,30×5,00 m, voie de desserte 5,00 m, desserte 5,00 m double sens / 2,80 m sens unique, rampe ≤ 18 %). Les surfaces SHAB sont estimées sur ratios typologiques moyens La Réunion. Hors topographie, réseaux et étude de sol. Document non contractuel.</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ═══ UI ═══ */
+function renderScenBar() {
+  const bar = document.getElementById('scenbar');
+  bar.innerHTML = SCEN_DEFS.map(d => {
+    const s = state.scenarios[d.key];
+    if (!s) return '';
+    const m = s.metrics;
+    return `<div class="scen ${state.scen === d.key ? 'on' : ''}" data-scen="${d.key}">
+      <div class="t"><span class="name">${d.name}</span><span class="logts">${m.logts}<small> logts</small></span></div>
+      <div class="m">
+        <span>R+${m.niveaux-1}</span>
+        <span class="${m.cesOK ? 'ok' : 'bad'}">CES <b>${m.ces.toFixed(0)}%</b></span>
+        <span>pkg <b>${m.pkExt}${m.pkSS ? '+' + m.pkSS + 'SS' : ''}</b></span>
+        <span class="${m.permOK ? 'ok' : 'bad'}">pl.terre <b>${m.pleineTerrePct.toFixed(0)}%</b></span>
+        <span>alizés <b>${m.bioclim}</b></span>
+      </div>
+    </div>`;
+  }).join('');
+  bar.querySelectorAll('.scen').forEach(c => c.addEventListener('click', () => {
+    state.scen = c.dataset.scen;
+    state.selB = 0;
+    const sc = state.scenarios[state.scen];
+    state.level = Math.min(state.level, sc.metrics.niveaux - 1);
+    render();
+  }));
+}
+function renderMetrics() {
+  const sc = state.scenarios[state.scen];
+  const m = sc.metrics;
+  document.getElementById('m-title').textContent = `Scénario ${state.scen} — capacité`;
+  const mix = Object.entries(m.counts).map(([t,c]) => `${c}×${t}`).join(' ');
+  document.getElementById('m-table').innerHTML = `
+    <tr class="hero"><td>Logements</td><td>${m.logts}</td></tr>
+    <tr><td>Bâtiments</td><td>${sc.buildings.filter(b=>b.kind==='lame').length} lame(s) + ${sc.buildings.filter(b=>b.kind==='plot').length} plot(s)</td></tr>
+    <tr><td>Mix / niveau</td><td>${mix || '—'}</td></tr>
+    <tr><td>Densité</td><td>${m.densite} logts/ha</td></tr>
+    <tr ${m.cesOK ? '' : 'class="err"'}><td>Emprise / CES</td><td>${m.emprise.toFixed(0)} m² · ${m.ces.toFixed(0)}%/${state.cesMax}%</td></tr>
+    <tr><td>SDP / SHAB est.</td><td>${m.sdp} / ${m.su} m²</td></tr>
+    <tr><td>Prospect entre bât.</td><td>${m.interBat.toFixed(1)} m (H=${m.hauteur} m)</td></tr>
+    <tr><td>Parking (${state.pkRatio}/logt)</td><td>${m.pkExt} ext. dessinées${m.pkSS ? ` + ${m.pkSS} SS` : ''}</td></tr>
+    <tr ${m.permOK ? '' : 'class="err"'}><td>Pleine terre</td><td>${m.pleineTerrePct.toFixed(0)} % / ${state.permMin} %</td></tr>
+    <tr><td>Score alizés</td><td>${m.bioclim} / 100</td></tr>`;
+  document.getElementById('warns').innerHTML = m.warnings.map(w => '⚠ ' + w).join('<br>');
+}
+function render() {
+  const el = document.getElementById('canvas-area');
+  const title = document.getElementById('canvas-title');
+  const nav = document.getElementById('level-nav');
+  const sc = state.scenarios[state.scen];
+  if (!sc) return;
+  document.getElementById('top-sub').textContent = `${state.presetKey} · ${polyArea(state.poly).toFixed(0)} m² · scénario ${state.scen}`;
+  if (state.tab === 'plan') { title.textContent = `Plan masse — scénario ${state.scen}`; nav.style.display = 'flex'; renderPlan(el); }
+  else if (state.tab === 'etage') { title.textContent = `Plan d'étage — bât. ${state.selB + 1}/${sc.buildings.length}`; nav.style.display = 'flex'; renderEtage(el); }
+  else if (state.tab === 'axo') { title.textContent = `Axonométrie — scénario ${state.scen}`; nav.style.display = 'none'; renderAxo(el); }
+  else { title.textContent = 'Planche client (imprimable)'; nav.style.display = 'none'; renderPlanche(el); }
+  document.getElementById('lvl-label').textContent = `${state.level === 0 ? 'RDC' : 'R+' + state.level} / R+${sc.metrics.niveaux - 1}`;
+  document.getElementById('lvl-down').disabled = state.level <= 0;
+  document.getElementById('lvl-up').disabled = state.level >= sc.metrics.niveaux - 1;
+  document.getElementById('p-area').textContent = `${polyArea(state.poly).toFixed(0)} m²`;
+  renderScenBar();
+  renderMetrics();
+}
+
+/* ═══ Events ═══ */
+const $ = id => document.getElementById(id);
+document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  state.tab = b.dataset.tab;
+  render();
+}));
+const presetSel = $('p-preset');
+for (const k of Object.keys(PRESETS)) { const o = document.createElement('option'); o.value = k; o.textContent = k; presetSel.appendChild(o); }
+presetSel.addEventListener('change', () => loadPreset(presetSel.value));
+$('p-load').addEventListener('click', () => {
+  try {
+    const gj = JSON.parse($('p-geojson').value);
+    const res = TA.process(gj);
+    if (!res.valid || res.poly.length < 3) throw new Error(res.errors?.join(', ') || 'parcelle invalide');
+    state.poly = res.poly;
+    state.types = TA.inferEdgeTypes(res.poly, {});
+    state.mitoyen = new Array(res.poly.length).fill(false);
+    state.presetKey = 'GeoJSON';
+    $('status').textContent = `GeoJSON chargé — ${polyArea(res.poly).toFixed(0)} m²`;
+    recompute();
+  } catch (e) { $('status').textContent = 'GeoJSON invalide : ' + e.message; }
+});
+const bindRange = (id, key, fmt2) => {
+  $(id).addEventListener('input', () => {
+    const v = parseFloat($(id).value);
+    if (key.includes('.')) { const [a, b] = key.split('.'); state[a][b] = v; }
+    else state[key] = v;
+    $(id + '-v').textContent = fmt2(v);
+    recompute();
+  });
+};
+bindRange('r-voie', 'reculs.voie', v => v + ' m');
+bindRange('r-lat', 'reculs.lat', v => v + ' m');
+bindRange('r-fond', 'reculs.fond', v => v + ' m');
+bindRange('r-ces', 'cesMax', v => v + ' %');
+bindRange('r-perm', 'permMin', v => v + ' %');
+bindRange('r-hmax', 'hMax', v => v + ' m');
+bindRange('b-prof', 'prof', v => v + ' m');
+$('b-pk').addEventListener('change', () => { state.pkRatio = parseFloat($('b-pk').value); recompute(); });
+$('b-mix').addEventListener('change', () => { state.mix = $('b-mix').value; recompute(); });
+$('lvl-down').addEventListener('click', () => { state.level = Math.max(0, state.level - 1); render(); });
+$('lvl-up').addEventListener('click', () => { state.level = Math.min(state.scenarios[state.scen].metrics.niveaux - 1, state.level + 1); render(); });
+$('btn-print').addEventListener('click', () => {
+  if (state.tab !== 'planche') { document.querySelector('[data-tab="planche"]').click(); }
+  setTimeout(() => window.print(), 120);
+});
+$('btn-svg').addEventListener('click', () => {
+  const svg = document.querySelector('#canvas-area svg');
+  if (!svg) return;
+  const blob = new Blob([`<?xml version="1.0"?>` + svg.outerHTML.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')], { type: 'image/svg+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `capacite-${state.scen}-${state.tab}.svg`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+window.addEventListener('resize', () => render());
+
+loadPreset(state.presetKey);
+$('status').textContent = 'prêt — 3 scénarios calculés · clic limites/bâtiments · molette zoom';
+// Hook de debug/tests headless
+window._dbg = { state, layoutParkingPockets, computeScenario, SCEN_DEFS };
+</script>
+</body>
+</html>
