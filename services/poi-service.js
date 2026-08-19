@@ -81,7 +81,8 @@ out center 500;`;
   /**
    * Récupère tous les POI dans une bbox via Overpass.
    * @param {[number,number,number,number]} bbox  [south, west, north, east]
-   * @returns {Promise<Array>} POI normalisés [{id, category, name, lat, lng, tags}]
+   * @returns {Promise<Array|null>} POI normalisés [{id, category, name, lat, lng, tags}],
+   *   ou null si tous les miroirs Overpass ont échoué (≠ « aucun POI ici »).
    */
   async fetchInBbox(bbox) {
     const key = bbox.map(v => v.toFixed(4)).join(',');
@@ -114,7 +115,10 @@ out center 500;`;
         // continue avec le prochain mirror
       }
     }
-    return [];
+    // Tous les miroirs sont tombés : échec ≠ « aucun POI ici ».
+    // null (et pas []) pour que l'UI affiche « service indisponible » au lieu
+    // d'un score 0/5 présenté comme une mesure (bêta test obs. n°31).
+    return null;
   },
 
   /**

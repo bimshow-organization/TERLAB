@@ -1977,7 +1977,7 @@ const ExportEngine = {
       (async () => {
         const TA = window.TerrainAnalysis;
         if (!TA) return null;
-        const zone = TA.deduireZoneClimatique?.(alt);
+        const zone = TA.deduireZoneClimatique?.(alt, lat, lng);
         const rtaa = TA.getZoneRTAA?.(alt);
         let pente = null;
         if (geojson && TA.calculateSlopeFromParcelle) {
@@ -2027,7 +2027,7 @@ const ExportEngine = {
       if (z != null && !terrain.zone_climatique) {
         const TA = window.TerrainAnalysis;
         if (TA) {
-          enriched.zone_climatique = TA.deduireZoneClimatique?.(z) ?? enriched.zone_climatique;
+          enriched.zone_climatique = TA.deduireZoneClimatique?.(z, lat, lng) ?? enriched.zone_climatique;
           enriched.zone_rtaa = TA.getZoneRTAA?.(z) ?? enriched.zone_rtaa;
           autoFields.add('zone_climatique');
           autoFields.add('zone_rtaa');

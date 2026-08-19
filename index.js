@@ -114,6 +114,7 @@ import BimshowViewer     from './components/bimshow-viewer.js';
 // ─── Mobile responsive controller + stepper ────────────────
 import MobileController  from './components/mobile-controller.js';
 import MobileStepper     from './components/mobile-stepper.js';
+import TouchTitles       from './utils/touch-titles.js';
 
 // ─── Éditeur GeoJSON 3 niveaux (GPU + import + dessin) ──────
 import CoordConverter        from './utils/coord-converter.js';
@@ -186,14 +187,22 @@ async function init() {
     const requestedSession = urlParams.get('session');
     const isDemo = urlParams.has('demo');
 
+    // SessionManager doit être global AVANT TerlabStorage.loadSession() :
+    // terlab-storage._loadFromObject passe par window.SessionManager. Sans ça le
+    // chargement échouait en silence et la 1re sauvegarde de phase écrasait la
+    // session par une fiche vierge (bug « Continuer » — bêta test obs. n°6).
+    window.SessionManager = SessionManager;
+
     if (requestedSession) {
-      // Charger une session spécifique depuis TerlabStorage
+      // init() d'abord : démarre la sync cloud + la garde multi-onglets,
+      // puis loadSession remplace _data par la session demandée.
+      const fallbackId = SessionManager.init();
       const loaded = TerlabStorage.loadSession(requestedSession);
       if (loaded) {
         AppState.sessionId = requestedSession;
       } else {
         // Session introuvable — init par défaut
-        AppState.sessionId = SessionManager.init();
+        AppState.sessionId = fallbackId;
         Toast.show('Session introuvable — nouvelle session créée', 'warning', 4000);
       }
     } else if (!isDemo) {
@@ -407,6 +416,9 @@ async function init() {
     // Init mobile controller + stepper (apres DOM pret + premiere phase chargee)
     MobileController.init();
     MobileStepper.init();
+    // Revele les title= a l'appui long (no-op hors ecran tactile) :
+    // les barres d'outils reduites a des symboles sont muettes au doigt
+    TouchTitles.init();
 
     // Init GeoJSON layer system
     GeoJsonLayerService.restore();
@@ -572,6 +584,12 @@ async function loadPhase(id) {
     const resp  = await fetch(fname);
     if (!resp.ok) throw new Error(`${fname} introuvable`);
     html = await resp.text();
+    // Servi en SPA statique (BIMSHOW/Angular, `serve -s`, GitHub Pages 404
+    // rewrite) : un fichier de phase manquant renvoie index.html en 200.
+    // Sans ce garde, l'app entiere est injectee dans #phase-container.
+    if (/<html[\s>]|<title[\s>]|class="terlab-app"/i.test(html)) {
+      throw new Error(`${fname} introuvable (le serveur a renvoye l'app)`);
+    }
   } catch (e) {
     html = buildFallbackPhase(id, meta, e.message);
   }
@@ -627,6 +645,17 @@ async function loadPhase(id) {
       leftPanel.insertBefore(scrollWrap, valBlock);
     }
   }
+
+  // ═════════════════════════════════════════════════════
+  // HOIST OVERLAYS : les overlays position:fixed declares dans le
+  // left-panel (P01 : coupes A/B, heliodon/rose des vents) sont hisses
+  // au niveau du container. Sinon, sur mobile, ils sont reparentes dans
+  // le bottom sheet (transform → containing block qui clippe le fixed)
+  // et le stepper les transforme en etapes avec display:none inline.
+  // Supprimes automatiquement au prochain innerHTML du container.
+  // ═════════════════════════════════════════════════════
+  container.querySelectorAll('.section-split-wrap, .bioclim-split-wrap')
+    .forEach(el => container.appendChild(el));
 
   // ═════════════════════════════════════════════════════
   // Réexécuter les scripts extraits du HTML brut

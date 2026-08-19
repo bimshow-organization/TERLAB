@@ -68,8 +68,12 @@ const AutoPlanEngine = {
     const plu = this._loadPLU(session);
 
     // 3. Zone N/A → early exit
+    // Meme regle que PlanMasseCanvas.constructible et P00 : A = agricole sauf
+    // AU (a urbaniser), N = naturelle. Le test d'egalite stricte laissait
+    // passer « Ap », « N1 » ou un libelle long.
     const zone = plu.zone;
-    if (zone === 'N' || zone === 'A') {
+    const zoneCode = (zone ?? '').toString().trim().toUpperCase();
+    if (/^A(?!U)/.test(zoneCode) || zoneCode.startsWith('N')) {
       console.warn(`[AutoPlan] Zone ${zone} — non constructible`);
       return [{
         family: 'X0', familyKey: 'non_constructible',
@@ -295,13 +299,17 @@ const AutoPlanEngine = {
     }
 
     return {
-      zone:        p4.zone_plu ?? pluCfg?.meta?.zone ?? terrain.zone_plu ?? 'U',
+      // pluCfg expose zone_plu / plu.zone — `meta.zone` n'existe pas (cle `_meta`)
+      // .split(' ')[0] : la session peut porter « UA — zone urbaine dense »
+      zone:        (p4.zone_plu ?? pluCfg?.zone_plu ?? pluCfg?.plu?.zone ?? terrain.zone_plu ?? 'U')
+        .toString().trim().split(' ')[0],
       recul_voie:  reculVoie,
       recul_fond:  parseFloat(p4.recul_fond_m ?? 3) || 3,
       recul_lat:   parseFloat(p4.recul_limite_sep_m ?? p4.recul_lat_m ?? 0) || 0,
       heMax,
       emprMax:     this._parseEmprMax(p4, pluCfg),
-      permMin:     parseFloat(realPlu.permMin ?? pluCfg?.plu?.permMin ?? p4.permeabilite_min_pct ?? 25),
+      // Saisie utilisateur avant JSON PLU — meme ordre que PlanMasseCanvas
+      permMin:     parseFloat(p4.permeabilite_min_pct ?? realPlu.permMin ?? pluCfg?.plu?.permMin ?? 25),
       rtaaZone:    parseInt(p4.rtaaZone ?? realPlu.rtaaZone ?? 1),
       // COS — limite SP totale
       cos:         realPlu.cos ?? null,

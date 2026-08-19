@@ -614,7 +614,10 @@ async function processOneTerrain(browser, runIndex) {
           const TA = window.TerrainAnalysis;
           const alt = parseFloat(enriched.altitude_ngr);
           if (TA && alt) {
-            enriched.zone_climatique = TA.deduireZoneClimatique?.(alt) ?? enriched.zone_climatique;
+            // lat/lng requis : sans eux la zone climatique retombe toujours
+            // sur le littoral nord-est (defaut de deduireZoneClimatique).
+            enriched.zone_climatique = TA.deduireZoneClimatique?.(
+              alt, parseFloat(enriched.lat), parseFloat(enriched.lng)) ?? enriched.zone_climatique;
             enriched.zone_rtaa = TA.getZoneRTAA?.(alt) ?? enriched.zone_rtaa;
           }
 

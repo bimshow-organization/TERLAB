@@ -453,24 +453,46 @@ const PlanMasseCanvas = {
     // Règle BINAIRE latérale : 0 (mitoyen) OU Lmin (recul std), jamais entre.
     // Lmin = max(valeur PLU, 3m) — minimum réglementaire La Réunion.
     // La mitoyenneté est gérée per-arête via S.mitoyen[i] dans edgeRecul().
-    const Lraw = parseFloat(p4.recul_limite_sep_m ?? p4.recul_lat_m ?? pluCfg?.reculs?.lat ?? 3);
+    // recul_lat_m (override P07) avant recul_limite_sep_m (champ P04) : sinon
+    // la valeur P04 masque l'override des le prochain rebuild.
+    const Lraw = parseFloat(p4.recul_lat_m ?? p4.recul_limite_sep_m
+      ?? terrain.recul_limite_sep_m ?? pluCfg?.reculs?.lat ?? 3);
     const Lmin = (Number.isFinite(Lraw) && Lraw > 0) ? Lraw : 3;
+    // Priorité : saisie utilisateur (P07 inline, puis champs P04 data-session-key)
+    // AVANT les valeurs du JSON PLU — règle « ne jamais écraser une saisie ».
+    // P04 écrit recul_voie_principale_m / emprise_sol_max_pct, P07 écrit
+    // recul_voie_m / ces_max : les deux vocabulaires doivent être lus ici
+    // (bêta test obs. n°47 : 4 indicateurs corrigés en P04 ignorés en P07).
+    // terrain.* en repli : l'auto-fill PLU de P04 ecrit via saveTerrain, et
+    // l'affectation programmatique el.value ne declenche pas de `change`,
+    // donc phases[4].data reste vide tant que l'etudiant n'edite rien.
     const reculs = {
-      voie: parseFloat(p4.recul_voie_m ?? p4.recul_avant_m ?? pluCfg?.reculs?.voie ?? 3) || 3,
-      fond: parseFloat(p4.recul_fond_m ?? pluCfg?.reculs?.fond ?? 3) || 3,
+      voie: parseFloat(p4.recul_voie_m ?? p4.recul_avant_m ?? p4.recul_voie_principale_m
+        ?? terrain.recul_voie_principale_m ?? pluCfg?.reculs?.voie ?? 3) || 3,
+      fond: parseFloat(p4.recul_fond_m ?? terrain.recul_fond_m ?? pluCfg?.reculs?.fond ?? 3) || 3,
       lat:  Math.max(Lmin, 0),  // jamais inférieur au minimum réglementaire
     };
 
-    const emprMaxRaw = parseFloat(p4.ces_max ?? pluCfg?.plu?.emprMax ?? 60);
-    const cosRaw = p4.cos ?? pluCfg?.plu?.cos;
+    const emprMaxRaw = parseFloat(p4.ces_max ?? p4.emprise_sol_max_pct
+      ?? terrain.emprise_sol_max_pct ?? pluCfg?.plu?.emprMax ?? 60);
+    const cosRaw = p4.cos_max ?? p4.cos ?? pluCfg?.plu?.cos;
+    // Zone PLU : pluCfg expose zone_plu (racine) et plu.zone — l'ancien
+    // fallback pluCfg?.meta?.zone n'existait pas, d'où le littéral 'U' affiché
+    // dans le tableau pendant que le bandeau disait 'UA' (obs. n°47).
+    // .split(' ')[0] : la session peut porter « UA — zone urbaine dense »,
+    // le reste du code n'attend que le code de zone (cf. p07:1398, p05:815).
+    const zonePlu = (p4.zone_plu ?? pluCfg?.zone_plu ?? pluCfg?.plu?.zone ?? 'U')
+      .toString().trim().split(' ')[0];
+    const zoneCode = zonePlu.toUpperCase();
     const plu = {
       emprMax: emprMaxRaw > 1 ? emprMaxRaw : emprMaxRaw * 100,
-      permMin: parseFloat(pluCfg?.plu?.permMin ?? p4.permeabilite_min_pct ?? 25),
-      heMax: parseFloat(p4.hauteur_egout_m ?? p4.hauteur_max_m ?? pluCfg?.plu?.heMax ?? 9),
+      permMin: parseFloat(p4.permeabilite_min_pct ?? pluCfg?.plu?.permMin ?? 25),
+      heMax: parseFloat(p4.hauteur_egout_m ?? p4.hauteur_max_m ?? terrain.hauteur_max_m ?? pluCfg?.plu?.heMax ?? 9),
       rtaaZone: parseInt(terrain.zone_rtaa ?? 2),
-      zone: p4.zone_plu ?? pluCfg?.meta?.zone ?? 'U',
+      zone: zonePlu,
       interBatMin: parseFloat(pluCfg?.plu?.interBatMin ?? 4),
-      constructible: (p4.zone_plu ?? 'U').charAt(0) !== 'A' && (p4.zone_plu ?? 'U').charAt(0) !== 'N',
+      // A = agricole sauf AU (à urbaniser), N = naturelle — même logique que P00
+      constructible: !(/^A(?!U)/.test(zoneCode) || zoneCode.startsWith('N')),
       recul_voie: reculs.voie,
       recul_lat:  reculs.lat,
       recul_fond: reculs.fond,

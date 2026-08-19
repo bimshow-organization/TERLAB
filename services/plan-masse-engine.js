@@ -376,10 +376,14 @@ const PlanMasseEngine = {
     const rtaaZone = parseInt(getZoneRTAA(alt));
     const plu = {
       emprMax:     parseFloat(p4.ces_max ?? pluCfg?.plu?.emprMax ?? 60) * (p4.ces_max && p4.ces_max <= 1 ? 100 : 1),
-      permMin:     parseFloat(pluCfg?.plu?.permMin ?? p4.permeabilite_min_pct ?? 25),
+      // Saisie utilisateur avant JSON PLU — meme ordre que PlanMasseCanvas
+      permMin:     parseFloat(p4.permeabilite_min_pct ?? pluCfg?.plu?.permMin ?? 25),
       heMax:       parseFloat(p4.hauteur_egout_m ?? p4.hauteur_max_m ?? pluCfg?.plu?.heMax ?? 9),
       rtaaZone,
-      zone:        p4.zone_plu ?? pluCfg?.meta?.zone ?? 'U',
+      // pluCfg expose zone_plu / plu.zone — `meta.zone` n'existe pas (cle `_meta`)
+      // .split(' ')[0] : la session peut porter « UA — zone urbaine dense »
+      zone:        (p4.zone_plu ?? pluCfg?.zone_plu ?? pluCfg?.plu?.zone ?? 'U')
+        .toString().trim().split(' ')[0],
       interBatMin: parseFloat(pluCfg?.plu?.interBatMin ?? 4),
     };
 

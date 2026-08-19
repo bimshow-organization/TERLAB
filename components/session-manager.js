@@ -100,6 +100,9 @@ const SessionManager = {
   //     Lu par AutoPlanEngine -> TerrainP07Adapter.applyInletNotches.
   //
   _defaultData() {
+    // Jamais de session orpheline : un sessionId null bloquait l'auto-save
+    // TerlabStorage (garde !current?.sessionId) sans aucun message.
+    if (!this._sessionId) this._sessionId = this._getOrCreateUUID();
     return {
       schemaVersion: SCHEMA_VERSION,
       sessionId:     this._sessionId,
@@ -154,8 +157,11 @@ const SessionManager = {
     }
   },
 
-  _saveLocal() {
-    this._data.lastUpdated = new Date().toISOString();
+  // preserveTimestamp : garder le lastUpdated d'origine (chargement d'une
+  // session existante — l'estampiller a `now` neutraliserait la garde
+  // anti-ecrasement de syncFirebase).
+  _saveLocal(preserveTimestamp = false) {
+    if (!preserveTimestamp) this._data.lastUpdated = new Date().toISOString();
     // _dirty AVANT setItem : si le quota localStorage saute, la sync cloud
     // doit quand meme partir au prochain tick (sinon perte totale silencieuse)
     this._dirty = true;
@@ -286,6 +292,9 @@ const SessionManager = {
   },
 
   _startSyncLoop() {
+    // Idempotent : un init() rejoué ne doit pas laisser un timer orphelin
+    // qui synchroniserait l'ancienne session en parallele de la nouvelle.
+    if (this._syncTimer) clearInterval(this._syncTimer);
     this._syncTimer = setInterval(() => this.syncFirebase(), SYNC_INTERVAL);
   },
 
@@ -329,23 +338,30 @@ const SessionManager = {
     return this._data?.phases?.[id] ?? null;
   },
 
-  savePhase(id, data, validations, completed = false) {
-    if (!this._data) this._data = {};
+  // completed omis (undefined) = conserver l'etat existant. Un simple
+  // enregistrement de champ ne doit JAMAIS devalider une phase deja validee :
+  // l'ancien defaut `false` remettait la phase a zero a chaque saisie depuis
+  // la trentaine d'appelants qui ne passent pas l'argument (« la progression
+  // n'est pas prise en compte » — bêta test). Passer explicitement true/false
+  // reste prioritaire (cf. index.js validation bloquante).
+  savePhase(id, data, validations, completed) {
+    if (!this._data) this._data = this._defaultData();
     if (!this._data.phases) this._data.phases = {};
     // Merge data si phase existante (évite d'écraser les champs précédents)
     const existing = this._data.phases[id];
     const prevValidations = existing?.validations;
+    const isCompleted = completed ?? existing?.completed ?? false;
     this._data.phases[id] = {
-      completed,
+      completed: isCompleted,
       validations: validations ?? existing?.validations ?? [],
       data: existing?.data ? { ...existing.data, ...data } : data,
       savedAt: new Date().toISOString()
     };
     this._saveLocal();
-    this._notifyChange('phase', { id, data, completed });
+    this._notifyChange('phase', { id, data, completed: isCompleted });
     // Event validation séparé si les validations ont changé
     if (validations && JSON.stringify(validations) !== JSON.stringify(prevValidations)) {
-      this._notifyChange('validation', { id, validations, completed });
+      this._notifyChange('validation', { id, validations, completed: isCompleted });
     }
   },
 
@@ -514,8 +530,25 @@ const SessionManager = {
       ...obj,
       sessionId: this._sessionId
     };
+    // Migration cumulative : les enregistrements TerlabStorage portent encore
+    // schemaVersion 1.0, ne pas faire redescendre la session en arriere.
+    // Tester obj (et non _data) : le spread de _defaultData() a deja pose 1.1.
+    if (obj.schemaVersion !== SCHEMA_VERSION) {
+      if (!this._data.terrain) this._data.terrain = {};
+      if (this._data.terrain.north_angle_deg === undefined) this._data.terrain.north_angle_deg = 0;
+      if (!this._data.batiment) this._data.batiment = { enveloppe: null, rtaa: null, programme: null };
+      this._data.schemaVersion = SCHEMA_VERSION;
+    }
     localStorage.setItem(UUID_KEY, this._sessionId);
-    this._saveLocal();
+    // Conserver le lastUpdated d'origine : l'estampiller a `now` neutralisait
+    // la garde anti-ecrasement de syncFirebase (une version cloud plus
+    // recente aurait ete ecrasee au premier tick).
+    const originalLu = obj.lastUpdated ?? null;
+    this._saveLocal(Boolean(originalLu));
+    if (originalLu) {
+      this._lastCloudUpdated = originalLu;
+      this._dirty = false; // fraichement charge : rien a re-pousser
+    }
     this._notifyChange('loaded');
     console.info(`[Session] Loaded from object: ${this._sessionId}`);
   },
@@ -537,7 +570,9 @@ const SessionManager = {
       this._sessionId = sessionId;
       this._lastCloudUpdated = data.lastUpdated ?? null;
       localStorage.setItem(UUID_KEY, sessionId);
-      this._saveLocal();
+      // preserveTimestamp : reestampiller a `now` neutraliserait la garde
+      // anti-ecrasement de syncFirebase (meme raison que _loadFromObject).
+      this._saveLocal(Boolean(data.lastUpdated));
       this._dirty = false; // fraichement charge du cloud : rien a re-pousser
       return data;
     } catch (e) {

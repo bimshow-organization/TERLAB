@@ -56,10 +56,15 @@ const TerlabStorage = {
     const sess = this.getSession(id);
     if (!sess) return null;
 
-    // Initialiser le SessionManager avec ces données
-    if (window.SessionManager?._loadFromObject) {
-      window.SessionManager._loadFromObject(sess);
+    // Initialiser le SessionManager avec ces données.
+    // Échec = échec : retourner sess sans avoir chargé ferait croire à
+    // l'appelant que la session est active, et la 1re sauvegarde de phase
+    // écraserait le travail par une fiche vierge (bug « Continuer »).
+    if (!window.SessionManager?._loadFromObject) {
+      console.error('[TerlabStorage] SessionManager indisponible — chargement annulé');
+      return null;
     }
+    window.SessionManager._loadFromObject(sess);
     return sess;
   },
 

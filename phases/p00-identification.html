@@ -389,20 +389,20 @@
 .input-with-btn .field-input { flex:1; }
 .search-btn { padding:7px 12px; background:var(--accent2); border:1px solid rgba(154,120,32,.3); border-radius:var(--r-sm); color:var(--accent); cursor:pointer; transition:all var(--tx-fast); display:flex; align-items:center; gap:5px; font-family:var(--font-mono); font-size:10px; }
 .search-btn.wide { justify-content:center; width:100%; }
-.search-btn:hover { background:rgba(154,120,32,.2); }
+@media (hover: hover) { .search-btn:hover { background:rgba(154,120,32,.2); } }
 .search-btn:disabled { opacity:.4; pointer-events:none; }
 .detected-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px; }
 .det-cell { background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); padding:6px 9px; }
 .det-label { font-family:var(--font-mono); font-size:8px; color:var(--faint); letter-spacing:.1em; text-transform:uppercase; display:block; margin-bottom:2px; }
 .det-val { font-size:12px; color:var(--text); font-weight:500; display:block; }
 .map-ctl-btn { padding:5px 10px; background:var(--surface); border:1px solid var(--border2); border-radius:var(--r-sm); font-family:var(--font-mono); font-size:9px; color:var(--muted); cursor:pointer; transition:all var(--tx-fast); }
-.map-ctl-btn.active, .map-ctl-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(255,252,243,.92); }
+@media (hover: hover) { .map-ctl-btn.active, .map-ctl-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(255,252,243,.92); } }
 .demo-inline-p00 { padding:3px 8px; font-family:var(--font-mono); font-size:9px; color:var(--muted); background:var(--card); border:1px solid var(--border2); border-radius:var(--r-sm); cursor:pointer; transition:all var(--tx-fast); white-space:nowrap; }
-.demo-inline-p00:hover { border-color:var(--accent); color:var(--accent); background:var(--accent2); }
+@media (hover: hover) { .demo-inline-p00:hover { border-color:var(--accent); color:var(--accent); background:var(--accent2); } }
 .demo-inline-p00.active { border-color:var(--accent); color:var(--accent); background:var(--accent2); }
 .field-input-sm { font-size:11px !important; padding:6px 8px !important; }
 .multi-select-inline { width:100%; padding:4px 8px; font-family:var(--font-mono); font-size:9px; color:var(--muted); background:transparent; border:1px dashed var(--border2); border-radius:var(--r-sm); cursor:pointer; transition:all var(--tx-fast); text-align:center; letter-spacing:.03em; }
-.multi-select-inline:hover { border-color:var(--accent); color:var(--accent); border-style:solid; }
+@media (hover: hover) { .multi-select-inline:hover { border-color:var(--accent); color:var(--accent); border-style:solid; } }
 
 /* Enrichment panel */
 .enrich-group { margin-bottom:12px; }
@@ -1025,7 +1025,7 @@ const P00 = {
     const results = await Promise.allSettled([
       // 0. Zone climatique + pente + RTAA
       (async () => {
-        const zone = TerrainAnalysis.deduireZoneClimatique(alt);
+        const zone = TerrainAnalysis.deduireZoneClimatique(alt, lat, lng);
         const rtaa = TerrainAnalysis.getZoneRTAA(alt);
         let pente = null, penteMethod = 'fallback';
         if (geojson) {
@@ -1066,12 +1066,24 @@ const P00 = {
     const alti    = results[4].status === 'fulfilled' ? results[4].value : [];
     const batim   = results[5].status === 'fulfilled' ? results[5].value : [];
 
-    // PPR zone extraction
+    // PPR zone extraction — agréger TOUTES les features : le point peut
+    // croiser plusieurs zonages PPR, ne lire que features[0] masquait les
+    // autres (bêta test obs. n°9). Zone retenue pour les alertes = la plus
+    // contraignante (R > B > J), libellé = tous les zonages distincts.
     let pprZone = null, pprLabel = null;
     if (ppr.features?.length) {
-      const props = ppr.features[0].properties ?? {};
-      pprZone  = props.zone ?? props.alea ?? props.ZONE ?? null;
-      pprLabel = props.libelle ?? props.nom ?? props.LIBELLE ?? pprZone;
+      const zones = ppr.features.map(f => {
+        const props = f.properties ?? {};
+        const zone  = props.zone ?? props.alea ?? props.ZONE ?? null;
+        return { zone, label: props.libelle ?? props.nom ?? props.LIBELLE ?? zone };
+      }).filter(z => z.zone || z.label);
+      const severite = z => {
+        const c = (z.zone ?? '').toString().trim().charAt(0).toUpperCase();
+        return c === 'R' ? 3 : c === 'B' ? 2 : c === 'J' ? 1 : 0;
+      };
+      zones.sort((a, b) => severite(b) - severite(a));
+      pprZone  = zones[0]?.zone ?? null;
+      pprLabel = [...new Set(zones.map(z => z.label).filter(Boolean))].join(' · ') || pprZone;
     }
 
     // PLU zone extraction
@@ -1087,6 +1099,16 @@ const P00 = {
 
     // Altitude affinée
     const preciseAlt = alti?.[0]?.z ?? alti?.[0]?.altitude ?? alt;
+
+    // Recalculer zone climatique + RTAA avec l'altitude précise IGN :
+    // terrain.altitude_ngr est souvent encore vide quand l'analyse démarre
+    // (le fetch altitude tourne en parallèle dans ce même allSettled), donc
+    // alt=null classait toutes les parcelles en « Zone 1 littoral », y
+    // compris Salazie à 882 m (bêta test obs. n°9).
+    if (preciseAlt != null && Number.isFinite(parseFloat(preciseAlt))) {
+      topo.zone_climatique = TerrainAnalysis.deduireZoneClimatique(preciseAlt, lat, lng);
+      topo.zone_rtaa       = TerrainAnalysis.getZoneRTAA(preciseAlt);
+    }
 
     // Bâtiments
     const batCount = Array.isArray(batim) ? batim.length : (batim?.features?.length ?? 0);
@@ -1202,6 +1224,11 @@ const P00 = {
       if (val && val !== '—' && val !== 'Non détecté') data[key] = val;
     });
     if (this._enrichedData) {
+      // zone_climatique : le span affiche le libelle humain (« Hauts / Cirques »),
+      // les moteurs aval attendent le code (`hauts_cirques`) — cf.
+      // giep-calculator-service ZONES_CLIMATIQUES[zone]. Champ readonly, donc
+      // aucune saisie utilisateur ecrasee ici.
+      if (this._enrichedData.zone_climatique) data.zone_climatique = this._enrichedData.zone_climatique;
       if (this._enrichedData.ppr_label) data.ppr_label = this._enrichedData.ppr_label;
       if (this._enrichedData.pente_method) data.pente_method = this._enrichedData.pente_method;
       if (this._enrichedData.batiments_voisins_count) data.batiments_voisins_count = this._enrichedData.batiments_voisins_count;

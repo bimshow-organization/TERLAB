@@ -1132,9 +1132,11 @@
   font: 600 10px var(--font-mono); cursor: pointer;
   transition: background .12s, border-color .12s;
 }
-#pmc-conception-section .pmc-shape-btn:hover,
-#pmc-conception-section .pmc-mit-btn:hover {
-  background: var(--raised); border-color: var(--accent);
+@media (hover: hover) {
+  #pmc-conception-section .pmc-shape-btn:hover,
+  #pmc-conception-section .pmc-mit-btn:hover {
+    background: var(--raised); border-color: var(--accent);
+  }
 }
 #pmc-conception-section .pmc-shape-btn.active {
   background: var(--accent2); color: var(--accent); border-color: var(--border2);
@@ -1148,7 +1150,7 @@
   background: var(--card); color: var(--muted);
   font: 600 10px var(--font-mono); cursor: pointer;
 }
-#pmc-conception-section .pmc-action-btn:hover { background: var(--raised); }
+@media (hover: hover) { #pmc-conception-section .pmc-action-btn:hover { background: var(--raised); } }
 #pmc-conception-section .pmc-action-btn.success {
   border-color: var(--success); background: rgba(61,107,46,.12); color: var(--success);
 }
@@ -1224,8 +1226,10 @@
   padding: 1px 4px; border-radius: 2px;
   transition: background .12s;
 }
-.plu-rule-val:hover {
-  background: var(--accent2); text-decoration: underline dotted;
+@media (hover: hover) {
+  .plu-rule-val:hover {
+    background: var(--accent2); text-decoration: underline dotted;
+  }
 }
 .plu-rule-val.editing {
   padding: 0; background: var(--card);
@@ -1242,7 +1246,7 @@
   display: flex; flex-direction: column; gap: 1px; text-align: left;
   transition: background .12s, border-color .12s;
 }
-#pmc-sc-wrap .pmc-sc:hover { background: var(--raised); }
+@media (hover: hover) { #pmc-sc-wrap .pmc-sc:hover { background: var(--raised); } }
 #pmc-sc-wrap .pmc-sc.active {
   background: var(--accent2); color: var(--accent); border-color: var(--border2);
 }
@@ -1270,14 +1274,14 @@
 
 .bimshow-btns { display:grid; grid-template-columns:1fr 1fr; gap:5px; padding:8px; }
 .bim-btn { padding:7px 8px; background:var(--raised); border:1px solid var(--border2); border-radius:var(--r-sm); color:var(--muted); cursor:pointer; font-family:var(--font-mono); font-size:9px; transition:all var(--tx-fast); text-align:center; }
-.bim-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent2); }
+@media (hover: hover) { .bim-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent2); } }
 .bim-btn.primary { grid-column:1/-1; background:var(--accent2); border-color:rgba(154,120,32,.3); color:var(--accent); font-weight:700; }
 .bim-btn.stub-btn { opacity:.6; }
 .stub-tag { font-size:7.5px; background:rgba(245,158,11,.2); color:var(--warning); border-radius:2px; padding:1px 4px; margin-left:3px; }
 
 .ref-projects { display:flex; flex-direction:column; gap:5px; }
 .ref-proj-item { display:flex; gap:8px; align-items:center; padding:7px 9px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); text-decoration:none; transition:all var(--tx-fast); }
-.ref-proj-item:hover { border-color:var(--accent); background:var(--accent3); }
+@media (hover: hover) { .ref-proj-item:hover { border-color:var(--accent); background:var(--accent3); } }
 .rpi-icon { font-size:18px; }
 .rpi-name { font-size:11px; color:var(--text2); font-weight:500; }
 .rpi-note { font-family:var(--font-mono); font-size:8.5px; color:var(--faint); margin-top:1px; }
@@ -1289,7 +1293,7 @@
 .gabarit-metrics .det-val { font-size:11px; }
 
 .pareto-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); padding:6px 8px; cursor:pointer; transition:all var(--tx-fast); }
-.pareto-card:hover { border-color:var(--accent); background:var(--accent3); }
+@media (hover: hover) { .pareto-card:hover { border-color:var(--accent); background:var(--accent3); } }
 
 /* Aide : raccourcis kbd */
 #pmc-help-panel kbd {
@@ -1306,7 +1310,7 @@
   vertical-align: baseline;
 }
 #pmc-help-panel div { margin-bottom: 2px; color: var(--muted); }
-#pmc-help-btn:hover { background: var(--accent2, rgba(160,120,40,.18)); border-color: var(--accent); }
+@media (hover: hover) { #pmc-help-btn:hover { background: var(--accent2, rgba(160,120,40,.18)); border-color: var(--accent); } }
 
 /* Toggle buttons (programme : Type, Parking, Côté PK) */
 .tg-btn {
@@ -1321,7 +1325,7 @@
   letter-spacing: .03em;
   line-height: 1.2;
 }
-.tg-btn:hover:not(.active) { border-color: var(--accent); color: var(--accent); background: var(--accent3, rgba(200,160,80,.08)); }
+@media (hover: hover) { .tg-btn:hover:not(.active) { border-color: var(--accent); color: var(--accent); background: var(--accent3, rgba(200,160,80,.08)); } }
 .tg-btn.active { background: var(--accent2, rgba(160,120,40,.18)); color: var(--accent); border-color: var(--border2, var(--accent)); font-weight: 700; }
 .tg-btn:active { transform: translateY(1px); }
 .tg-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -1349,7 +1353,7 @@
 .topo-constraints li { list-style:none; }
 .topo-constraints li::before { content:'→ '; opacity:.55 }
 .topo-link { font-size:.7rem; color:#9a7820; text-decoration:none; font-family:var(--font-mono,monospace); letter-spacing:.06em; }
-.topo-link:hover { text-decoration:underline }
+@media (hover: hover) { .topo-link:hover { text-decoration:underline } }
 .topo-coupe-wrap { border-top:1px solid rgba(122,96,16,.15); padding-top:8px; }
 
 /* Terrain banner PLU réel */
@@ -1455,18 +1459,23 @@ async function initP07Real() {
       }
     }
 
-    // 5. Mettre à jour la terrain-strip avec données PLU réelles
+    // 5. Mettre à jour la terrain-strip avec données PLU réelles,
+    // en laissant la priorité aux corrections utilisateur P04/P07 stockées
+    // en session (le strip lisait le JSON brut — bêta test obs. n°47).
+    const p4Data = SessionManager._data?.phases?.[4]?.data ?? {};
     if (pluConfig.area) {
       const tsC = document.getElementById('ts-contenance');
       if (tsC) tsC.textContent = `${Math.round(pluConfig.area)} m²`;
     }
-    if (pluConfig.zone_plu) {
+    const zoneShown = (p4Data.zone_plu ?? pluConfig.zone_plu ?? '').toString().trim().split(' ')[0];
+    if (zoneShown) {
       const tsZ = document.getElementById('ts-zone-plu');
-      if (tsZ) tsZ.textContent = pluConfig.zone_plu;
+      if (tsZ) tsZ.textContent = zoneShown;
     }
-    if (pluConfig.plu.emprMax) {
+    const emprShown = parseFloat(p4Data.ces_max ?? p4Data.emprise_sol_max_pct ?? pluConfig.plu.emprMax);
+    if (Number.isFinite(emprShown)) {
       const tsE = document.getElementById('ts-emprise-max');
-      if (tsE) tsE.textContent = `${pluConfig.plu.emprMax}%`;
+      if (tsE) tsE.textContent = `${emprShown > 1 ? emprShown : Math.round(emprShown * 100)}%`;
     }
 
     // 6. Bandeau terrain
@@ -1488,7 +1497,10 @@ function updateTerrainBanner(config) {
   if (!banner) return;
   banner.style.display = 'flex';
   document.getElementById('tb-commune').textContent = config.commune ?? '—';
-  document.getElementById('tb-zone').textContent    = `Zone ${config.zone_plu}`;
+  // Même priorité que le strip : correction utilisateur P04 avant le JSON PLU
+  const tbZone = (window.SessionManager?._data?.phases?.[4]?.data?.zone_plu ?? config.zone_plu ?? '')
+    .toString().trim().split(' ')[0];
+  document.getElementById('tb-zone').textContent    = `Zone ${tbZone || '—'}`;
   document.getElementById('tb-area').textContent    = `${config.area?.toFixed(0) ?? '—'} m²`;
   document.getElementById('tb-rtaa').textContent    = `RTAA Z${config.plu?.rtaaZone ?? '—'}`;
 
@@ -1628,10 +1640,18 @@ const P07 = {
     const pluCfg       = window.TERLAB_PLU_CONFIG ?? null;
     const contenance   = pluCfg?.area ?? parseFloat(terrain?.contenance_m2 ?? 0);
     const p4           = SessionManager.getPhase(4)?.data ?? {};
-    const empriseMax   = pluCfg?.plu?.emprMax ?? parseFloat(p4.emprise_sol_max_pct ?? 100);
-    const hauteurMax   = pluCfg?.plu?.heMax ?? parseFloat(p4.hauteur_max_m ?? 999);
-    const recul_voie   = pluCfg?.reculs?.voie ?? parseFloat(p4.recul_voie_principale_m ?? 0);
-    const recul_sep    = pluCfg?.reculs?.lat ?? parseFloat(p4.recul_limite_sep_m ?? 0);
+    // Saisie utilisateur (P04 / override P07) AVANT le JSON PLU — meme ordre
+    // que PlanMasseCanvas._buildTerrain, sinon le verdict de conformite teste
+    // une valeur differente de celle affichee dans le bandeau et la strip.
+    const num = v => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
+    // ces_max peut etre stocke en fraction (0.6) ou en pourcent (60) selon la
+    // source — normaliser comme PlanMasseCanvas, sinon le verdict compare
+    // « 25.0% / 0.6% max » et reste rouge en permanence.
+    const rawEmpr      = num(p4.ces_max) ?? num(p4.emprise_sol_max_pct) ?? pluCfg?.plu?.emprMax ?? 100;
+    const empriseMax   = rawEmpr > 1 ? rawEmpr : rawEmpr * 100;
+    const hauteurMax   = num(p4.hauteur_max_m) ?? pluCfg?.plu?.heMax ?? 999;
+    const recul_voie   = num(p4.recul_voie_m) ?? num(p4.recul_voie_principale_m) ?? pluCfg?.reculs?.voie ?? 0;
+    const recul_sep    = num(p4.recul_lat_m) ?? num(p4.recul_limite_sep_m) ?? pluCfg?.reculs?.lat ?? 0;
 
     const emprisePct   = contenance > 0 ? (emprise / contenance * 100) : null;
 
@@ -4046,23 +4066,22 @@ function _p07ApplyPluOverride(key, value) {
   if (!pluKey) return;
   // 1. Override direct sur PMC (immédiat)
   pmc._terrain.plu[pluKey] = value;
-  // 2. Persist dans session P04 pour rebuild/reload
-  const sess = window.SessionManager?._data;
-  if (sess) {
-    sess.phases = sess.phases ?? {};
-    sess.phases[4] = sess.phases[4] ?? { data: {} };
-    sess.phases[4].data = sess.phases[4].data ?? {};
-    const p4Map = {
-      emprMax:    'emprise_sol_max_pct',
-      cos:        'cos_max',
-      recul_voie: 'recul_voie_m',
-      recul_lat:  'recul_lat_m',
-      recul_fond: 'recul_fond_m',
-      heMax:      'hauteur_max_m',
-      permMin:    'permeabilite_min_pct',
-    };
-    sess.phases[4].data[p4Map[pluKey]] = value;
-    window.SessionManager?.save?.();
+  // 2. Persist dans session P04 pour rebuild/reload.
+  // savePhase (et pas une mutation directe de _data) : elle merge, ecrit le
+  // localStorage et emet terlab:session-changed — sans quoi l'auto-save
+  // TerlabStorage ne recopie rien et l'override est perdu au rechargement.
+  const p4Map = {
+    emprMax:    'emprise_sol_max_pct',
+    cos:        'cos_max',
+    recul_voie: 'recul_voie_m',
+    recul_lat:  'recul_lat_m',
+    recul_fond: 'recul_fond_m',
+    heMax:      'hauteur_max_m',
+    permMin:    'permeabilite_min_pct',
+  };
+  if (p4Map[pluKey]) {
+    // completed/validations omis : savePhase conserve l'etat de P04.
+    window.SessionManager?.savePhase?.(4, { [p4Map[pluKey]]: value });
   }
   // 3. Recalc envelope + ré-applique la stratégie courante avec les nouvelles
   // limites SAUF si l'utilisateur a édité manuellement (flag _manualEdit).

@@ -784,7 +784,11 @@ const P05 = {
       if (btn) btn.style.background = 'none';
     } else {
       if (!map.getSource(srcId)) map.addSource(srcId, { type: 'geojson', data: feature });
-      const color = profile === 'pedestrian' ? 'var(--c-info)' : 'var(--c-warn)';
+      // Mapbox n'accepte pas var(--*) : résoudre la variable de thème en hex
+      // au moment du clic (les 4 couches étaient rejetées silencieusement).
+      const cssVar = profile === 'pedestrian' ? '--c-info' : '--c-warn';
+      const color = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim()
+        || (profile === 'pedestrian' ? '#5090d8' : '#d4902c');
       map.addLayer({ id: fillId, type: 'fill', source: srcId, paint: { 'fill-color': color, 'fill-opacity': 0.18 } });
       map.addLayer({ id: lineId, type: 'line', source: srcId, paint: { 'line-color': color, 'line-width': 2 } });
       this._isoVisible[profile] = true;
@@ -903,6 +907,24 @@ if (window.AtlasModal) AtlasModal.injectPreview('atlas-preview-urbain', 'composi
       const refFeature = car ?? pedestrian;
       const bigBbox = Poi.bboxOfFeature(refFeature);
       const allPois = bigBbox ? await Poi.fetchInBbox(bigBbox) : [];
+
+      // null = les 3 miroirs Overpass sont tombés. Afficher l'échec plutôt
+      // qu'un faux « 0/5 » badgé AUTO ; les isochrones (reçues, elles)
+      // restent affichables via les boutons pied/voiture.
+      if (allPois === null) {
+        P05._isoData = { pedestrian, car, poiPed: [], poiCar: [], scorePed: null, scoreCar: null };
+        result.innerHTML = `
+          <div style="padding:8px 10px;border-left:3px solid var(--c-warn,#d4902c);background:rgba(212,144,44,.08);font-size:11px;line-height:1.5">
+            ⚠ <strong>Points d'intérêt indisponibles</strong> — le service
+            OpenStreetMap (Overpass) est injoignable pour le moment.
+            Le score « ville du ¼ heure » ne peut pas être calculé : ce n'est
+            pas une absence de commerces/services, c'est la donnée qui n'est
+            pas arrivée. Rechargez la phase plus tard pour réessayer.
+          </div>`;
+        result.style.display = 'block';
+        if (loader) loader.style.display = 'none';
+        return;
+      }
 
       // 3. Filtre point-in-polygon par profil
       const poiPed = pedestrian ? Poi.filterInPolygon(allPois, pedestrian) : [];
