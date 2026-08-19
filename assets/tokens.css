@@ -53,6 +53,7 @@
   /* ── Layout Mobile ── */
   --mob-tabbar-h:     62px;
   --mob-sheet-h:      70dvh;
+  --mob-sheet-peek-h: 34dvh;  /* sheet reduit apres un tap carte */
   --mob-topbar-h:     64px;
   --mob-fab-size:     52px;
 

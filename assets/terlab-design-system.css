@@ -320,7 +320,7 @@ body {
   transition: border-color var(--t-fast), background var(--t-fast), box-shadow var(--t-fast);
 }
 .t-input::placeholder { color: var(--text-3); }
-.t-input:hover { border-color: var(--border-hi); background: var(--bg-4); }
+@media (hover: hover) { .t-input:hover { border-color: var(--border-hi); background: var(--bg-4); } }
 .t-input:focus { border-color: var(--gold); background: var(--bg-4); box-shadow: 0 0 0 3px var(--gold-10); }
 .t-input.is-error { border-color: var(--c-danger); box-shadow: 0 0 0 3px var(--c-danger-10); }
 .t-input.is-valid { border-color: var(--c-ok); }
@@ -359,7 +359,7 @@ body {
   box-shadow: 0 0 0 1px var(--gold);
   cursor: pointer; transition: transform var(--t-fast), box-shadow var(--t-fast);
 }
-.t-range::-webkit-slider-thumb:hover { transform: scale(1.25); box-shadow: 0 0 0 4px var(--gold-20); }
+@media (hover: hover) { .t-range::-webkit-slider-thumb:hover { transform: scale(1.25); box-shadow: 0 0 0 4px var(--gold-20); } }
 .t-range-val { font-size: 12px; font-weight: 700; color: var(--gold); min-width: 40px; text-align: right; }
 .t-range-labels { display: flex; justify-content: space-between; font-size: 9px; color: var(--text-3); margin-top: 2px; }
 
@@ -394,7 +394,7 @@ body {
   background: var(--bg-3);
   transition: all var(--t-fast); user-select: none;
 }
-.t-radio-btn:hover { border-color: var(--border-hi); color: var(--text); }
+@media (hover: hover) { .t-radio-btn:hover { border-color: var(--border-hi); color: var(--text); } }
 .t-radio-btn input { position: absolute; opacity: 0; }
 .t-radio-btn.selected { border-color: var(--gold); color: var(--gold); background: var(--gold-10); font-weight: 600; }
 .t-radio-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); flex-shrink: 0; transition: background var(--t-fast); }
@@ -410,7 +410,7 @@ body {
   transition: all var(--t-fast);
   font-family: var(--font-mono);
 }
-.chip:hover { border-color: var(--border-hi); color: var(--text); }
+@media (hover: hover) { .chip:hover { border-color: var(--border-hi); color: var(--text); } }
 .chip.on   { background: var(--gold-20); border-color: var(--gold); color: var(--gold); font-weight: 600; }
 .chip.done { background: var(--c-ok-10);  border-color: var(--c-ok);  color: var(--c-ok); }
 .chip.warn { background: var(--c-danger-10); border-color: var(--c-danger); color: var(--c-danger); }
@@ -430,13 +430,13 @@ body {
 .btn-icon { font-size: 13px; }
 
 .btn-primary   { background: var(--gold); border-color: var(--gold); color: var(--text-inv); }
-.btn-primary:hover { background: var(--gold-bright); border-color: var(--gold-bright); filter: brightness(1.08); }
+@media (hover: hover) { .btn-primary:hover { background: var(--gold-bright); border-color: var(--gold-bright); filter: brightness(1.08); } }
 .btn-secondary { background: var(--bg-3); border-color: var(--border); color: var(--text); }
-.btn-secondary:hover { border-color: var(--border-hi); background: var(--bg-4); }
+@media (hover: hover) { .btn-secondary:hover { border-color: var(--border-hi); background: var(--bg-4); } }
 .btn-ghost     { background: transparent; border-color: var(--border); color: var(--text-2); }
-.btn-ghost:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-10); }
+@media (hover: hover) { .btn-ghost:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-10); } }
 .btn-danger    { background: var(--c-danger-10); border-color: rgba(224,80,48,.35); color: var(--c-danger); }
-.btn-danger:hover { background: var(--c-danger-20); border-color: var(--c-danger); }
+@media (hover: hover) { .btn-danger:hover { background: var(--c-danger-20); border-color: var(--c-danger); } }
 
 .btn-sm { padding: 5px var(--sp-3); font-size: 10.5px; }
 .btn-lg { padding: 11px var(--sp-6); font-size: 13px; }
@@ -448,7 +448,7 @@ body {
   padding: 10px var(--sp-6); font-size: 12.5px; letter-spacing: .06em;
   box-shadow: 0 4px 16px var(--c-ok-20);
 }
-.btn-validate:hover { filter: brightness(1.08); box-shadow: 0 6px 20px rgba(76,168,112,.30); }
+@media (hover: hover) { .btn-validate:hover { filter: brightness(1.08); box-shadow: 0 6px 20px rgba(76,168,112,.30); } }
 
 /* ── Notifications ─ */
 .notif {
@@ -467,9 +467,9 @@ body {
 .notif-title   { font-weight: 700; margin-bottom: 2px; font-size: 12px; }
 .notif-source  { margin-top: 4px; font-size: 10px; opacity: .75; display: flex; gap: var(--sp-3); flex-wrap: wrap; }
 .source-link   { color: inherit; text-decoration: none; border-bottom: 1px dotted currentColor; opacity: .8; transition: opacity var(--t-fast); }
-.source-link:hover { opacity: 1; }
+@media (hover: hover) { .source-link:hover { opacity: 1; } }
 .notif-dismiss { background: none; border: none; color: inherit; cursor: pointer; opacity: .45; font-size: 14px; padding: 0; line-height: 1; align-self: flex-start; transition: opacity var(--t-fast); }
-.notif-dismiss:hover { opacity: .85; }
+@media (hover: hover) { .notif-dismiss:hover { opacity: .85; } }
 
 .notif-block { background: var(--c-danger-10); border-color: rgba(224,80,48,.40); color: #f09080; position: sticky; top: 0; z-index: var(--z-toast); }
 .notif-block .notif-title { color: #f09080; }
@@ -553,7 +553,7 @@ body {
   border-left: 2px solid transparent;
   text-decoration: none;
 }
-.nav-item:hover  { color: var(--text); background: var(--bg-3); }
+@media (hover: hover) { .nav-item:hover { color: var(--text); background: var(--bg-3); } }
 .nav-item.active { color: var(--gold); border-left-color: var(--gold); background: var(--gold-10); font-weight: 600; }
 .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .5; flex-shrink: 0; }
 .nav-item.active .nav-dot { opacity: 1; }
@@ -583,7 +583,7 @@ body {
   border: 2px solid transparent; cursor: pointer;
   transition: transform var(--t-fast), border-color var(--t-fast);
 }
-.theme-dot:hover  { transform: scale(1.15); }
+@media (hover: hover) { .theme-dot:hover { transform: scale(1.15); } }
 .theme-dot.active { border-color: var(--gold); }
 .theme-dot[data-theme="dark"]  { background: #1e1810; }
 .theme-dot[data-theme="ivory"] { background: #ece6d8; border: 2px solid #c8b880; }

@@ -339,7 +339,7 @@
 <style>
 .durabilite-grid { display:grid; grid-template-columns:1fr 1fr; gap:5px; margin-bottom:8px; }
 .dur-item { display:flex; flex-direction:column; gap:4px; padding:8px; background:var(--card); border:1.5px solid var(--border); border-radius:var(--r); cursor:pointer; transition:all var(--tx-fast); }
-.dur-item:hover { border-color:var(--warning); }
+@media (hover: hover) { .dur-item:hover { border-color:var(--warning); } }
 .dur-item.checked { border-color:var(--success); background:var(--success2); }
 .dur-icon { font-size:20px; }
 .dur-name { font-size:11px; color:var(--text2); font-weight:500; }
@@ -351,7 +351,7 @@
 .diag-item input { accent-color:var(--success); }
 .reemploi-items { display:flex; flex-direction:column; gap:4px; }
 .reemploi-item { display:flex; align-items:center; gap:8px; padding:7px 10px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); font-size:12px; color:var(--text2); cursor:pointer; transition:all var(--tx-fast); }
-.reemploi-item:hover { border-color:var(--success); }
+@media (hover: hover) { .reemploi-item:hover { border-color:var(--success); } }
 .reemploi-item input { accent-color:var(--success); }
 .filiere-note { background:var(--raised); border:1px solid var(--border); border-radius:var(--r-sm); padding:7px 10px; font-size:11px; color:var(--muted); margin-top:6px; line-height:1.6; }
 .maint-checks { display:flex; flex-direction:column; gap:4px; }

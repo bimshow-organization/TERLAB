@@ -17,6 +17,8 @@ const MobileStepper = {
   _phrasesDict: null,
   _reparented:  false,
   _origDisplays: new Map(), // original display values before hide
+  _wrapHome:    null,   // { parent, next } : position desktop du wrap reparente
+  _valHome:     null,   // idem pour le val-block
 
   // ── Elements cache ──────────────────────────────────────────
   get _progressEl()  { return document.getElementById('mob-stepper-progress'); },
@@ -53,11 +55,23 @@ const MobileStepper = {
     this._discoverSteps();
   },
 
+  // ── Conteneur de contenu de phase ───────────────────────────
+  // Standard : .left-panel-scroll (cree par loadPhase quand le
+  // left-panel contient un .val-block). Fallbacks : .p11-left
+  // (form-sections + val-block hors du left-panel) puis .left-panel
+  // nu (phases stub, sans val-block → pas de .left-panel-scroll).
+  // Sans ces fallbacks l'onglet Formulaire du sheet reste vide.
+  get _contentWrap() {
+    return document.querySelector('.left-panel-scroll')
+        ?? document.querySelector('.p11-left')
+        ?? document.querySelector('#phase-container .left-panel');
+  },
+
   // ── Discover form-sections as steps ─────────────────────────
   _discoverSteps() {
     this._steps = [];
 
-    const scrollWrap = document.querySelector('.left-panel-scroll');
+    const scrollWrap = this._contentWrap;
     if (!scrollWrap) return;
 
     // Step 0 : intro (.lp-head)
@@ -83,12 +97,17 @@ const MobileStepper = {
       if (c.querySelector('.form-section')) return;    // conteneur d'étapes
       if (['SCRIPT', 'STYLE', 'TEMPLATE', 'LINK'].includes(c.tagName)) return;
       if (!c.textContent?.trim() && !c.querySelector('canvas, svg, img')) return;
+      // P11 : le val-block est DANS le wrap (pas dans .left-panel)
+      if (c.matches('.val-block')) {
+        this._steps.push({ el: c, title: 'Validation', type: 'val' });
+        return;
+      }
       const title = c.querySelector('.fs-head, .sec-title, h2, h3, h4')
         ?.textContent?.trim() || 'Outils';
       this._steps.push({ el: c, title, type: 'tool' });
     });
 
-    // Last step : val-block
+    // Last step : val-block (cas standard : sibling du wrap dans .left-panel)
     const leftPanel = document.querySelector('.left-panel');
     const valBlock  = leftPanel?.querySelector('.val-block');
     if (valBlock) {
@@ -102,17 +121,22 @@ const MobileStepper = {
   reparentToSheet() {
     if (this._reparented) return;
 
-    const scrollWrap = document.querySelector('.left-panel-scroll');
+    const scrollWrap = this._contentWrap;
     const leftPanel  = document.querySelector('.left-panel');
     const valBlock   = leftPanel?.querySelector('.val-block');
     const body       = this._bodyEl;
     if (!scrollWrap || !body) return;
 
-    // Move scroll wrapper (contains lp-head + form-sections)
+    // Memoriser les positions desktop pour la restauration
+    this._wrapHome = { parent: scrollWrap.parentElement, next: scrollWrap.nextElementSibling };
     body.appendChild(scrollWrap);
 
-    // Move val-block as last element
-    if (valBlock) body.appendChild(valBlock);
+    if (valBlock) {
+      this._valHome = { parent: valBlock.parentElement, next: valBlock.nextElementSibling };
+      body.appendChild(valBlock);
+    } else {
+      this._valHome = null;
+    }
 
     this._reparented = true;
 
@@ -127,16 +151,29 @@ const MobileStepper = {
   reparentToDesktop() {
     if (!this._reparented) return;
 
-    const scrollWrap = document.querySelector('.left-panel-scroll');
-    const leftPanel  = document.querySelector('.left-panel');
-    const valBlock   = this._bodyEl?.querySelector('.val-block');
-    if (!scrollWrap || !leftPanel) return;
+    const body = this._bodyEl;
 
-    // Move val-block back first
-    if (valBlock) leftPanel.appendChild(valBlock);
+    // Si la position d'origine n'existe plus (phase remplacee pendant
+    // que le sheet etait ouvert), le contenu est obsolete : supprimer.
+    // Sans cela, l'ancien wrap restait dans le sheet et polluait la
+    // phase suivante.
+    const putBack = (el, home) => {
+      if (!el) return;
+      if (home?.parent?.isConnected) {
+        const anchor = (home.next?.isConnected && home.next.parentElement === home.parent)
+          ? home.next : null;
+        home.parent.insertBefore(el, anchor);
+      } else {
+        el.remove();
+      }
+    };
 
-    // Move scroll wrapper back before val-block
-    leftPanel.insertBefore(scrollWrap, leftPanel.querySelector('.val-block'));
+    // val-block d'abord (enfant direct du sheet uniquement — sur P11 il
+    // est DANS le wrap et doit y rester)
+    putBack(body?.querySelector(':scope > .val-block'), this._valHome);
+    putBack(body?.querySelector(':scope > .left-panel-scroll, :scope > .p11-left, :scope > .left-panel'), this._wrapHome);
+    this._wrapHome = null;
+    this._valHome  = null;
 
     // Reset all step visibility
     this._steps.forEach(s => { s.el.style.display = ''; });

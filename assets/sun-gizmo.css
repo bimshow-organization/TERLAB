@@ -46,9 +46,11 @@
   border: 1px solid var(--border, rgba(154,120,32,.18));
   transition: all .15s ease;
 }
-.sg-preset-btn:hover {
-  background: rgba(245,158,11,.12); color: #f59e0b;
-  border-color: rgba(245,158,11,.4);
+@media (hover: hover) {
+  .sg-preset-btn:hover {
+    background: rgba(245,158,11,.12); color: #f59e0b;
+    border-color: rgba(245,158,11,.4);
+  }
 }
 .sg-preset-btn.sg-active {
   background: rgba(245,158,11,.15); color: #f59e0b;

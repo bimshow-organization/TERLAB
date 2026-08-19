@@ -466,9 +466,10 @@ window.addEventListener('unhandledrejection', function (e) {
       <div class="mob-sheet-handle-bar"></div>
     </div>
 
-    <!-- Tabs (Formulaire / Risques / Acteurs) + bouton Sources (deplace depuis topbar) -->
+    <!-- Tabs (Formulaire / Outils / Risques / Acteurs) + bouton Sources (deplace depuis topbar) -->
     <div class="mob-sheet-tabs" id="mob-sheet-tabs">
       <button class="mob-sheet-tab active" data-tab="form">Formulaire</button>
+      <button class="mob-sheet-tab" data-tab="tools">Outils</button>
       <button class="mob-sheet-tab" data-tab="risks">Risques</button>
       <button class="mob-sheet-tab" data-tab="actors">Acteurs</button>
       <button class="mob-sheet-action" id="mob-sources-btn" type="button" aria-label="Sources et references">
@@ -496,6 +497,8 @@ window.addEventListener('unhandledrejection', function (e) {
       <!-- Tips contextuels -->
       <div id="mob-stepper-tips" class="mob-stepper-tips" style="display:none"></div>
       <!-- Autres onglets -->
+      <!-- Outils : le .right-panel de la phase est reparente ici (pas de clone) -->
+      <div id="mob-sheet-tools-content" style="display:none"></div>
       <div id="mob-sheet-risks-content" style="display:none;padding:12px 16px"></div>
       <div id="mob-sheet-actors-content" style="display:none;padding:12px 16px"></div>
     </div>

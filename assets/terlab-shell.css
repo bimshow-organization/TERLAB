@@ -91,7 +91,7 @@ body {
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: var(--border3); }
+@media (hover: hover) { ::-webkit-scrollbar-thumb:hover { background: var(--border3); } }
 * { scrollbar-width: thin; scrollbar-color: var(--border2) transparent; }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -214,7 +214,7 @@ body {
   border-right: none;
   user-select: none;
 }
-.ph-step:hover { color: var(--muted); background: var(--accent3); }
+@media (hover: hover) { .ph-step:hover { color: var(--muted); background: var(--accent3); } }
 .ph-step.active {
   color: var(--accent);
   border-bottom-color: var(--accent);
@@ -270,7 +270,7 @@ body {
   transition: all var(--tx-fast);
   letter-spacing: .04em;
 }
-.demo-chip:hover { background: var(--accent2); border-color: var(--accent); color: var(--accent); }
+@media (hover: hover) { .demo-chip:hover { background: var(--accent2); border-color: var(--accent); color: var(--accent); } }
 .demo-chip.active { background: var(--accent2); border-color: var(--accent); color: var(--accent); }
 
 /* Session badge */
@@ -313,14 +313,14 @@ body {
   transition: all var(--tx-fast);
   white-space: nowrap;
 }
-.tb-btn:hover { background: var(--raised); color: var(--text); border-color: var(--border3); }
+@media (hover: hover) { .tb-btn:hover { background: var(--raised); color: var(--text); border-color: var(--border3); } }
 .btn-export { color: var(--accent); border-color: rgba(154,120,32,.25); }
-.btn-export:hover { background: var(--accent2); }
+@media (hover: hover) { .btn-export:hover { background: var(--accent2); } }
 /* Variante accentuee pour le bouton Export en topbar */
 .tb-btn-accent { color: var(--accent); border-color: rgba(154,120,32,.35); background: rgba(154,120,32,.08); }
-.tb-btn-accent:hover { background: var(--accent2); color: var(--accent); border-color: rgba(154,120,32,.55); }
+@media (hover: hover) { .tb-btn-accent:hover { background: var(--accent2); color: var(--accent); border-color: rgba(154,120,32,.55); } }
 .btn-bimshow { color: var(--gold); border-color: rgba(245,158,11,.25); }
-.btn-bimshow:hover { background: var(--warning2); }
+@media (hover: hover) { .btn-bimshow:hover { background: var(--warning2); } }
 
 /* ─────────────────────────────────────────────────────────────────
    7 · SIDEBAR (DESACTIVEE : actions deplacees dans la topbar)
@@ -357,7 +357,7 @@ body {
   transition: all var(--tx-fast);
   flex-shrink: 0;
 }
-.sb-btn:hover { background: var(--raised); color: var(--muted); border-color: var(--border); }
+@media (hover: hover) { .sb-btn:hover { background: var(--raised); color: var(--muted); border-color: var(--border); } }
 .sb-btn.active { background: var(--accent2); color: var(--accent); border-color: rgba(154,120,32,.25); }
 .sb-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
@@ -520,9 +520,11 @@ body {
   cursor: pointer;
   transition: all var(--tx-fast);
 }
-.topo-btn:hover {
-  background: rgba(154,120,32,.16);
-  border-color: rgba(154,120,32,.35);
+@media (hover: hover) {
+  .topo-btn:hover {
+    background: rgba(154,120,32,.16);
+    border-color: rgba(154,120,32,.35);
+  }
 }
 .topo-btn:active {
   background: rgba(154,120,32,.22);
@@ -617,10 +619,12 @@ body {
   transition: all var(--tx-fast);
   user-select: none;
 }
-.radio-option:hover, .checkbox-option:hover {
-  border-color: var(--accent);
-  color: var(--text);
-  background: var(--accent3);
+@media (hover: hover) {
+  .radio-option:hover, .checkbox-option:hover {
+    border-color: var(--accent);
+    color: var(--text);
+    background: var(--accent3);
+  }
 }
 .radio-option input, .checkbox-option input { display: none; }
 .radio-option.selected, .checkbox-option.selected {
@@ -663,7 +667,7 @@ body {
   transition: color var(--tx-fast);
   user-select: none;
 }
-.check-item:hover { color: var(--text); }
+@media (hover: hover) { .check-item:hover { color: var(--text); } }
 .check-item.checked { color: var(--text2); }
 
 .check-box {
@@ -762,7 +766,7 @@ body {
   font-style: italic;
 }
 .next-btn.enabled { opacity: 1; pointer-events: auto; }
-.next-btn.enabled:hover { background: rgba(154,120,32,.2); border-color: rgba(154,120,32,.4); }
+@media (hover: hover) { .next-btn.enabled:hover { background: rgba(154,120,32,.2); border-color: rgba(154,120,32,.4); } }
 
 /* ─────────────────────────────────────────────────────────────────
    12 · RISK CARDS
@@ -814,7 +818,7 @@ body {
   margin-bottom: 5px;
 }
 .actor-card:last-child { margin-bottom: 0; }
-.actor-card:hover { border-color: var(--border3); background: var(--raised); transform: translateX(2px); }
+@media (hover: hover) { .actor-card:hover { border-color: var(--border3); background: var(--raised); transform: translateX(2px); } }
 
 .actor-icon {
   width: 28px;
@@ -856,7 +860,7 @@ body {
   white-space: nowrap;
   transition: opacity var(--tx-fast);
 }
-.actor-card:hover .actor-link { opacity: 1; }
+@media (hover: hover) { .actor-card:hover .actor-link { opacity: 1; } }
 .actor-conseil {
   font-size: 10px;
   color: var(--faint);
@@ -867,7 +871,7 @@ body {
   display: none;
   font-style: italic;
 }
-.actor-card:hover .actor-conseil { display: block; }
+@media (hover: hover) { .actor-card:hover .actor-conseil { display: block; } }
 
 /* Badges type acteur */
 .actor-badge {
@@ -907,7 +911,7 @@ body {
   padding: 0;
   transition: opacity var(--tx-fast);
 }
-.source-btn:hover { opacity: 1; text-decoration: underline; }
+@media (hover: hover) { .source-btn:hover { opacity: 1; text-decoration: underline; } }
 
 .stub-warning {
   background: rgba(245,158,11,.1);
@@ -994,14 +998,14 @@ body {
   cursor: pointer;
   transition: all var(--tx-fast);
 }
-.export-btn:hover { border-color: var(--accent); background: var(--accent2); }
+@media (hover: hover) { .export-btn:hover { border-color: var(--accent); background: var(--accent2); } }
 .export-icon { font-size: 22px; }
 .export-label { font-family: var(--font-mono); font-size: 11px; font-weight: 700; color: var(--text); }
 .export-desc { font-size: 10px; color: var(--muted); }
-.export-btn[data-format="pdf"]:hover .export-label { color: var(--accent); }
-.export-btn[data-format="dxf"]:hover .export-label { color: var(--purple); }
-.export-btn[data-format="glb"]:hover .export-label { color: var(--warning); }
-.export-btn[data-format="json"]:hover .export-label { color: var(--success); }
+@media (hover: hover) { .export-btn[data-format="pdf"]:hover .export-label { color: var(--accent); } }
+@media (hover: hover) { .export-btn[data-format="dxf"]:hover .export-label { color: var(--purple); } }
+@media (hover: hover) { .export-btn[data-format="glb"]:hover .export-label { color: var(--warning); } }
+@media (hover: hover) { .export-btn[data-format="json"]:hover .export-label { color: var(--success); } }
 
 .export-progress { margin-top: 8px; }
 .export-progress-bar {
@@ -1077,7 +1081,7 @@ body {
   font-size: 16px;
   transition: all var(--tx-fast);
 }
-.modal-close:hover { background: var(--raised); color: var(--text); }
+@media (hover: hover) { .modal-close:hover { background: var(--raised); color: var(--text); } }
 
 .modal-body {
   padding: 16px 20px;
@@ -1132,7 +1136,7 @@ body {
   cursor: pointer;
   transition: all var(--tx-fast);
 }
-.modal-btn-primary:hover { background: rgba(154,120,32,.2); }
+@media (hover: hover) { .modal-btn-primary:hover { background: rgba(154,120,32,.2); } }
 .modal-btn-ghost {
   padding: 8px 16px;
   background: transparent;
@@ -1144,7 +1148,7 @@ body {
   cursor: pointer;
   transition: all var(--tx-fast);
 }
-.modal-btn-ghost:hover { background: var(--raised); color: var(--text); }
+@media (hover: hover) { .modal-btn-ghost:hover { background: var(--raised); color: var(--text); } }
 
 /* ─────────────────────────────────────────────────────────────────
    19 · TOASTS
@@ -1190,9 +1194,9 @@ body {
   font-size: 12px; font-weight: 600;
 }
 .toast-confirm-ok { background:var(--accent); color:var(--bg); }
-.toast-confirm-ok:hover { filter:brightness(1.15); }
+@media (hover: hover) { .toast-confirm-ok:hover { filter:brightness(1.15); } }
 .toast-confirm-cancel { background:var(--raised); color:var(--fg); border:1px solid var(--border); }
-.toast-confirm-cancel:hover { background:var(--surface); }
+@media (hover: hover) { .toast-confirm-cancel:hover { background:var(--surface); } }
 
 /* user info in project menu */
 .pm-user-info {

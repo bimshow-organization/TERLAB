@@ -15,6 +15,7 @@
 import {
   findFirstIntersection, findCoincidentVertices, arcHFromPeak,
 } from './metaforme-engine.js';
+import { attachPinchZoom } from '../utils/touch-pinch.js';
 
 // Convertit un event pointer → coords SVG (tient compte du viewBox + pan/zoom)
 export function svgPt(svg, e) {
@@ -404,6 +405,8 @@ export function bindEvents(svg, engine, renderer, opts = {}) {
   svg.addEventListener('wheel', onWheel, { passive: false });
   svg.addEventListener('dblclick', onDblClick);
   if (enableKeyboard) document.addEventListener('keydown', onKeyDown);
+  // Pinch 2 doigts → WheelEvent synthetique (zoom tactile)
+  const detachPinch = enablePanZoom ? attachPinchZoom(svg) : null;
 
   // Expose l'API unbind + refresh viewBox (si viewW/viewH changent)
   return {
@@ -416,6 +419,7 @@ export function bindEvents(svg, engine, renderer, opts = {}) {
       svg.removeEventListener('wheel', onWheel);
       svg.removeEventListener('dblclick', onDblClick);
       if (enableKeyboard) document.removeEventListener('keydown', onKeyDown);
+      detachPinch?.();
     },
     resetView() {
       state.svgPan = { x: 0, y: 0 };

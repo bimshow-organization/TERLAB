@@ -19,9 +19,11 @@
   text-align: left;
   margin-top: 6px;
 }
-.acces-pompiers-trigger:hover {
-  border-color: rgba(239, 68, 68, .45);
-  background: rgba(239, 68, 68, .05);
+@media (hover: hover) {
+  .acces-pompiers-trigger:hover {
+    border-color: rgba(239, 68, 68, .45);
+    background: rgba(239, 68, 68, .05);
+  }
 }
 
 .apt-icon {
@@ -118,11 +120,13 @@
   transition: all .15s;
   white-space: nowrap;
 }
-.ap-mode-btn:hover,
-.ap-mode-btn.active {
-  border-color: rgba(154, 120, 32, .5);
-  color: var(--accent, #9a7820);
-  background: rgba(154, 120, 32, .08);
+@media (hover: hover) {
+  .ap-mode-btn:hover,
+  .ap-mode-btn.active {
+    border-color: rgba(154, 120, 32, .5);
+    color: var(--accent, #9a7820);
+    background: rgba(154, 120, 32, .08);
+  }
 }
 
 /* ─── Fonts chargées pour la modal (si pas déjà dans index.html) ─ */

@@ -278,7 +278,7 @@
 
 .species-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; margin-bottom:8px; }
 .species-card { background:var(--card); border:1.5px solid var(--border); border-radius:var(--r); padding:7px 6px; text-align:center; cursor:pointer; transition:all var(--tx-fast); }
-.species-card:hover { border-color:var(--accent); background:var(--accent3); }
+@media (hover: hover) { .species-card:hover { border-color:var(--accent); background:var(--accent3); } }
 .species-card.selected { border-color:var(--accent); background:var(--accent2); }
 .species-card.no-species.selected { border-color:var(--success); background:var(--success2); }
 .sp-icon { font-size:18px; margin-bottom:3px; }
@@ -293,7 +293,7 @@
 
 .invasive-list { display:flex; flex-direction:column; gap:4px; }
 .invasive-item { display:flex; align-items:center; gap:8px; padding:6px 9px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); font-size:12px; color:var(--text2); cursor:pointer; transition:all var(--tx-fast); }
-.invasive-item:hover { border-color:var(--border2); }
+@media (hover: hover) { .invasive-item:hover { border-color:var(--border2); } }
 .invasive-item input[type="checkbox"] { accent-color:var(--accent); width:13px; height:13px; }
 
 .veg-reco { display:flex; flex-direction:column; gap:8px; }

@@ -157,14 +157,14 @@
 <style>
 .mat-checks { display:flex; flex-direction:column; gap:4px; }
 .mat-check { display:flex; align-items:center; gap:8px; padding:7px 10px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-sm); font-size:11.5px; color:var(--text2); cursor:pointer; transition:all var(--tx-fast); }
-.mat-check:hover { border-color:var(--success); }
+@media (hover: hover) { .mat-check:hover { border-color:var(--success); } }
 .mat-check input { accent-color:var(--success); }
 .mat-check.active { border-color:var(--success); background:var(--success2); }
 .field-range { width:100%; accent-color:var(--success); }
 .range-val { font-family:var(--font-mono); font-size:10px; color:var(--muted); margin-left:8px; }
 .enr-items { display:flex; flex-direction:column; gap:5px; }
 .enr-item { display:flex; align-items:center; gap:8px; padding:8px 10px; background:var(--card); border:1.5px solid var(--border); border-radius:var(--r); cursor:pointer; transition:all var(--tx-fast); }
-.enr-item:hover { border-color:var(--success); background:var(--success2); }
+@media (hover: hover) { .enr-item:hover { border-color:var(--success); background:var(--success2); } }
 .enr-item.selected { border-color:var(--success); background:var(--success2); }
 .enr-icon { font-size:20px; flex-shrink:0; }
 .enr-name { font-size:11.5px; color:var(--text2); font-weight:500; }

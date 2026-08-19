@@ -366,7 +366,7 @@
 <style>
 .saison-selector { display:flex; flex-direction:column; gap:5px; }
 .saison-item { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; background:var(--card); border:1.5px solid var(--border2); border-radius:var(--r); cursor:pointer; transition:all var(--tx-fast); }
-.saison-item:hover { border-color:var(--border3); background:var(--raised); }
+@media (hover: hover) { .saison-item:hover { border-color:var(--border3); background:var(--raised); } }
 .saison-item.selected-ok   { border-color:var(--success); background:var(--success2); }
 .saison-item.selected-warn { border-color:var(--warning); background:var(--warning2); }
 .saison-icon { font-size:22px; flex-shrink:0; }
@@ -406,7 +406,7 @@
 .giep-text { font-size:10.5px; color:var(--muted); line-height:1.6; margin-bottom:8px; }
 .giep-measures { display:flex; flex-wrap:wrap; gap:4px; }
 .giep-measure { display:flex; align-items:center; gap:5px; padding:4px 9px; background:var(--raised); border:1px solid var(--border2); border-radius:var(--r-sm); cursor:pointer; transition:all var(--tx-fast); }
-.giep-measure:hover { border-color:var(--accent); background:var(--accent3); }
+@media (hover: hover) { .giep-measure:hover { border-color:var(--accent); background:var(--accent3); } }
 .giep-measure.selected { border-color:var(--accent); background:var(--accent2); }
 .gm-icon { font-size:13px; }
 .gm-label { font-family:var(--font-mono); font-size:9px; color:var(--muted); }

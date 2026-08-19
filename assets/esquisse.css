@@ -69,7 +69,7 @@
   cursor: pointer;
   border-radius: 3px;
 }
-.p11-tool:hover { color: var(--accent); border-color: var(--accent); }
+@media (hover: hover) { .p11-tool:hover { color: var(--accent); border-color: var(--accent); } }
 .p11-sep { flex: 1; }
 
 /* Propositions */
@@ -82,7 +82,7 @@
   cursor: pointer;
   transition: all .15s;
 }
-.p11-proposal-card:hover { background: var(--raised); }
+@media (hover: hover) { .p11-proposal-card:hover { background: var(--raised); } }
 .p11-proposal-card.selected { background: rgba(154,120,32,.06); }
 
 .p11-card-header {
@@ -163,7 +163,7 @@
   font-size: 10px;
   transition: background .15s, color .15s;
 }
-.p11-toggle:hover { background: var(--bg); color: var(--accent); }
+@media (hover: hover) { .p11-toggle:hover { background: var(--bg); color: var(--accent); } }
 .p11-toggle-left  { left: 0; border-radius: 0 4px 4px 0; border-left: none; }
 .p11-toggle-right { right: 0; border-radius: 4px 0 0 4px; border-right: none; }
 
@@ -244,8 +244,10 @@
   font-size: 8.5px;
   font-family: var(--font-mono);
 }
-.rtaa-baie-row:hover {
-  background: rgba(255,255,255,.05);
+@media (hover: hover) {
+  .rtaa-baie-row:hover {
+    background: rgba(255,255,255,.05);
+  }
 }
 .rtaa-baie-row.rtaa-ok  { border-left: 2px solid #22c55e; }
 .rtaa-baie-row.rtaa-fail { border-left: 2px solid #ef4444; }
@@ -272,8 +274,10 @@
   padding: 2px 0;
   transition: color .15s;
 }
-.rtaa-suggest-item:hover {
-  color: #fff;
+@media (hover: hover) {
+  .rtaa-suggest-item:hover {
+    color: #fff;
+  }
 }
 
 .rtaa-action-row {
@@ -307,19 +311,25 @@
   transition: r .12s, fill .12s;
   cursor: move !important;
 }
-.edit-node:hover {
-  r: 10;
-  fill: #fff;
-  stroke: var(--accent, #9a7820);
-  stroke-width: 3;
+/* Survol reserve au pointeur fin : au doigt l'etat restait colle sur le
+   dernier noeud/arete touche, faisant croire a une selection active. */
+@media (hover: hover) {
+  .edit-node:hover {
+    r: 10;
+    fill: #fff;
+    stroke: var(--accent, #9a7820);
+    stroke-width: 3;
+  }
 }
 .edit-edge {
   cursor: grab;
   transition: stroke-opacity .15s;
 }
-.edit-edge:hover {
-  stroke-opacity: 0.6 !important;
-  cursor: grab;
+@media (hover: hover) {
+  .edit-edge:hover {
+    stroke-opacity: 0.6 !important;
+    cursor: grab;
+  }
 }
 .edit-edge:active {
   cursor: grabbing;
@@ -339,4 +349,57 @@
 @media (pointer: coarse) {
   .edit-node-hit { r: 18; }
   .edit-edge     { stroke-width: 22; }
+}
+
+/* ── Mobile ≤ 800px (même breakpoint que assets/mobile.css) ─────
+   La grille 240px 1fr 240px = 480px incompressibles sur un viewport
+   de 393px (iPhone 14 Pro). Empilement vertical : canvas d'abord,
+   panneau RTAA/3D en dessous. Le .p11-left part dans le bottom sheet
+   (MobileStepper, fallback _contentWrap). */
+@media (max-width: 800px) {
+  .p11-split {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Contenu formulaire → bottom sheet ; caché tant qu'il est en page */
+  .p11-left {
+    display: none;
+  }
+  #mob-sheet .p11-left {
+    display: block;
+    border-right: none;
+    overflow: visible;   /* le scroll est porté par .mob-sheet-body */
+  }
+
+  .p11-canvas-wrap {
+    flex: 0 0 auto;
+    height: 55dvh;
+    min-height: 300px;
+  }
+
+  .p11-right {
+    flex: 0 0 auto;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    overflow: visible;   /* scroll global du .p11-split */
+  }
+
+  /* Toggles de colonnes sans objet en empilement vertical */
+  .p11-toggle {
+    display: none;
+  }
+
+  /* Cases à cocher terrassement 10px inline → cible tactile décente */
+  #p11-3d-section input[type="checkbox"] {
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  /* Légende compacte (8 entrées sur un canvas réduit) */
+  .p11-legend-item { font-size: 9px; }
+  .p11-legend-item > span { width: 10px; height: 10px; }
 }

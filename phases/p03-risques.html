@@ -54,22 +54,22 @@
       <label class="field-label">Zone PPRN (manuelle ou auto-détectée)</label>
       <div class="pprn-zones">
         <button class="pprn-zone-btn" data-zone="R1" onclick="P03.selectZone(this,'R1')" title="Rouge fort — inconstructible">
-          <span class="pz-color" style="background:var(--c-danger)"></span>R1
+          <span class="pz-color" style="background:var(--c-danger)"></span>R1<small class="pz-lab">Rouge fort · inconstructible</small>
         </button>
         <button class="pprn-zone-btn" data-zone="R2" onclick="P03.selectZone(this,'R2')" title="Rouge modéré — inconstructible">
-          <span class="pz-color" style="background:#f87171"></span>R2
+          <span class="pz-color" style="background:#f87171"></span>R2<small class="pz-lab">Rouge modéré · inconstructible</small>
         </button>
         <button class="pprn-zone-btn" data-zone="B1" onclick="P03.selectZone(this,'B1')" title="Bleu fort — conditions strictes">
-          <span class="pz-color" style="background:var(--c-info)"></span>B1
+          <span class="pz-color" style="background:var(--c-info)"></span>B1<small class="pz-lab">Bleu fort · conditions strictes</small>
         </button>
         <button class="pprn-zone-btn" data-zone="B2" onclick="P03.selectZone(this,'B2')" title="Bleu modéré — conditions">
-          <span class="pz-color" style="background:#60a5fa"></span>B2
+          <span class="pz-color" style="background:#60a5fa"></span>B2<small class="pz-lab">Bleu modéré · conditions</small>
         </button>
         <button class="pprn-zone-btn" data-zone="J" onclick="P03.selectZone(this,'J')" title="Jaune — vigilance">
-          <span class="pz-color" style="background:var(--c-warn)"></span>J
+          <span class="pz-color" style="background:var(--c-warn)"></span>J<small class="pz-lab">Jaune · vigilance</small>
         </button>
         <button class="pprn-zone-btn" data-zone="W" onclick="P03.selectZone(this,'W')" title="Blanc — hors zone">
-          <span class="pz-color" style="background:#e2e8f0"></span>W
+          <span class="pz-color" style="background:#e2e8f0"></span>W<small class="pz-lab">Blanc · hors zone</small>
         </button>
       </div>
     </div>
@@ -253,7 +253,7 @@
 
 <style>
 .risk-fetch-btn { display:flex; align-items:center; justify-content:center; gap:6px; width:100%; padding:8px; background:var(--raised); border:1px solid var(--border2); border-radius:var(--r-sm); color:var(--muted); cursor:pointer; font-family:var(--font-mono); font-size:10px; transition:all var(--tx-fast); margin-top:8px; }
-.risk-fetch-btn:hover { border-color:var(--danger); color:var(--danger); background:var(--danger2); }
+@media (hover: hover) { .risk-fetch-btn:hover { border-color:var(--danger); color:var(--danger); background:var(--danger2); } }
 .risk-fetch-btn:disabled { opacity:.4; pointer-events:none; }
 
 .georisques-results { margin-top:8px; display:flex; flex-direction:column; gap:4px; }
@@ -261,9 +261,17 @@
 
 .pprn-zones { display:flex; flex-wrap:wrap; gap:5px; margin-top:4px; }
 .pprn-zone-btn { display:flex; align-items:center; gap:5px; padding:5px 10px; background:var(--card); border:1.5px solid var(--border2); border-radius:var(--r-sm); font-family:var(--font-mono); font-size:10px; color:var(--muted); cursor:pointer; transition:all var(--tx-fast); }
-.pprn-zone-btn:hover { border-color:var(--border3); color:var(--text); }
+@media (hover: hover) { .pprn-zone-btn:hover { border-color:var(--border3); color:var(--text); } }
 .pprn-zone-btn.active { background:var(--raised); border-color:var(--accent); color:var(--text); }
 .pz-color { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+/* Le sens des zones n'existait que dans title= — invisible au doigt.
+   Libelle affiche sur pointeur grossier (mobile/tablette). */
+.pz-lab { display:none; }
+@media (pointer: coarse) {
+  .pprn-zones { flex-direction:column; }
+  .pprn-zone-btn { width:100%; justify-content:flex-start; font-size:11px; }
+  .pz-lab { display:inline; color:var(--faint); font-size:10px; margin-left:4px; }
+}
 
 .pprn-prescriptions { background:var(--raised); border:1px solid var(--border2); border-radius:var(--r-sm); padding:9px 11px; font-size:11px; color:var(--muted); margin-top:8px; line-height:1.65; }
 .pprn-prescriptions strong { color:var(--text2); }
@@ -288,7 +296,7 @@
 .ped-accordion { display:flex; flex-direction:column; gap:4px; }
 .ped-item { border:1px solid var(--border); border-radius:var(--r-sm); overflow:hidden; }
 .ped-toggle { width:100%; padding:8px 11px; background:var(--card); border:none; color:var(--muted); font-family:var(--font-mono); font-size:9.5px; cursor:pointer; text-align:left; transition:all var(--tx-fast); }
-.ped-toggle:hover { background:var(--raised); color:var(--text); }
+@media (hover: hover) { .ped-toggle:hover { background:var(--raised); color:var(--text); } }
 .ped-content { padding:9px 11px; font-size:11px; color:var(--muted); line-height:1.65; background:var(--surface); }
 
 .pprn-legend { position:absolute; bottom:40px; right:10px; z-index:10; background:rgba(8,10,13,.85); border:1px solid var(--border2); border-radius:var(--r-sm); padding:8px 10px; }

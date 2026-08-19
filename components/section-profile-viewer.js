@@ -4,6 +4,8 @@
 // ENSA La Réunion · MGA Architecture
 // ════════════════════════════════════════════════════════════════════
 
+import { attachPinchZoom } from '../utils/touch-pinch.js';
+
 const SECTION_COLORS = {
   A: { line: '#E8811A', fill: 'rgba(232,129,26,0.12)', label: '#E8811A' },
   B: { line: '#4A90D9', fill: 'rgba(74,144,217,0.12)', label: '#4A90D9' },
@@ -467,6 +469,11 @@ const SectionProfileViewer = {
       this._renderSVG(sectionId);
     };
     svg.addEventListener('wheel', state._wheelHandler, { passive: false });
+
+    // Pinch 2 doigts → WheelEvent synthetique (zoom tactile).
+    // Le SVG est recree a chaque render : detacher l'ancien shim d'abord.
+    state._pinchDetach?.();
+    state._pinchDetach = attachPinchZoom(svg);
 
     // Drag pan
     let dragging = false, dragStartX = 0, dragStartPan = 0;

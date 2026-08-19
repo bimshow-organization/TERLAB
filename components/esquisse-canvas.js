@@ -6,6 +6,7 @@
 
 import TopoCaseService from '../services/topo-case-service.js';
 import BdTopoService from '../services/bdtopo-service.js';
+import { attachPinchZoom } from '../utils/touch-pinch.js';
 
 const EsquisseCanvas = {
 
@@ -3681,7 +3682,7 @@ const EsquisseCanvas = {
       }
     });
 
-    // Wheel zoom (mode standalone uniquement)
+    // Wheel zoom (mode standalone uniquement) + pinch tactile → wheel
     if (!this._map) {
       this._svg.addEventListener('wheel', e => {
         e.preventDefault();
@@ -3689,6 +3690,7 @@ const EsquisseCanvas = {
         this.SCALE = Math.max(2, Math.min(20, this.SCALE * factor));
         this._refresh();
       }, { passive: false });
+      attachPinchZoom(this._svg);
     }
 
     // RTAA highlight listener

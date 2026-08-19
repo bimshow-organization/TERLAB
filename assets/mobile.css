@@ -48,16 +48,40 @@
     display: none !important;
   }
 
+  /* …sauf reparenté dans le sheet : cas des phases stub, dont le
+     left-panel n'a pas de .val-block et n'est donc jamais découpé en
+     .left-panel-scroll par loadPhase() (MobileStepper._contentWrap). */
+  #mob-sheet .left-panel {
+    display: block !important;
+    width: 100%;
+    border-right: none;
+  }
+
   /* ── Right panel → caché ── */
   .right-panel {
     display: none !important;
   }
 
-  /* ── Main → flex fill ── */
+  /* …sauf quand il est reparenté dans l'onglet Outils du bottom sheet
+     (mobile-controller._reparentTools : vrai déplacement, listeners
+     préservés — exports P12, conception P07, notes pédagogiques…) */
+  #mob-sheet .right-panel {
+    display: flex !important;
+    flex-direction: column;
+    width: 100%;
+    border-left: none;
+    overflow: visible;   /* le scroll est porté par .mob-sheet-body */
+  }
+
+  /* ── Main → flex fill ──
+     padding-bottom = hauteur tabbar : sans lui, les 62px du bas de la
+     carte (légende PPRN P03, barre de statut, attribution Mapbox…)
+     sont recouverts par la tab bar fixed. */
   .terlab-main {
     flex: 1;
     overflow: hidden;
     min-height: 0;
+    padding-bottom: calc(var(--mob-tabbar-h) + env(safe-area-inset-bottom, 0px));
   }
 
   /* ── Phase container → single column ── */
@@ -216,8 +240,10 @@
   }
 
   /* Bouton Sources compact dans mob-sheet-tabs */
+  /* Pas de margin-left:auto : avec 4 onglets la rangée déborde déjà,
+     le bouton se retrouvait poussé à moitié hors de l'écran. Il suit
+     simplement les onglets dans la rangée scrollable. */
   .mob-sheet-action {
-    margin-left: auto;
     align-self: center;
     display: inline-flex;
     align-items: center;
@@ -396,6 +422,14 @@
     transform: translateY(0);
   }
 
+  /* Mode peek : sheet réduit après un tap carte — l'utilisateur voit
+     le résultat de son tap (parcelle P00, point de coupe P01, aléa
+     P03) se refléter dans le formulaire sans le rouvrir. Un tap dans
+     le sheet ou un drag vers le haut le redéploie. */
+  .mob-sheet.sheet-open.sheet-peek {
+    height: var(--mob-sheet-peek-h, 34dvh) !important;
+  }
+
   /* Handle drag indicator */
   .mob-sheet-handle {
     display: flex !important;
@@ -424,7 +458,7 @@
 
   .mob-sheet-tab {
     flex-shrink: 0;
-    padding: 8px 16px;
+    padding: 8px 11px;
     font-family: var(--font-mono);
     font-size: 10px;
     letter-spacing: .08em;
@@ -493,6 +527,17 @@
   /* ══════════════════════════════════════════════════════════
      MOBILE STEPPER — progression par sous-etapes
      ══════════════════════════════════════════════════════════ */
+
+  /* Chrome du stepper : réservé à l'onglet Formulaire.
+     Les règles ci-dessous sont en !important (elles doivent battre le
+     style="display:none" initial du HTML) : un style inline ne peut
+     donc pas les masquer → pilotage par attribut data-tab du sheet. */
+  .mob-sheet[data-tab]:not([data-tab="form"]) .mob-stepper-progress,
+  .mob-sheet[data-tab]:not([data-tab="form"]) .mob-stepper-indicator,
+  .mob-sheet[data-tab]:not([data-tab="form"]) .mob-stepper-tips,
+  .mob-sheet[data-tab]:not([data-tab="form"]) .mob-stepper-nav {
+    display: none !important;
+  }
 
   /* ── Progress bar segmentee ── */
   .mob-stepper-progress {
@@ -789,6 +834,23 @@
     min-height: 44px;
   }
 
+  /* Toolbars flottantes compactes : la règle 44px transformait la
+     colonne .t3d-toolbar (9 boutons) en bande de ~430px masquant la
+     vue 3D (P05/P07), faisait déborder .p11-toolbar et ovalisait les
+     boutons ronds 30×30. On restaure leur taille de conception. */
+  .map-area button,
+  .mapboxgl-ctrl button,
+  .t3d-toolbar button,
+  .p11-toolbar button,
+  .section-split-controls button {
+    min-height: 0;
+  }
+
+  /* P11 : 9 boutons sans wrap débordaient du viewport */
+  .p11-toolbar {
+    flex-wrap: wrap;
+  }
+
   /* ── Modals full-width on mobile ── */
   .modal-box {
     max-width: 100% !important;
@@ -823,6 +885,56 @@
         (usage cible etudiants). Le theme est stocke par appareil :
         le masquer bloquerait un telephone reste en dark. ── */
 
+  /* ══════════════════════════════════════════════════════════
+     DENSITÉ : grilles et canvas dimensionnés pour un panneau
+     desktop de 300px, désormais rendus dans un sheet de ~340px.
+     Les <style> de phase sont injectés APRÈS mobile.css : à
+     spécificité égale ils gagnent → !important nécessaire ici.
+     ══════════════════════════════════════════════════════════ */
+
+  /* Grilles 3 colonnes → 2 (≈105px/cellule sinon) */
+  .meteo-grid,
+  .anc-row,
+  .species-grid,
+  .natural-stats,
+  .gabarit-inputs,
+  .ep-secondary,
+  #phase-container [style*="grid-template-columns:1fr 1fr 1fr"],
+  #phase-container [style*="repeat(3,1fr)"],
+  #phase-container [style*="repeat(3, 1fr)"] {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* P01 — héliodon + rose des vents côte à côte = ~150px chacun */
+  .bioclim-row {
+    grid-template-columns: 1fr !important;
+  }
+  .bioclim-canvas {
+    max-width: 260px !important;
+  }
+
+  /* P04 — schéma des reculs : canvas raster figé à 200×200 */
+  #reculs-canvas {
+    width: 100% !important;
+    max-width: 280px;
+    height: auto !important;
+  }
+
+  /* P04 — libellés réseaux tous tronqués par nowrap+ellipsis */
+  .reseau-full {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+
+  /* P09 — ACV : 2 cartes scénarios de ~180px, graphe trop haut */
+  #acv-scenarios {
+    grid-template-columns: 1fr !important;
+  }
+  #acv-chart-wrap {
+    height: min(320px, 42dvh) !important;
+  }
+
   /* ── 3D panel full screen on mobile ── */
   .terlab-3d-panel {
     position: fixed !important;
@@ -830,6 +942,69 @@
     width: 100% !important;
     height: 100% !important;
     z-index: var(--z-modal);
+  }
+
+  /* ── Panneau LiDAR Heights (injecté par lidar-heights-panel.js) ──
+     Dimensionné pour le desktop : 340px de large et ancré sur
+     --topbar-h (48px) alors que la topbar mobile fait 64px + safe-area.
+     Les règles du composant sont injectées après mobile.css (même
+     spécificité) → !important nécessaire. */
+  .lh-panel {
+    width: 100% !important;
+    top: calc(var(--mob-topbar-h) + env(safe-area-inset-top, 0px)) !important;
+    height: calc(100dvh
+      - var(--mob-topbar-h) - env(safe-area-inset-top, 0px)
+      - var(--mob-tabbar-h) - env(safe-area-inset-bottom, 0px)) !important;
+    border-radius: 0 !important;
+  }
+  .lh-toggle {
+    top: calc(var(--mob-topbar-h) + env(safe-area-inset-top, 0px) + 12px) !important;
+    height: 72px !important;
+  }
+  .lh-toggle.open {
+    right: 0 !important;   /* le panneau occupe toute la largeur */
+    z-index: calc(var(--z-panel) + 2) !important;
+  }
+
+  /* ── P06 : panneau végétation flottant ──
+     280px sur 393 = 71% de l'écran, et son z-index:200 le faisait
+     passer au-dessus du bottom sheet (40) et de la tab bar (50).
+     → bandeau en bas de carte, sous le sheet. */
+  .veg-panel {
+    top: auto !important;
+    bottom: var(--sp-sm) !important;
+    left: var(--sp-sm) !important;
+    right: var(--sp-sm) !important;
+    width: auto !important;
+    max-height: 45dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    z-index: var(--z-overlay) !important;
+  }
+
+  /* ── P04 : plan d'état des lieux (SVG ~1587px de large) ──
+     Le conteneur combinait justify-content:center et overflow:auto :
+     un flex-item plus large que son parent voit sa partie gauche
+     devenir inatteignable au scroll. Alignement au début = tout le
+     plan est atteignable en scrollant. */
+  #site-plan-svg-p4 {
+    justify-content: flex-start !important;
+    align-items: flex-start !important;
+  }
+
+  /* ── Overlays split P01 (coupes A/B, héliodon/rose des vents) ──
+     Hissés hors du left-panel par loadPhase() (le sheet a un transform
+     → containing block qui piégeait leur position:fixed). On les cale
+     au-dessus de la tab bar et on borne leur hauteur. */
+  .section-split-wrap,
+  .bioclim-split-wrap {
+    bottom: calc(var(--mob-tabbar-h) + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .section-split-wrap.split-active {
+    height: min(300px, 45dvh) !important;
+  }
+  .bioclim-split-wrap.split-active {
+    height: min(520px, 65dvh) !important;
   }
 
 } /* fin @media 800px */

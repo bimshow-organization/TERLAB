@@ -223,9 +223,9 @@
 .export-panel { }
 .ep-main { margin-bottom:6px; }
 .ep-btn { width:100%; padding:10px 12px; background:var(--card); border:1.5px solid var(--border2); border-radius:var(--r); cursor:pointer; transition:all var(--tx-fast); display:flex; align-items:center; gap:10px; }
-.ep-btn:hover { border-color:var(--accent); background:var(--accent2); }
+@media (hover: hover) { .ep-btn:hover { border-color:var(--accent); background:var(--accent2); } }
 .ep-pdf { border-color:rgba(154,120,32,.3); background:rgba(154,120,32,.05); }
-.ep-pdf:hover { background:var(--accent2); }
+@media (hover: hover) { .ep-pdf:hover { background:var(--accent2); } }
 .ep-icon { font-size:20px; flex-shrink:0; }
 .ep-label { font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--text); }
 .ep-desc { font-size:10px; color:var(--muted); }
@@ -240,14 +240,14 @@
 .qr-info { flex:1; }
 .qr-url { font-family:var(--font-mono); font-size:8px; color:var(--faint); margin-bottom:6px; word-break:break-all; }
 .qr-btn { width:100%; padding:6px 10px; background:var(--raised); border:1px solid var(--border2); border-radius:var(--r-sm); font-family:var(--font-mono); font-size:9px; color:var(--muted); cursor:pointer; transition:all var(--tx-fast); }
-.qr-btn:hover { border-color:var(--accent); color:var(--accent); }
+@media (hover: hover) { .qr-btn:hover { border-color:var(--accent); color:var(--accent); } }
 
 .firebase-panel { }
 .fb-status { display:flex; align-items:center; gap:7px; margin-bottom:8px; font-family:var(--font-mono); font-size:10px; color:var(--muted); }
 .fb-dot { width:8px; height:8px; border-radius:50%; background:var(--faint); }
 .fb-dot.connected { background:var(--success); animation:pulse-dot 2.5s ease infinite; }
 .fb-sync-btn { width:100%; padding:7px; background:var(--raised); border:1px solid var(--border2); border-radius:var(--r-sm); font-family:var(--font-mono); font-size:9px; color:var(--muted); cursor:pointer; transition:all var(--tx-fast); margin-bottom:6px; }
-.fb-sync-btn:hover { border-color:var(--success); color:var(--success); }
+@media (hover: hover) { .fb-sync-btn:hover { border-color:var(--success); color:var(--success); } }
 .fb-id { font-family:var(--font-mono); font-size:8px; color:var(--faint); }
 </style>
 
