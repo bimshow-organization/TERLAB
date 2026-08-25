@@ -1,7 +1,7 @@
 // TERLAB · services/site-capture-service.js
 // Capture 3D du site reel : DEM IGN (BIL float32) + Batiments + Routes BDTOPO
 // Coordonnees locales en metres (origine = centroide de la parcelle, EPSG:2975 UTM40S RGR92).
-// Sortie : SiteScene consommee par DXFWorker.generateSite3D() et IFCExporter.generateASCIIWithContext()
+// Sortie : SiteScene consommee par DXFWorker.generateSite3D() et IFCExporter.generateSiteIFC4()
 // ENSA La Reunion · TERLAB v1
 // ═══════════════════════════════════════════════════════════════════════
 

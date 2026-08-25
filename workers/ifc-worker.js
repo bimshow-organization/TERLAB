@@ -1,4 +1,8 @@
-// TERLAB · ifc-worker.js · Export IFC 2x3 · ENSA La Réunion v1.0
+// TERLAB · ifc-worker.js · Export IFC · ENSA La Réunion v1.0
+//
+// Deux generateurs distincts :
+//   generateASCII      — gabarit seul, IFC 2x3 (legacy, cf. note en bas)
+//   generateSiteIFC4   — site complet, IFC4 avec MNT tessele (IfcTriangulatedFaceSet)
 //
 // Architecture hybride :
 //   Option A — BIMSHOW bridge (si BIMSHOW connecté, pipeline web-ifc côté BIMSHOW)
@@ -267,6 +271,10 @@ const IFCExporter = {
   //   - 1 IfcPropertySet 'TERLAB_Site_Contexte' sur le site (alt min/max, sources, count)
   // Note : la TIN du terrain n'est pas serialisee en IFC 2x3 (pas d'IfcTriangulatedFaceSet
   // disponible avant IFC4). Elle est presente dans le DXF compagnon.
+  //
+  // @deprecated Remplace par generateSiteIFC4() depuis le passage de l'export
+  // site en IFC4 (MNT tessele). Conserve pour les integrations tierces qui
+  // exigeraient encore du 2x3 ; plus appele par ExportEngine.generateIFCSite().
   generateASCIIWithContext(sessionData, params, scene) {
     const ifc = this.generateASCII(sessionData, params);
     if (!scene?.buildings?.length && !scene?.terrainMesh?.vertices?.length) return ifc;
@@ -367,6 +375,298 @@ const IFCExporter = {
       'ENDSEC;\nEND-ISO-10303-21;',
       block + 'ENDSEC;\nEND-ISO-10303-21;'
     );
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // EXPORT SITE — IFC4 (schema moderne, terrain tessele)
+  // ══════════════════════════════════════════════════════════════════
+  // Genere un IFC4 valide au sens Part 21 : chaque entite est une instance
+  // numerotee (#N=), aucune imbrication inline.
+  //
+  // Contenu :
+  //   IfcSite       — MNT LiDAR/IGN en IfcTriangulatedFaceSet (IFC4 only),
+  //                   RefLatitude/Longitude en IfcCompoundPlaneAngleMeasure
+  //   IfcAnnotation — contour de parcelle drape sur le MNT
+  //   IfcBuilding   — gabarit pedagogique (volume capable) pose a l'altitude
+  //                   reelle du terrain + IfcBuildingStorey par niveau
+  //   IfcBuildingElementProxy x N — batiments voisins extrudes (BDTOPO)
+  //   IfcPropertySet TERLAB_Terrain + TERLAB_Site_Contexte
+  //
+  // Repere : origine = centroide parcelle (EPSG:2975 UTM40S), X est, Y nord,
+  //          Z = altitude NGR absolue (identique au DXF compagnon).
+  //
+  // Pourquoi IFC4 : IfcTriangulatedFaceSet n'existe pas avant IFC4. En 2x3 il
+  // aurait fallu un IfcFace + IfcPolyLoop par triangle (~4 lignes STEP chacun,
+  // soit ~13 000 lignes pour un MNT 40x40) ; ici deux entites indexees suffisent.
+  generateSiteIFC4(sessionData, params, scene) {
+    if (!scene?.terrainMesh?.vertices?.length) {
+      throw new Error('[IFC4] SiteScene invalide — terrainMesh manquant');
+    }
+
+    const terrain = sessionData.terrain ?? {};
+    const p4      = sessionData.phases?.[4]?.data ?? {};
+    const p7      = sessionData.phases?.[7]?.data ?? params ?? {};
+    const sid     = sessionData.sessionId ?? 'TERLAB-SESSION';
+    const m       = scene.metadata ?? {};
+
+    const commune    = terrain.commune ?? 'La Reunion';
+    const parcelle   = `${terrain.section ?? ''}${terrain.parcelle ?? ''}`;
+    const interco    = terrain.intercommunalite ?? '';
+    const pprn       = terrain.zone_pprn ?? 'Non determine';
+    const rtaa       = terrain.zone_rtaa ?? '1';
+    const contenance = parseFloat(terrain.contenance_m2) || 0;
+    const alt        = parseFloat(scene.origin?.alt) || 0;
+
+    const L   = parseFloat(p7.gabarit_l_m ?? params?.L ?? 10);
+    const W   = parseFloat(p7.gabarit_w_m ?? params?.W ?? 8);
+    const H   = parseFloat(p7.gabarit_h_m ?? params?.H ?? 6);
+    const niv = Math.max(1, parseInt(p7.niveaux ?? params?.niveaux ?? 1) || 1);
+
+    // ── Helpers ─────────────────────────────────────────────────────
+    const esc = (s) => String(s ?? '').replace(/\\/g, '').replace(/'/g, '');
+    const N   = (v, d = 3) => {
+      const n = Number(v);
+      return (Number.isFinite(n) ? n : 0).toFixed(d);
+    };
+
+    const lines = [];
+    let _id = 0;
+    /** Emet une entite numerotee et retourne son id. */
+    const E = (body) => { lines.push(`#${++_id}=${body};`); return _id; };
+    const R = (id) => `#${id}`;
+
+    const ifcGuid = this._makeGuidFactory(sid);
+
+    // ── HEADER ──────────────────────────────────────────────────────
+    const now   = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const fname = `TERLAB_${esc(commune)}_${esc(parcelle)}_site3d.ifc`;
+    const head = [
+      'ISO-10303-21;',
+      'HEADER;',
+      `FILE_DESCRIPTION(('ViewDefinition [ReferenceView_V1.2]','TERLAB site 3D - ${esc(commune)} ${esc(parcelle)}'),'2;1');`,
+      `FILE_NAME('${fname}','${now}',('ENSA La Reunion - TERLAB'),('ENSA La Reunion'),'TERLAB IFC4 site exporter','TERLAB v1.0','');`,
+      "FILE_SCHEMA(('IFC4'));",
+      'ENDSEC;',
+      'DATA;',
+    ];
+
+    // ── Acteurs ─────────────────────────────────────────────────────
+    const org    = E(`IFCORGANIZATION($,'ENSA La Reunion',$,$,$)`);
+    const pers   = E(`IFCPERSON($,'Etudiant','ENSA',$,$,$,$,$)`);
+    const pAndO  = E(`IFCPERSONANDORGANIZATION(${R(pers)},${R(org)},$)`);
+    const app    = E(`IFCAPPLICATION(${R(org)},'1.0','TERLAB - outil pedagogique ENSA La Reunion','TERLAB')`);
+    const owner  = E(`IFCOWNERHISTORY(${R(pAndO)},${R(app)},$,.ADDED.,$,$,$,${Math.floor(Date.now() / 1000)})`);
+    const OW     = R(owner);
+
+    // ── Geometrie de base ───────────────────────────────────────────
+    const pOrigin  = E(`IFCCARTESIANPOINT((0.,0.,0.))`);
+    const dirZ     = E(`IFCDIRECTION((0.,0.,1.))`);
+    const dirX     = E(`IFCDIRECTION((1.,0.,0.))`);
+    const axisRoot = E(`IFCAXIS2PLACEMENT3D(${R(pOrigin)},${R(dirZ)},${R(dirX)})`);
+
+    // ── Contextes de representation ─────────────────────────────────
+    const ctx     = E(`IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-05,${R(axisRoot)},$)`);
+    const ctxBody = E(`IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,${R(ctx)},$,.MODEL_VIEW.,$)`);
+    const ctxAnno = E(`IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Annotation','Model',*,*,*,*,${R(ctx)},$,.MODEL_VIEW.,$)`);
+
+    // ── Unites ──────────────────────────────────────────────────────
+    const uLen  = E(`IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.)`);
+    const uArea = E(`IFCSIUNIT(*,.AREAUNIT.,$,.SQUARE_METRE.)`);
+    const uVol  = E(`IFCSIUNIT(*,.VOLUMEUNIT.,$,.CUBIC_METRE.)`);
+    const uAng  = E(`IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.)`);
+    const units = E(`IFCUNITASSIGNMENT((${[uLen, uArea, uVol, uAng].map(R).join(',')}))`);
+
+    // ── Projet ──────────────────────────────────────────────────────
+    const project = E(`IFCPROJECT('${ifcGuid()}',${OW},'TERLAB - ${esc(commune)} ${esc(parcelle)}','Analyse de site TERLAB (document pedagogique)',$,$,$,(${R(ctx)}),${R(units)})`);
+
+    // ── Terrain : IfcTriangulatedFaceSet ────────────────────────────
+    // CoordIndex est 1-based en IFC4 (les indices JS sont 0-based).
+    const verts = scene.terrainMesh.vertices;
+    const tris  = scene.terrainMesh.triangles ?? [];
+    const coordList = verts.map(v => `(${N(v.x)},${N(v.y)},${N(v.z)})`).join(',');
+    const coordIdx  = tris.map(t => `(${t[0] + 1},${t[1] + 1},${t[2] + 1})`).join(',');
+    const ptList    = E(`IFCCARTESIANPOINTLIST3D((${coordList}))`);
+    // Closed = .F. : le MNT est une surface ouverte, pas un solide ferme.
+    const tin       = E(`IFCTRIANGULATEDFACESET(${R(ptList)},$,.F.,(${coordIdx}),$)`);
+    const tinRep    = E(`IFCSHAPEREPRESENTATION(${R(ctxBody)},'Body','Tessellation',(${R(tin)}))`);
+    const siteShape = E(`IFCPRODUCTDEFINITIONSHAPE($,$,(${R(tinRep)}))`);
+
+    // ── Site ────────────────────────────────────────────────────────
+    const sitePlace = E(`IFCLOCALPLACEMENT($,${R(axisRoot)})`);
+    const latC = this._compoundAngle(scene.lat);
+    const lngC = this._compoundAngle(scene.lng);
+    const site = E(`IFCSITE('${ifcGuid()}',${OW},'Terrain ${esc(commune)} ${esc(parcelle)}','Parcelle ${esc(parcelle)} - ${esc(interco)}',$,${R(sitePlace)},${R(siteShape)},'${esc(commune)}',.ELEMENT.,${latC},${lngC},${N(alt)},$,$)`);
+    E(`IFCRELAGGREGATES('${ifcGuid()}',${OW},'Project-Site',$,${R(project)},(${R(site)}))`);
+
+    // ── Contour de parcelle drape (IfcAnnotation) ───────────────────
+    const siteChildren = [];
+    const ring = scene.parcelGeom?.ring3d ?? [];
+    const hasRing = ring.length >= 3;
+    if (hasRing) {
+      const ptIds = ring.map(p => E(`IFCCARTESIANPOINT((${N(p.x)},${N(p.y)},${N(p.z)}))`));
+      const refs  = ptIds.map(R).concat(R(ptIds[0])).join(',');   // ferme le contour
+      const poly  = E(`IFCPOLYLINE((${refs}))`);
+      const curve = E(`IFCGEOMETRICCURVESET((${R(poly)}))`);
+      const cRep  = E(`IFCSHAPEREPRESENTATION(${R(ctxAnno)},'Annotation','GeometricCurveSet',(${R(curve)}))`);
+      const cDef  = E(`IFCPRODUCTDEFINITIONSHAPE($,$,(${R(cRep)}))`);
+      const cPlc  = E(`IFCLOCALPLACEMENT(${R(sitePlace)},${R(axisRoot)})`);
+      siteChildren.push(E(`IFCANNOTATION('${ifcGuid()}',${OW},'Limite parcelle ${esc(parcelle)}','Contour cadastral drape sur MNT',$,${R(cPlc)},${R(cDef)})`));
+    }
+
+    // ── Batiments voisins (BDTOPO extrudes) ─────────────────────────
+    const buildings = scene.buildings ?? [];
+    let voisinsCount = 0;
+    for (let b = 0; b < buildings.length; b++) {
+      const bat = buildings[b];
+      let pts = bat.footprint3d ?? [];
+      if (pts.length > 1) {
+        const f = pts[0], l = pts[pts.length - 1];
+        if (f.x === l.x && f.y === l.y) pts = pts.slice(0, -1);
+      }
+      if (pts.length < 3) continue;
+
+      const zBase = pts.reduce((s, p) => s + (Number(p.z) || 0), 0) / pts.length;
+      // Profil 2D dans le plan local du batiment (le Z est porte par le placement)
+      const ptIds = pts.map(p => E(`IFCCARTESIANPOINT((${N(p.x)},${N(p.y)}))`));
+      const refs  = ptIds.map(R).concat(R(ptIds[0])).join(',');
+      const poly  = E(`IFCPOLYLINE((${refs}))`);
+      const prof  = E(`IFCARBITRARYCLOSEDPROFILEDEF(.AREA.,'voisin_${b + 1}',${R(poly)})`);
+      const solid = E(`IFCEXTRUDEDAREASOLID(${R(prof)},${R(axisRoot)},${R(dirZ)},${N(Math.max(0.5, Number(bat.height) || 6))})`);
+      const rep   = E(`IFCSHAPEREPRESENTATION(${R(ctxBody)},'Body','SweptSolid',(${R(solid)}))`);
+      const def   = E(`IFCPRODUCTDEFINITIONSHAPE($,$,(${R(rep)}))`);
+      const pt    = E(`IFCCARTESIANPOINT((0.,0.,${N(zBase)}))`);
+      const ax    = E(`IFCAXIS2PLACEMENT3D(${R(pt)},${R(dirZ)},${R(dirX)})`);
+      const plc   = E(`IFCLOCALPLACEMENT(${R(sitePlace)},${R(ax)})`);
+      const label = esc(bat.label || bat.usage || 'Batiment voisin');
+      siteChildren.push(E(`IFCBUILDINGELEMENTPROXY('${ifcGuid()}',${OW},'Voisin_${b + 1}','${label}',$,${R(plc)},${R(def)},$,.NOTDEFINED.)`));
+      voisinsCount++;
+    }
+
+    if (siteChildren.length) {
+      E(`IFCRELCONTAINEDINSPATIALSTRUCTURE('${ifcGuid()}',${OW},'Contexte-Site','Voisinage et limites',(${siteChildren.map(R).join(',')}),${R(site)})`);
+    }
+
+    // ── Batiment : gabarit pedagogique pose sur le terrain ──────────
+    const bPt      = E(`IFCCARTESIANPOINT((0.,0.,${N(alt)}))`);
+    const bAx      = E(`IFCAXIS2PLACEMENT3D(${R(bPt)},${R(dirZ)},${R(dirX)})`);
+    const bPlace   = E(`IFCLOCALPLACEMENT(${R(sitePlace)},${R(bAx)})`);
+    const building = E(`IFCBUILDING('${ifcGuid()}',${OW},'Gabarit ${esc(commune)}','Volume capable - zone ${esc(p4.zone_plu ?? '')} - PPRN ${esc(pprn)}',$,${R(bPlace)},$,'Gabarit pedagogique',.ELEMENT.,${N(alt)},${N(alt)},$)`);
+    E(`IFCRELAGGREGATES('${ifcGuid()}',${OW},'Site-Building',$,${R(site)},(${R(building)}))`);
+
+    // Niveaux
+    const hEtage  = H / niv;
+    const storeys = [];
+    for (let i = 0; i < niv; i++) {
+      const z   = i * hEtage;
+      const pt  = E(`IFCCARTESIANPOINT((0.,0.,${N(z)}))`);
+      const ax  = E(`IFCAXIS2PLACEMENT3D(${R(pt)},${R(dirZ)},${R(dirX)})`);
+      const plc = E(`IFCLOCALPLACEMENT(${R(bPlace)},${R(ax)})`);
+      storeys.push(E(`IFCBUILDINGSTOREY('${ifcGuid()}',${OW},'${i === 0 ? 'RDC' : 'R+' + i}',$,$,${R(plc)},$,'Niveau ${i}',.ELEMENT.,${N(z)})`));
+    }
+    E(`IFCRELAGGREGATES('${ifcGuid()}',${OW},'Building-Storeys',$,${R(building)},(${storeys.map(R).join(',')}))`);
+
+    // Volume capable : boite extrudee centree sur le centroide parcelle
+    const gProfPt  = E(`IFCCARTESIANPOINT((0.,0.))`);
+    const gProfPos = E(`IFCAXIS2PLACEMENT2D(${R(gProfPt)},$)`);
+    const gProf    = E(`IFCRECTANGLEPROFILEDEF(.AREA.,'gabarit',${R(gProfPos)},${N(L)},${N(W)})`);
+    const gSolid   = E(`IFCEXTRUDEDAREASOLID(${R(gProf)},${R(axisRoot)},${R(dirZ)},${N(H)})`);
+    const gRep     = E(`IFCSHAPEREPRESENTATION(${R(ctxBody)},'Body','SweptSolid',(${R(gSolid)}))`);
+    const gDef     = E(`IFCPRODUCTDEFINITIONSHAPE($,$,(${R(gRep)}))`);
+    const gPlc     = E(`IFCLOCALPLACEMENT(${R(bPlace)},${R(axisRoot)})`);
+    const gabarit  = E(`IFCBUILDINGELEMENTPROXY('${ifcGuid()}',${OW},'Gabarit ${N(L, 1)}x${N(W, 1)}x${N(H, 1)} m','Volume capable pedagogique - non opposable',$,${R(gPlc)},${R(gDef)},$,.NOTDEFINED.)`);
+    E(`IFCRELCONTAINEDINSPATIALSTRUCTURE('${ifcGuid()}',${OW},'Gabarit-Storey',$,(${R(gabarit)}),${R(storeys[0])})`);
+
+    // ── Property sets ───────────────────────────────────────────────
+    let zMin = Infinity, zMax = -Infinity;
+    for (const v of verts) {
+      const z = Number(v.z);
+      if (!Number.isFinite(z)) continue;
+      if (z < zMin) zMin = z;
+      if (z > zMax) zMax = z;
+    }
+    if (!Number.isFinite(zMin)) { zMin = 0; zMax = 0; }
+
+    const pset = (name, props, target) => {
+      const ids = props.map(([k, v]) => E(`IFCPROPERTYSINGLEVALUE('${k}',$,${v},$)`));
+      const ps  = E(`IFCPROPERTYSET('${ifcGuid()}',${OW},'${name}',$,(${ids.map(R).join(',')}))`);
+      E(`IFCRELDEFINESBYPROPERTIES('${ifcGuid()}',${OW},'${name}-Rel',$,(${R(target)}),${R(ps)})`);
+    };
+
+    pset('TERLAB_Terrain', [
+      ['Commune',          `IFCLABEL('${esc(commune)}')`],
+      ['Section_Parcelle', `IFCLABEL('${esc(parcelle)}')`],
+      ['Intercommunalite', `IFCLABEL('${esc(interco)}')`],
+      ['Contenance_m2',    `IFCREAL(${N(contenance, 2)})`],
+      ['Altitude_NGR_m',   `IFCREAL(${N(alt, 2)})`],
+      ['Zone_PPRN',        `IFCLABEL('${esc(pprn)}')`],
+      ['Zone_RTAA_DOM',    `IFCLABEL('${esc(rtaa)}')`],
+      ['Zone_PLU',         `IFCLABEL('${esc(p4.zone_plu ?? '')}')`],
+      ['TERLAB_SessionID', `IFCLABEL('${esc(sid)}')`],
+      ['Avertissement',    `IFCLABEL('Document pedagogique TERLAB - non opposable aux documents reglementaires officiels. ENSA La Reunion.')`],
+    ], building);
+
+    pset('TERLAB_Site_Contexte', [
+      ['Buffer_m',         `IFCREAL(${N(scene.bufferM, 1)})`],
+      ['Resolution_DEM_m', `IFCREAL(${N(scene.pixelSizeM, 2)})`],
+      ['Altitude_min_m',   `IFCREAL(${N(zMin, 2)})`],
+      ['Altitude_max_m',   `IFCREAL(${N(zMax, 2)})`],
+      ['Triangles_MNT',    `IFCINTEGER(${tris.length})`],
+      ['Sommets_MNT',      `IFCINTEGER(${verts.length})`],
+      ['Voisins_count',    `IFCINTEGER(${voisinsCount})`],
+      ['Contour_parcelle', `IFCLABEL('${hasRing ? 'presente' : 'absente'}')`],
+      ['Source_DEM',       `IFCLABEL('${esc(m.sources?.dem)}')`],
+      ['Source_Batiments', `IFCLABEL('${esc(m.sources?.buildings)}')`],
+      ['CRS_local',        `IFCLABEL('${esc(m.crs)}')`],
+      ['Origine_UTM40S_E', `IFCREAL(${N(scene.origin?.E, 2)})`],
+      ['Origine_UTM40S_N', `IFCREAL(${N(scene.origin?.N, 2)})`],
+      ['Centroide_lat',    `IFCREAL(${N(scene.lat, 6)})`],
+      ['Centroide_lng',    `IFCREAL(${N(scene.lng, 6)})`],
+    ], site);
+
+    return head.concat(lines, ['ENDSEC;', 'END-ISO-10303-21;']).join('\n');
+  },
+
+  // ── Latitude/longitude decimale → IfcCompoundPlaneAngleMeasure ────
+  // IFC attend (degres, minutes, secondes, millioniemes de seconde).
+  // Convention : toutes les composantes portent le signe de l'angle.
+  _compoundAngle(decimalDeg) {
+    const v = Number(decimalDeg);
+    if (!Number.isFinite(v)) return '$';
+    const sign = v < 0 ? -1 : 1;
+    let rest = Math.abs(v);
+    const deg = Math.floor(rest);
+    rest = (rest - deg) * 60;
+    const min = Math.floor(rest);
+    rest = (rest - min) * 60;
+    const sec = Math.floor(rest);
+    const mms = Math.round((rest - sec) * 1e6);
+    return `(${sign * deg},${sign * min},${sign * sec},${sign * mms})`;
+  },
+
+  // ── GUID IFC (22 caracteres base64 IFC), deterministe par session ──
+  // Un GlobalId hors format fait rejeter l'entite par les controleurs.
+  _makeGuidFactory(seedStr) {
+    const A = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$';
+    const seed = String(seedStr);
+    let h = 2166136261 >>> 0;                        // FNV-1a sur la seed
+    for (let i = 0; i < seed.length; i++) {
+      h ^= seed.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    let counter = 0;
+    return () => {
+      let s = (h ^ Math.imul(++counter, 2654435761)) >>> 0;
+      const next = () => {                           // xorshift32
+        s ^= s << 13; s >>>= 0;
+        s ^= s >>> 17;
+        s ^= s << 5;  s >>>= 0;
+        return s;
+      };
+      // 1er caractere sur 2 bits (0-3) : un GUID IFC code 128 bits sur 22 chars
+      let out = A[next() % 4];
+      for (let i = 1; i < 22; i++) out += A[next() % 64];
+      return out;
+    };
   },
 
   // ── HELPER : EXPORT COMPLET DEPUIS PHASE 7 ────────────────────

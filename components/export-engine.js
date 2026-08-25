@@ -2258,7 +2258,10 @@ const ExportEngine = {
 
     const {
       bufferM    = 100,
-      pixelSizeM = 5,            // Plus grossier pour IFC : on n'exporte pas la TIN
+      // Le MNT est desormais serialise (IfcTriangulatedFaceSet, IFC4) : la
+      // resolution pilote directement le poids du fichier. 5 m sur 100 m de
+      // buffer = ~41x41 sommets / ~3200 triangles, soit 2 entites indexees.
+      pixelSizeM = 5,
       withBuildings = true,
       withRoads     = false,     // Routes en IFC = bruit visuel sans valeur ajoutee
     } = opts;
@@ -2272,7 +2275,7 @@ const ExportEngine = {
         onProgress: (pct, label) => this._setProgress(Math.min(85, pct), label),
       });
 
-      this._setProgress(88, 'Generation IFC enrichi...');
+      this._setProgress(88, 'Generation IFC4 (MNT tessele)...');
       const p7 = session?.getPhase?.(7)?.data ?? {};
       const params = {
         L: parseFloat(p7.gabarit_l_m ?? 10),
@@ -2289,7 +2292,7 @@ const ExportEngine = {
         },
       };
 
-      const ifc = window.IFCExporter.generateASCIIWithContext(sessionData, params, scene);
+      const ifc = window.IFCExporter.generateSiteIFC4(sessionData, params, scene);
 
       const slug = window.SiteCaptureService.slugify;
       const filename = `TERLAB_${slug(terrain.commune)}_${slug((terrain.section ?? '') + (terrain.parcelle ?? ''))}_site3d.ifc`;
@@ -2297,8 +2300,9 @@ const ExportEngine = {
       session?.saveExport?.('ifc_site3d', filename);
 
       this._setProgress(100, 'Termine');
+      const nTri = scene.terrainMesh?.triangles?.length ?? 0;
       window.TerlabToast?.show(
-        `IFC site exporte (${scene.buildings.length} voisins)`,
+        `IFC4 site exporte (MNT ${nTri} triangles, ${scene.buildings.length} voisins)`,
         'success'
       );
     } catch (e) {
