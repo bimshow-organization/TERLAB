@@ -1,6 +1,8 @@
 // TERLAB · session-manager.js · Persistence session · ENSA La Réunion v1.0
 // UUID anonyme + localStorage offline-first + Firebase RTDB sync
 
+import { slimSession, isQuotaError } from '../utils/session-slim.js';
+
 const SCHEMA_VERSION = '1.1';
 const UUID_KEY       = 'terlab_session_uuid';
 const DATA_KEY       = 'terlab_session_data';
@@ -165,35 +167,47 @@ const SessionManager = {
     // _dirty AVANT setItem : si le quota localStorage saute, la sync cloud
     // doit quand meme partir au prochain tick (sinon perte totale silencieuse)
     this._dirty = true;
+
+    // Cette cle ne porte qu'UNE session : on tente d'abord de garder les
+    // blobs de phase (snapshot 3D, PNG bimshow, GLB), et on ne degrade
+    // qu'en cas de quota. Les snapshots carte (snap_*, JPEG base64) sont,
+    // eux, toujours exclus : ils sont regeneres au idle carte.
+    // Dans les deux cas _data garde tout en memoire (exports PDF) et la
+    // sync Firebase pousse la version complete.
     try {
-      // Les snapshots carte (snap_*, JPEG base64 ~60-100 Ko chacun) restent
-      // en memoire dans _data (exports PDF) mais ne sont PAS persistes en
-      // localStorage : ils saturaient le quota de 5 Mo. Regeneres au idle carte.
-      const slim = { ...this._data };
-      if (slim.terrain) {
-        slim.terrain = { ...slim.terrain };
-        Object.keys(slim.terrain).forEach(k => {
-          if (k.startsWith('snap_')) delete slim.terrain[k];
-        });
+      localStorage.setItem(DATA_KEY,
+        JSON.stringify(slimSession(this._data, { stripPhaseBlobs: false })));
+      return;
+    } catch (e) {
+      if (!isQuotaError(e)) {
+        console.warn('[Session] Ecriture localStorage impossible:', e.message);
+        return;
       }
-      localStorage.setItem(DATA_KEY, JSON.stringify(slim));
+    }
+
+    // Repli : purger aussi les blobs de phase.
+    try {
+      localStorage.setItem(DATA_KEY, JSON.stringify(slimSession(this._data)));
+      console.warn('[Session] Quota atteint — snapshots/GLB non persistes en local (conserves en memoire + cloud)');
+      return;
     } catch (e) {
       console.warn('[Session] localStorage plein:', e.message);
-      // Alerte visible (throttle 2 min) : l'etudiant doit savoir que la
-      // sauvegarde locale ne passe plus et exporter son .terlab
-      if (Date.now() - this._quotaWarnedAt > 120_000) {
-        this._quotaWarnedAt = Date.now();
-        if (window.TerlabNotification?.notify) {
-          window.TerlabNotification.notify({
-            severity: 'CRITIQUE',
-            rule: 'Stockage local sature — la sauvegarde hors-ligne ne fonctionne plus. '
-                + 'Exportez votre session (.terlab) par securite. La sync cloud reste active.',
-            phase: 'session',
-          });
-        } else {
-          window.TerlabToast?.show(
-            'Stockage local sature — exportez votre session (.terlab)', 'error', 8000);
-        }
+    }
+
+    // Alerte visible (throttle 2 min) : l'etudiant doit savoir que la
+    // sauvegarde locale ne passe plus et exporter son .terlab
+    if (Date.now() - this._quotaWarnedAt > 120_000) {
+      this._quotaWarnedAt = Date.now();
+      if (window.TerlabNotification?.notify) {
+        window.TerlabNotification.notify({
+          severity: 'CRITIQUE',
+          rule: 'Stockage local sature — la sauvegarde hors-ligne ne fonctionne plus. '
+              + 'Exportez votre session (.terlab) par securite. La sync cloud reste active.',
+          phase: 'session',
+        });
+      } else {
+        window.TerlabToast?.show(
+          'Stockage local sature — exportez votre session (.terlab)', 'error', 8000);
       }
     }
   },

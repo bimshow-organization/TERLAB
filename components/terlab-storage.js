@@ -2,6 +2,8 @@
 // Inspiré de GIEP carte-storage.js — localStorage multi-terrains
 // Chaque session = un projet terrain indépendant avec son propre UUID
 
+import { slimSession, isQuotaError } from '../utils/session-slim.js';
+
 const STORAGE_KEY   = 'terlab_sessions';
 const MAX_SESSIONS  = 15;
 
@@ -182,22 +184,52 @@ const TerlabStorage = {
 
   // ── INTERNAL ──────────────────────────────────────────────
   _save(sess) {
+    // Cette cle porte jusqu'a MAX_SESSIONS projets : les blobs lourds
+    // (snapshots carte, PNG bimshow, GLB base64) y sont TOUJOURS purges,
+    // sinon un seul GLB sature le quota et plus aucun projet n'est persiste.
+    const slim = slimSession(sess);
+    const sessions = this.listSessions().filter(s => s.id !== slim.id);
+    sessions.unshift(slim);
+    // Limiter le nombre de sessions
+    if (sessions.length > MAX_SESSIONS) sessions.length = MAX_SESSIONS;
+
     try {
-      // Snapshots carte (snap_*, base64) exclus du localStorage — quota 5 Mo
-      // (même règle que SessionManager._saveLocal, régénérés au idle carte)
-      if (sess.terrain) {
-        sess = { ...sess, terrain: { ...sess.terrain } };
-        Object.keys(sess.terrain).forEach(k => {
-          if (k.startsWith('snap_')) delete sess.terrain[k];
-        });
-      }
-      const sessions = this.listSessions().filter(s => s.id !== sess.id);
-      sessions.unshift(sess);
-      // Limiter le nombre de sessions
-      if (sessions.length > MAX_SESSIONS) sessions.length = MAX_SESSIONS;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+      return true;
     } catch (e) {
-      console.warn('[TerlabStorage] Erreur sauvegarde:', e.message);
+      // Quota atteint malgre la purge : sacrifier les projets les plus
+      // anciens plutot que de perdre le projet courant (place en tete).
+      if (isQuotaError(e)) {
+        for (let keep = sessions.length - 1; keep >= 1; keep--) {
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions.slice(0, keep)));
+            console.warn(`[TerlabStorage] Quota atteint — ${sessions.length - keep} projet(s) ancien(s) retire(s) du cache local`);
+            this._warnQuota(sessions.length - keep);
+            return true;
+          } catch { /* encore trop gros : continuer a reduire */ }
+        }
+      }
+      console.error('[TerlabStorage] Erreur sauvegarde:', e.message);
+      this._warnQuota(0);
+      return false;
+    }
+  },
+
+  // Alerte visible (throttle 2 min) : l'etudiant doit savoir que la
+  // sauvegarde locale ne passe plus et exporter son .terlab.
+  _quotaWarnedAt: 0,
+  _warnQuota(removedCount) {
+    if (Date.now() - this._quotaWarnedAt < 120_000) return;
+    this._quotaWarnedAt = Date.now();
+    const rule = removedCount > 0
+      ? `Stockage local sature — ${removedCount} projet(s) ancien(s) retire(s) de la liste locale. `
+        + 'Exportez vos sessions (.terlab) par securite. La sync cloud reste active.'
+      : 'Stockage local sature — la liste des projets ne peut plus etre mise a jour. '
+        + 'Exportez votre session (.terlab) par securite. La sync cloud reste active.';
+    if (window.TerlabNotification?.notify) {
+      window.TerlabNotification.notify({ severity: 'CRITIQUE', rule, phase: 'session' });
+    } else {
+      window.TerlabToast?.show(rule, 'error', 8000);
     }
   },
 
