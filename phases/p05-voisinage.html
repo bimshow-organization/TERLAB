@@ -301,19 +301,19 @@
   <div id="map" style="width:100%;height:100%"></div>
   <div id="map-stub-banner" style="display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:10;background:rgba(106,170,78,.85);color:#000;padding:5px 14px;border-radius:4px;font-family:monospace;font-size:10px"></div>
 
-  <!-- Toggle Carte / 3D -->
-  <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:50;display:flex;gap:0;border-radius:4px;overflow:hidden;border:1px solid rgba(154,120,32,.2)">
-    <button id="p05-toggle-map" onclick="P05.setView('map')"
-      style="padding:5px 16px;font-family:var(--font-mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;background:rgba(154,120,32,.12);color:var(--accent,#9a7820);border:none;cursor:pointer">
-      Carte
-    </button>
-    <button id="p05-toggle-3d" onclick="P05.setView('3d')"
-      style="padding:5px 16px;font-family:var(--font-mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;background:none;color:var(--muted,#6b5c3e);border:none;cursor:pointer">
-      Vue 3D
+  <!-- Canvas principal = carte Mapbox + overlay végétation 3D calé (bridge).
+       Un seul bouton bascule vers la maquette sombre (Buildings3DViewer :
+       terrain LiDAR, AO, herbe, Grand paysage, export GLB).
+       Le libellé du bouton = la vue CIBLE du prochain clic. -->
+  <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:70">
+    <button id="p05-view-toggle" onclick="P05.toggleView()"
+      style="padding:5px 16px;font-family:var(--font-mono);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;background:rgba(154,120,32,.12);color:var(--accent,#9a7820);border:1px solid rgba(154,120,32,.2);border-radius:4px;cursor:pointer">
+      Maquette 3D
     </button>
   </div>
 
-  <!-- Vue 3D bâtiments (cachée par défaut) -->
+  <!-- Vue 3D bâtiments — overlay plein canvas au-dessus de #map
+       (affiché par P05.setView('3d') au chargement de la phase) -->
   <div id="p05-3d-wrap" class="t3d-wrap" style="display:none;position:absolute;inset:0">
     <canvas id="p05-3d-canvas"></canvas>
     <!-- Stats bâtiments -->
@@ -330,6 +330,9 @@
       <button class="t3d-btn" id="p05-color-type" onclick="P05.setColorMode('type')">Type</button>
       <button class="t3d-btn" id="p05-color-dist" onclick="P05.setColorMode('distance')">Distance</button>
       <button class="t3d-btn" id="p05-color-surf" onclick="P05.setColorMode('surface')">Surface</button>
+      <span style="width:1px;background:rgba(255,255,255,.15);margin:2px 4px"></span>
+      <button class="t3d-btn t3d-btn-keep" id="p05-landscape-btn" onclick="P05.toggleLandscape()"
+        title="Terrain IGN streamé au-delà de la parcelle (contexte grand paysage, 2,5 km)">Grand paysage<sup style="font-size:7px;letter-spacing:.08em;opacity:.55;margin-left:3px;vertical-align:super">BETA</sup></button>
       <span style="width:1px;background:rgba(255,255,255,.15);margin:2px 4px"></span>
       <button class="t3d-btn" onclick="P05.exportGLB()">Export GLB</button>
     </div>
@@ -525,6 +528,7 @@ const P05 = {
   _lastRbResult: null,
 
   toggleRbTool() {
+    this._ensureMapView();   // outil Mapbox : quitter l'overlay 3D
     const AeraulicMapTools = window.AeraulicMapTools;
     const map = window.TerlabMap?.getMap?.();
     if (!map || !AeraulicMapTools) { window.TerlabToast?.show('Carte ou module non disponible', 'warning'); return; }
@@ -646,6 +650,7 @@ const P05 = {
 
   // ─── Heatmap ICU (Izard Microclimat Urbain 1) ────────────────
   toggleICU(visible) {
+    if (visible) this._ensureMapView();
     window.TerlabMap?.toggleICUHeatmap?.(visible);
   },
 
@@ -654,6 +659,7 @@ const P05 = {
   _ageLayerVisible: false,
 
   toggleAgeLayer(visible) {
+    if (visible) this._ensureMapView();
     const map = window.TerlabMap?.getMap?.();
     if (!map || !this._ageGeojson) return;
     this._ageLayerVisible = visible;
@@ -661,6 +667,7 @@ const P05 = {
   },
 
   toggleHistPhoto(layerId, visible) {
+    if (visible) this._ensureMapView();
     const map = window.TerlabMap?.getMap?.();
     if (!map) return;
     const def = BuildingAgeService.HIST_LAYERS.find(l => l.id === layerId);
@@ -694,38 +701,42 @@ const P05 = {
     }
   },
 
-  // ─── Toggle Carte / Vue 3D ──────────────────────────────────
+  // ─── Vue principale = 3D ; bascule Carte pour les outils Mapbox ──────
+  // Le div #map n'est JAMAIS masqué (display:none) : Mapbox rend un canvas
+  // vide s'il est initialisé/affiché dans un conteneur caché. La vue 3D est
+  // un overlay absolu opaque au-dessus de lui.
   _viewIs3D: false,
   _3dReady: false,
 
+  toggleView() { this.setView(this._viewIs3D ? 'map' : '3d'); },
+
   async setView(mode) {
-    const mapEl  = document.getElementById('map');
     const wrap3d = document.getElementById('p05-3d-wrap');
-    const btnMap = document.getElementById('p05-toggle-map');
-    const btn3d  = document.getElementById('p05-toggle-3d');
+    const btn = document.getElementById('p05-view-toggle');
     this._viewIs3D = mode === '3d';
 
-    mapEl.style.display  = mode === '3d' ? 'none'  : 'block';
-    wrap3d.style.display = mode === '3d' ? 'block' : 'none';
+    if (wrap3d) wrap3d.style.display = this._viewIs3D ? 'block' : 'none';
+    // Le bouton affiche la vue CIBLE du prochain clic
+    if (btn) btn.textContent = this._viewIs3D ? 'Carte' : 'Maquette 3D';
 
-    // Highlight active
-    if (btnMap) {
-      btnMap.style.background = mode === 'map' ? 'rgba(154,120,32,.12)' : 'none';
-      btnMap.style.color      = mode === 'map' ? 'var(--accent,#9a7820)' : 'var(--muted,#6b5c3e)';
-    }
-    if (btn3d) {
-      btn3d.style.background = mode === '3d' ? 'rgba(154,120,32,.12)' : 'none';
-      btn3d.style.color      = mode === '3d' ? 'var(--accent,#9a7820)' : 'var(--muted,#6b5c3e)';
-    }
-
-    // Init 3D on first toggle
+    // Init 3D à la première activation (= au chargement de la phase)
     if (this._viewIs3D && !this._3dReady) {
       const B3D = window.Buildings3DViewer;
-      if (!B3D) { window.TerlabToast?.show('Buildings3DViewer non chargé', 'error'); return; }
+      if (!B3D) {
+        window.TerlabToast?.show('Buildings3DViewer non chargé', 'error');
+        return this.setView('map');   // repli : la carte reste utilisable
+      }
       const loader = document.getElementById('p05-3d-loader');
       if (loader) loader.classList.remove('done');
-      await B3D.init('p05-3d-canvas', SessionManager._data);
-      this._3dReady = true;
+      try {
+        await B3D.init('p05-3d-canvas', SessionManager._data);
+        this._3dReady = true;
+      } catch (e) {
+        console.error('[P05] init 3D échec :', e);
+        window.TerlabToast?.show('Vue 3D indisponible — bascule sur la carte', 'warning', 3000);
+        if (loader) loader.classList.add('done');
+        return this.setView('map');
+      }
       if (loader) loader.classList.add('done');
       // Show building count
       const count = B3D._buildingsGroup?.children?.filter(c => c.isMesh)?.length ?? 0;
@@ -739,20 +750,112 @@ const P05 = {
       document.getElementById('p05-color-type')?.classList.add('active');
     }
 
+    if (this._viewIs3D && this._3dReady) {
+      const B3D = window.Buildings3DViewer;
+      B3D._updateSize?.();          // le wrap vient d'être affiché : taille réelle
+      B3D._needsRender = true;
+    }
+
     // Resize map when switching back
     if (!this._viewIs3D && window.TerlabMap?.getMap?.()) {
       window.TerlabMap.getMap().resize?.();
     }
   },
 
+  // Les outils carte basculent automatiquement la vue (la 3D recouvre la carte)
+  _ensureMapView() {
+    if (this._viewIs3D) this.setView('map');
+  },
+
   set3DView(mode) {
     const B3D = window.Buildings3DViewer;
     if (!B3D?._inited) return;
-    B3D.setView(mode);
-    // Update active button
-    document.querySelectorAll('#p05-3d-wrap .t3d-btn').forEach(btn => {
+    // B3D.setView cadre sur la Box3 de TOUTE la scene : on retire le temps du
+    // recadrage le groupe des tiles « grand paysage » (2,5 km), sinon la vue
+    // s'eloigne jusqu'a perdre la parcelle.
+    const grp = this._LT?.active ? this._LT.group : null;
+    const parent = grp?.parent ?? null;
+    if (parent) parent.remove(grp);
+    try {
+      B3D.setView(mode);
+    } finally {
+      if (parent) { parent.add(grp); B3D._needsRender = true; }
+    }
+    // Update active button (les boutons .t3d-btn-keep gardent leur etat propre)
+    document.querySelectorAll('#p05-3d-wrap .t3d-btn:not(.t3d-btn-keep)').forEach(btn => {
       btn.classList.toggle('active', btn.textContent.trim().toLowerCase().startsWith(mode.slice(0, 3)));
     });
+  },
+
+  // ─── Grand paysage (tiles terrain IGN streamees) ────────────
+  // Attache non intrusive : components/landscape-tiles.js branche
+  // TerrainTileManager sur la scene de Buildings3DViewer, dont l'echelle
+  // n'est pas metrique (unites = metres × B3D._sf) — d'ou unitsPerMeter.
+  _LT: null,            // module landscape-tiles charge paresseusement
+  _landscapeBusy: false,
+
+  async toggleLandscape() {
+    const btn = document.getElementById('p05-landscape-btn');
+    const B3D = window.Buildings3DViewer;
+    if (!B3D?._inited || !B3D._scene) {
+      window.TerlabToast?.show('Ouvrez d\'abord la vue 3D', 'warning', 2500);
+      return;
+    }
+    if (this._landscapeBusy) return;
+    this._landscapeBusy = true;
+    try {
+      if (!this._LT) {
+        const mod = await import('../components/landscape-tiles.js');
+        this._LT = mod.default;
+      }
+      const LT = this._LT;
+      // Le module est un singleton : s'il reste attache a une scene 3D d'une
+      // visite precedente, on le detache avant toute chose.
+      if (LT.active && LT.hostScene !== B3D._scene) LT.disable();
+
+      if (LT.active) {
+        LT.disable();
+        // active-ok : le style .active n'existe que sous @media (hover:hover)
+        btn?.classList.remove('active', 'active-ok');
+        window.TerlabToast?.show('Grand paysage masqué', 'info', 1800);
+      } else {
+        const t = SessionManager.getTerrain?.() ?? {};
+        const lat = parseFloat(t.lat), lng = parseFloat(t.lng);
+        if (!isFinite(lat) || !isFinite(lng)) {
+          window.TerlabToast?.show('Site non localisé — renseignez la parcelle en P01', 'warning', 3000);
+          return;
+        }
+        // Zero d'altitude de la scene : groundZ LiDAR si le contexte existe,
+        // sinon l'altitude NGR du site saisie en amont (sans quoi les tiles,
+        // en altitudes absolues, flotteraient au-dessus de la parcelle a y=0).
+        const groundAlt = B3D._lidarCtx?.groundZ
+          ?? (parseFloat(t.altitude_ngr) || 0);
+        window.TerlabToast?.show('Chargement du terrain IGN (grand paysage)…', 'info', 2000);
+        const ok = await LT.enable({
+          scene:        B3D._scene,
+          camera:       B3D._cam,
+          controls:     B3D._controls,
+          sf:           B3D._sf,
+          verticalExag: B3D.VERTICAL_EXAG,
+          centroid:     [lng, lat],
+          groundAlt,
+          radiusTiles:  2,
+          onRender:     () => { B3D._needsRender = true; },
+        });
+        if (ok) {
+          btn?.classList.add('active', 'active-ok');
+          window.TerlabToast?.show('Grand paysage activé — MNT IGN sur 2,5 km', 'success', 2500);
+        } else {
+          window.TerlabToast?.show('Terrain grand paysage indisponible (réseau ou projection)', 'error', 3000);
+        }
+      }
+    } catch (e) {
+      console.warn('[P05] toggleLandscape:', e?.message ?? e);
+      window.TerlabToast?.show('Grand paysage indisponible', 'error', 3000);
+    } finally {
+      this._landscapeBusy = false;
+      if (B3D) B3D._needsRender = true;
+    }
   },
 
   exportGLB() {
@@ -765,6 +868,7 @@ const P05 = {
   _isoVisible: { pedestrian: false, car: false },
 
   toggleIsochroneLayer(profile) {
+    if (!this._isoVisible[profile]) this._ensureMapView();
     const map = window.TerlabMap?.getMap?.();
     if (!map || !this._isoData) return;
     const feature = this._isoData[profile];
@@ -814,6 +918,50 @@ if (terrain?.commune) document.getElementById('ts-c-p5').textContent = terrain.c
 const p4 = SessionManager.getPhase(4)?.data ?? {};
 if (p4.zone_plu) document.getElementById('ts-z-p5').textContent = p4.zone_plu.split(' ')[0];
 window.P05 = P05;
+
+// ── Végétation 3D AU-DESSUS de la carte (MapboxThreeBridge) ──────────
+// Le canvas principal de P05 reste la carte Mapbox vivante ; l'overlay y
+// ajoute les arbres (P06 validée, sinon LiDAR fetché à la demande si le
+// site est couvert). La maquette sombre (Buildings3DViewer) reste
+// accessible via le bouton « Maquette 3D ».
+(function bootOverlay() {
+  let tries = 0;
+  const tick = async () => {
+    const map = window.TerlabMap?.getMap?.();
+    // PIÈGE vérifié au débug : MapViewer RECRÉE la carte à chaque phase.
+    // Le premier poll peut attraper l'instance périmée de la phase précédente,
+    // détruite quelques ms plus tard (canvas du bridge emporté avec elle).
+    // La carte est la bonne quand son conteneur EST le #map de CETTE phase.
+    const freshContainer = map?.getContainer?.() === document.getElementById('map');
+    if (!map || !freshContainer || !map.isStyleLoaded?.()) {
+      if (++tries < 40) return setTimeout(tick, 400);   // ~16 s max
+      return console.info('[P05] carte indisponible — overlay végétation non lancé');
+    }
+    try {
+      const mod = await import('../components/p05-map-overlay.js');
+      P05._overlay = mod.default;
+      const r = await mod.default.enable({ map, session: SessionManager._data });
+      if (r) {
+        const am = r.amenities ? ` + ${r.amenities} aménités` : '';
+        window.TerlabToast?.show(
+          `Jardin 3D sur la parcelle : ${r.plants} végétaux${am} (${r.source})`, 'success', 2800);
+      }
+    } catch (e) {
+      console.warn('[P05] overlay végétation échec :', e?.message ?? e);
+    }
+  };
+  tick();
+})();
+
+// ── Robustesse : la carte Mapbox suit la taille réelle de .map-area ──
+// (DevTools, redimensionnement fenêtre, panneau replié → sinon canvas
+// figé à l'ancienne taille avec une bande blanche)
+{
+  const mapArea = document.querySelector('.map-area');
+  if (mapArea && 'ResizeObserver' in window) {
+    new ResizeObserver(() => window.TerlabMap?.getMap?.()?.resize?.()).observe(mapArea);
+  }
+}
 
 // ── ANC : restore état + listener K override ──────────────────
 if (terrain?.assainissement === 'ANC') {

@@ -64,6 +64,8 @@ export class GabaritThree {
   update(parcelSet, constraints, solution = null) {
     if (!window.THREE) return;
     this._clearGroups();
+    // Génération : invalide les toitures v2 asynchrones d'un update précédent
+    this._solutionGen = (this._solutionGen ?? 0) + 1;
     if (!constraints || !parcelSet.unionPolygon?.length) return;
 
     this._drawParcelOutline(parcelSet);
@@ -301,6 +303,63 @@ export class GabaritThree {
         g.remove(child);
       }
     });
+  }
+
+  // ── Toiture v2 : noyau ciriani (services/toiture) ────────────────────
+  // Squelette droit pondéré sur la VRAIE emprise du bloc (polyB en {x, y},
+  // scène : x = poly.x, z = poly.y — cf. rotateX(-PI/2) + scale(1,1,-1)).
+  // Retourne true si le toit a été construit et ajouté, false pour repli v1.
+  // Échec TOUJOURS nommé (console.warn) — jamais silencieux.
+  async _buildRoofV2(polyB, roofBaseY, roofSpec, bi, gen) {
+    try {
+      const noyau = await import('../services/toiture/index.js');
+      const { buildRoofMesh } = await import('../services/toiture/roof-mesh.js');
+
+      const footprint = noyau.ensureCCW(polyB.map(p => [p.x, p.y]));
+      // pentePct (%) → degrés (RoofBuilder parle en %, le noyau en degrés)
+      const penteDeg = Math.atan((roofSpec.pentePct ?? 35) / 100) * 180 / Math.PI;
+      const specs = noyau.allCroupe(footprint.length, penteDeg)
+        .map(s => ({ ...s, debord: roofSpec.debord ?? 0.5 }));
+
+      const r = noyau.buildRoof(footprint, specs);
+      if (!r.ok) {
+        console.warn(`[Gabarit3D] toiture v2 bloc ${bi} — échec nommé :`,
+          r.audit?.nonResolu?.[0]?.cause ?? r.validation?.errors?.[0]?.code ?? 'inconnu',
+          '→ repli RoofBuilder OBB');
+        return false;
+      }
+
+      const model = noyau.buildModel(r);
+      // Débords exacts dans le plan du pan (optionnel : sans débord si échec)
+      try {
+        const ov = noyau.buildOverhang(r, model, {});
+        if (ov && !(ov.erreurs?.length)) noyau.appliquerDebords(model, ov);
+      } catch (e) {
+        console.warn(`[Gabarit3D] toiture v2 bloc ${bi} — débord ignoré :`, e?.message ?? e);
+      }
+
+      const THREE = window.THREE;
+      const material = new THREE.MeshStandardMaterial({
+        color: roofSpec.color ?? 0x8a5a44, roughness: 0.85, metalness: 0,
+        side: THREE.DoubleSide,
+      });
+      const roof = buildRoofMesh(model, { material });
+      roof.position.y = roofBaseY;   // le noyau construit à baseY 0
+      roof.name = `building-roof-${bi}`;
+      roof.userData.engine = 'toiture-v2';
+
+      if (this._solutionGen !== gen) {
+        // Update périmé pendant l'attente : ne pas polluer la nouvelle scène
+        roof.traverse(o => { o.geometry?.dispose(); });
+        material.dispose();
+        return true; // pas de repli v1 : la génération est morte
+      }
+      this.groups.solution.add(roof);
+      return true;
+    } catch (e) {
+      console.warn(`[Gabarit3D] toiture v2 bloc ${bi} — erreur :`, e?.message ?? e);
+      return false;
+    }
   }
 
   _initOrbitControls() {
@@ -630,13 +689,22 @@ export class GabaritThree {
         this.groups.solution.add(floorLine);
       }
 
-      // ── Toiture LOD2 (RoofBuilder) ──
+      // ── Toiture LOD2 ──
       // bloc.roofSpec = { type: 'flat'|'shed'|'gable'|'hip'|'pyramid', pentePct?, debord?, color? }
       // Si non defini : 'flat' par defaut (compat retro)
+      //
+      // Deux moteurs, empilés (règle 2 CLAUDE.md — le fallback n'est jamais retiré) :
+      //  - v2 (services/toiture, noyau ciriani : squelette droit pondéré) pour
+      //    hip/pyramid : suit la VRAIE emprise (L/T/U compris), faîtage émergent.
+      //    Désactivable : window.TERLAB_ROOF_V2 = false.
+      //  - v1 (RoofBuilder sur OBB) : shed/gable, et repli si v2 échoue
+      //    (échec nommé du noyau, ~31 % des emprises concaves à pentes variées).
       const roofSpec = bloc.roofSpec ?? { type: 'flat' };
-      if (roofSpec.type && roofSpec.type !== 'flat' && RoofBuilder && FootprintAnalyzer) {
-        const obb = FootprintAnalyzer.fitOBB(polyB);
-        if (obb) {
+      if (roofSpec.type && roofSpec.type !== 'flat') {
+        const buildLegacyRoof = () => {
+          if (!RoofBuilder || !FootprintAnalyzer) return;
+          const obb = FootprintAnalyzer.fitOBB(polyB);
+          if (!obb) return;
           // Sce <-> poly : poly.x = scene.x, poly.y = scene.z (apres rotateX + scale)
           const orientation = roofSpec.orientation
             ?? (obb.size.long >= obb.size.span ? 'EO' : 'EO'); // long axis aligne avec roof X
@@ -656,6 +724,19 @@ export class GabaritThree {
           roof.rotation.y = -obb.angle;
           roof.name = `building-roof-${bi}`;
           this.groups.solution.add(roof);
+        };
+
+        const useV2 = (roofSpec.type === 'hip' || roofSpec.type === 'pyramid')
+          && window.TERLAB_ROOF_V2 !== false;
+        if (useV2) {
+          // Asynchrone (imports paresseux — window.THREE garanti présent ici) ;
+          // le compteur de génération écarte les toits d'un update périmé.
+          const gen = this._solutionGen;
+          this._buildRoofV2(polyB, Y_base + blocHe, roofSpec, bi, gen)
+            .then(ok => { if (!ok && this._solutionGen === gen) buildLegacyRoof(); })
+            .catch(() => { if (this._solutionGen === gen) buildLegacyRoof(); });
+        } else {
+          buildLegacyRoof();
         }
       }
     });

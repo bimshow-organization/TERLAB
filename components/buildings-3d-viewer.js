@@ -8,8 +8,19 @@ import * as THREE from 'three';
 import { OrbitControls }  from 'three/addons/controls/OrbitControls.js';
 import { GLTFExporter }   from 'three/addons/exporters/GLTFExporter.js';
 import { getDeviceCaps }  from '../utils/device-caps.js';
+import ImpostorLoader     from '../services/impostor-loader.js';
+import { buildImpostorMaterial, updateImpostorCamera } from '../services/vegetation/impostor-billboard.js';
+import { applyContactAO, applyGroundTint, makePointIndex } from '../services/vegetation/ground-effects.js';
 
 const DEG = Math.PI / 180;
+
+// Publier window.THREE si absent (namespace ESM gelé → clone obligatoire).
+// Nécessaire pour ImpostorLoader.getTexture et les services défensifs
+// quand P05 est la première scène 3D ouverte de la session.
+if (typeof window !== 'undefined' && !window.THREE) {
+  window.THREE = Object.assign({}, THREE);
+  window.THREE.OrbitControls = OrbitControls;
+}
 
 const Buildings3DViewer = {
 
@@ -55,8 +66,13 @@ const Buildings3DViewer = {
   _session: null,
   _terrainMesh: null,
   _treesGroup: null,
+  _grassMesh: null,      // InstancedMesh strate herbacée (touffes dans la parcelle)
+  _plants: [],           // plantes {x, ySud, canopyRadius…} — partagées AO/herbe
   _lidarCtx: null,
   _gridHelper: null,
+  _vegetationMats: [],   // ShaderMaterial[] impostors — uniform camera par rendu
+  _vegSource: null,      // 'P06' | 'LiDAR' (affiché dans le toast)
+  _needsRender: true,    // rendu à la demande (batterie mobile)
 
   // ─── INIT ─────────────────────────────────────────────────────
   async init(canvasId, sessionData) {
@@ -112,7 +128,8 @@ const Buildings3DViewer = {
 
     this._inited = true;
     const src = this._lidarCtx ? 'LiDAR IGN' : 'OSM';
-    window.TerlabToast?.show(`Vue 3D bâtiments chargée — hauteurs : ${src}`, 'success', 2000);
+    const veg = this._vegSource ? ` · végétation : ${this._vegSource}` : '';
+    window.TerlabToast?.show(`Vue 3D bâtiments chargée — hauteurs : ${src}${veg}`, 'success', 2500);
   },
 
   // ─── LIGHTS ───────────────────────────────────────────────────
@@ -174,6 +191,13 @@ const Buildings3DViewer = {
     if (buildingsGJ) {
       this._buildBuildingsFromGeoJSON(buildingsGJ, LAT_SCALE, LNG_SCALE);
     }
+
+    // 5. Végétation (P06 validée si présente, sinon arbres LiDAR)
+    //    → pose aussi l'AO de contact + la teinte d'humus sur le terrain LiDAR
+    await this._buildVegetation();
+
+    // 6. Strate herbacée (indépendante de la présence d'arbres)
+    await this._buildGrass();
   },
 
   // ─── LIDAR INTEGRATION ────────────────────────────────────────
@@ -190,10 +214,15 @@ const Buildings3DViewer = {
     const needsFetch = !rawPoints?.length || !classes.includes('6');
 
     if (needsFetch) {
-      // Vérifier si le LiDAR était disponible en P01
+      // Le flag lidar_available n'existe que si l'étudiant a fait P01 avant
+      // le voisinage : en son absence, on interroge directement la couverture
+      // LiDAR HD (HEAD sur une dalle témoin) plutôt que de renoncer.
       const SM = window.SessionManager;
       const p1data = SM?.getPhase?.(1)?.data;
-      if (!p1data?.lidar_available) return; // Pas de LiDAR → garder le comportement actuel
+      if (!p1data?.lidar_available) {
+        const avail = await LS.isAvailable?.().catch(() => false);
+        if (!avail) return; // Vraiment pas de LiDAR → comportement actuel
+      }
 
       const terrain = this._session?.terrain;
       if (!terrain?.parcelle_geojson) return;
@@ -224,11 +253,7 @@ const Buildings3DViewer = {
     if (ctx.terrainData) {
       this._buildTerrainMesh(ctx, LAT_SCALE, LNG_SCALE);
     }
-
-    // Arbres
-    if (ctx.trees?.length) {
-      this._buildTrees(ctx);
-    }
+    // Arbres : construits par _buildVegetation() (étape 5 de _buildScene)
   },
 
   // ─── TERRAIN MESH (LiDAR) ────────────────────────────────────
@@ -281,48 +306,353 @@ const Buildings3DViewer = {
     console.info(`[Buildings3D] Terrain LiDAR : ${cols}×${rows} vertices, dénivelé ${altRange.toFixed(1)}m`);
   },
 
-  // ─── ARBRES (LiDAR) ──────────────────────────────────────────
-  _buildTrees(ctx) {
-    const { trees, groundZ, mnt } = ctx;
-    const sf = this._sf;
-    const ve = this.VERTICAL_EXAG;
+  // ─── VÉGÉTATION ──────────────────────────────────────────────
+  // Source prioritaire : végétation P06 (lecture SEULE — P05 n'écrit jamais
+  // dans VegetationState, la validation reste le geste de l'étudiant en P06).
+  // Sinon : arbres LiDAR détectés par LidarContextService (classes 4/5).
+  // Rendu : impostors octahedral par espèce (InstancedMesh) ; les espèces
+  // sans atlas retombent sur les primitives tronc+couronne — rien ne
+  // disparaît silencieusement.
+  // @coords espace unifié : x = EST (m), ySud = SUD (m) ; scène : x=x·sf,
+  // z=ySud·sf (ctx.trees.z est un northing → ySud = -z).
+
+  _speciesFromTree(t) {
+    // Heuristique cohérente avec terrain-3d-viewer._detectAndPlaceTrees
+    const SPECIES = ['palm_coconut', 'mango', 'flamboyant', 'tamarind',
+                     'pandanus', 'terminalia_catappa', 'latania', 'plumeria'];
+    const h = t.height ?? 0;
+    if (h > 10) return 'flamboyant';
+    if (h > 6)  return 'palm_coconut';
+    if (h > 4)  return 'tamarind';
+    return SPECIES[Math.floor(Math.abs(Math.sin(t.x * 100)) * SPECIES.length)];
+  },
+
+  _sampleGroundY(x, ySud, groundAltHint) {
+    const sf = this._sf, ve = this.VERTICAL_EXAG;
+    const ctx = this._lidarCtx;
+    if (groundAltHint != null && ctx) return (groundAltHint - ctx.groundZ) * sf * ve;
     const LCS = window.LidarContextService;
+    if (ctx?.mnt && LCS) {
+      // Piège documenté (earthworks-service.js:11) : sampleMNT attend un
+      // northing local → flip Y obligatoire (ySud = -z_nord)
+      const alt = LCS.sampleMNT(ctx.mnt, x, -ySud);
+      if (Number.isFinite(alt)) return (alt - ctx.groundZ) * sf * ve;
+    }
+    return 0;
+  },
 
+  async _buildVegetation() {
+    const ctx = this._lidarCtx;
+    let plants = [];
+
+    // 1. Végétation P06 si l'étudiant l'a déjà générée/validée
+    const feats = this._session?.phases?.p06?.vegetation?.features;
+    if (feats?.length) {
+      this._vegSource = 'P06';
+      plants = feats
+        .filter(f => f.status !== 'existing_cut')
+        .map(f => ({
+          x: f.positionLocal?.x ?? 0,
+          ySud: f.positionLocal?.y ?? 0,
+          speciesKey: f.speciesKey ?? 'palm_coconut',
+          canopyRadius: f.canopyRadiusMeasured ?? 3,
+          height: f.heightMeasured,
+          groundAlt: null,
+        }));
+    } else if (ctx?.trees?.length) {
+      // 2. Sinon : arbres LiDAR bruts (visualisation éphémère, rien n'est persisté)
+      this._vegSource = 'LiDAR';
+      plants = ctx.trees.map(t => ({
+        x: t.x,
+        ySud: -t.z,
+        speciesKey: this._speciesFromTree(t),
+        canopyRadius: Math.max(1.5, Math.min(5, t.radiusM ?? (t.height ?? 6) * 0.35)),
+        height: t.height,
+        groundAlt: t.groundAlt,
+      }));
+    }
+    // Mémorisé même vide : _buildGrass() s'en sert pour dégager le pied des
+    // sujets, et il tourne que la végétation ait été construite ou non.
+    this._plants = plants;
+    if (!plants.length) return;
+
+    const sf = this._sf, ve = this.VERTICAL_EXAG;
     this._treesGroup = new THREE.Group();
-    this._treesGroup.name = 'trees-lidar';
+    this._treesGroup.name = 'vegetation';
+    this._vegetationMats = [];
 
-    for (const tree of trees) {
-      const x = tree.x * sf;
-      const z = -tree.z * sf; // inversion Z
-      const h = tree.height * sf * ve;
-      const r = tree.radiusM * sf;
+    // Regrouper par espèce (1 InstancedMesh par espèce avec atlas)
+    const bySpecies = {};
+    for (const p of plants) (bySpecies[p.speciesKey] ??= []).push(p);
 
-      // Altitude sol sous l'arbre
-      const groundY = (tree.groundAlt - groundZ) * sf * ve;
+    let impostorCount = 0, primitiveCount = 0;
+    for (const [speciesKey, list] of Object.entries(bySpecies)) {
+      let tex = null;
+      try { tex = await ImpostorLoader.getTexture(speciesKey); } catch { /* offline → fallback */ }
 
-      // Tronc
-      const trunkH = h * 0.4;
-      const trunkGeo = new THREE.CylinderGeometry(r * 0.08, r * 0.12, trunkH, 6);
-      const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.9 });
-      const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-      trunk.position.set(x, groundY + trunkH / 2, z);
-      trunk.castShadow = true;
-      this._treesGroup.add(trunk);
+      if (tex) {
+        const mat = buildImpostorMaterial(THREE, tex);
+        this._vegetationMats.push(mat);
+        const geo = new THREE.PlaneGeometry(1, 1);
+        geo.translate(0, 0.5, 0); // origine au pied
+        const inst = new THREE.InstancedMesh(geo, mat, list.length);
+        inst.name = `veg-${speciesKey}`;
+        inst.frustumCulled = false; // billboard : déplacement en vertex shader
 
-      // Couronne (IcosahedronGeometry — léger, compatible r182)
-      const canopyGeo = new THREE.IcosahedronGeometry(r, 1);
-      canopyGeo.scale(1, (h * 0.6) / (r * 2), 1); // aplatir verticalement
-      const canopyMat = new THREE.MeshStandardMaterial({
-        color: 0x2d6b1e, roughness: 0.85, transparent: true, opacity: 0.85,
-      });
-      const canopy = new THREE.Mesh(canopyGeo, canopyMat);
-      canopy.position.set(x, groundY + trunkH + (h * 0.6) / 2, z);
-      canopy.castShadow = true;
-      this._treesGroup.add(canopy);
+        const tmpMat = new THREE.Matrix4();
+        const tmpQuat = new THREE.Quaternion();
+        const tmpScale = new THREE.Vector3();
+        const tmpPos = new THREE.Vector3();
+        for (let i = 0; i < list.length; i++) {
+          const p = list[i];
+          const wx = p.x * sf;
+          const wz = p.ySud * sf;
+          const wy = this._sampleGroundY(p.x, p.ySud, p.groundAlt);
+          const radM = p.canopyRadius ?? 2;
+          const sw = radM * 2 * sf;
+          const sh = ((p.height && p.height > 1) ? p.height : radM * 2.2) * sf * ve;
+          tmpPos.set(wx, wy, wz);
+          tmpScale.set(sw, sh, 1);
+          tmpQuat.set(0, 0, 0, 1);
+          tmpMat.compose(tmpPos, tmpQuat, tmpScale);
+          inst.setMatrixAt(i, tmpMat);
+        }
+        inst.instanceMatrix.needsUpdate = true;
+        this._treesGroup.add(inst);
+        impostorCount += list.length;
+      } else {
+        // Fallback primitives : espèce sans atlas → tronc + couronne
+        for (const p of list) {
+          this._buildTreePrimitive(p, sf, ve);
+          primitiveCount++;
+        }
+      }
     }
 
     this._scene.add(this._treesGroup);
-    console.info(`[Buildings3D] ${trees.length} arbres LiDAR ajoutés`);
+    this._applyGroundEffects(plants);
+    this._needsRender = true;
+    console.info(`[Buildings3D] Végétation (${this._vegSource}) : ${impostorCount} impostors + ${primitiveCount} primitives, ${Object.keys(bySpecies).length} espèces`);
+  },
+
+  // ─── EFFETS DE SOL (AO de contact + humus) ───────────────────
+  // « Une plante sans ombre au pied flotte au-dessus du sol » : on assombrit
+  // et on teinte les vertex colors du terrain LiDAR sous chaque canopée.
+  // Sans terrain LiDAR (grille plate / parcelle ShapeGeometry sans attribut
+  // color) : retour silencieux, la scène reste celle d'avant.
+  //
+  // @coords conversion plante → sommets du terrain — UN SEUL flip.
+  //   Terrain (_buildTerrainMesh) : verts.x =  x_est   · sf
+  //                                 verts.z = -z_nord  · sf
+  //   Plantes  (_buildVegetation) : x = x_est, ySud = -z_nord  (le flip est
+  //   posé là, une fois, à la lecture de ctx.trees.z)
+  //   ⇒ scène.z d'une plante = ySud · sf  = (-z_nord) · sf  = verts.z ✔
+  //   Exemple chiffré, sf = 1 (parcelle de 50 m) : un arbre à 12 m au NORD du
+  //   centre a z_nord = +12 → ySud = −12 → scène z = −12 ; le sommet de
+  //   terrain au même endroit a positions.z = +12 → verts.z = −12 · 1 = −12.
+  //   Identiques : aucun second flip à appliquer ici (skill coord-systems).
+  _applyGroundEffects(plants) {
+    const geo = this._terrainMesh?.geometry;
+    if (!geo?.attributes?.color || !plants?.length) return;
+
+    const sf = this._sf;
+    const toLocal = (p) => ({
+      x: p.x * sf,
+      z: p.ySud * sf,                                   // pas de signe ici : cf. @coords
+      radius: Math.max(0.4, p.canopyRadius ?? 2) * sf,
+    });
+
+    try {
+      /* Ordre volontaire : teinte PUIS AO. L'inverse ré-éclaircirait les
+         sommets assombris (mixer vers l'humus tire une couleur sombre vers une
+         valeur fixe) — l'occlusion doit avoir le dernier mot. */
+      const tinted = applyGroundTint({ geometry: geo, plants, toLocal });
+      const shaded = applyContactAO({ geometry: geo, plants, toLocal });
+      this._needsRender = true;
+      console.info(`[Buildings3D] Effets de sol : AO de contact ${shaded} sommets · humus ${tinted} sommets (${plants.length} sujets)`);
+    } catch (e) {
+      console.warn('[Buildings3D] Effets de sol ignorés :', e.message);
+    }
+  },
+
+  // ─── STRATE HERBACÉE ─────────────────────────────────────────
+  // Touffes instanciées (3 quads croisés, species-geometry) semées DANS LA
+  // PARCELLE uniquement, hors d'un disque de 1 m au pied de chaque sujet.
+  // RNG déterministe seedé par la bbox parcelle : même rendu au rechargement.
+  async _buildGrass() {
+    const geom = this._session?.terrain?.parcelle_geojson;
+    if (!geom || !this._center) return;
+
+    const ring = geom.type === 'Polygon'
+      ? geom.coordinates?.[0]
+      : geom.coordinates?.[0]?.[0];
+    if (!ring || ring.length < 3) return;
+
+    // @coords WGS84 → mètres locaux { x = EST, ySud = SUD }. Le northing
+    // (lat − lat0)·LAT_SCALE est nié UNE fois ici, exactement comme
+    // _buildVegetation nie ctx.trees.z : même repère, un seul flip.
+    const lat = this._center[1];
+    const LAT_SCALE = 111320, LNG_SCALE = 111320 * Math.cos(lat * DEG);
+    const poly = ring.map(c => [
+      (c[0] - this._center[0]) * LNG_SCALE,
+      -((c[1] - this._center[1]) * LAT_SCALE),
+    ]);
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const [px, py] of poly) {
+      if (px < minX) minX = px; if (px > maxX) maxX = px;
+      if (py < minY) minY = py; if (py > maxY) maxY = py;
+    }
+    if (!(maxX > minX) || !(maxY > minY)) return;
+
+    // Géométrie de touffe : hauteur unitaire, mise à l'échelle par instance.
+    // Import dynamique : species-geometry tire THREE + un JSON — s'il échoue
+    // (offline, CDN coupé), on saute l'herbe sans casser la vue 3D.
+    let tuftGeo = null;
+    try {
+      const SG = await import('../services/vegetation/species-geometry.js');
+      await SG.initSpeciesGeometry();
+      tuftGeo = SG.buildGrassTuftGeometry(1);
+      /* buildGrassTuftGeometry ne pose PAS de normales (position/uv/ah seuls) :
+         sans elles, MeshStandardMaterial reçoit normal = (0,0,0) et rend noir. */
+      if (!tuftGeo.attributes.normal) tuftGeo.computeVertexNormals();
+    } catch (e) {
+      console.warn('[Buildings3D] Strate herbacée ignorée (species-geometry indisponible) :', e?.message ?? e);
+      return;
+    }
+
+    const caps = getDeviceCaps();
+    const budget = caps.lowSpec ? 120 : 400;
+
+    // RNG déterministe seedé par la bbox parcelle (cm) — pas Math.random :
+    // le tapis d'herbe doit être identique d'un rechargement à l'autre.
+    const seed = this._hash32([minX, minY, maxX, maxY].map(v => Math.round(v * 100)));
+    const rng = this._mulberry32(seed);
+
+    // Index des sujets : exclusion d'un disque de 1 m au pied (une touffe ne
+    // pousse pas dans un tronc). Maille = rayon d'exclusion → 3×3 exhaustif.
+    const EXCLUDE_M = 1.0;
+    const plantIdx = makePointIndex(
+      (this._plants ?? []).map(p => ({ x: p.x, z: p.ySud })), EXCLUDE_M);
+
+    const sf = this._sf, ve = this.VERTICAL_EXAG;
+    const spots = [];
+    const maxTries = budget * 25;
+    for (let t = 0; t < maxTries && spots.length < budget; t++) {
+      const x = minX + rng() * (maxX - minX);
+      const y = minY + rng() * (maxY - minY);
+      if (!this._pointInPolygon(x, y, poly)) continue;
+      let blocked = false;
+      plantIdx.forEachNear(x, y, (p) => {
+        if (blocked) return;
+        const dx = x - p.x, dz = y - p.z;
+        if (dx * dx + dz * dz < EXCLUDE_M * EXCLUDE_M) blocked = true;
+      });
+      if (blocked) continue;
+      spots.push([x, y]);
+    }
+    if (!spots.length) { tuftGeo.dispose(); return; }
+
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0xffffff,            // blanc : la teinte vient de instanceColor
+      roughness: 0.95, metalness: 0,
+      side: THREE.DoubleSide,
+    });
+    const mesh = new THREE.InstancedMesh(tuftGeo, mat, spots.length);
+    mesh.name = 'strate-herbacee';
+    mesh.castShadow = false;      // 400 touffes dans la shadow map = inutile et cher
+    mesh.receiveShadow = false;
+
+    const m4 = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const e = new THREE.Euler();
+    const pos = new THREE.Vector3();
+    const scl = new THREE.Vector3();
+    const col = new THREE.Color();
+    for (let i = 0; i < spots.length; i++) {
+      const [x, ySud] = spots[i];
+      const h = 0.25 + rng() * 0.20;                    // 0,25 → 0,45 m
+      const s = h * sf;
+      pos.set(x * sf, this._sampleGroundY(x, ySud), ySud * sf);
+      e.set(0, rng() * Math.PI * 2, 0);
+      q.setFromEuler(e);
+      scl.set(s, s * ve, s);
+      m4.compose(pos, q, scl);
+      mesh.setMatrixAt(i, m4);
+      // Verts variés : hue 0,22–0,32 (jaune-vert → vert franc), valeur basse
+      col.setHSL(0.22 + rng() * 0.10, 0.32 + rng() * 0.26, 0.24 + rng() * 0.16);
+      mesh.setColorAt(i, col);
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+
+    this._scene.add(mesh);
+    this._grassMesh = mesh;
+    this._needsRender = true;
+    console.info(`[Buildings3D] Strate herbacée : ${spots.length}/${budget} touffes${caps.lowSpec ? ' (budget réduit — terminal faible)' : ''}`);
+  },
+
+  /** Ray casting — polygone en paires [x, ySud] (le flip ne change rien à
+      l'appartenance : c'est un miroir appliqué au point ET au contour). */
+  _pointInPolygon(x, y, poly) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i][0], yi = poly[i][1];
+      const xj = poly[j][0], yj = poly[j][1];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi || 1e-12) + xi) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  },
+
+  /** Hash 32 bits d'une liste d'entiers (seed RNG stable). */
+  _hash32(nums) {
+    let h = 2166136261 >>> 0;
+    for (const n of nums) {
+      h = Math.imul(h ^ ((n | 0) & 0xffff), 16777619);
+      h = Math.imul(h ^ (((n | 0) >> 16) & 0xffff), 16777619);
+    }
+    return h >>> 0;
+  },
+
+  /** mulberry32 — même générateur que species-geometry (déterministe). */
+  _mulberry32(seed) {
+    let s = (seed >>> 0) || 1;
+    return () => {
+      s = (s + 0x6D2B79F5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  },
+
+  _buildTreePrimitive(p, sf, ve) {
+    const x = p.x * sf;
+    const z = p.ySud * sf;
+    const h = ((p.height && p.height > 1) ? p.height : (p.canopyRadius ?? 2) * 2.2) * sf * ve;
+    const r = (p.canopyRadius ?? 2) * sf;
+    const groundY = this._sampleGroundY(p.x, p.ySud, p.groundAlt);
+
+    // Tronc
+    const trunkH = h * 0.4;
+    const trunkGeo = new THREE.CylinderGeometry(r * 0.08, r * 0.12, trunkH, 6);
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1a, roughness: 0.9 });
+    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+    trunk.position.set(x, groundY + trunkH / 2, z);
+    trunk.castShadow = true;
+    this._treesGroup.add(trunk);
+
+    // Couronne (IcosahedronGeometry — léger, compatible r182)
+    const canopyGeo = new THREE.IcosahedronGeometry(r, 1);
+    canopyGeo.scale(1, (h * 0.6) / (r * 2), 1); // aplatir verticalement
+    const canopyMat = new THREE.MeshStandardMaterial({
+      color: 0x2d6b1e, roughness: 0.85, transparent: true, opacity: 0.85,
+    });
+    const canopy = new THREE.Mesh(canopyGeo, canopyMat);
+    canopy.position.set(x, groundY + trunkH + (h * 0.6) / 2, z);
+    canopy.castShadow = true;
+    this._treesGroup.add(canopy);
   },
 
   // ─── PARCELLE ─────────────────────────────────────────────────
@@ -570,6 +900,7 @@ const Buildings3DViewer = {
   // ─── COLOR MODES ──────────────────────────────────────────────
   applyColorMode(mode) {
     if (!this._buildingsGroup) return;
+    this._needsRender = true;
 
     const meshes = this._buildingsGroup.children.filter(c => c.isMesh);
     if (!meshes.length) return;
@@ -659,6 +990,7 @@ const Buildings3DViewer = {
     }
     this._controls.target.copy(center);
     this._controls.update();
+    this._needsRender = true;
   },
 
   // ─── EXPORT GLB ───────────────────────────────────────────────
@@ -695,10 +1027,18 @@ const Buildings3DViewer = {
   },
 
   // ─── RENDER LOOP ──────────────────────────────────────────────
+  // Rendu à la demande : on ne rend que si la caméra a bougé (event 'change'
+  // d'OrbitControls, déclenché aussi pendant le damping) ou si _needsRender
+  // a été levé (scène modifiée, resize). Économie batterie mobile.
   _startLoop() {
+    this._needsRender = true;
+    this._controls?.addEventListener('change', () => { this._needsRender = true; });
     const loop = () => {
       this._animId = requestAnimationFrame(loop);
       this._controls?.update();
+      if (!this._needsRender) return;
+      this._needsRender = false;
+      updateImpostorCamera(this._vegetationMats, this._cam);
       this._renderer.render(this._scene, this._cam);
     };
     loop();
@@ -711,6 +1051,7 @@ const Buildings3DViewer = {
     if (c.width !== w || c.height !== h) {
       this._renderer.setSize(w, h, false);
       if (this._cam) { this._cam.aspect = w / h; this._cam.updateProjectionMatrix(); }
+      this._needsRender = true;
     }
   },
 
@@ -734,6 +1075,13 @@ const Buildings3DViewer = {
         }
       });
     }
+    // Strate herbacée : InstancedMesh → dispose() libère aussi instanceMatrix
+    if (this._grassMesh) {
+      this._grassMesh.dispose?.();
+      this._grassMesh.geometry?.dispose();
+      this._grassMesh.material?.dispose();
+      this._scene?.remove(this._grassMesh);
+    }
 
     this._scene?.traverse(obj => {
       obj.geometry?.dispose();
@@ -745,7 +1093,11 @@ const Buildings3DViewer = {
 
     this._terrainMesh = null;
     this._treesGroup = null;
+    this._grassMesh = null;
+    this._plants = [];
     this._lidarCtx = null;
+    this._vegetationMats = [];
+    this._vegSource = null;
     this._inited = false;
   },
 };

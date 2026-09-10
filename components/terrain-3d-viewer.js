@@ -13,7 +13,12 @@ import GLBExporter from '../utils/glb-exporter.js';
 import { getDeviceCaps } from '../utils/device-caps.js';
 import ContourService from '../services/contour-service.js';
 import BILTerrain from '../services/bil-terrain.js';
+import ParcelAltitudes from '../services/parcel-altitudes.js';
 import BdTopoService from '../services/bdtopo-service.js';
+// Table pure (aucune dep THREE) : nombre de silhouettes seedees par espece.
+// Le module lourd services/vegetation/species-geometry.js est importe
+// PARESSEUSEMENT (cf. _ensureSpeciesGeometry) : il charge le JSON bpf.
+import { VEG_VARIANTS } from '../services/vegetation/species-map.js';
 
 // Exposer THREE globalement pour compatibilité scripts inline
 if (typeof window !== 'undefined' && !window.THREE) {
@@ -64,7 +69,11 @@ const Terrain3D = {
   _bilMeta:      null,         // { heights, W, H, minAlt, maxAlt } pour coloration vertex
   _orthoLoaded:  false,
   _vegetationGroup: null,      // THREE.Group contenant InstancedMesh par espece
-  _vegetationMats:  [],        // ShaderMaterial[] pour update uniform camera par frame
+  _vegetationMats:  [],        // ShaderMaterial[] impostors : update uniform camera par frame
+                               // (JAMAIS les materiaux procedurals : pas de .uniforms)
+  _procGeoMod:      null,      // module species-geometry.js resolu (import paresseux)
+  _procGeoPromise:  null,      // promesse d'init en cours (1 seule fois)
+  _procGeoFailed:   false,     // init KO : on retombe sur l'ancien skip + warn
   _cadastreGroup:   null,      // THREE.Group bâtiments BD TOPO wireframe
   _cadastreShift:   null,      // {dx, dz} décalage cadastre→LiDAR en scene units
   _pointCloudGroup: null,      // THREE.Points nuage LiDAR texturé
@@ -297,6 +306,28 @@ const Terrain3D = {
     this._terrainGroup = new THREE.Group();
     this._terrainCenter = center;
 
+    // ── Altitudes réelles aux sommets de la parcelle (BIL 1 m IGN) ─
+    // Une seule requête WMS-R pour tous les sommets (ParcelAltitudes.sample,
+    // mise en cache), la même source que les étiquettes NGR de l'esquisse.
+    // Règle : on n'invente aucune altitude. Si le MNT ne répond pas, la
+    // valeur reste `null` et l'étiquette affiche « — » plutôt qu'une cote
+    // d'apparence officielle qui serait fabriquée.
+    let cornerAlts = coords.map(() => null);
+    this._altSource = null;
+    try {
+      const s = await ParcelAltitudes.sample(coords.map(c => [c[0], c[1]]));
+      cornerAlts = s.points.map(p => p.alt);
+      if (s.minAlt != null) {
+        this._altSource = 'bil';
+        console.log(`[Terrain3D] altitudes parcelle (BIL) — ${s.minAlt.toFixed(1)} → ${s.maxAlt.toFixed(1)} m NGR, dénivelé ${s.range.toFixed(1)} m`);
+      } else {
+        console.warn('[Terrain3D] altitudes parcelle : aucun point valide dans le MNT — étiquettes en « — »');
+      }
+    } catch (e) {
+      console.warn('[Terrain3D] altitudes parcelle indisponibles:', e?.message);
+    }
+    this._cornerAlts = cornerAlts;
+
     // ── Mesh BIL haute résolution (1m IGN) ────────────────────────
     // BIL mesh coords : x=easting, y=northing, z=altitude (centré sur UTM)
     // Three.js : x=east, y=up, z=south → rotation -90° autour de X
@@ -336,10 +367,17 @@ const Terrain3D = {
       // World Y = (alt - altMin_raw) * sf * VEXAG + EXTRUDE_DEPTH
       const altRange = bb.max.z - bb.min.z;  // dénivelé en m
       const altMidOffset = altRange / 2 * sf * this.VERTICAL_EXAG;
-      const scaledPts = localPts.map(p => {
+      const altMinRaw = bb.min.z;            // altitude brute du point le plus bas (m)
+      const scaledPts = localPts.map((p, i) => {
         const sx = (p.x - (minX + maxX) / 2) / meshSpan * this.SCALE_FACTOR;
         const sz = (p.z - (minZ + maxZ) / 2) / meshSpan * this.SCALE_FACTOR;
-        return { x: sx, z: sz, y: altMidOffset + this.EXTRUDE_DEPTH, lng: p.lng, lat: p.lat };
+        // Même transformation que les vertices du mesh — le contour suit donc
+        // le relief au lieu d'être posé à plat sur l'altitude moyenne.
+        const a = cornerAlts[i];
+        const y = (a == null)
+          ? altMidOffset + this.EXTRUDE_DEPTH               // repli : altitude médiane
+          : (a - altMinRaw) * sf * this.VERTICAL_EXAG + this.EXTRUDE_DEPTH;
+        return { x: sx, z: sz, y, lng: p.lng, lat: p.lat };
       });
       this._scaledPts = scaledPts;
 
@@ -439,31 +477,27 @@ const Terrain3D = {
 
     // ── Labels altitudes aux coins ────────────────────────────────
     if (this._scaledPts?.length >= 3) {
-      const altBase = parseFloat(t.altitude_ngr ?? 100);
-      const denivelé = parseFloat(t.denivelé_m ?? 2);
-      const cornerAlts = coords.map((_, i) =>
-        altBase + (i % 2 === 0 ? 0 : denivelé * (i / coords.length))
-      );
-      this._cornerAlts = cornerAlts;
-      this._makeAltLabels(this._scaledPts, cornerAlts);
+      this._makeAltLabels(this._scaledPts, this._cornerAlts ?? []);
       this._makeDims(this._scaledPts, localPts, this._terrainSF ?? 1);
     }
   },
 
   // ─── FALLBACK ShapeGeometry (si BIL échoue) ───────────────────
   _buildFallbackTerrain(coords, center, LAT_SCALE, LNG_SCALE, localPts, minX, maxX, minZ, maxZ) {
-    const altBase  = parseFloat(this._parcelData.altitude_ngr ?? 100);
-    const denivelé = parseFloat(this._parcelData.denivelé_m ?? 2);
-    const cornerAlts = coords.map((_, i) =>
-      altBase + (i % 2 === 0 ? 0 : denivelé * (i / coords.length))
-    );
-    this._cornerAlts = cornerAlts;
+    // Altitudes : celles échantillonnées sur le MNT par _buildTerrain
+    // (`this._cornerAlts`). Aucune valeur n'est fabriquée ici : sans MNT, la
+    // parcelle est rendue plate et les étiquettes affichent « — ».
+    const cornerAlts = this._cornerAlts ?? coords.map(() => null);
+    const known = cornerAlts.filter(a => a != null);
+    const altRef = known.length ? Math.min(...known) : 0;
     const sf = this.SCALE_FACTOR / Math.max(maxX - minX, maxZ - minZ);
     this._terrainSF = sf;
 
     const scaledPts = localPts.map((p, i) => ({
       x: p.x * sf, z: p.z * sf,
-      y: (cornerAlts[i] - Math.min(...cornerAlts)) * sf * this.VERTICAL_EXAG + this.EXTRUDE_DEPTH,
+      y: cornerAlts[i] == null
+        ? this.EXTRUDE_DEPTH
+        : (cornerAlts[i] - altRef) * sf * this.VERTICAL_EXAG + this.EXTRUDE_DEPTH,
       lng: p.lng, lat: p.lat,
     }));
     this._scaledPts = scaledPts;
@@ -962,7 +996,12 @@ const Terrain3D = {
     const n = Math.min(scaledPts.length, 4);
     for (let i = 0; i < n; i++) {
       const p   = scaledPts[i];
-      const alt = alts[i] ?? '\u2014';
+      const alt = alts[i];
+      // Pas d'altitude lue sur le MNT \u2192 \u00ab \u2014 \u00bb. On n'affiche jamais un nombre
+      // qui n'a pas \u00e9t\u00e9 mesur\u00e9 (une cote lue par un \u00e9tudiant fait foi).
+      const txt = (alt == null || !isFinite(alt))
+        ? '\u2014'
+        : parseFloat(alt).toFixed(1) + 'm';
       const cv  = document.createElement('canvas');
       cv.width  = 128; cv.height = 32;
       const ctx = cv.getContext('2d');
@@ -971,7 +1010,7 @@ const Terrain3D = {
       ctx.font = '11px Inconsolata, monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(parseFloat(alt).toFixed(1) + 'm', 64, 16);
+      ctx.fillText(txt, 64, 16);
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({
         map: new THREE.CanvasTexture(cv), depthTest: false, transparent: true,
       }));
@@ -1408,6 +1447,14 @@ const Terrain3D = {
   _disposeGroup(g) {
     if (!g) return;
     g.traverse(o => {
+      // Les geometries procedurales (species-geometry.js) sont MEMOISEES dans
+      // le cache du module et repartagees entre appels/vues : les disposer
+      // laisserait le cache rendre des BufferGeometry mortes. On les saute.
+      if (o.userData?.sharedGeometry) {
+        if (Array.isArray(o.material)) o.material.forEach(m => m?.dispose());
+        else o.material?.dispose();
+        return;
+      }
       o.geometry?.dispose();
       if (Array.isArray(o.material)) o.material.forEach(m => m?.dispose());
       else o.material?.dispose();
@@ -1430,7 +1477,8 @@ const Terrain3D = {
     this._vegetationMats = [];
 
     if (!plants?.length) return;
-    if (!window.ImpostorLoader) { console.warn('[Terrain3D] ImpostorLoader indisponible'); return; }
+    const IL = window.ImpostorLoader;
+    if (!IL) console.warn('[Terrain3D] ImpostorLoader indisponible : vegetation en geometrie procedurale seule');
 
     const group = new THREE.Group();
     group.name = 'vegetation';
@@ -1443,9 +1491,32 @@ const Terrain3D = {
     const bySpecies = {};
     for (const p of plants) (bySpecies[p.speciesKey] ??= []).push(p);
 
+    // Especes sans atlas impostor : collectees ici puis rendues en geometrie
+    // procedurale (avant : `continue` => 23 especes sur 33 disparaissaient).
+    const procItems = [];
+    let nImpostorSpecies = 0;
+
     for (const [speciesKey, list] of Object.entries(bySpecies)) {
-      const tex = await window.ImpostorLoader.getTexture(speciesKey);
-      if (!tex) continue; // Espece sans impostor : on skip (fallback SVG 2D seulement)
+      let tex = null;
+      if (IL) {
+        try { tex = await IL.getTexture(speciesKey); }
+        catch (e) { console.warn(`[Terrain3D] impostor ${speciesKey} :`, e?.message ?? e); tex = null; }
+      }
+      if (!tex) {
+        for (const p of list) {
+          const wx = p.x * sf;
+          const wz = p.y * sf;
+          procItems.push({
+            speciesKey,
+            wx, wz, wy: this._sampleTerrainY(wx, wz),
+            radiusM: p.canopyRadius ?? 2,
+            variant: this._vegVariantOf(p.x, p.y),
+            tint: p.color2D ?? null,
+          });
+        }
+        continue;
+      }
+      nImpostorSpecies++;
 
       const mat = this._buildImpostorMaterial(tex);
       this._vegetationMats.push(mat);
@@ -1485,7 +1556,10 @@ const Terrain3D = {
       group.add(inst);
     }
 
-    console.log(`[Terrain3D] Vegetation : ${plants.length} plantes, ${Object.keys(bySpecies).length} especes`);
+    const nProc = await this._addProceduralVegetation(group, procItems, sf, 'Vegetation');
+
+    console.log(`[Terrain3D] Vegetation : ${plants.length} plantes, ${Object.keys(bySpecies).length} especes `
+      + `(${nImpostorSpecies} impostor, ${plants.length - procItems.length} instances billboard, ${nProc} instances procedurales)`);
   },
 
   _buildImpostorMaterial(atlasTex) {
@@ -1548,6 +1622,140 @@ const Terrain3D = {
       depthWrite: true,
       side: THREE.DoubleSide,
     });
+  },
+
+  // ─── VEGETATION : GEOMETRIE PROCEDURALE (especes sans impostor) ──
+  // 33 especes bpf, ~10 atlas impostor => le reste tombait dans un
+  // `if (!tex) continue;` silencieux. On les rend en low-poly vertex-colore
+  // via services/vegetation/species-geometry.js (Y-up, pied a y=0).
+
+  /** Import + init paresseux du module de geometrie. null si indisponible. */
+  async _ensureSpeciesGeometry() {
+    if (this._procGeoFailed) return null;
+    if (this._procGeoMod) return this._procGeoMod;
+    this._procGeoPromise ??= (async () => {
+      const mod = await import('../services/vegetation/species-geometry.js');
+      await mod.initSpeciesGeometry();
+      return mod;
+    })();
+    try {
+      this._procGeoMod = await this._procGeoPromise;
+      return this._procGeoMod;
+    } catch (e) {
+      this._procGeoFailed = true;
+      this._procGeoPromise = null;
+      console.warn('[Terrain3D] species-geometry indisponible :', e?.message ?? e);
+      return null;
+    }
+  },
+
+  /** Variante de silhouette deterministe par position (rendu stable au reload). */
+  _vegVariantOf(x, y) {
+    return Math.abs(Math.round(x * 7 + y * 13)) % VEG_VARIANTS;
+  },
+
+  /** Budget d'instances procedurales (geometrie reelle >> billboard). */
+  _procVegBudget() {
+    let caps = null;
+    try { caps = getDeviceCaps(); } catch (_) { /* pas de WebGL : budget bas */ }
+    return caps?.lowSpec ? 100 : 300;
+  },
+
+  /**
+   * Ajoute les plantes sans impostor en InstancedMesh procedural.
+   * @param {THREE.Group} group  groupe vegetation courant
+   * @param {Array<{speciesKey,wx,wy,wz,radiusM,variant,tint}>} items scene coords
+   * @param {number} sf  facteur d'echelle terrain (m -> unites scene)
+   * @param {string} tag prefixe de log
+   * @returns {Promise<number>} nombre d'instances effectivement posees
+   */
+  async _addProceduralVegetation(group, items, sf, tag = 'Vegetation') {
+    if (!group || !items?.length) return 0;
+
+    const mod = await this._ensureSpeciesGeometry();
+    if (!mod) {
+      const sp = [...new Set(items.map(i => i.speciesKey))].join(', ');
+      console.warn(`[Terrain3D] ${tag} : ${items.length} plantes d'espece sans impostor NI geometrie `
+        + `procedurale (module KO) - non affichees : ${sp}`);
+      return 0;
+    }
+
+    // Budget : on garde les plus GRANDES (rayon de houppier decroissant).
+    // Regle "no silent caps" : l'ecretage est toujours journalise.
+    const budget = this._procVegBudget();
+    let kept = items;
+    if (items.length > budget) {
+      kept = items.slice().sort((a, b) => b.radiusM - a.radiusM).slice(0, budget);
+      const cut = kept[kept.length - 1].radiusM;
+      console.info(`[Terrain3D] ${tag} : budget procedural ${budget} atteint - `
+        + `${items.length - budget} plantes les plus petites ecartees (rayon < ${cut.toFixed(2)} m)`);
+    }
+
+    // Regroupement (espece x variante) -> 1 InstancedMesh par groupe.
+    // La teinte est prise sur la 1re plante du groupe : les geometries etant
+    // partagees, une teinte par instance imposerait un bake par plante.
+    const groups = new Map();
+    for (const it of kept) {
+      const k = `${it.speciesKey}|${it.variant}`;
+      let g = groups.get(k);
+      if (!g) { g = { speciesKey: it.speciesKey, variant: it.variant, tint: it.tint ?? null, list: [] }; groups.set(k, g); }
+      g.list.push(it);
+    }
+
+    // UN SEUL materiau pour tout le lot procedural (perf). Volontairement HORS
+    // de _vegetationMats : la boucle rAF y ecrit m.uniforms.uCameraPos, qui
+    // n'existe pas sur un MeshStandardMaterial.
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, metalness: 0 });
+
+    const tmpMat = new THREE.Matrix4();
+    const tmpQuat = new THREE.Quaternion();
+    const tmpScale = new THREE.Vector3();
+    const tmpPos = new THREE.Vector3();
+    const UP = new THREE.Vector3(0, 1, 0);
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+    let placed = 0;
+    const missing = new Set();
+
+    for (const g of groups.values()) {
+      let built = null;
+      try { built = mod.buildSpeciesGeometry(g.speciesKey, g.variant, g.tint ? { tint: g.tint } : {}); }
+      catch (e) { console.warn(`[Terrain3D] bake ${g.speciesKey} :`, e?.message ?? e); built = null; }
+      if (!built?.geometry) { missing.add(g.speciesKey); continue; }
+
+      const geomR = built.canopyRadius > 1e-3 ? built.canopyRadius : 1;
+
+      const inst = new THREE.InstancedMesh(built.geometry, mat, g.list.length);
+      inst.name = `veg-geo-${g.speciesKey}-v${g.variant}`;
+      inst.castShadow = true;
+      inst.frustumCulled = false;          // idem impostors : lots petits, culling inutile
+      inst.userData.sharedGeometry = true; // cache species-geometry : NE PAS dispose (cf. _disposeGroup)
+
+      for (let i = 0; i < g.list.length; i++) {
+        const it = g.list[i];
+        // Echelle : ratio houppier plante / houppier de la geometrie d'espece,
+        // clampe [0.5, 2] pour eviter les silhouettes aberrantes, PUIS passage
+        // metres -> unites scene (sf), comme les impostors.
+        const s = sf * clamp(it.radiusM / geomR, 0.5, 2);
+        // Lacet deterministe : casse la repetition sans re-baker de geometrie
+        const yaw = (Math.abs(Math.round(it.wx * 31 + it.wz * 17)) % 360) * Math.PI / 180;
+        tmpPos.set(it.wx, it.wy, it.wz);
+        tmpQuat.setFromAxisAngle(UP, yaw);
+        tmpScale.set(s, s, s);
+        tmpMat.compose(tmpPos, tmpQuat, tmpScale);
+        inst.setMatrixAt(i, tmpMat);
+      }
+      inst.instanceMatrix.needsUpdate = true;
+      group.add(inst);
+      placed += g.list.length;
+    }
+
+    if (missing.size) {
+      console.warn(`[Terrain3D] ${tag} : espece sans impostor ni geometrie (recette absente) : `
+        + [...missing].join(', '));
+    }
+    if (!placed) mat.dispose();
+    return placed;
   },
 
   // ── BUILDINGS ROOF-EDGE RECONSTRUCTION ───────────────────────────
@@ -1875,7 +2083,8 @@ const Terrain3D = {
     // Nettoyer végétation existante
     if (this._vegetationGroup) { this._disposeGroup(this._vegetationGroup); this._vegetationGroup = null; }
     this._vegetationMats = [];
-    if (!window.ImpostorLoader) { console.warn('[Terrain3D] ImpostorLoader absent'); return; }
+    const IL = window.ImpostorLoader;
+    if (!IL) console.warn('[Terrain3D] ImpostorLoader absent : arbres LiDAR en geometrie procedurale seule');
 
     const group = new THREE.Group();
     group.name = 'vegetation';
@@ -1899,9 +2108,25 @@ const Terrain3D = {
       bySpecies[sp].push({ wx, wy, wz, h: t.h, r: Math.max(1.5, Math.min(5, t.h * 0.35)) });
     }
 
+    // Especes heuristiques sans atlas : fallback geometrie procedurale
+    const procItems = [];
+
     for (const [speciesKey, list] of Object.entries(bySpecies)) {
-      const tex = await window.ImpostorLoader.getTexture(speciesKey);
-      if (!tex) continue;
+      let tex = null;
+      if (IL) {
+        try { tex = await IL.getTexture(speciesKey); }
+        catch (e) { console.warn(`[Terrain3D] impostor ${speciesKey} :`, e?.message ?? e); tex = null; }
+      }
+      if (!tex) {
+        for (const p of list) procItems.push({
+          speciesKey,
+          wx: p.wx, wy: p.wy, wz: p.wz,   // deja en coords scene
+          radiusM: p.r,
+          variant: this._vegVariantOf(p.wx, p.wz),
+          tint: null,
+        });
+        continue;
+      }
 
       const mat = this._buildImpostorMaterial(tex);
       this._vegetationMats.push(mat);
@@ -1931,7 +2156,9 @@ const Terrain3D = {
       group.add(inst);
     }
 
-    console.log(`[Terrain3D] Arbres LiDAR : ${trees.length} détectés, ${buildGrid.size} cellules bâti exclues, ${Object.keys(bySpecies).length} espèces`);
+    const nProc = await this._addProceduralVegetation(group, procItems, sf, 'Arbres LiDAR');
+
+    console.log(`[Terrain3D] Arbres LiDAR : ${trees.length} détectés, ${buildGrid.size} cellules bâti exclues, ${Object.keys(bySpecies).length} espèces (${nProc} instances procedurales)`);
   },
 
   _sampleTerrainY(x, z) {

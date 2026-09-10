@@ -90,6 +90,21 @@
     </div>
   </div>
 
+  <!-- Segmentation par objets (SLIC + k-means Lab) — complement de l'OBIA per-pixel -->
+  <div class="form-section anim-slide-up" id="biome-seg-section">
+    <div class="fs-head">Biomes par segmentation d'image
+      <span id="biome-seg-badge" style="font-size:8px;background:var(--success2);color:var(--success);padding:2px 6px;border-radius:3px;margin-left:6px;font-family:var(--font-mono)">AUTO</span>
+    </div>
+    <p class="field-note" style="margin-bottom:8px">L'OBIA classe l'ortho pixel par pixel et produit des confettis. Ici SLIC (superpixels) + k-means Lab regroupent l'image en masses continues — canopée, boisé, canne, herbacé, sol nu, minéral, bâti, eau. <strong>Calque de lecture seule</strong> : aucune saisie de la phase n'est modifiée.</p>
+    <button class="search-btn wide" id="btn-biome-seg"
+            onclick="P06.segmentBiomes()">
+      Segmenter les biomes (image)
+    </button>
+    <div id="biome-seg-result" style="display:none;margin-top:8px;padding:8px;background:rgba(120,120,120,0.08);border-radius:4px;font-size:11px">
+      <div id="biome-seg-stats"></div>
+    </div>
+  </div>
+
   <!-- Espèces protégées -->
   <div class="form-section anim-slide-up">
     <div class="fs-head">Espèces protégées potentielles</div>
@@ -391,6 +406,94 @@ const P06 = {
     ParkingDetection.removeFromMap(map);
     const r = document.getElementById('parking-result');
     if (r) r.style.display = 'none';
+  },
+
+  // ── Segmentation biomes par objets (SLIC + k-means Lab sur ortho IGN) ──
+  // Complement de l'OBIA per-pixel : voir l'en-tete de services/obia-segmentation.js.
+  // Calque de LECTURE : rien n'est ecrit en session, aucune saisie n'est ecrasee.
+  _biomeSegOn: false,
+
+  async segmentBiomes() {
+    const map = MapViewer?.getMap();
+    const btn    = document.getElementById('btn-biome-seg');
+    const result = document.getElementById('biome-seg-result');
+    const stats  = document.getElementById('biome-seg-stats');
+    if (!map) {
+      window.TerlabToast?.show('Carte non initialisée', 'warning');
+      return;
+    }
+
+    let ObiaSegmentation;
+    try {
+      ({ default: ObiaSegmentation } = await import('../services/obia-segmentation.js'));
+    } catch (e) {
+      console.error('[P06] chargement obia-segmentation:', e);
+      window.TerlabToast?.show('Module de segmentation indisponible', 'warning');
+      return;
+    }
+
+    // Second clic = on masque le calque (toggle).
+    if (this._biomeSegOn) {
+      ObiaSegmentation.clearFromMap(map);
+      this._biomeSegOn = false;
+      if (result) result.style.display = 'none';
+      if (btn) btn.textContent = 'Segmenter les biomes (image)';
+      return;
+    }
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Segmentation en cours…'; }
+    try {
+      const bounds = map.getBounds();
+      const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
+      const centroid = [map.getCenter().lng, map.getCenter().lat];
+
+      const seg = await ObiaSegmentation.segmentParcel({ bbox, centroid, map });
+      ObiaSegmentation.renderOnMap(map, seg.zones);
+      this._biomeSegOn = true;
+
+      if (stats) {
+        if (!seg.zones.length) {
+          stats.innerHTML = 'Aucune masse exploitable sur cette emprise — zoomer davantage.';
+        } else {
+          const lignes = seg.stats.byBiome.slice(0, 5).map(b =>
+            `<div style="display:flex;align-items:center;gap:6px;margin-top:3px">`
+            + `<span style="width:10px;height:10px;border-radius:2px;background:${b.color};flex:none"></span>`
+            + `<span style="flex:1">${b.label}</span>`
+            + `<strong>${b.areaM2.toLocaleString('fr-FR')} m²</strong>`
+            + `<span style="opacity:.6">(${b.count})</span></div>`
+          ).join('');
+          stats.innerHTML =
+            `<strong>${seg.stats.zones}</strong> zones · emprise ${seg.stats.emprise_m} m `
+            + `· ${seg.stats.resolution_m_px} m/px`
+            + (seg.stats.fond ? `<br>Fond dominant : <strong>${seg.stats.fond.label}</strong>`
+                + (seg.stats.fond.pct != null ? ` (${seg.stats.fond.pct} %)` : '') : '')
+            + lignes;
+        }
+      }
+      if (result) result.style.display = 'block';
+      window.TerlabToast?.show(
+        seg.zones.length
+          ? `${seg.zones.length} zones · dominante ${seg.stats.dominant?.label || '—'}`
+          : 'Segmentation : aucune masse exploitable',
+        seg.zones.length ? 'success' : 'warning'
+      );
+    } catch (e) {
+      console.error('[P06] segmentation biomes:', e);
+      const msg = 'Segmentation biomes : ' + (e?.message || e);
+      if (window.TerlabNotification?.notify) {
+        window.TerlabNotification.notify({
+          severity: 'avertissement', rule: 'obia-segmentation',
+          message: msg, phase: '06',
+        });
+      } else {
+        window.TerlabToast?.show(msg, 'warning');
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = this._biomeSegOn ? 'Masquer les biomes' : 'Segmenter les biomes (image)';
+      }
+    }
   },
 
   // ── Basculer fond de carte (interne, pas expose en UI) ──────────

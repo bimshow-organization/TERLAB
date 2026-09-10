@@ -13,14 +13,20 @@ const BILTerrain = {
 
   // ── Proj4 lazy-load ───────────────────────────────────────────────
   async _ensureProj4() {
-    if (window.proj4) return;
-    await new Promise((res, rej) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/proj4@2.9.0/dist/proj4.js';
-      s.onload = res;
-      s.onerror = () => rej(new Error('proj4 load failed'));
-      document.head.appendChild(s);
-    });
+    if (!window.proj4) {
+      await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/proj4@2.9.0/dist/proj4.js';
+        s.onload = res;
+        s.onerror = () => rej(new Error('proj4 load failed'));
+        document.head.appendChild(s);
+      });
+    }
+    // Les définitions sont posées MÊME si proj4 vient d'ailleurs : index.html
+    // le charge globalement (<script unpkg>), donc un « return » anticipé ici
+    // laissait EPSG:2975 non défini et faisait échouer en silence TOUTE la
+    // chaîne BIL — mesh de terrain, courbes de niveau et altitudes parcelle
+    // (l'erreur remontait sous la forme laconique « EPSG:2975 »).
     if (!proj4.defs['EPSG:2975'])
       proj4.defs('EPSG:2975', '+proj=utm +zone=40 +south +datum=RGR92 +units=m +no_defs');
     if (!proj4.defs['EPSG:4326'])
@@ -169,6 +175,19 @@ const BILTerrain = {
       pixelSizeM: px
     };
     return mesh;
+  },
+
+  // ── Libération mémoire (indispensable dès qu'on recrée/tuile des meshes) ──
+  disposeMesh(mesh) {
+    if (!mesh) return;
+    mesh.parent?.remove(mesh);
+    mesh.geometry?.dispose();
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const m of mats) {
+      if (!m) continue;
+      m.map?.dispose();
+      m.dispose();
+    }
   },
 };
 

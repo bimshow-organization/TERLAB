@@ -1071,7 +1071,12 @@ const PlanMasseCanvas = {
       if (p.parkMode === 'rdc') spBase *= 0.75;
       spTot = spBase * sc.eff * nvEff;
     }
-    const nbLgts = p.type === 'maison' ? 1 : Math.floor(spTot / SP_MOY);
+    // Logements : comptage RÉEL des cellules pour les blocs calibrés (`_capMetrics`,
+    // stratégie « CP · Lames cap. ») ; les blocs non calibrés restent estimés à SP_MOY.
+    const cap = p.type === 'maison' ? null : this._capLgts(p.parkMode === 'rdc' ? 0.88 : 1);
+    const nbLgts = p.type === 'maison' ? 1
+      : cap ? cap.lgts + Math.floor(Math.max(0, spTot - cap.sdp) / SP_MOY)
+            : Math.floor(spTot / SP_MOY);
     const nbAide = p.type === 'maison' ? 0 : Math.round(nbLgts * sc.aide);
     const parkReq = p.type === 'maison' ? 2 : (nbLgts - nbAide) * 2 + nbAide + Math.ceil(nbLgts / 5);
 
@@ -1163,6 +1168,7 @@ const PlanMasseCanvas = {
 
     return {
       sc, nvEff, nvEffMax, emprise, empPct, spTot, nbLgts, nbAide, nbLibre: nbLgts - nbAide,
+      nbLgtsCal: cap?.lgts ?? 0, nbBlocsCal: cap?.nCal ?? 0,
       parkExt, parkSS, parkRdc: parkRdc ?? 0, parkReq, empPark,
       effectiveParkMode, impermeab, permPct, dens, Q,
       vGiep: Q * 600, sNoue: Q * 600 / 0.30, inEnv, checks,
@@ -3081,6 +3087,29 @@ const PlanMasseCanvas = {
       return hRdc + (n - 1) * hUp;
     }
     return n * hUp;
+  },
+
+  /**
+   * Logements RÉELS des blocs porteurs de `_capMetrics` (stratégie « CP · Lames cap. ») :
+   * `perFloor` vient du découpage effectif des cellules, pas d'une surface moyenne.
+   * Les niveaux suivent le bloc (modifiables après génération), pas ceux figés à la
+   * génération ; un RdC non résidentiel (parking imposé ou usage différent) n'en porte pas.
+   * @param {number} sdpFactor facteur appliqué à la SDP par metrics() (RdC parking)
+   * @returns {{lgts:number, sdp:number, nCal:number}|null} null si aucun bloc n'est calibré
+   */
+  _capLgts(sdpFactor = 1) {
+    const cal = (this.S.blocs || []).filter(bl => (bl?._capMetrics?.perFloor ?? 0) > 0);
+    if (!cal.length) return null;
+    const parkRdc = this.S.prog?.parkMode === 'rdc';
+    let lgts = 0, sdp = 0;
+    for (const bl of cal) {
+      const cm = bl._capMetrics;
+      const n = Math.max(1, bl.niveaux ?? cm.niveaux ?? 1);
+      const rdcAutre = !!bl.rdcUsage && bl.rdcUsage !== bl.usage;
+      lgts += cm.perFloor * Math.max(0, n - (parkRdc || rdcAutre ? 1 : 0));
+      sdp += this._blocSDP(bl);
+    }
+    return { lgts, sdp: sdp * sdpFactor, nCal: cal.length };
   },
 
   /**
