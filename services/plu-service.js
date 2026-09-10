@@ -157,16 +157,16 @@ const PLUService = {
       if (!data.features?.length) return null;
 
       // WFS peut retourner plusieurs zones quand le point est en limite
-      // (ex: N + Uc + Ua). Prioriser U > AU > A > N pour éviter de classer
-      // constructible en naturel par hasard d'ordre.
+      // (ex: N + Uc + Ua). Trier par priorité U > AU > A > N AVANT toute
+      // dédup : dédupliquer par libelle avant le tri est faux dès que deux
+      // zones voisines partagent un libelle manquant/identique — on perdait
+      // alors la zone U au profit de la première trouvée dans l'ordre brut
+      // (arbitraire) du WFS.
       const ZONE_PRIORITY = { U: 0, AU: 1, A: 2, N: 3 };
-      const deduped = data.features
-        .filter((f, i, a) => a.findIndex(g =>
-          g.properties?.libelle === f.properties?.libelle) === i);
-      deduped.sort((a, b) =>
+      const sorted = [...data.features].sort((a, b) =>
         (ZONE_PRIORITY[a.properties?.typezone] ?? 9)
         - (ZONE_PRIORITY[b.properties?.typezone] ?? 9));
-      const p  = deduped[0].properties;
+      const p  = sorted[0].properties;
       const tz = p?.typezone;
       const res = {
         zone:          p?.libelle ?? '—',

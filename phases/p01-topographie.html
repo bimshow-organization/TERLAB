@@ -2241,101 +2241,129 @@ const P01 = {
       || 'S';
 
     try {
-      // 1. Compute axes
+      // 1. Compute axes (orientation OBB de la parcelle, priorité sur la pente)
       const axes = SectionViewer.computeSectionAxes(terrain.parcelle_geojson, orientation, center);
       if (!axes) {
         window.TerlabToast?.show('Impossible de calculer les axes de coupe', 'warning');
         return;
       }
-      this._sectionAxes = axes;
 
-      // 2. Draw lines on map
+      // 2. Draw lines on map (marqueurs A/B draggables — glisser pour ajuster)
       MapViewer.drawSectionLines(axes);
+      this._bindSectionAxisEdits();
 
-      // 3. Extract profiles (LiDAR or fallback)
-      const lidarPts = this._lidarPoints ?? LidarService?.getRawPoints?.() ?? null;
-      const [profileA, profileB] = await Promise.all([
-        SectionViewer.extractProfile(axes.A, lidarPts),
-        SectionViewer.extractProfile(axes.B, lidarPts),
-      ]);
-
-      // 4. Build annotations
-      const map = MapViewer.getMap();
-      const crossing = SectionViewer.findSectionCrossing(axes.A, axes.B);
-
-      const annoA = [
-        ...SectionViewer.findParcelBoundaryIntersections(axes.A.start, axes.A.end, terrain.parcelle_geojson),
-        ...SectionViewer.findRoadIntersections(axes.A.start, axes.A.end, map),
-      ];
-      const annoB = [
-        ...SectionViewer.findParcelBoundaryIntersections(axes.B.start, axes.B.end, terrain.parcelle_geojson),
-        ...SectionViewer.findRoadIntersections(axes.B.start, axes.B.end, map),
-      ];
-
-      // Add cross-section marks
-      if (crossing) {
-        annoA.push({ name: 'Coupe B', distance_m: crossing.distA_m, type: 'section_cross' });
-        annoB.push({ name: 'Coupe A', distance_m: crossing.distB_m, type: 'section_cross' });
-      }
-
-      // 5. Render profiles
-      const srcLabel = (s) => s === 'lidar_hd' ? 'LiDAR HD ±0.15m' : s === 'ign_api' ? 'IGN ~2m' : 'DEM ~10m';
-
-      // 5b. Extraire le scatter LiDAR brut pour le background des coupes
-      let scatterA = null, scatterB = null;
-      if (lidarPts?.length && LidarService?.getScatterFromPoints) {
-        const corridorW = 8;
-        const resA = LidarService.getScatterFromPoints(lidarPts, axes.A.start, axes.A.end, corridorW);
-        const resB = LidarService.getScatterFromPoints(lidarPts, axes.B.start, axes.B.end, corridorW);
-        if (resA.scatter.length) scatterA = resA.scatter;
-        if (resB.scatter.length) scatterB = resB.scatter;
-        console.log(`[P01] Scatter LiDAR — A: ${resA.scatter.length} pts, B: ${resB.scatter.length} pts`);
-      }
-
-      if (profileA.data.length) {
-        SectionViewer.render('A', 'section-viewer-A', profileA.data, annoA, { scatter: scatterA });
-        SectionViewer._viewers.A.source = profileA.source;
-        SectionViewer._viewers.A.corridorWidth = 8;
-        SectionViewer._renderSVG('A'); // re-render pour afficher le badge source + scatter
-        const lenA = Math.round(profileA.data[profileA.data.length - 1]?.distance_m || 0);
-        document.getElementById('section-info-A').textContent = `${lenA}m · ${srcLabel(profileA.source)}`;
-      }
-
-      if (profileB.data.length) {
-        SectionViewer.render('B', 'section-viewer-B', profileB.data, annoB, { scatter: scatterB });
-        SectionViewer._viewers.B.source = profileB.source;
-        SectionViewer._viewers.B.corridorWidth = 8;
-        SectionViewer._renderSVG('B');
-        const lenB = Math.round(profileB.data[profileB.data.length - 1]?.distance_m || 0);
-        document.getElementById('section-info-B').textContent = `${lenB}m · ${srcLabel(profileB.source)}`;
-      }
-
-      // 6. Show source badge
-      const badge = document.getElementById('section-source-badge');
-      if (badge) {
-        const src = profileA.source || profileB.source;
-        badge.textContent = srcLabel(src);
-        badge.style.display = 'inline';
-      }
-
-      // 7. Save to session
-      SessionManager.savePhase(1, {
-        section_a_generated: true,
-        section_b_generated: true,
-        section_source: profileA.source || profileB.source,
-        section_a_bearing: axes.A.bearing,
-        section_b_bearing: axes.B.bearing,
-        section_timestamp: new Date().toISOString(),
-      });
+      await this._renderSectionsFromAxes(axes, terrain);
 
       if (btn) btn.textContent = '↻ Régénérer Coupes A/B';
-      window.TerlabToast?.show('Coupes A/B générées — cliquez pour le split-screen', 'success', 4000);
+      window.TerlabToast?.show('Coupes A/B générées — glissez les points sur la carte pour ajuster, ou cliquez pour le split-screen', 'success', 5000);
 
     } catch (err) {
       console.error('[P01] Section generation error:', err);
       window.TerlabToast?.show(`Erreur coupes : ${err.message}`, 'error');
       if (btn) btn.textContent = '⚠ Erreur — réessayer';
     }
+  },
+
+  // Réagit au drag des marqueurs A/B (map-viewer.js) : ré-extrait le profil
+  // depuis les axes édités sans recalculer l'OBB/orientation.
+  _sectionEditsBound: false,
+  _bindSectionAxisEdits() {
+    if (this._sectionEditsBound) return;
+    this._sectionEditsBound = true;
+    window.addEventListener('terlab:section-axis-edited', async (e) => {
+      const axes = e.detail?.axes;
+      if (!axes) return;
+      const terrain = SessionManager.getTerrain();
+      if (!terrain?.parcelle_geojson) return;
+      try {
+        await this._renderSectionsFromAxes(axes, terrain);
+        window.TerlabToast?.show(`Coupe ${e.detail.section} ajustée — profil recalculé`, 'info', 2500);
+      } catch (err) {
+        console.error('[P01] Section axis edit error:', err);
+      }
+    });
+  },
+
+  // Extraction profil + annotations + rendu SVG + sauvegarde session,
+  // à partir d'axes déjà calculés (génération initiale OU édition par drag).
+  async _renderSectionsFromAxes(axes, terrain) {
+    this._sectionAxes = axes;
+
+    // 3. Extract profiles (LiDAR or fallback)
+    const lidarPts = this._lidarPoints ?? LidarService?.getRawPoints?.() ?? null;
+    const [profileA, profileB] = await Promise.all([
+      SectionViewer.extractProfile(axes.A, lidarPts),
+      SectionViewer.extractProfile(axes.B, lidarPts),
+    ]);
+
+    // 4. Build annotations
+    const map = MapViewer.getMap();
+    const crossing = SectionViewer.findSectionCrossing(axes.A, axes.B);
+
+    const annoA = [
+      ...SectionViewer.findParcelBoundaryIntersections(axes.A.start, axes.A.end, terrain.parcelle_geojson),
+      ...SectionViewer.findRoadIntersections(axes.A.start, axes.A.end, map),
+    ];
+    const annoB = [
+      ...SectionViewer.findParcelBoundaryIntersections(axes.B.start, axes.B.end, terrain.parcelle_geojson),
+      ...SectionViewer.findRoadIntersections(axes.B.start, axes.B.end, map),
+    ];
+
+    // Add cross-section marks
+    if (crossing) {
+      annoA.push({ name: 'Coupe B', distance_m: crossing.distA_m, type: 'section_cross' });
+      annoB.push({ name: 'Coupe A', distance_m: crossing.distB_m, type: 'section_cross' });
+    }
+
+    // 5. Render profiles
+    const srcLabel = (s) => s === 'lidar_hd' ? 'LiDAR HD ±0.15m' : s === 'ign_api' ? 'IGN ~2m' : 'DEM ~10m';
+
+    // 5b. Extraire le scatter LiDAR brut pour le background des coupes
+    let scatterA = null, scatterB = null;
+    if (lidarPts?.length && LidarService?.getScatterFromPoints) {
+      const corridorW = 8;
+      const resA = LidarService.getScatterFromPoints(lidarPts, axes.A.start, axes.A.end, corridorW);
+      const resB = LidarService.getScatterFromPoints(lidarPts, axes.B.start, axes.B.end, corridorW);
+      if (resA.scatter.length) scatterA = resA.scatter;
+      if (resB.scatter.length) scatterB = resB.scatter;
+      console.log(`[P01] Scatter LiDAR — A: ${resA.scatter.length} pts, B: ${resB.scatter.length} pts`);
+    }
+
+    if (profileA.data.length) {
+      SectionViewer.render('A', 'section-viewer-A', profileA.data, annoA, { scatter: scatterA });
+      SectionViewer._viewers.A.source = profileA.source;
+      SectionViewer._viewers.A.corridorWidth = 8;
+      SectionViewer._renderSVG('A'); // re-render pour afficher le badge source + scatter
+      const lenA = Math.round(profileA.data[profileA.data.length - 1]?.distance_m || 0);
+      document.getElementById('section-info-A').textContent = `${lenA}m · ${srcLabel(profileA.source)}`;
+    }
+
+    if (profileB.data.length) {
+      SectionViewer.render('B', 'section-viewer-B', profileB.data, annoB, { scatter: scatterB });
+      SectionViewer._viewers.B.source = profileB.source;
+      SectionViewer._viewers.B.corridorWidth = 8;
+      SectionViewer._renderSVG('B');
+      const lenB = Math.round(profileB.data[profileB.data.length - 1]?.distance_m || 0);
+      document.getElementById('section-info-B').textContent = `${lenB}m · ${srcLabel(profileB.source)}`;
+    }
+
+    // 6. Show source badge
+    const badge = document.getElementById('section-source-badge');
+    if (badge) {
+      const src = profileA.source || profileB.source;
+      badge.textContent = srcLabel(src);
+      badge.style.display = 'inline';
+    }
+
+    // 7. Save to session
+    SessionManager.savePhase(1, {
+      section_a_generated: true,
+      section_b_generated: true,
+      section_source: profileA.source || profileB.source,
+      section_a_bearing: axes.A.bearing,
+      section_b_bearing: axes.B.bearing,
+      section_timestamp: new Date().toISOString(),
+    });
   },
 
   selectSection(id) {
@@ -2939,11 +2967,19 @@ if (terrain?.lat && terrain?.lng) {
 }
 
 // ─── LiDAR : vérifier disponibilité serveur au chargement ──────
+// Auto-déclenché dès que le terrain est choisi et confirmé (P00) — ne pas
+// attendre le clic manuel sur btn-lidar, même logique que l'auto-analyse
+// altimétrie ci-dessus.
 LidarService.isAvailable().then(available => {
   if (available) {
     document.getElementById('btn-lidar').style.display = 'flex';
     document.getElementById('topo-source-badge').dataset.source = 'dem';
     console.log('[P01] Serveur LiDAR HD disponible');
+
+    if (terrain?.parcelle_geojson) {
+      console.log('[P01] Auto-analyse LiDAR…');
+      P01.analyzeLidar();
+    }
   }
 });
 

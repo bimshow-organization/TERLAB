@@ -37,6 +37,49 @@ const SectionProfileViewer = {
   _splitActive: false,
   _activeSection: null,
 
+  // ── OBB (PCA) bearing de l'axe long de la parcelle ─────────────
+  // Projection équirectangulaire locale (mètres) autour du centroïde du
+  // ring, PCA 2×2 pour l'axe principal. Retourne un bearing d'AXE (non
+  // directionnel, [0,180)) — suffisant ici car computeSectionAxes construit
+  // toujours le segment symétriquement (bearing et bearing+180 donnent la
+  // même droite). null si géométrie dégénérée (<3 sommets).
+  _obbBearing(ring) {
+    const n = ring?.length ?? 0;
+    if (n < 3) return null;
+
+    const lat0 = ring.reduce((s, c) => s + c[1], 0) / n;
+    const mLat = 111320;
+    const mLon = 111320 * Math.cos(lat0 * Math.PI / 180);
+    const pts = ring.map(([lng, lat]) => [lng * mLon, lat * mLat]);
+
+    const cx = pts.reduce((s, p) => s + p[0], 0) / n;
+    const cy = pts.reduce((s, p) => s + p[1], 0) / n;
+    let cxx = 0, cxy = 0, cyy = 0;
+    for (const [x, y] of pts) {
+      const dx = x - cx, dy = y - cy;
+      cxx += dx * dx; cxy += dx * dy; cyy += dy * dy;
+    }
+    cxx /= n; cxy /= n; cyy /= n;
+
+    const trace = cxx + cyy;
+    const det   = cxx * cyy - cxy * cxy;
+    const disc  = Math.sqrt(Math.max(0, trace * trace / 4 - det));
+    const lambdaMax = trace / 2 + disc;
+
+    let ux, uy;
+    if (Math.abs(cxy) > 1e-10) {
+      ux = cxy; uy = lambdaMax - cxx;
+    } else {
+      ux = cxx >= cyy ? 1 : 0;
+      uy = cxx >= cyy ? 0 : 1;
+    }
+    const ulen = Math.hypot(ux, uy) || 1;
+    ux /= ulen; uy /= ulen;
+
+    // (ux,uy) en repère local (est, nord) -> bearing compas (0°=nord, horaire)
+    return (90 - Math.atan2(uy, ux) * 180 / Math.PI + 360) % 180;
+  },
+
   // ── Compute section axes from parcelle + orientation ───────────
   computeSectionAxes(parcelleGeojson, orientation, center) {
     if (!parcelleGeojson || !center) return null;
@@ -49,14 +92,23 @@ const SectionProfileViewer = {
     const diagKm = turf.distance([w, s], [e, n], { units: 'kilometers' });
     const halfLen = (diagKm * 0.65); // slightly larger than half-diagonal
 
-    // Orientation to bearing (degrees from north, clockwise)
+    // Orientation to bearing (degrees from north, clockwise) — fallback
+    // seulement si l'OBB ne peut pas être calculée (géométrie dégénérée).
     const orientMap = {
       'N': 0, 'NE': 45, 'E': 90, 'SE': 135,
       'S': 180, 'SO': 225, 'O': 270, 'NO': 315,
       'Nord': 0, 'Nord-Est': 45, 'Est': 90, 'Sud-Est': 135,
       'Sud': 180, 'Sud-Ouest': 225, 'Ouest': 270, 'Nord-Ouest': 315,
     };
-    const bearing = orientMap[orientation] ?? 0;
+
+    // Axe long de la parcelle (OBB/PCA) toujours prioritaire : la coupe A
+    // reste significative même si le terrain est en biais par rapport à
+    // l'exposition de pente saisie/détectée.
+    const ring = parcelleGeojson.type === 'Polygon'      ? parcelleGeojson.coordinates[0]
+               : parcelleGeojson.type === 'MultiPolygon' ? parcelleGeojson.coordinates[0][0]
+               : null;
+    const obbBearing = ring ? this._obbBearing(ring) : null;
+    const bearing = obbBearing ?? (orientMap[orientation] ?? 0);
 
     // Coupe A: along slope direction (bearing = downhill direction)
     const centerPt = turf.point(center);

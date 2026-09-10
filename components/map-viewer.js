@@ -1592,23 +1592,72 @@ const MapViewer = {
     }
 
     // Remove previous endpoint markers
-    this._sectionMarkers.forEach(mk => mk.remove());
+    this._sectionMarkers.forEach(mk => mk.marker.remove());
     this._sectionMarkers = [];
 
-    // Add circle markers at endpoints
+    // Conserver les axes courants (modifiés par drag) — source de vérité
+    // pour la ré-extraction de profil au lâcher.
+    this._sectionAxesLive = axes;
+
+    // Add draggable circle markers at endpoints — plus visibles (18px,
+    // halo blanc épais) pour signaler qu'on peut les déplacer.
     for (const id of ['A', 'B']) {
       const axis = axes[id];
       if (!axis) continue;
       const color = id === 'A' ? '#E8811A' : '#4A90D9';
-      for (const coords of [axis.start, axis.end]) {
+      for (const end of ['start', 'end']) {
         const el = document.createElement('div');
         el.className = 'section-endpoint-marker';
-        el.style.cssText = `width:12px;height:12px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 0 6px ${color}80;cursor:default;`;
-        el.title = `Coupe ${id}`;
-        const mk = new mapboxgl.Marker({ element: el }).setLngLat(coords).addTo(m);
-        this._sectionMarkers.push(mk);
+        el.style.cssText = `width:18px;height:18px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 0 0 2px ${color}80,0 2px 8px rgba(0,0,0,.4);cursor:grab;`;
+        el.title = `Coupe ${id} — glisser pour ajuster`;
+        const mk = new mapboxgl.Marker({ element: el, draggable: true })
+          .setLngLat(axis[end])
+          .addTo(m);
+
+        mk.on('dragstart', () => { el.style.cursor = 'grabbing'; });
+        mk.on('drag', () => {
+          const { lng, lat } = mk.getLngLat();
+          this._sectionAxesLive[id][end] = [lng, lat];
+          this._redrawSectionLineData(this._sectionAxesLive);
+        });
+        mk.on('dragend', () => {
+          el.style.cursor = 'grab';
+          const { lng, lat } = mk.getLngLat();
+          this._sectionAxesLive[id][end] = [lng, lat];
+          this._redrawSectionLineData(this._sectionAxesLive);
+          window.dispatchEvent(new CustomEvent('terlab:section-axis-edited', {
+            detail: { axes: this._sectionAxesLive, section: id, end },
+          }));
+        });
+
+        this._sectionMarkers.push({ marker: mk, section: id, end });
       }
     }
+  },
+
+  // Redessiner uniquement les lignes/labels (pas les marqueurs) pendant un drag
+  _redrawSectionLineData(axes) {
+    if (!this._map) return;
+    const features = [];
+    const labelFeatures = [];
+    for (const id of ['A', 'B']) {
+      const axis = axes[id];
+      if (!axis) continue;
+      features.push({
+        type: 'Feature',
+        properties: { section: id },
+        geometry: { type: 'LineString', coordinates: [axis.start, axis.end] },
+      });
+      for (const [, coords] of [['start', axis.start], ['end', axis.end]]) {
+        labelFeatures.push({
+          type: 'Feature',
+          properties: { label: id, section: id },
+          geometry: { type: 'Point', coordinates: coords },
+        });
+      }
+    }
+    this._map.getSource('section-lines')?.setData({ type: 'FeatureCollection', features });
+    this._map.getSource('section-labels')?.setData({ type: 'FeatureCollection', features: labelFeatures });
   },
 
   highlightSectionLine(sectionId) {
@@ -1634,8 +1683,9 @@ const MapViewer = {
 
   clearSectionLines() {
     if (!this._map) return;
-    this._sectionMarkers.forEach(mk => mk.remove());
+    this._sectionMarkers.forEach(mk => mk.marker.remove());
     this._sectionMarkers = [];
+    this._sectionAxesLive = null;
     const emptyFC = { type: 'FeatureCollection', features: [] };
     if (this._map.getSource('section-lines')) this._map.getSource('section-lines').setData(emptyFC);
     if (this._map.getSource('section-labels')) this._map.getSource('section-labels').setData(emptyFC);
