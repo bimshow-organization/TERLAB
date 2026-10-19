@@ -1,209 +1,567 @@
 {
   "meta": {
-    "version": "2026-04",
+    "version": "2026-09",
     "region": "La Réunion",
-    "generated": "2026-04-07",
+    "generated": "2026-09-24",
     "commune": "Saint-André",
     "insee": "97409",
     "intercommunalite": "CIREST",
-    "plu_type": "PLU",
-    "plu_date_approbation": "2019-02-28",
-    "source": "Règlement PLU Saint-André — 97410_saint-andre_reglement.pdf (fourni directement)"
+    "plu_type": "PLU (révision générale)",
+    "plu_date_approbation": "2025-07-02",
+    "source": "Reglement PLU Saint-Andre revise - DCM250702_002 du 02/07/2025 - docs/3. Reglements/Reglement ecrit/3.2_REGLEMENT_ECRIT-tampon.pdf",
+    "note_ancienne_version": "Remplace le PLU approuve le 2019-02-28, conserve pour tracabilite dans data/plu-rules-saint-andre-2019.json"
   },
   "zones": {
     "UA": {
-      "label": "Centre aggloméré",
+      "label": "Centre-ville",
       "type": "U",
-      "sous_type": "centre_urbain",
+      "sous_type": "centre_ville",
       "reculs": {
-        "voie_principale_m": null,
-        "voie_note": "Alignement ou variable. RN : 7m axe.",
+        "voie_principale_m": 4,
+        "voie_note": "A l'alignement ou en recul; facade principale au-dela de 4m de marge interdite. Reculs specifiques rue Victor Hugo (11,5m axe), rue de la Gare (11m axe), rue de la Republique (12m axe).",
         "voie_rn_axe_m": 7,
         "sep_lat_m": 3,
-        "sep_fond_m": 3
+        "sep_lat_note": "Construction sur au moins une limite laterale si aucun mitoyen existant, sinon report sur la limite mitoyenne; en cas de retrait, 3m minimum.",
+        "sep_fond_m": 3,
+        "sep_fond_note": "Implantation en fond de propriete interdite (hors exceptions PPRi/parcelles d'angle); en retrait, 3m minimum.",
+        "inter_batiments_m": 12,
+        "inter_batiments_note": "12m entre batiments pour logements collectifs; 3m pour maisons individuelles (8m si vis-a-vis de pieces principales)."
       },
       "hauteurs": {
         "he_max_m": 14,
         "hf_max_m": 17,
+        "bonus_seuil_m2": 5000,
+        "bonus_pct_max": 40,
         "bonus_40pct_he_m": 17,
         "bonus_40pct_hf_m": 20,
-        "bonus_note": "Projets > 2000m² SDP : 40% max peut atteindre 17m hé / 20m hf (sauf UA1)"
+        "bonus_note": "Terrain d'assiette >= 5000 m2 SDP (seuil releve de 2000 a 5000 m2 par rapport au PLU 2019) : 40% max des constructions peuvent atteindre 17m he / 20m hf. Ne s'applique pas au secteur Ua1."
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "note": "Sans objet (regi par reculs + hauteur + espaces libres)"
+      },
+      "permeabilite": {
+        "permeable_min_pct": 20,
+        "espaces_libres_min_pct": 40,
+        "pleine_terre_min_pct": 20,
+        "surfaces_permeables_max_pct": 10,
+        "surfaces_impermeables_max_pct": 10,
+        "derogation_lt300m2": {
+          "espaces_libres_min_pct": 30,
+          "pleine_terre_min_pct": 20,
+          "surfaces_permeables_max_pct": 10,
+          "surfaces_impermeables_max_pct": 0
+        },
+        "permeable_note": "40% min de la parcelle non batie en espace libre (20% pleine terre + jusqu'a 10% permeable + jusqu'a 10% impermeable). Parcelles <300m2 : 30% (20% pleine terre + 10% permeable, 0% impermeable). Secteur Uac : 30% (20% pleine terre + 10% libres perm./imperm.)."
+      },
+      "stationnement": {
+        "logement_standard": "1 place/logement (<50m2 SP) ; 1,5 place/logement (>=50m2 SP)",
+        "logement_aide": "0,8 place/logement dans un rayon de 400m de la gare routiere ; 1 place/logement au-dela",
+        "visiteur_par_5lots": "1 place visiteur hors voirie par parcelle de lotissement nouveau",
+        "commerce_bureau": "1 pour 50m2 SP (50% de la SP affectee au stationnement)",
+        "artisanat_pct_sp": 30,
+        "hotel_par_2chambres": 1,
+        "hebergement_note": "Hebergement (foyers/residences, sous-destination distincte du logement) non chiffre nommement : assimile a l'hebergement hotelier (1 place/2 chambres) par la clause d'assimilation generale de l'article stationnement.",
+        "erp_par_10personnes": 2,
+        "deux_roues_m2_par_logement": 1.5,
+        "deux_roues_seuil_logements": 2,
+        "deux_roues_bureau_m2_par_80m2sp": 1.5
+      },
+      "_meta": {
+        "confidence": 0.95,
+        "ambiguites": [
+          "Secteurs Ua1 (quartier ancien avenue Bourbon) et Uac (grande place) encodes en zones separees ci-dessous via ref:UA ; verifier le zonage graphique pour l'emprise exacte des secteurs.",
+          "OAP secteur centre-ville (CPAUPE) impose des prescriptions supplementaires non chiffrees ici."
+        ]
+      }
+    },
+    "UA1": {
+      "label": "Centre historique (secteur Ua1, avenue Bourbon)",
+      "type": "U",
+      "ref": "UA",
+      "hauteurs": {
+        "he_max_m": 11,
+        "hf_max_m": 14,
+        "bonus_40pct_he_m": null,
+        "bonus_40pct_hf_m": null,
+        "bonus_note": "Bonus hauteur >=5000m2 ne s'applique pas en secteur Ua1."
+      },
+      "_meta": {
+        "confidence": 0.9,
+        "ambiguites": [
+          "Hauteur par niveau minimum 2,7m (vs 3m ailleurs) - non repercute dans les cles numeriques du schema."
+        ]
+      }
+    },
+    "UAC": {
+      "label": "Grande place (secteur Uac)",
+      "type": "U",
+      "ref": "UA",
+      "permeabilite": {
+        "espaces_libres_min_pct": 30,
+        "pleine_terre_min_pct": 20,
+        "permeable_note": "30% min espaces libres quelle que soit la superficie (20% pleine terre + 10% libres perm. ou imperm. selon gestion EP a la parcelle)."
+      },
+      "_meta": {
+        "confidence": 0.85,
+        "ambiguites": [
+          "Secteur d'amenagement specifique (grande place) - regles d'implantation/hauteur non differenciees explicitement hors permeabilite et hauteur de niveau (2,7m)."
+        ]
+      }
+    },
+    "UB": {
+      "label": "Espaces urbains agglomeres du centre et quartier Fayard",
+      "type": "U",
+      "sous_type": "residentielle_mixte",
+      "reculs": {
+        "voie_principale_m": 6,
+        "voie_note": "A l'alignement ou marge de recul max 6m.",
+        "voie_rn_axe_m": 7,
+        "sep_lat_m": 3,
+        "sep_lat_note": "Implantation sur 1 ou 2 limites laterales possible, ou retrait >=3m.",
+        "sep_fond_m": 3,
+        "sep_fond_note": "Fond de parcelle constructible si implantation sur une seule limite laterale (hauteur <=4m sur bande de 3m de profondeur), sinon retrait 3m minimum.",
+        "inter_batiments_m": 12,
+        "inter_batiments_note": "12m entre batiments pour logements collectifs; 3m (8m si vis-a-vis) pour individuel."
+      },
+      "hauteurs": {
+        "he_max_m": 12,
+        "hf_max_m": 14,
+        "bonus_seuil_m2": null,
+        "hauteur_note": "Secteur Ub1 : 9m he / 12m hf, avec bonus >=5000 m2 (40% max) -> 12m he / 14m hf."
       },
       "emprise": {
         "emprise_sol_max_pct": null,
         "note": "Sans objet"
       },
       "permeabilite": {
-        "permeable_min_pct": 20
+        "permeable_min_pct": 15,
+        "espaces_libres_min_pct": 30,
+        "permeable_note": "30% min de la parcelle en espace libre, dont au moins la moitie permeable (soit 15% min). Pour >4 logements sur une meme unite fonciere (>3 en Ub1) : 30% permeable hors stationnement."
+      },
+      "stationnement": {
+        "logement_standard": "1 place/logement (<50m2 SP, ou situe a <500m d'une gare routiere) ; 1,5 place/logement (>=50m2 SP)",
+        "logement_aide": "1 place/logement locatif finance par pret aide de l'Etat",
+        "visiteur_par_5lots": "1 place visiteur hors voirie par parcelle de lotissement nouveau",
+        "commerce_bureau": "50% de la SP affectee au stationnement",
+        "artisanat_pct_sp": 30,
+        "hotel_par_2chambres": 1,
+        "hebergement_note": "Non chiffre nommement pour l'hebergement (foyers/residences) - assimile a l'hebergement hotelier (1/2 chambres).",
+        "erp_par_10personnes": 2,
+        "deux_roues_m2_par_logement": 1,
+        "deux_roues_seuil_logements": 2,
+        "deux_roues_bureau_m2_par_100m2sp": 1
       },
       "_meta": {
-        "confidence": 1.0,
-        "ambiguites": []
+        "confidence": 0.95,
+        "ambiguites": [
+          "Zonage littoral (50 pas geometriques, alea recul du trait de cote/submersion) introduit des restrictions supplementaires non modelisees ici (hors perimetre P04 standard)."
+        ]
       }
     },
-    "UA1": {
-      "label": "Centre historique",
+    "UB1": {
+      "label": "Quartiers residentiels et pavillonnaires de la plaine (secteur Ub1)",
       "type": "U",
-      "ref": "UA",
-      "hauteurs": {
-        "he_max_m": 11,
-        "hf_max_m": 14
-      },
-      "_meta": {
-        "confidence": 1.0,
-        "ambiguites": []
-      }
-    },
-    "UB": {
-      "label": "Zone résidentielle dense",
-      "type": "U",
-      "sous_type": "résidentielle_dense",
-      "reculs": {
-        "voie_rn_axe_m": 7,
-        "sep_lat_m": 3,
-        "sep_fond_m": 3
-      },
-      "hauteurs": {
-        "he_max_m": 12,
-        "hf_max_m": 14,
-        "bonus_40pct_he_m": 14,
-        "bonus_40pct_hf_m": 17
-      },
-      "emprise": {
-        "emprise_sol_max_pct": null
-      },
-      "permeabilite": {
-        "permeable_min_pct": 30
-      },
-      "_meta": {
-        "confidence": 1.0,
-        "ambiguites": []
-      }
-    },
-    "UC": {
-      "label": "Zone résidentielle intermédiaire",
-      "type": "U",
-      "sous_type": "résidentielle_intermédiaire",
-      "reculs": {
-        "voie_principale_m": 4,
-        "voie_rn_axe_m": 7,
-        "sep_lat_m": 3,
-        "sep_fond_m": 3
-      },
+      "ref": "UB",
       "hauteurs": {
         "he_max_m": 9,
         "hf_max_m": 12,
+        "bonus_seuil_m2": 5000,
+        "bonus_pct_max": 40,
         "bonus_40pct_he_m": 12,
-        "bonus_40pct_hf_m": 15
+        "bonus_40pct_hf_m": 14
       },
-      "emprise": {
-        "emprise_sol_max_pct": null
+      "reculs": {
+        "sep_fond_m": 3,
+        "sep_fond_note": "Implantation en fond de parcelle interdite en Ub1 ; recul minimum 3m."
       },
       "permeabilite": {
-        "permeable_min_pct": 40
+        "permeable_note": "Pour >3 logements sur une meme unite fonciere : 30% permeable hors stationnement (seuil abaisse par rapport a UB generique qui est >4 logements)."
       },
       "_meta": {
-        "confidence": 1.0,
+        "confidence": 0.9,
         "ambiguites": []
       }
     },
     "UD": {
-      "label": "Zone résidentielle diffuse",
+      "label": "Bourgs des hauts a dominante d'habitat individuel et rural",
       "type": "U",
-      "sous_type": "résidentielle_diffuse",
+      "sous_type": "residentielle_diffuse_hauts",
       "reculs": {
         "voie_principale_m": 6,
         "sep_lat_m": 3,
-        "sep_fond_m": 3
+        "sep_fond_m": 3,
+        "inter_batiments_m": 12
       },
       "hauteurs": {
         "he_max_m": 6,
         "hf_max_m": 10
       },
       "emprise": {
-        "emprise_sol_max_pct": null
+        "emprise_sol_max_pct": null,
+        "note": "Sans objet"
       },
       "permeabilite": {
-        "permeable_min_pct": 50
+        "permeable_min_pct": 25,
+        "espaces_libres_min_pct": 50,
+        "permeable_note": "50% min de la parcelle en espace libre, dont au moins la moitie permeable (25% min)."
+      },
+      "stationnement": {
+        "logement_standard": "1 place/logement (<50m2 SP, ou <500m d'une gare routiere) ; 1,5 place/logement (>=50m2 SP)",
+        "logement_aide": "1 place/logement locatif aide",
+        "visiteur_par_5lots": "1 place visiteur hors voirie par parcelle de lotissement",
+        "commerce_bureau": "50% de la SP affectee au stationnement",
+        "artisanat_pct_sp": 30,
+        "hotel_par_2chambres": 1,
+        "hebergement_note": "Non chiffre nommement - assimile a l'hebergement hotelier.",
+        "deux_roues_m2_par_logement": 1,
+        "deux_roues_seuil_logements": 2
       },
       "_meta": {
-        "confidence": 1.0,
-        "ambiguites": []
+        "confidence": 0.9,
+        "ambiguites": [
+          "Aire de jeux (>=100m2) exigee a partir de 3000 m2 SP de logements (seuil different d'UA/UB qui est a 2000 m2)."
+        ]
       }
     },
     "UE": {
-      "label": "Zone activités économiques",
+      "label": "Equipements publics (stades, gymnases, station d'epuration, services techniques)",
       "type": "U",
-      "sous_type": "activites",
+      "sous_type": "equipements_publics",
       "reculs": {
-        "voie_principale_m": 6,
+        "voie_principale_m": 3,
         "sep_lat_m": 4,
-        "sep_fond_m": 4
+        "sep_fond_m": 4,
+        "note": "Lateral : retrait ou sur UNE limite ; retrait obligatoire (4 m) si la limite jouxte une zone U/AU a vocation d'habitat. Fond : 4 m. Articles 2.1.2 et 2.1.3 inapplicables aux equipements d'interet collectif et services publics."
       },
       "hauteurs": {
         "h_max_m": 16
       },
       "emprise": {
-        "emprise_sol_max_pct": null
+        "emprise_sol_max_pct": null,
+        "note": "Sans objet"
       },
       "permeabilite": {
-        "permeable_min_pct": 20
+        "permeable_min_pct": null,
+        "permeable_note": "Aucun pourcentage d'espace libre/permeable chiffre pour cette zone d'equipements publics dans le reglement ecrit."
+      },
+      "usages": {
+        "note": "Zone dediee aux equipements d'interet collectif et services publics ; la plupart des articles (recul, stationnement) sont d'ailleurs inapplicables aux constructions necessaires aux equipements collectifs/services publics."
       },
       "_meta": {
-        "confidence": 1.0,
-        "ambiguites": []
-      }
+        "confidence": 0.9,
+        "ambiguites": [
+          "Correspond a l'ancienne zone UE 'activites economiques' du PLU 2019 par le nom, mais la vocation 2025 est totalement differente (equipements publics). Ne pas reutiliser les anciennes valeurs UE 2019 (6m/4m reculs, activites) pour ce zonage.",
+          "Pas de regle de stationnement vehicules chiffree specifique (zone d'equipements, exoneree par l'article lui-meme).",
+          "Hebergement (dont foyers de travailleurs, residences sociales avec services - R151-28) INTERDIT en Ue : un FJT ou une residence sociale ne peut y etre autorise sans evolution du PLU (modification / declaration de projet) ou requalification en equipement d'interet collectif a faire valider par le service instructeur."
+        ]
+      },
+      "destinations": {
+        "logement": "conditionnel : gardiennage/surveillance uniquement, 70 m2 SDP max, integre au batiment d'activite",
+        "hebergement": "interdit",
+        "hotels_hebergement_touristique": "interdit",
+        "equipements_interet_collectif": "autorise (bureaux publics, locaux techniques, enseignement/sante/action sociale, sport, autres ERP) ; lieux de culte interdits",
+        "commerce": "restauration et services avec accueil de clientele autorises ; artisanat/commerce de detail, gros, cinema interdits",
+        "autres_activites": "industrie, entrepot, bureau, centre de congres, cuisine vente en ligne interdits",
+        "source": "Reglement ecrit 2025, zone Ue, art. 1.1, p. 55-56"
+      },
+      "couleurs": "Toles non peintes interdites (couvertures et bardages) ; blanc proscrit en toiture ; couleurs vives et blanc prohibes sur les parois exterieures sauf details ou integration dans un cadre plante (blanc alors complementaire). Art. 2.2.3 p. 59.",
+      "abords": "Sol protege du soleil direct sur une bande de 3 m sur 50 % du lineaire de facade (vegetalisation ou ecran vegetal). Art. 2.2.4 p. 60. 1 arbre de haute tige pour 4 places de stationnement aeriennes."
     },
-    "US": {
-      "label": "Zone équipements sportifs et loisirs",
+    "UC": {
+      "label": "Zone d'activites commerciales (Cocoteraie - Andropolis)",
       "type": "U",
-      "sous_type": "sport_loisirs",
+      "sous_type": "activites_commerciales",
       "reculs": {
         "voie_principale_m": 3,
+        "voie_rd_axe_m": 7,
+        "voie_rn2_axe_m": 25,
+        "voie_note": "Recul general 3m ; le long des RD, 7m depuis l'axe ; le long de la RN2, 25m depuis l'axe.",
         "sep_lat_m": 3,
-        "sep_fond_m": 4
+        "sep_fond_m": 3
       },
       "hauteurs": {
         "h_max_m": 16
       },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "note": "Sans objet"
+      },
       "permeabilite": {
-        "permeable_min_pct": 30
+        "permeable_min_pct": 15,
+        "espaces_libres_min_pct": 30,
+        "permeable_note": "30% min en espace libre, dont au moins la moitie permeable (15% min)."
+      },
+      "stationnement": {
+        "commerce_bureau": "1 emplacement par tranche de 100 m2 de surface de plancher (2 roues) ; vehicules assimiles a l'etablissement le plus proche",
+        "note": "Zone d'activites commerciales : pas de bareme logement (destination residentielle non dominante)."
       },
       "_meta": {
-        "confidence": 1.0,
-        "ambiguites": []
+        "confidence": 0.75,
+        "ambiguites": [
+          "ATTENTION CHANGEMENT DE SEMANTIQUE : l'ancienne zone UC du PLU 2019 etait 'residentielle intermediaire' (9m/12m, permeable 40%). La zone UC 2025 est une zone commerciale (Cocoteraie-Andropolis) sans rapport avec la residentielle intermediaire. Les sessions/etudes anciennes utilisant UC=residentiel doivent etre requalifiees.",
+          "Bareme stationnement vehicules (hors 2-roues) non retrouve explicitement pour cette zone dans le texte extrait - a verifier page suivante du reglement."
+        ]
+      }
+    },
+    "UY": {
+      "label": "Zones d'activites artisanales, industrielles et tertiaires",
+      "type": "U",
+      "sous_type": "activites_artisanales_industrielles",
+      "reculs": {
+        "voie_principale_m": 6,
+        "sep_lat_m": 3,
+        "sep_fond_m": 3
+      },
+      "hauteurs": {
+        "h_max_m": 16
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "note": "Sans objet"
+      },
+      "permeabilite": {
+        "permeable_min_pct": 25,
+        "espaces_libres_min_pct": 50,
+        "permeable_note": "50% min en espace libre dont au moins la moitie permeable (25%)."
+      },
+      "stationnement": {
+        "commerce_bureau": "50% de la SP affectee au stationnement",
+        "artisanat_pct_sp": 20,
+        "emploi_ratio": "1 place pour 2 emplois (activites)",
+        "erp_par_10personnes": 2,
+        "deux_roues_m2_par_logement": 1,
+        "deux_roues_bureau_m2_par_100m2sp": 1
+      },
+      "_meta": {
+        "confidence": 0.8,
+        "ambiguites": [
+          "Correspond fonctionnellement a l'ancienne zone UE (activites economiques) du PLU 2019 (6m/4m/4m, h=16m) - la vocation est proche mais les reculs laterale/fond sont revus a 3m (vs 4m en 2019)."
+        ]
       }
     },
     "UT": {
-      "label": "Zone touristique",
+      "label": "Sites d'accueil d'activites touristiques, de loisirs et sportifs",
       "type": "U",
-      "sous_type": "touristique",
+      "sous_type": "touristique_loisirs",
       "reculs": {
         "voie_principale_m": 6,
-        "sep_lat_m": 4,
-        "sep_fond_m": 4
+        "sep_lat_m": 3,
+        "sep_fond_m": 3
+      },
+      "hauteurs": {
+        "h_max_m": 16
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "note": "Sans objet"
+      },
+      "permeabilite": {
+        "permeable_min_pct": 25,
+        "espaces_libres_min_pct": 50,
+        "permeable_note": "50% min en espace libre dont au moins la moitie permeable (25%)."
+      },
+      "_meta": {
+        "confidence": 0.75,
+        "ambiguites": [
+          "ATTENTION CHANGEMENT : l'ancienne zone UT 2019 (touristique, 9m/12m, permeable 50%) est remplacee par une zone UT 2025 de vocation loisirs/sport/tourisme avec hauteur unique 16m (h_max_m) au lieu de he/hf 9/12. Secteurs nommes : Colosse, Maison Valliame, embouchure Riviere du Mat.",
+          "Secteur UTc (recul du trait de cote) non chiffre separement ici - reference UT avec restrictions littorales additionnelles non modelisees (voir zone UB pour la logique alea recul trait de cote/submersion)."
+        ]
+      }
+    },
+    "UTC": {
+      "label": "Secteur littoral concerne par le recul du trait de cote (UTc)",
+      "type": "U",
+      "ref": "UT",
+      "_meta": {
+        "confidence": 0.5,
+        "ambiguites": [
+          "Regles specifiques de recul du trait de cote non chiffrees dans les articles extraits (renvoi aux etudes techniques alea recul du trait de cote/submersion portees a connaissance par le Prefet) - a completer avec le PPRN littoral."
+        ]
+      }
+    },
+    "1AUB": {
+      "label": "Zone d'extension du Desert (logements + equipements publics)",
+      "type": "AU",
+      "sous_type": "extension_habitat",
+      "reculs": {
+        "voie_principale_m": 6,
+        "voie_rn_axe_m": 7,
+        "sep_lat_m": 3,
+        "sep_fond_m": 3
+      },
+      "hauteurs": {
+        "he_max_m": 12,
+        "hf_max_m": 14
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "note": "Sans objet"
+      },
+      "permeabilite": {
+        "permeable_min_pct": 15,
+        "espaces_libres_min_pct": 30,
+        "permeable_note": "30% min espace libre dont au moins la moitie permeable (15%). Pour >4 logements sur meme unite fonciere : 30% permeable hors stationnement."
+      },
+      "stationnement": {
+        "logement_standard": "1,5 place/logement",
+        "erp_par_10personnes": 2,
+        "note": "Bareme aligne sur la zone UB correspondante (art. L151-20 CU : reglement de la zone U de reference s'applique)."
+      },
+      "_meta": {
+        "confidence": 0.8,
+        "ambiguites": [
+          "Reglement AU applique par renvoi a la zone U de reference (ici UB) ; certaines dispositions specifiques (aleas recul du trait de cote/submersion, art. 1.2) recopiees du modele UB."
+        ]
+      }
+    },
+    "1AUB1": {
+      "label": "Zones d'extension a vocation habitat (1AUb1)",
+      "type": "AU",
+      "ref": "1AUB",
+      "hauteurs": {
+        "he_max_m": 9,
+        "hf_max_m": 12
+      },
+      "reculs": {
+        "voie_principale_m": 6
+      },
+      "_meta": {
+        "confidence": 0.75,
+        "ambiguites": [
+          "Zone distincte du secteur Ub1 (meme denomination num. mais AU) - reculs/permeabilite non entierement redetailles dans le texte extrait, herites de 1AUb par defaut."
+        ]
+      }
+    },
+    "1AUD": {
+      "label": "Extensions a vocation habitat au sein des Hauts de Saint-Andre",
+      "type": "AU",
+      "ref": "UD",
+      "_meta": {
+        "confidence": 0.55,
+        "ambiguites": [
+          "Zone 1AUd mentionnee dans la division du territoire mais aucun chapitre 'DISPOSITIONS APPLICABLES A LA ZONE 1AUd' distinct trouve dans le texte extrait - regles heritees de UD (bourgs des hauts) par prudence ; a verifier directement dans le PDF (peut-etre fusionnee avec 1AUb1 ou paginee ailleurs)."
+        ]
+      }
+    },
+    "1AUC": {
+      "label": "Zone d'extension a vocation commerciale (1AUc)",
+      "type": "AU",
+      "sous_type": "extension_commerciale",
+      "reculs": {
+        "voie_principale_m": 3,
+        "voie_rd_axe_m": 7,
+        "voie_rn2_axe_m": 25,
+        "sep_lat_m": 3,
+        "sep_fond_m": 3
+      },
+      "hauteurs": {
+        "h_max_m": 16
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "note": "Sans objet"
+      },
+      "permeabilite": {
+        "permeable_min_pct": 15,
+        "espaces_libres_min_pct": 30,
+        "permeable_note": "30% min espace libre dont au moins la moitie permeable (15%)."
+      },
+      "_meta": {
+        "confidence": 0.8,
+        "ambiguites": []
+      }
+    },
+    "1AUY": {
+      "label": "Zones d'extension a vocation artisanale, tertiaire et industrielle (1AUy)",
+      "type": "AU",
+      "sous_type": "extension_activites",
+      "reculs": {
+        "voie_principale_m": 6,
+        "sep_lat_m": 3,
+        "sep_fond_m": 3
+      },
+      "hauteurs": {
+        "h_max_m": 16,
+        "h_max_m_derogation": 20,
+        "hauteur_note": "20m autorises specifiquement dans la zone 1AUy situee chemin Ravine Creuse (hors ce secteur : 16m)."
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "note": "Sans objet"
+      },
+      "permeabilite": {
+        "permeable_min_pct": 10,
+        "espaces_libres_min_pct": 20,
+        "permeable_note": "20% min espace libre dont au moins la moitie permeable (10%) - seuil le plus bas de toutes les zones U/AU de la commune."
+      },
+      "_meta": {
+        "confidence": 0.8,
+        "ambiguites": []
+      }
+    },
+    "1AUT": {
+      "label": "Zone de developpement du Colosse (enseignement, sport, loisirs, tourisme)",
+      "type": "AU",
+      "sous_type": "extension_touristique_equipements",
+      "reculs": {
+        "voie_principale_m": 6,
+        "sep_lat_m": 3,
+        "sep_fond_m": 3
       },
       "hauteurs": {
         "he_max_m": 9,
         "hf_max_m": 12
       },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "note": "Sans objet"
+      },
       "permeabilite": {
-        "permeable_min_pct": 50
+        "permeable_min_pct": 25,
+        "espaces_libres_min_pct": 50,
+        "permeable_note": "50% min espace libre dont au moins la moitie permeable (25%)."
       },
       "_meta": {
-        "confidence": 1.0,
+        "confidence": 0.75,
         "ambiguites": []
       }
     },
-    "AU": {
-      "label": "Zones à urbaniser",
+    "2AUB2": {
+      "label": "Reserve fonciere - extension mixte de la Cressonniere (2AUb2)",
       "type": "AU",
-      "ref": "zone U correspondante",
-      "permeabilite": {
-        "permeable_min_pct": 30
+      "usages": {
+        "habitation": false,
+        "note": "Non ouverte a l'urbanisation : conditionnee a la realisation de la zone economique chemin Ravine Creuse (terrain Vayabouri)."
       },
       "_meta": {
-        "confidence": 1.0,
+        "confidence": 0.9,
+        "ambiguites": [
+          "Zone de reserve fonciere fermee ; aucune regle de gabarit applicable tant que la zone n'est pas ouverte par modification/revision du PLU."
+        ]
+      }
+    },
+    "2AUY": {
+      "label": "Reserve fonciere - phase 2 zone d'activite Chemin Merlot (2AUy)",
+      "type": "AU",
+      "usages": {
+        "habitation": false,
+        "note": "Ouverture conditionnee a son identification dans le SAR de La Reunion."
+      },
+      "_meta": {
+        "confidence": 0.9,
+        "ambiguites": []
+      }
+    },
+    "2AUT": {
+      "label": "Reserve fonciere - campus universitaire du Colosse (2AUt)",
+      "type": "AU",
+      "usages": {
+        "habitation": false,
+        "note": "Ouverture conditionnee a son identification dans le SAR de La Reunion."
+      },
+      "_meta": {
+        "confidence": 0.9,
         "ambiguites": []
       }
     },
@@ -211,40 +569,188 @@
       "label": "Zone agricole",
       "type": "A",
       "sous_zones": [
+        "Apf",
         "Aba"
       ],
+      "reculs": {
+        "voie_principale_m": 4,
+        "voie_rd_axe_m": 7,
+        "sep_lat_m": 5,
+        "sep_fond_m": 5,
+        "sep_note": "5m uniforme (lateral + fond), contre 3m en zones U ; exceptions pour serres/equipements techniques/dependances groupees."
+      },
       "hauteurs": {
         "he_max_m": 6,
-        "hf_max_m": null
+        "hf_max_m": 9,
+        "hauteur_note": "Constructions agricoles courantes : 6m ega/9m fa. Habitation liee a l'exploitation (zone A et secteur Aba, 1 logement/exploitation, 120 m2 SP max) : 4m ega/6m fa. Annexes : 3m max."
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "note": "Habitation limitee a 120 m2 de surface de plancher et un seul logement par exploitation ; pas de CES chiffre."
       },
       "permeabilite": {
-        "permeable_min_pct": 50,
+        "permeable_min_pct": null,
+        "permeable_note": "Aucun pourcentage d'espace libre/permeable chiffre (zone agricole - protection paysagere qualitative uniquement)."
+      },
+      "_meta": {
+        "confidence": 0.85,
+        "ambiguites": [
+          "Secteur Apf (protection forte agricole, coupures d'urbanisation SAR/PPEANP) : constructibilite tres restreinte, non chiffree separement ici - traiter comme A avec confiance reduite."
+        ]
+      }
+    },
+    "ABA": {
+      "label": "Secteur agricole Aba (habitation liee a l'exploitation)",
+      "type": "A",
+      "ref": "A",
+      "permeabilite": {
         "permeable_Aba_pct": 40
       },
       "_meta": {
-        "confidence": 1.0,
+        "confidence": 0.6,
+        "ambiguites": [
+          "Valeur permeable_Aba_pct=40 reprise du PLU 2019, non retrouvee explicitement dans le texte 2025 extrait - a verifier."
+        ]
+      }
+    },
+    "APF": {
+      "label": "Secteur agricole de protection forte (Apf)",
+      "type": "A",
+      "ref": "A",
+      "usages": {
+        "note": "Coupures d'urbanisation SAR / PPEANP - constructibilite tres limitee, memes regles de gabarit que A mais conditions d'occupation du sol restreintes en amont (article 1)."
+      },
+      "_meta": {
+        "confidence": 0.55,
         "ambiguites": []
       }
     },
     "N": {
-      "label": "Zone naturelle",
+      "label": "Zone naturelle et forestiere",
       "type": "N",
+      "sous_zones": [
+        "Npnr",
+        "Nbio",
+        "Nli",
+        "Nt",
+        "Nv"
+      ],
+      "reculs": {
+        "voie_principale_m": 6,
+        "cloture_axe_m": 2,
+        "sep_note": "Non chiffre explicitement dans le texte extrait pour les limites separatives en zone N (hors secteurs Npnr/Nbio ou des passages faune sont exiges)."
+      },
+      "hauteurs": {
+        "he_max_m": 6,
+        "hf_max_m": 9,
+        "hauteur_note": "Secteur Nli (littoral) : 4m ega / 7m fa."
+      },
+      "emprise": {
+        "emprise_sol_max_pct": null,
+        "note": "Hebergement leger de loisirs/residentiel mobile autorise sous conditions dans la limite de 30 m2 d'emprise au sol."
+      },
       "permeabilite": {
-        "permeable_min_pct": 70
+        "permeable_min_pct": 70,
+        "permeable_note": "Au minimum 70% de la superficie totale traitee en espace vert et permeable (essences locales/nourricieres, palette specifique en Npnr/Nbio/Nli)."
       },
       "_meta": {
-        "confidence": 1.0,
+        "confidence": 0.85,
+        "ambiguites": [
+          "Secteurs Npnr (coeur de parc national, quasi inconstructible), Nbio (reservoirs de biodiversite/corridors), Nt (activites touristiques legeres uniquement), Nv (nature en ville/parcs sportifs-culturels) non chiffres separement - traiter comme N avec confiance reduite et restrictions d'usage fortes, notamment Npnr ou seule une autorisation speciale permet de construire."
+        ]
+      }
+    },
+    "NPNR": {
+      "label": "Coeur du Parc national de La Reunion (secteur Npnr)",
+      "type": "N",
+      "ref": "N",
+      "usages": {
+        "habitation": false,
+        "note": "Aucune construction admise sauf autorisation speciale."
+      },
+      "_meta": {
+        "confidence": 0.9,
         "ambiguites": []
+      }
+    },
+    "NBIO": {
+      "label": "Reservoirs de biodiversite / corridors ecologiques (secteur Nbio)",
+      "type": "N",
+      "ref": "N",
+      "usages": {
+        "note": "Trame verte et bleue - clotures avec passages faune obligatoires (2 min par limite separative)."
+      },
+      "_meta": {
+        "confidence": 0.75,
+        "ambiguites": []
+      }
+    },
+    "NLI": {
+      "label": "Espaces naturels du littoral / risque littoral (secteur Nli)",
+      "type": "N",
+      "ref": "N",
+      "hauteurs": {
+        "he_max_m": 4,
+        "hf_max_m": 7
+      },
+      "_meta": {
+        "confidence": 0.8,
+        "ambiguites": []
+      }
+    },
+    "NT": {
+      "label": "Espaces d'activites touristiques legeres sous conditions (secteur Nt)",
+      "type": "N",
+      "ref": "N",
+      "usages": {
+        "note": "Seules les installations legeres necessaires a la protection/entretien/mise en valeur du site et a l'organisation de la frequentation publique sont autorisees."
+      },
+      "_meta": {
+        "confidence": 0.7,
+        "ambiguites": []
+      }
+    },
+    "NV": {
+      "label": "Nature en ville / parcs a vocation sportive ou culturelle (secteur Nv)",
+      "type": "N",
+      "ref": "N",
+      "_meta": {
+        "confidence": 0.6,
+        "ambiguites": [
+          "Secteur peu documente dans le texte extrait au-dela de sa definition."
+        ]
       }
     }
   },
   "regles_communes": {
     "ravine_recul_m": 10,
     "voie_rn_axe_m": 7,
+    "voie_rn2_axe_m": 25,
     "cloture_voie_hauteur_max_m": 2,
-    "mur_soutenement_max_m": 3,
+    "cloture_voie_hauteur_max_m_note": "Varie par zone : 1,8m en UA (mur bahut 1m + claire-voie 0,8m), 2m en UB/UD/1AUb, 1,7-1,8m en A/N (Npnr/Nbio: passages faune obligatoires).",
+    "mur_soutenement_max_m": 2,
+    "mur_soutenement_max_m_note": "2m en zone N (grille possible +1,2m) ; non re-verifie zone par zone pour les zones U.",
     "logement_aide_seuil_m2": 2000,
     "logement_aide_pct": 25,
-    "rtaa_dom": "2016"
+    "logement_aide_note": "Valeurs reprises du PLU 2019 (seuil SDP 2000 m2 / 25% de logements aides) - non retrouvees telles quelles dans le corps du reglement ecrit 2025 extrait (articles 1.2 par zone) ; peuvent figurer dans les OAP ou une piece annexe non traitee ici - A VERIFIER.",
+    "rtaa_dom": "2016",
+    "distance_min_batiments_collectifs_m": 12,
+    "distance_min_batiments_individuels_m": 3,
+    "distance_min_batiments_individuels_vis_a_vis_m": 8,
+    "place_stationnement_surface_m2": 25,
+    "hauteur_niveau_min_m": 3,
+    "longueur_facade_max_m": 45
+  },
+  "_meta_global": {
+    "extraction": "PyMuPDF (fitz), lecture integrale des 157 pages du reglement ecrit tampon, chapitre par chapitre (UA, UB, UD, UE, UC, UY, UT, 1AUb, 1AUb1, 1AUc, 1AUy, 1AUt, A, N).",
+    "changements_majeurs_vs_2019": [
+      "Refonte complete du zonage U : UC et UT changent totalement de vocation (UC 2019=residentiel intermediaire -> UC 2025=commercial Cocoteraie/Andropolis ; UT 2019=touristique 9/12m -> UT 2025=loisirs/sport/tourisme 16m). UE 2019=activites -> UE 2025=equipements publics ; le role de UE 2019 est repris par UY 2025 (artisanal/industriel/tertiaire).",
+      "Disparition de la zone US (sport/loisirs) en tant que telle - integree dans UE (equipements) et UT (loisirs/sportifs).",
+      "UA : seuil de bonus de hauteur (>=5000 m2 SDP au lieu de >=2000 m2) - bonus plus difficile a obtenir.",
+      "Espaces libres/permeables beaucoup plus detailles et differencies par zone (UA: 40% avec 20% pleine terre obligatoire + repartition perm/imperm ; UB/1AUb: 30% ; UD/UT/1AUt: 50% ; UC/1AUc: 30% ; UY: 50% ; 1AUy: 20% seulement).",
+      "Stationnement logement aide desormais module par proximite de la gare routiere (rayon 400-500m) en UA/UB.",
+      "Nouvelle zone AU indicee 1AUb1, 1AUc, 1AUy, 1AUt, 1AUd + zones de reserve fonciere fermees 2AUb2/2AUy/2AUt.",
+      "Sous-zonage N enrichi (Npnr, Nbio, Nli, Nt, Nv) avec regles differenciees (ex. Nli: hauteur reduite 4/7m)."
+    ]
   }
 }

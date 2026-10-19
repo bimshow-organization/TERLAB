@@ -1,0 +1,260 @@
+[
+ {
+  "key": "V1",
+  "label": "Deux lames paralleles, jardin central",
+  "note": "",
+  "blocks": [
+   {
+    "name": "Batiment A",
+    "az": 110,
+    "len": 50.2,
+    "depth": 8.600000000000001,
+    "nlev": 4,
+    "levels": [
+     null,
+     {
+      "T1": 9,
+      "T2": 2
+     },
+     {
+      "T1": 9,
+      "T2": 2
+     },
+     {
+      "T1": 9,
+      "T2": 2
+     }
+    ],
+    "rdc": "Accueil, bureau gestionnaire MLE, salle collective, laverie, local velos",
+    "poly": [
+     [
+      19.12,
+      -18.63
+     ],
+     [
+      22.06,
+      -10.54
+     ],
+     [
+      -25.12,
+      6.63
+     ],
+     [
+      -28.06,
+      -1.46
+     ],
+     [
+      19.12,
+      -18.63
+     ]
+    ]
+   },
+   {
+    "name": "Batiment B",
+    "az": 110,
+    "len": 35.6,
+    "depth": 8.600000000000001,
+    "nlev": 4,
+    "levels": [
+     {
+      "T1": 2,
+      "T2": 1,
+      "pmr": true
+     },
+     {
+      "T1": 7,
+      "T2": 1
+     },
+     {
+      "T1": 7,
+      "T2": 1
+     },
+     {
+      "T1": 7,
+      "T2": 1
+     }
+    ],
+    "rdc": "3 logements PMR, local poubelles, local technique",
+    "poly": [
+     [
+      8.26,
+      -34.13
+     ],
+     [
+      11.2,
+      -26.05
+     ],
+     [
+      -22.26,
+      -13.87
+     ],
+     [
+      -25.2,
+      -21.95
+     ],
+     [
+      8.26,
+      -34.13
+     ]
+    ]
+   }
+  ],
+  "ok": true,
+  "warn": [],
+  "gap": 9.7,
+  "parking": [
+   [
+    -36.74,
+    4.52
+   ],
+   [
+    -50.22,
+    -2.05
+   ],
+   [
+    -39.26,
+    -24.52
+   ],
+   [
+    -25.78,
+    -17.95
+   ],
+   [
+    -36.74,
+    4.52
+   ]
+  ],
+  "emprise": 738,
+  "imper": 1468,
+  "perm_pct": 50
+ },
+ {
+  "key": "V3",
+  "label": "Lames decalees en redents",
+  "note": "",
+  "blocks": [
+   {
+    "name": "Batiment A",
+    "az": 110,
+    "len": 50.2,
+    "depth": 8.600000000000001,
+    "nlev": 4,
+    "levels": [
+     null,
+     {
+      "T1": 9,
+      "T2": 2
+     },
+     {
+      "T1": 9,
+      "T2": 2
+     },
+     {
+      "T1": 9,
+      "T2": 2
+     }
+    ],
+    "rdc": "Accueil, bureau gestionnaire MLE, salle collective, laverie, local velos",
+    "poly": [
+     [
+      16.12,
+      -17.63
+     ],
+     [
+      19.06,
+      -9.54
+     ],
+     [
+      -28.12,
+      7.63
+     ],
+     [
+      -31.06,
+      -0.46
+     ],
+     [
+      16.12,
+      -17.63
+     ]
+    ]
+   },
+   {
+    "name": "Batiment B",
+    "az": 100,
+    "len": 35.6,
+    "depth": 8.600000000000001,
+    "nlev": 4,
+    "levels": [
+     {
+      "T1": 2,
+      "T2": 1,
+      "pmr": true
+     },
+     {
+      "T1": 7,
+      "T2": 1
+     },
+     {
+      "T1": 7,
+      "T2": 1
+     },
+     {
+      "T1": 7,
+      "T2": 1
+     }
+    ],
+    "rdc": "3 logements PMR, local poubelles, local technique",
+    "poly": [
+     [
+      8.78,
+      -34.33
+     ],
+     [
+      10.28,
+      -25.86
+     ],
+     [
+      -24.78,
+      -19.67
+     ],
+     [
+      -26.28,
+      -28.14
+     ],
+     [
+      8.78,
+      -34.33
+     ]
+    ]
+   }
+  ],
+  "ok": true,
+  "warn": [],
+  "gap": 9.7,
+  "parking": [
+   [
+    -36.74,
+    4.52
+   ],
+   [
+    -50.22,
+    -2.05
+   ],
+   [
+    -39.26,
+    -24.52
+   ],
+   [
+    -25.78,
+    -17.95
+   ],
+   [
+    -36.74,
+    4.52
+   ]
+  ],
+  "emprise": 738,
+  "imper": 1468,
+  "perm_pct": 50
+ }
+]

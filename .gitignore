@@ -49,3 +49,6 @@ docs/voxel-patterns/
 # Scratch
 Untitled-*.txt
 c:GITHUBTERLAB*
+
+# Sources brutes lourdes (Litto3D SHOM/IGN, MNT 1 m ASC ~20 Go) : catalogue dans docs/sources/README.md, données jamais commitées
+docs/sources/litto3d/

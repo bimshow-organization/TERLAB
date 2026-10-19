@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>TERLAB · POC extracteur de cartes — remesh toitures + validation arbres</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #0c0f14; color: #dfe6ee; font-family: 'Segoe UI', system-ui, sans-serif; }
+  #app { display: grid; grid-template-columns: 340px 1fr; height: 100%; }
+  #panel { background: #11151c; border-right: 1px solid #232a35; padding: 16px; overflow-y: auto; }
+  #panel h1 { font-size: 15px; margin: 0 0 4px; color: #fff; }
+  #panel .sub { font-size: 10.5px; color: #7c8794; margin-bottom: 14px; line-height: 1.5; }
+  .section { border: 1px solid #232a35; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; background: #151b24; }
+  .section h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #6fa8dc; margin: 0 0 8px; }
+  .metric-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; border-bottom: 1px dashed #232a35; }
+  .metric-row:last-child { border-bottom: none; }
+  .metric-row .v { font-weight: 600; color: #fff; font-variant-numeric: tabular-nums; }
+  .metric-row .good { color: #5fd88a; }
+  .metric-row .bad { color: #e8636a; }
+  .btn-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  button { background: #1c2430; border: 1px solid #2c3644; color: #cfd8e3; font-size: 11px; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+  button.active { background: #2b5fa8; border-color: #3a72c4; color: #fff; }
+  button:hover { border-color: #4a5a6e; }
+  #log { font-family: 'Cascadia Code', monospace; font-size: 10px; color: #7c8794; white-space: pre-wrap; line-height: 1.6; max-height: 160px; overflow-y: auto; }
+  #canvas-wrap { position: relative; }
+  #legend { position: absolute; bottom: 14px; left: 14px; background: rgba(17,21,28,.85); border: 1px solid #232a35; border-radius: 8px; padding: 8px 12px; font-size: 10.5px; line-height: 1.8; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+  #assumptions { font-size: 9.5px; color: #8a95a3; line-height: 1.6; }
+  #assumptions li { margin-bottom: 3px; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="panel">
+    <h1>Extracteur de cartes — POC</h1>
+    <div class="sub">Remesh toitures LiDAR (squelette droit pondéré) + validation arbres par croisement satellite COSIA. Zone pilote : Le Port (BD TOPO), données <strong>synthétiques</strong> — cf. hypothèses en bas de panneau.</div>
+
+    <div class="section">
+      <h2>Vue toiture</h2>
+      <div class="btn-row">
+        <button id="btn-rough" class="active">Mesh brut (Delaunay)</button>
+        <button id="btn-remesh">Remesh (squelette)</button>
+        <button id="btn-both">Côte à côte</button>
+      </div>
+      <div class="metric-row"><span>Forme détectée</span><span class="v" id="m-shape">—</span></div>
+      <div class="metric-row"><span>Résidu — mesh brut (val. croisée)</span><span class="v" id="m-res-raw">—</span></div>
+      <div class="metric-row"><span>Résidu — remesh (Agent 4)</span><span class="v" id="m-res-remesh">—</span></div>
+      <div class="metric-row"><span>Amélioration</span><span class="v" id="m-amelioration">—</span></div>
+      <div class="metric-row"><span>Points entraînement / test croisé</span><span class="v" id="m-points">—</span></div>
+    </div>
+
+    <div class="section">
+      <h2>Arbres</h2>
+      <div class="btn-row">
+        <button id="btn-trees-toggle" class="active">Afficher les arbres</button>
+      </div>
+      <div class="metric-row"><span>Candidats Agent 5 (LiDAR)</span><span class="v" id="m-t-cand">—</span></div>
+      <div class="metric-row"><span>Validés (Agent 6)</span><span class="v good" id="m-t-valid">—</span></div>
+      <div class="metric-row"><span>Rejetés (Agent 6)</span><span class="v bad" id="m-t-reject">—</span></div>
+      <div class="metric-row"><span>Taux de rejet</span><span class="v" id="m-t-rate">—</span></div>
+      <div class="metric-row"><span>Faux positifs connus (vérité terrain)</span><span class="v" id="m-t-fp">—</span></div>
+      <div class="metric-row"><span>Vrais arbres connus (vérité terrain)</span><span class="v" id="m-t-tp">—</span></div>
+    </div>
+
+    <div class="section">
+      <h2>Journal du pipeline</h2>
+      <div id="log">initialisation…</div>
+    </div>
+
+    <div class="section">
+      <h2>Hypothèses du POC</h2>
+      <ul id="assumptions" style="margin:0;padding-left:16px"></ul>
+    </div>
+  </div>
+
+  <div id="canvas-wrap">
+    <div id="legend">
+      <div><span class="dot" style="background:#3d8f5b"></span>Arbre validé (Agent 6)</div>
+      <div><span class="dot" style="background:#c0453f"></span>Arbre rejeté (faux positif LiDAR)</div>
+      <div><span class="dot" style="background:#8b5e3c"></span>Toit — pan (couleur = pente)</div>
+      <div><span class="dot" style="background:#f2b13d"></span>Arête faîtage / arêtier (remesh)</div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.182.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { runExtractorPipeline } from './extractor-orchestrator.js';
+import { geoToLocalSouth } from './synthetic-data.js';
+
+const logEl = document.getElementById('log');
+const logLines = [];
+function log(msg) {
+  logLines.push(msg);
+  logEl.textContent = logLines.join('\n');
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ── Three.js scene (convention : x=est, y=altitude, z=SUD — cf. skill lidar-terrain-3d §10
+// et building-reconstruction.js, AUCUNE rotation supplémentaire ici : les positions produites
+// par Agent 2 / Agent 4 sont déjà en Y-up dans cette convention) ────────────────────────────
+const canvasWrap = document.getElementById('canvas-wrap');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0c0f14);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 2000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+canvasWrap.appendChild(renderer.domElement);
+
+function resize() {
+  const w = canvasWrap.clientWidth, h = canvasWrap.clientHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+scene.add(new THREE.HemisphereLight(0xbfd6ff, 0x2a2416, 1.1));
+const sun = new THREE.DirectionalLight(0xfff2d8, 1.2);
+sun.position.set(30, 50, 20);
+scene.add(sun);
+
+// Sol de référence
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x1c2a20, roughness: 1 });
+const ground = new THREE.Mesh(new THREE.CircleGeometry(45, 48), groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.02;
+scene.add(ground);
+const grid = new THREE.GridHelper(90, 30, 0x2c3a30, 0x1c2820);
+scene.add(grid);
+
+function slopeColorMaterial() {
+  return new THREE.MeshStandardMaterial({ color: 0x8b5e3c, roughness: 0.6, side: THREE.DoubleSide, flatShading: true });
+}
+
+function buildRoofMesh(positions, indices, color) {
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions instanceof Float32Array ? positions : new Float32Array(positions), 3));
+  geo.setIndex(new THREE.BufferAttribute(indices instanceof Uint32Array ? indices : new Uint32Array(indices), 1));
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.6, side: THREE.DoubleSide, flatShading: true });
+  return new THREE.Mesh(geo, mat);
+}
+
+function buildEdgeLines(remesh, baseY, colorOf) {
+  const verts = [];
+  const colors = [];
+  const c = new THREE.Color();
+  for (const e of remesh.edges) {
+    if (e.kind === 'degenere' || !e.classified) continue;
+    const a = remesh.skeleton.nodes[e.a], b = remesh.skeleton.nodes[e.b];
+    verts.push(a.x, baseY + a.t + 0.03, -a.z, b.x, baseY + b.t + 0.03, -b.z);
+    c.set(colorOf(e.kind));
+    colors.push(c.r, c.g, c.b, c.r, c.g, c.b);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  return new THREE.LineSegments(geo, new THREE.LineBasicMaterial({ vertexColors: true, linewidth: 2 }));
+}
+function edgeKindColor(kind) {
+  if (kind === 'faitage' || kind === 'faitage_rampant') return 0xf2b13d;
+  if (kind === 'aretier') return 0xffd97a;
+  if (kind === 'noue' || kind === 'cheneau' || kind === 'cheneau_rampant') return 0x5fa8d3;
+  return 0xbfbfbf;
+}
+
+function treeMesh(t, valid) {
+  const g = new THREE.Group();
+  const trunkH = Math.max(0.6, (t.heightMeasured || 8) * 0.35);
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.12, 0.16, trunkH, 6),
+    new THREE.MeshStandardMaterial({ color: 0x5b4632, roughness: 1 }),
+  );
+  trunk.position.y = trunkH / 2;
+  g.add(trunk);
+  const canopyR = Math.max(0.6, t.canopyRadiusMeasured || 2);
+  const canopy = new THREE.Mesh(
+    new THREE.SphereGeometry(canopyR, 8, 6),
+    new THREE.MeshStandardMaterial({ color: valid ? 0x3d8f5b : 0xc0453f, roughness: 0.85, transparent: true, opacity: valid ? 0.85 : 0.55 }),
+  );
+  canopy.position.y = trunkH + canopyR * 0.6;
+  g.add(canopy);
+  return g;
+}
+
+// ── Chargement des données + exécution du pipeline (agents 1→6) ──────────────────────────
+let result = null;
+let rawGroup = null, remeshGroup = null, treesGroup = null;
+let viewMode = 'rough'; // 'rough' | 'remesh' | 'both'
+
+async function main() {
+  log('Lancement du pipeline (agents 1 → 6)…');
+  result = await runExtractorPipeline({ onProgress: log });
+  log('Pipeline terminé.');
+
+  const b = result.buildings[0];
+  const ds = result.dataset;
+  const [refLng, refLat] = ds.centroid;
+
+  rawGroup = new THREE.Group();
+  rawGroup.add(buildRoofMesh(b.rough.positions, b.rough.indices, 0x9c7a4e));
+  scene.add(rawGroup);
+
+  remeshGroup = new THREE.Group();
+  if (b.remesh.ok) {
+    remeshGroup.add(buildRoofMesh(b.remesh.meshPositions, b.remesh.meshIndices, 0x6f8f5e));
+    remeshGroup.add(buildEdgeLines(b.remesh, ds.groundTruth.baseY, edgeKindColor));
+  }
+  remeshGroup.visible = false;
+  scene.add(remeshGroup);
+
+  treesGroup = new THREE.Group();
+  const groundY = 0;
+  // geoToLocalSouth() renvoie déjà {x=est, y=SUD-positif} — EXACTEMENT la convention scène
+  // (x=est, z=SUD-positif, cf. building-reconstruction.js). Aucun flip ici : loc.y → scene.z
+  // directement. Un flip supplémentaire (-loc.y) serait le double-flip que le skill
+  // coord-systems interdit — repéré et corrigé avant publication de ce POC.
+  for (const t of result.trees.validated) {
+    const loc = geoToLocalSouth(t.position[0], t.position[1], refLng, refLat);
+    const m = treeMesh(t, true);
+    m.position.set(loc.x, groundY, loc.y);
+    treesGroup.add(m);
+  }
+  for (const t of result.trees.rejected) {
+    const loc = geoToLocalSouth(t.position[0], t.position[1], refLng, refLat);
+    const m = treeMesh(t, false);
+    m.position.set(loc.x, groundY, loc.y);
+    treesGroup.add(m);
+  }
+  scene.add(treesGroup);
+
+  // Cadrage caméra sur le bâtiment + zone arbres
+  camera.position.set(28, 26, 34);
+  controls.target.set(0, 3, 0);
+  controls.update();
+
+  applyViewMode();
+  populateMetrics(result);
+}
+
+function applyViewMode() {
+  if (!rawGroup || !remeshGroup) return;
+  if (viewMode === 'rough') {
+    rawGroup.visible = true; rawGroup.position.x = 0;
+    remeshGroup.visible = false;
+  } else if (viewMode === 'remesh') {
+    rawGroup.visible = false;
+    remeshGroup.visible = true; remeshGroup.position.x = 0;
+  } else {
+    rawGroup.visible = true; rawGroup.position.x = -14;
+    remeshGroup.visible = true; remeshGroup.position.x = 14;
+  }
+}
+
+function fmtM(v) { return v == null ? '—' : `${v.toFixed(3)} m`; }
+function fmtPct(v) { return v == null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(1)} %`; }
+
+function populateMetrics(res) {
+  const mt = res.meta.metrics.toiture;
+  const mv = res.meta.metrics.vegetation;
+  document.getElementById('m-shape').textContent = mt.shapeDetectee ?? '—';
+  document.getElementById('m-res-raw').textContent = fmtM(mt.residualRawVsTruth_m);
+  document.getElementById('m-res-remesh').textContent = fmtM(mt.residualRemesh_m);
+  const amEl = document.getElementById('m-amelioration');
+  amEl.textContent = fmtPct(mt.ameliorationPct);
+  amEl.className = 'v ' + (mt.ameliorationPct > 0 ? 'good' : 'bad');
+  document.getElementById('m-points').textContent = `${mt.pointsEntrainement} / ${mt.pointsTestCroise}`;
+
+  document.getElementById('m-t-cand').textContent = mv.candidatsAgent5;
+  document.getElementById('m-t-valid').textContent = mv.valides;
+  document.getElementById('m-t-reject').textContent = mv.rejetes;
+  document.getElementById('m-t-rate').textContent = `${mv.tauxRejetPct} %`;
+  document.getElementById('m-t-fp').textContent = mv.fauxPositifsConnus;
+  document.getElementById('m-t-tp').textContent = mv.vraisArbresConnus;
+
+  const ul = document.getElementById('assumptions');
+  ul.innerHTML = '';
+  for (const a of res.meta.assumptions) {
+    const li = document.createElement('li');
+    li.textContent = a;
+    ul.appendChild(li);
+  }
+}
+
+// ── UI ──────────────────────────────────────────────────────────────────────────────────
+const btnRough = document.getElementById('btn-rough');
+const btnRemesh = document.getElementById('btn-remesh');
+const btnBoth = document.getElementById('btn-both');
+function setViewButtons(active) {
+  [btnRough, btnRemesh, btnBoth].forEach((b) => b.classList.remove('active'));
+  active.classList.add('active');
+}
+btnRough.onclick = () => { viewMode = 'rough'; setViewButtons(btnRough); applyViewMode(); };
+btnRemesh.onclick = () => { viewMode = 'remesh'; setViewButtons(btnRemesh); applyViewMode(); };
+btnBoth.onclick = () => { viewMode = 'both'; setViewButtons(btnBoth); applyViewMode(); };
+
+const btnTreesToggle = document.getElementById('btn-trees-toggle');
+btnTreesToggle.onclick = () => {
+  if (!treesGroup) return;
+  treesGroup.visible = !treesGroup.visible;
+  btnTreesToggle.classList.toggle('active', treesGroup.visible);
+};
+
+resize();
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+
+main().catch((err) => {
+  console.error(err);
+  log('ERREUR : ' + (err?.message ?? err));
+});
+</script>
+</body>
+</html>

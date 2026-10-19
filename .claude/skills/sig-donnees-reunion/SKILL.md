@@ -66,6 +66,10 @@ Catalogue des sources externes câblées dans TERLAB. Toutes URLs/couches/pointe
 ## Références biblio Envirobat
 - Affichage : `components/envirobat-cards.js` (+ CSS assets). Index : `data/references-biblio.json`. Ajout de fiches via `FICHES[]` + `PHASE_PICKS{}`.
 
+## Données brutes téléchargées — Litto3D, niveaux marins, PPRL
+- Catalogue versionné : `docs/sources/README.md`. Il couvre Litto3D Réunion 2016 (MNT terre-mer 1 m, blocs par secteur, données locales non commitées dans `docs/sources/litto3d/`), les niveaux marins SHOM (ZH / IGN89, plus haute mer) et la méthode de submersion des PPRL. Les tuiles de ville de code-runner s'en servent (`tools/city/import-litto3d.mjs`, `coast-classes.mjs`, `litto3d-coverage.mjs`).
+- Repère vertical : Litto3D, LiDAR HD et RGE ALTI sont tous en REUN89 → aucun recalage ; 0 m IGN89 ≈ niveau moyen de la mer (±5 cm).
+
 ## À vérifier (mémoire potentiellement périmée vs code)
 - **Géorisques ICPE/BASIAS auto-detect** : `services/georisques-service.js` N'EXISTE PAS. Aucun appel à `installations_classees` (rayon 1 km) ni `/ssp` BASIAS (500 m) dans le code applicatif (seulement métadonnées `data/*.json` + stub `__stubs__/georisques-proxy.js`). `terrain.icpe` est un champ **manuel** Non/Oui/À vérifier (`export-engine.js:1045`). Le service risques réel = `ppr-service.js` (rapport risque au point), pas d'ICPE/BASIAS.
 - **Cadastre comparables** : `services/cadastre-comparables.js` N'EXISTE PAS (seul `cadastre-context-service.js`). Le pipeline « comparables même zone PLU ±30 % + CES observé » n'est pas implémenté.

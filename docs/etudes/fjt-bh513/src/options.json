@@ -1,0 +1,246 @@
+[
+ {
+  "key": "O1",
+  "titre": "Deux lames parall\u00e8les, jardin central",
+  "ok": true,
+  "retenu": true,
+  "fps": [
+   [
+    [
+     19.12,
+     -18.63
+    ],
+    [
+     22.06,
+     -10.54
+    ],
+    [
+     -25.12,
+     6.63
+    ],
+    [
+     -28.06,
+     -1.46
+    ],
+    [
+     19.12,
+     -18.63
+    ]
+   ],
+   [
+    [
+     8.26,
+     -34.13
+    ],
+    [
+     11.2,
+     -26.05
+    ],
+    [
+     -22.26,
+     -13.87
+    ],
+    [
+     -25.2,
+     -21.95
+    ],
+    [
+     8.26,
+     -34.13
+    ]
+   ]
+  ],
+  "niveaux": "R+3",
+  "lgts": 60,
+  "emprise": 738,
+  "emprise_pct": 25,
+  "gap": 9.7,
+  "perm": 50,
+  "nb": 2,
+  "notes": [
+   "Coursives sur jardin, logements mono-orient\u00e9s + varangue",
+   "Ventilation traversante par imposte sur coursive",
+   "Jardin central \u2248 10 m (noue GIEP)"
+  ]
+ },
+ {
+  "key": "O2",
+  "titre": "Lames d\u00e9cal\u00e9es en redents",
+  "ok": true,
+  "retenu": false,
+  "fps": [
+   [
+    [
+     16.12,
+     -17.63
+    ],
+    [
+     19.06,
+     -9.54
+    ],
+    [
+     -28.12,
+     7.63
+    ],
+    [
+     -31.06,
+     -0.46
+    ],
+    [
+     16.12,
+     -17.63
+    ]
+   ],
+   [
+    [
+     8.78,
+     -34.33
+    ],
+    [
+     10.28,
+     -25.86
+    ],
+    [
+     -24.78,
+     -19.67
+    ],
+    [
+     -26.28,
+     -28.14
+    ],
+    [
+     8.78,
+     -34.33
+    ]
+   ]
+  ],
+  "niveaux": "R+3",
+  "lgts": 60,
+  "emprise": 738,
+  "emprise_pct": 25,
+  "gap": 9.7,
+  "perm": 50,
+  "nb": 2,
+  "notes": [
+   "Coursives sur jardin, logements mono-orient\u00e9s + varangue",
+   "Ventilation traversante par imposte sur coursive",
+   "Jardin central \u2248 10 m (noue GIEP)"
+  ]
+ },
+ {
+  "key": "O3",
+  "titre": "B\u00e2timent en T (un seul volume)",
+  "ok": true,
+  "retenu": false,
+  "fps": [
+   [
+    [
+     16.115598165425926,
+     -18.62538386685369
+    ],
+    [
+     19.05697139802668,
+     -10.544027328094879
+    ],
+    [
+     -28.115598165425926,
+     6.62538386685369
+    ],
+    [
+     -31.05697139802668,
+     -1.455972671905121
+    ],
+    [
+     16.115598165425926,
+     -18.62538386685369
+    ]
+   ],
+   [
+    [
+     -27.17098041926444,
+     -26.624702695488253
+    ],
+    [
+     -19.089623880505627,
+     -29.566075928089
+    ],
+    [
+     -8.829019580735563,
+     -1.375297304511749
+    ],
+    [
+     -16.910376119494373,
+     1.5660759280890009
+    ],
+    [
+     -27.17098041926444,
+     -26.624702695488253
+    ]
+   ]
+  ],
+  "niveaux": "R+3",
+  "lgts": 60,
+  "emprise": 690,
+  "emprise_pct": 23,
+  "gap": 0.0,
+  "perm": 52,
+  "nb": 1,
+  "notes": [
+   "Un seul b\u00e2timent : 1 noyau, gestion simplifi\u00e9e",
+   "Angles int\u00e9rieurs : logements peu ventil\u00e9s, vis-\u00e0-vis",
+   "Jardin coup\u00e9 en deux cours"
+  ]
+ },
+ {
+  "key": "O4",
+  "titre": "Lame unique \u00e0 couloir central",
+  "ok": true,
+  "retenu": false,
+  "fps": [
+   [
+    [
+     19.35559733212648,
+     -24.068434593677374
+    ],
+    [
+     23.870263224025308,
+     -11.664491999303385
+    ],
+    [
+     -19.35559733212648,
+     4.068434593677376
+    ],
+    [
+     -23.870263224025308,
+     -8.335508000696615
+    ],
+    [
+     19.35559733212648,
+     -24.068434593677374
+    ]
+   ]
+  ],
+  "niveaux": "R+3",
+  "lgts": 60,
+  "emprise": 607,
+  "emprise_pct": 20,
+  "gap": null,
+  "perm": 55,
+  "nb": 1,
+  "notes": [
+   "Compacit\u00e9 maximale, un seul noyau, emprise mini",
+   "Logements mono-orient\u00e9s sans ventilation traversante (RTAA DOM)",
+   "Couloir int\u00e9rieur \u00e0 \u00e9clairer / ventiler : \u00e0 \u00e9viter en climat tropical"
+  ]
+ },
+ {
+  "key": "O5",
+  "titre": "Plots (2 \u00e0 3 plots 15 \u00d7 15 m)",
+  "ok": false,
+  "notes": [
+   "Test\u00e9 : profondeur constructible \u2248 36 m < lame 8,6 + 8 m + plot 15 m",
+   "Aucune combinaison de plots \u00e0 8 m de prospect avec le parking",
+   "\u00c9cart\u00e9 (supposerait R+4 ou parking r\u00e9duit)"
+  ]
+ }
+]
