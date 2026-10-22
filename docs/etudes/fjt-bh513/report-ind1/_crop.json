@@ -1,0 +1,26 @@
+{
+ "C:\\GITHUB\\code-runner\\docs\\bve-pro\\planches\\standre-bh513-fjt-final\\pieces\\dessin-v1-niveau-RDC.svg": {
+  "x0": 210.77978515625,
+  "y0": 184.4363250732422,
+  "x1": 633.549560546875,
+  "y1": 743.3143310546875,
+  "vb": [
+   0,
+   0,
+   1018,
+   1013
+  ]
+ },
+ "C:\\GITHUB\\code-runner\\docs\\bve-pro\\planches\\standre-bh513-fjt-final\\pieces\\dessin-v1-niveau-R1.svg": {
+  "x0": 212.06149291992188,
+  "y0": 184.9061737060547,
+  "x1": 633.3785400390625,
+  "y1": 729.633544921875,
+  "vb": [
+   0,
+   0,
+   1018,
+   981
+  ]
+ }
+}
