@@ -8,10 +8,10 @@ import ind1_data as D
 
 MPP, W, H = 0.08, 2400, 1560
 
-def fetch_ortho(cx, cz, out):
+def fetch_ortho(cx, cz, out, S=D):
     meta = out + '.json'; want = dict(cx=round(cx, 2), cz=round(cz, 2), mpp=MPP, W=W, H=H)
     if os.path.exists(out) and os.path.exists(meta) and json.load(open(meta)) == want: return True
-    o = D.ORIGIN; x0 = o['E0'] + cx - W * MPP / 2; x1 = o['E0'] + cx + W * MPP / 2; y0 = o['N0'] - cz - H * MPP / 2; y1 = o['N0'] - cz + H * MPP / 2
+    o = S.ORIGIN; x0 = o['E0'] + cx - W * MPP / 2; x1 = o['E0'] + cx + W * MPP / 2; y0 = o['N0'] - cz - H * MPP / 2; y1 = o['N0'] - cz + H * MPP / 2
     u = ('https://data.geopf.fr/wms-r/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=ORTHOIMAGERY.ORTHOPHOTOS&STYLES=&CRS=EPSG:2975'
          '&BBOX=%f,%f,%f,%f&WIDTH=%d&HEIGHT=%d&FORMAT=image/jpeg') % (x0, y0, x1, y1, W, H)
     try:
@@ -21,6 +21,7 @@ def fetch_ortho(cx, cz, out):
     except Exception as e:
         print('  ortho IGN indisponible (%s) : repli sur l\'image existante si présente' % e); return os.path.exists(out)
 
+ACC_LAB = {'logements': 'résidents', 'FJT': 'FJT', 'crèche': 'crèche', 'public': 'public MLE'}
 P = lambda pts: ' '.join('%.2f,%.2f' % (x, z) for x, z in pts)
 
 def txt(x, z, s, size=1.7, anchor='middle', color='#1b1b1b', weight=600, halo='#fff', rot=0, op=1):
@@ -35,30 +36,31 @@ def polys(g):
     if g.is_empty: return []
     return list(g.geoms) if hasattr(g, 'geoms') else [g]
 
-def build(out_svg, ortho_name='plan_ortho.jpg'):
-    lot = Polygon(D.LOT); b = lot.bounds; cx, cz = (b[0] + b[2]) / 2, (b[1] + b[3]) / 2
-    ok = fetch_ortho(cx, cz, os.path.join(D.OUT, ortho_name))
+def build(out_svg, ortho_name='plan_ortho.jpg', S=D):
+    """Plan masse coloré de la planche S (ind1_data.Scen ; par défaut le scénario du module ind1_data)."""
+    lot = Polygon(S.LOT); b = lot.bounds; cx, cz = (b[0] + b[2]) / 2, (b[1] + b[3]) / 2
+    ok = fetch_ortho(cx, cz, os.path.join(D.OUT, ortho_name), S)
     Wm, Hm = W * MPP, H * MPP; X0, Z0 = cx - Wm / 2, cz - Hm / 2; Wv = 150.0; Xv = cx - Wv / 2   # cadrage 150 x 124,8 m = 300 x 249,6 mm au 1/500, légende dans la bande de droite (HTML)
     E = []
     if ok: E.append('<image href="%s" x="%.2f" y="%.2f" width="%.2f" height="%.2f" preserveAspectRatio="none"/>' % (ortho_name, X0, Z0, Wm, Hm))
     else: E.append('<rect x="%.2f" y="%.2f" width="%.2f" height="%.2f" fill="#d9dcd0"/>' % (X0, Z0, Wm, Hm))
     E.append('<defs><pattern id="b2u" width="1.4" height="1.4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="1.4" stroke="#e23b2e" stroke-width="0.28"/></pattern></defs>')
     # voisins projetés (SIDR) — repères du PC
-    for n in D.R.get('neighbours', []):
+    for n in S.R.get('neighbours', []):
         fp = n.get('fp');
         if not fp: continue
         E.append('<polygon points="%s" fill="#6f8fd8" fill-opacity="0.45" stroke="#1d3c8c" stroke-width="0.3"/>' % P(fp))
         c = Polygon(fp).centroid; lab = n['name'].replace('SIDR ', 'SIDR · ') + (' · R+%d' % (round(n['h'] / 3) - 1) if n.get('h') else '')
         E.append(txt(c.x, c.y + 0.5, lab, 1.25, color='#17327a'))
     # B2u
-    for e in D.R.get('exclusions', []):
+    for e in S.R.get('exclusions', []):
         E.append('<polygon points="%s" fill="url(#b2u)" fill-opacity="0.9" stroke="#e23b2e" stroke-width="0.25" stroke-dasharray="1.2 0.8"/>' % P(e['poly']))
-    blocks = [Polygon(bl['fp']) for bl in D.BLOCKS]
-    parks = [Polygon(p['poly']) for p in D.V.get('parks', []) if p.get('poly')]
-    cl = D.Q.get('cloture') or {}
+    blocks = [Polygon(bl['fp']) for bl in S.BLOCKS]
+    parks = [Polygon(p['poly']) for p in S.V.get('parks', []) if p.get('poly')]
+    cl = S.Q.get('cloture') or {}
     equip = Polygon(cl['poly']).buffer(0) if cl.get('poly') else None
     # ── espaces extérieurs teintés par fonction (USAGES de bve-cloture.mjs) : faces du lot découpé par les clôtures et les bâtiments ──
-    FEN, ESP, fsrc = D.scenario_fences(); used = []; source_fence = bool(FEN)
+    FEN, ESP, fsrc = S.scenario_fences(); used = []; source_fence = bool(FEN)
     faces = {}
     if FEN and ESP:
         from shapely.ops import polygonize
@@ -74,36 +76,48 @@ def build(out_svg, ortho_name='plan_ortho.jpg'):
             E.append(txt(pp[0], pp[1] - 0.2, 'COUR-ENFANTS', 0.9, color='#7a3d00', rot=20)); E.append(txt(pp[0], pp[1] + 0.9, '%.0f m²' % aire, 0.9, color='#7a3d00', rot=20))
         else:
             nom = {'cour-residents': 'COUR DES RÉSIDENTS', 'equipement': 'ÉQUIPEMENT'}.get(u, lab.upper())
+            if len(faces) == 1:   # espace unique (variante sans équipement) : libellé de la légende, posé au centre de la plus grande plage libre (hors bâti et parking)
+                nom = lab.upper()
+                from shapely.ops import polylabel
+                libre = g.difference(unary_union(blocks + [Polygon(p['poly']).buffer(0.5) for p in S.V.get('parks', []) if p.get('poly')]))
+                big = max(polys(libre), key=lambda q: polylabel(q, 0.5).distance(q.boundary) if q.area > 1 else 0, default=None)
+                if big is not None and not big.is_empty: c = polylabel(big, 0.5); pp = (c.x, c.y)
             E.append(txt(pp[0], pp[1] - 0.4, nom, 1.25, color='#222', rot=20)); E.append(txt(pp[0], pp[1] + 1.3, '%.0f m²' % aire, 1.25, color='#222', rot=20))
     if not faces:
         if equip is not None and not equip.is_empty:
             E.append('<polygon points="%s" fill="#f4bccb" fill-opacity="0.5" stroke="#999" stroke-width="0.25"/>' % P(equip.exterior.coords)); used.append('equipement')
     # limites
-    E.append('<polygon points="%s" fill="none" stroke="#ff8a1f" stroke-width="0.8"/>' % P(D.LOT))
-    if D.ENV: E.append('<polygon points="%s" fill="none" stroke="#ffe29a" stroke-width="0.3" stroke-dasharray="1.8 1"/>' % P(D.ENV))
+    E.append('<polygon points="%s" fill="none" stroke="#ff8a1f" stroke-width="0.8"/>' % P(S.LOT))
+    if S.ENV: E.append('<polygon points="%s" fill="none" stroke="#ffe29a" stroke-width="0.3" stroke-dasharray="1.8 1"/>' % P(S.ENV))
+    # allées piétonnes (cheminements séparés, largeur lue dans pcmi.json) : beige clair bordé
+    allees = [a for a in (S.Q.get('allees') or []) if a.get('pts') and len(a['pts']) >= 2]; wa = S.Q.get('alleeLargeur') or 1.4
+    for a in allees:
+        E.append('<polyline class="allee" points="%s" fill="none" stroke="#6b5a3c" stroke-width="%.2f" stroke-linecap="round" stroke-linejoin="round"/>' % (P(a['pts']), wa + 0.34))
+    for a in allees:
+        E.append('<polyline class="allee" points="%s" fill="none" stroke="#f1e4c3" stroke-width="%.2f" stroke-linecap="round" stroke-linejoin="round"/>' % (P(a['pts']), wa))
     # stationnement
-    for p in D.V.get('parks', []):
+    for p in S.V.get('parks', []):
         E.append('<polygon points="%s" fill="#3d3d3d" fill-opacity="0.5" stroke="#fff" stroke-width="0.25"/>' % P(p['poly']))
         for s in p.get('stalls', []): E.append('<polygon points="%s" fill="%s" fill-opacity="0.55" stroke="#fff" stroke-width="0.12"/>' % (P(s['ring']), '#2f78c8' if s.get('pmr') else '#ffffff'))
     # lames
-    for bl in D.BLOCKS:
+    for bl in S.BLOCKS:
         sur = 'parking' in bl['name']; A = bl['name'].startswith('Bât. A')
         col = '#d9853b' if A else '#c7663b'
         E.append('<polygon points="%s" fill="%s" fill-opacity="%s" stroke="#2b1a0c" stroke-width="0.4" %s/>' % (P(bl['fp']), col, '0.42' if sur else '0.72', 'stroke-dasharray="1.6 0.8"' if sur else ''))
     # étiquettes de lames (nombre de logements lus dans fit.batiments)
-    byname = {x['name']: x for x in D.F['batiments']}
-    for bl in D.BLOCKS:
+    byname = {x['name']: x for x in S.F['batiments']}
+    for bl in S.BLOCKS:
         if 'parking' in bl['name']: continue
         pg = Polygon(bl['fp']); c = pg.centroid; ang = bl['az'] - 90
         nb = byname.get(bl['name'], {}).get('totaux', {}); n = nb.get('nLogts', 0)
         sp = byname.get(bl['name'] + '’ (sur parking)', {}).get('totaux', {}).get('nLogts', 0)
         lab = 'BÂT. %s · R+%d · %d logements' % (bl['name'][-1], bl['nlev'] - 1, n + sp)
         E.append(txt(c.x, c.y, lab, 1.7, rot=ang if abs(ang) < 90 else ang + 180))
-    for bl in D.BLOCKS:
+    for bl in S.BLOCKS:
         if 'parking' in bl['name']:
             c = Polygon(bl['fp']).centroid; ang = bl['az'] - 90
             E.append(txt(c.x, c.y, bl['name'].replace('Bât. ', 'Bât. ').replace(' (sur parking)', '') + ' sur poteaux', 1.15, weight=500, rot=ang if abs(ang) < 90 else ang + 180))
-    for p in D.V.get('parks', []):
+    for p in S.V.get('parks', []):
         if p.get('places', 0) >= 10:
             c = Polygon(p['poly']).centroid; E.append(txt(c.x, c.y, 'P · %d places' % p['places'], 1.5, color='#fff', halo='#222', rot=0))
     # clôtures par type (grillage-haie, grille-bahut-haie) et ouvertures (portillons, battants)
@@ -122,7 +136,7 @@ def build(out_svg, ortho_name='plan_ortho.jpg'):
         if cl.get('poly'): E.append('<polyline points="%s" fill="none" stroke="#2f78c8" stroke-width="0.8" stroke-dasharray="0.01 1.5" stroke-linecap="round"/>' % P(cl['poly']))
         for t in cl.get('traits', []): E.append('<polyline points="%s" fill="none" stroke="#c0392b" stroke-width="0.45"/>' % P(t))
     # arbres abattus
-    felled = [t for t in D.Q['trees'] if t.get('felled')]
+    felled = [t for t in S.Q['trees'] if t.get('felled')]
     for t in felled:
         r = 0.9; E.append('<g stroke="#e23b2e" stroke-width="0.35"><line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f"/><line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f"/></g>' % (t['x'] - r, t['z'] - r, t['x'] + r, t['z'] + r, t['x'] - r, t['z'] + r, t['x'] + r, t['z'] - r))
     # accès
@@ -132,7 +146,7 @@ def build(out_svg, ortho_name='plan_ortho.jpg'):
         tip = (pt[0] + ix * 1.2, pt[1] + iz * 1.2); b1 = (pt[0] - ix * 2.4 + px * 1.6, pt[1] - iz * 2.4 + pz * 1.6); b2 = (pt[0] - ix * 2.4 - px * 1.6, pt[1] - iz * 2.4 - pz * 1.6)
         E.append('<polygon points="%s" fill="%s" stroke="#fff" stroke-width="0.25"/>' % (P([tip, b1, b2]), col))
         E.append(txt(pt[0] - ix * 4.5 + dx, pt[1] - iz * 4.5 + dz, lab, 1.3, anchor=anchor, color=col, weight=700))
-    for a in D.Q.get('acc', []):
+    for a in S.Q.get('acc', []):
         u = a.get('usage'); p = a['p']
         if a['kind'] == 'vehicule': marker(p, '#c0392b', 'ACCÈS VÉHICULES', 0, 0)
         else: marker(p, '#1f5fa8', {'logements': 'entrée résidents', 'FJT': 'entrée FJT', 'crèche': 'entrée crèche', 'public': 'entrée public MLE'}.get(u, 'entrée piétons'), 0, 0)
@@ -149,11 +163,11 @@ def build(out_svg, ortho_name='plan_ortho.jpg'):
     rect = lambda fill, extra='': sw('<rect x="2" y="1.5" width="10" height="5" fill="%s" %s/>' % (fill, extra))
     haie = '<line x1="1" y1="4" x2="13" y2="4" stroke="#7cc96a" stroke-width="3" stroke-opacity="0.6"/>'
     L = [('Limites et bâti', [
-            (sw('<line x1="1" y1="4" x2="13" y2="4" stroke="#ff8a1f" stroke-width="1.4"/>'), 'assiette FJT (%s m²)' % D.sep(D.R['site']['area'])),
+            (sw('<line x1="1" y1="4" x2="13" y2="4" stroke="#ff8a1f" stroke-width="1.4"/>'), 'assiette FJT (%s m²)' % D.sep(S.R['site']['area'])),
             (sw('<line x1="1" y1="4" x2="13" y2="4" stroke="#ffe29a" stroke-width="0.8" stroke-dasharray="2 1.4"/>'), 'enveloppe constructible'),
-            (rect('#d9853b', 'fill-opacity="0.75" stroke="#2b1a0c" stroke-width="0.5"'), 'lames A et B, R+%d, toiture 4 pans' % (D.BLOCKS[0]['nlev'] - 1)),
+            (rect('#d9853b', 'fill-opacity="0.75" stroke="#2b1a0c" stroke-width="0.5"'), 'lames A et B, R+%d, toiture 4 pans' % (S.BLOCKS[0]['nlev'] - 1)),
             (rect('#e9c9a6', 'stroke="#2b1a0c" stroke-width="0.5" stroke-dasharray="1.6 1"'), "prolongements A' et B' sur poteaux"),
-            (rect('#3d3d3d', 'fill-opacity="0.6"'), 'stationnement (%d pl.)' % D.V['parkTotal']),
+            (rect('#3d3d3d', 'fill-opacity="0.6"'), 'stationnement (%d pl.)' % S.V['parkTotal']),
             (rect('#6f8fd8', 'fill-opacity="0.5" stroke="#1d3c8c" stroke-width="0.5"'), 'lot SIDR (PC NKN)'),
             (rect('url(#b2uL)', 'stroke="#e23b2e" stroke-width="0.5"'), 'B2u (+1 m), inconstructible'),
             (sw('<g stroke="#e23b2e" stroke-width="0.9"><line x1="4" y1="1.5" x2="10" y2="6.5"/><line x1="4" y1="6.5" x2="10" y2="1.5"/></g>'), 'arbre abattu (%d)' % len(felled))]),
@@ -164,7 +178,9 @@ def build(out_svg, ortho_name='plan_ortho.jpg'):
             (sw('<line x1="3" y1="4" x2="11" y2="4" stroke="#fff" stroke-width="3"/><line x1="4" y1="4" x2="10" y2="4" stroke="#c0392b" stroke-width="1.2" stroke-linecap="round"/>'), 'portillon (%d)' % ng['portillon']),
             (sw('<line x1="2" y1="4" x2="12" y2="4" stroke="#fff" stroke-width="3"/><line x1="2" y1="4" x2="12" y2="4" stroke="#e0662a" stroke-width="1.2" stroke-linecap="round"/>'), 'portail battant, accès véhicules (%d)' % ng['battant'])] if FEN else
             [(sw('<line x1="1" y1="4" x2="13" y2="4" stroke="#2f78c8" stroke-width="1.6" stroke-dasharray="0.1 2.2" stroke-linecap="round"/>'), 'clôture RDC · MLE + services FJT')])),
-         ('Accès', [(sw('<polygon points="7,1 12,7 2,7" fill="#c0392b"/>'), 'accès véhicules'), (sw('<polygon points="7,1 12,7 2,7" fill="#1f5fa8"/>'), 'entrées piétonnes : résidents, FJT, crèche, public MLE')])]
+         ('Accès', [(sw('<polygon points="7,1 12,7 2,7" fill="#c0392b"/>'), 'accès véhicules'), (sw('<polygon points="7,1 12,7 2,7" fill="#1f5fa8"/>'), 'entrées piétonnes : ' + ', '.join(ACC_LAB[u] for u in ACC_LAB if any(a.get('usage') == u for a in S.Q.get('acc', []))))] +
+            ([(sw('<line x1="1" y1="4" x2="13" y2="4" stroke="#6b5a3c" stroke-width="2.9" stroke-linecap="round"/><line x1="1" y1="4" x2="13" y2="4" stroke="#f1e4c3" stroke-width="2.4" stroke-linecap="round"/>'), 'allées piétonnes, %s m de large' % D.f2(wa).rstrip('0').rstrip(','))] if allees else []))]
+    L = [(t, [x for x in its if not (' · 0 ml' in x[1] or x[1].endswith('(0)'))]) for t, its in L]   # pas de ligne de légende à zéro
     legend = '<div class="leg"><h4>Légende</h4>' + ''.join('<h5>%s</h5>%s' % (t, ''.join('<div class="li">%s<span>%s</span></div>' % (i, l) for i, l in its)) for t, its in L) + \
              '<svg width="0" height="0"><defs><pattern id="b2uL" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="3" stroke="#e23b2e" stroke-width="0.7"/></pattern></defs></svg></div>'
     svg = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="%.2f %.2f %.2f %.2f" font-family="Helvetica, Arial, sans-serif" style="width:300mm;height:%.1fmm;display:block">%s</svg>' % (Xv, Z0, Wv, Hm, Hm * 2, ''.join(E)))

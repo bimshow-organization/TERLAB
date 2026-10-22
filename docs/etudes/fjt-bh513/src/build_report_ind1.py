@@ -131,11 +131,13 @@ P.append(page('A.3', 'Scénario retenu — deux lames et parking en haut de parc
 <h3>Chiffres clés</h3>%s
 <div class="g2 mt"><figure><img src="parking-nano-1.png"><figcaption>Depuis l'accès véhicules — stationnement sous A' et B' (IA, non contractuelle)</figcaption></figure><figure><img src="cour-nano-2.png"><figcaption>La cour entre les lames (IA, non contractuelle)</figcaption></figure></div></div></div>''' % (BA['nlev'] - 1, sep(creche_ext), KV)))
 
-# ── A.4 plan masse coloré
-src_txt = {'sonde-clotures': 'clôtures d\'après la sonde des clôtures du FJT final (cloture-fjt-resultat.json), en attendant leur export dans result.json', 'planche': 'clôtures d\'après le projet BVE'}.get(FSRC, 'clôtures indicatives')
-P.append(page('A.4', 'Plan masse coloré — 1/500', '''
+# ── A.4 plan masse coloré (même gabarit pour la variante R+2, A.10)
+def plan_page(num, title, svg_path, pc, fsrc, note_scen):
+    src_txt = {'sonde-clotures': "clôtures d'après la sonde des clôtures du FJT final (cloture-fjt-resultat.json), en attendant leur export dans result.json", 'planche': "clôtures d'après le projet BVE"}.get(fsrc, 'clôtures indicatives')
+    return page(num, title, '''
 <div class="planrow"><div class="plancol">%s</div>%s</div>
-<p class=note>Orthophoto IGN (Géoplateforme, 2026) · repère maquette, RGR92 UTM 40S · échelle 1/500 sur A3 (barre graphique : 20 m) · lames et prolongements sur poteaux d'après la sonde BVE · voisins SIDR d'après le PC (NKN, sept. 2026) · %s · fonctions et teintes des espaces : catalogue USAGES de BVE.</p>''' % (inline(os.path.join(OUT, 'plan_couleur.svg')), pc_info['legend'], src_txt), 'planpage'))
+<p class=note>Orthophoto IGN (Géoplateforme, 2026) · repère maquette, RGR92 UTM 40S · échelle 1/500 sur A3 (barre graphique : 20 m) · %s d'après la sonde BVE · voisins SIDR d'après le PC (NKN, sept. 2026) · %s · fonctions et teintes des espaces : catalogue USAGES de BVE.</p>''' % (inline(svg_path), pc['legend'], note_scen, src_txt), 'planpage')
+P.append(plan_page('A.4', 'Plan masse coloré — 1/500', os.path.join(OUT, 'plan_couleur.svg'), pc_info, FSRC, 'lames et prolongements sur poteaux'))
 
 # ── A.5 plans RDC et étage courant (+ logements types)
 todo5 = ''
@@ -178,16 +180,19 @@ def niveau_dest(n):
     parts = (['Logements'] if n['logements'] else []) + sorted({a['group'] for a in n['annexes']}, key=lambda g: g)
     if n.get('parking'): parts = ['Rez-de-chaussée sur poteaux — stationnement']
     return ' · '.join(parts) if parts else '—'
-rows = ''; tot = dict(t1=0, t1b=0, t2=0, shab=0, su=0, sdp=0)
-for b in F['batiments']:
-    for n in sorted(b['niveaux'], key=lambda n: ['RDC', 'R+1', 'R+2', 'R+3', 'R+4'].index(n['level']) if n['level'] in ['RDC', 'R+1', 'R+2', 'R+3', 'R+4'] else 9):
-        lg = n['logements']; a1, a1b, a2 = lg.get('T1', 0), lg.get('T1bis', 0), lg.get('T2', 0)
-        cell = lambda v: v if v else '—'
-        rows += '<tr><td>%s</td><td>%s</td><td>%s</td><td class=n>%s</td><td class=n>%s</td><td class=n>%s</td><td class=n>%s</td><td class=n>%s</td><td class=n>%s</td></tr>' % (
-            b['name'], n['level'], niveau_dest(n), cell(a1), cell(a1b), cell(a2), f1(n['shab']) if n['shab'] else '—', f1(n['su'] - n['shab']) if n['su'] - n['shab'] > 0.05 else '—', f1(n['sdp']) if n['sdp'] else '—')
-    bt = b['totaux']; lg = bt['logements']
-    rows += '<tr class=sub><td colspan=3>Total %s</td><td class=n>%d</td><td class=n>%d</td><td class=n>%d</td><td class=n>%s</td><td class=n>%s</td><td class=n>%s</td></tr>' % (b['name'], lg.get('T1', 0), lg.get('T1bis', 0), lg.get('T2', 0), f1(bt['shab']), (f1(bt['suAnnexes']) if bt['suAnnexes'] else '—'), f1(bt['sdp']))
-rows += '<tr class=tot><td colspan=3>TOTAL — %d logements</td><td class=n>%d</td><td class=n>%d</td><td class=n>%d</td><td class=n>%s</td><td class=n>%s</td><td class=n>%s</td></tr>' % (N, nT1, nT1b, nT2, f1(shab), f1(su), f1(sdp))
+def surf_rows(Fb, N, nT1, nT1b, nT2, shab, su, sdp):
+    rows = ''
+    for b in Fb['batiments']:
+        for n in sorted(b['niveaux'], key=lambda n: ['RDC', 'R+1', 'R+2', 'R+3', 'R+4'].index(n['level']) if n['level'] in ['RDC', 'R+1', 'R+2', 'R+3', 'R+4'] else 9):
+            lg = n['logements']; a1, a1b, a2 = lg.get('T1', 0), lg.get('T1bis', 0), lg.get('T2', 0)
+            cell = lambda v: v if v else '—'
+            rows += '<tr><td>%s</td><td>%s</td><td>%s</td><td class=n>%s</td><td class=n>%s</td><td class=n>%s</td><td class=n>%s</td><td class=n>%s</td><td class=n>%s</td></tr>' % (
+                b['name'], n['level'], niveau_dest(n), cell(a1), cell(a1b), cell(a2), f1(n['shab']) if n['shab'] else '—', f1(n['su'] - n['shab']) if n['su'] - n['shab'] > 0.05 else '—', f1(n['sdp']) if n['sdp'] else '—')
+        bt = b['totaux']; lg = bt['logements']
+        rows += '<tr class=sub><td colspan=3>Total %s</td><td class=n>%d</td><td class=n>%d</td><td class=n>%d</td><td class=n>%s</td><td class=n>%s</td><td class=n>%s</td></tr>' % (b['name'], lg.get('T1', 0), lg.get('T1bis', 0), lg.get('T2', 0), f1(bt['shab']), (f1(bt['suAnnexes']) if bt['suAnnexes'] else '—'), f1(bt['sdp']))
+    rows += '<tr class=tot><td colspan=3>TOTAL — %d logements</td><td class=n>%d</td><td class=n>%d</td><td class=n>%d</td><td class=n>%s</td><td class=n>%s</td><td class=n>%s</td></tr>' % (N, nT1, nT1b, nT2, f1(shab), f1(su), f1(sdp))
+    return rows
+rows = surf_rows(F, N, nT1, nT1b, nT2, shab, su, sdp)
 synth = ('<table class=grid><tr><th>Type</th><th>Nombre</th><th>Surface cible</th><th>SHAB cible cumulée</th></tr>'
          '<tr><td>T1</td><td class=n>%d</td><td class=n>%s m²</td><td class=n>%s m²</td></tr><tr><td>T1 bis</td><td class=n>%d</td><td class=n>%s m²</td><td class=n>%s m²</td></tr><tr><td>T2</td><td class=n>%d</td><td class=n>%s m²</td><td class=n>%s m²</td></tr></table>') % (
     nT1, '%.0f' % c1, sep(nT1 * c1), nT1b, '%.0f' % c1b, sep(nT1b * c1b), nT2, '%.0f' % c2, sep(nT2 * c2))
@@ -234,6 +239,93 @@ P.append(page('A.9', 'Tableau de surfaces et points de vigilance', '''
 <h3>Suite proposée</h3><ul><li>Réunion Ville / SEMAC / SIDR sur l'évolution du PLU.</li><li>Plans types T1, T1 bis et T2 calés sur le programme.</li><li>Estimation des travaux et montage (LLTS, FSE, bonus EPFR).</li><li>Perspectives d'ambiance contrôlées pour la présentation aux élus.</li></ul></div></div>''' % (
     rows, synt2, synth, D.PJ.get('cartouche', {}).get('dossier', ''), ''.join(vig)), 'surf'))
 
+# ── Variante R+2 (appel client du 22/10) : A.10 plan masse coloré, A.11 tableau de surfaces et comparaison avec le scénario retenu ──
+# Même chaîne que le scénario retenu : D.Scen(planche) → plan_couleur_ind1.build(…, S) ; les chiffres viennent des result.json / pcmi.json des deux planches.
+PL_R2 = os.environ.get('FJT_PLANCHE_R2', 'C:/GITHUB/code-runner/docs/bve-pro/planches/standre-bh513-fjt-r2')
+S2 = D.Scen(PL_R2)
+print('plan masse coloré variante R+2…'); pc2 = PC.build(os.path.join(OUT, 'plan_couleur_r2.svg'), 'plan_ortho_r2.jpg', S2)
+
+def facts(S):
+    """Chiffres comparables d'une planche (scénario ou variante)."""
+    T_, V_, R_, F_, Q_ = S.T, S.V, S.R, S.F, S.Q
+    grp = {}
+    for b in F_['batiments']:
+        for n in b['niveaux']:
+            for a in n['annexes']: grp[a['group']] = grp.get(a['group'], 0) + a['su']
+    fa = [b['faitage'] for b in S.BLOCKS]; ht = max(b['faitage'] - b['rdc'] for b in S.BLOCKS)
+    esp = ((R_.get('clotures') or {}).get('espaces') or {})
+    rdc_logts = sum(sum(n['logements'].values()) for b in F_['batiments'] for n in b['niveaux'] if n['level'] == 'RDC')
+    return dict(nlev=S.BLOCKS[0]['nlev'], N=T_['nLogts'], t1=T_['logements'].get('T1', 0), t1b=T_['logements'].get('T1bis', 0), t2=T_['logements'].get('T2', 0),
+                shab=T_['shab'], sdp=T_['sdp'], su=T_['suAnnexes'], emprise=T_['emprise'], places=V_['parkTotal'], need=R_['parkingNeed']['total'],
+                grp=grp, fa_min=min(fa), fa_max=max(fa), ht=ht, esp=esp.get('liste') or [], esp_aire=esp.get('aireExterieure') or 0, env=Q_['env']['envArea'], lot=R_['site']['area'],
+                rdc_logts=rdc_logts, lens={b['name']: b['len'] for b in S.BLOCKS}, ces=R_['site']['zonage'].get('ces'))
+f_ret, f_var = facts(D), facts(S2)
+sg = lambda v, fmt: ('%+d' % round(v)) if fmt == 'i' else (('%+.1f' % v).replace('.', ',') if abs(v) >= 0.05 else '0')
+def cmp_row(lab, a, b, unit='', fmt='i', bold=False):
+    if a is None and b is None: return ''
+    fa_, fb_ = (sep(a) if fmt == 'i' else f1(a)), (sep(b) if fmt == 'i' else f1(b))
+    d = sg(b - a, fmt).replace('-', '−') if (fmt in ('i', 'f')) else ''
+    if fmt == 'i' and round(b - a) == 0: d = '='
+    u = (' ' + unit) if unit else ''
+    return '<tr><td>%s</td><td class=n>%s%s</td><td class=n>%s%s</td><td class="n e">%s%s</td></tr>' % (lab, fa_, u, fb_, u, d, (u if d not in ('=', '') else ''))
+def cmp_sec(lab): return '<tr class=sec><td colspan=4>%s</td></tr>' % lab
+def cmp_ngr(lab, a0, a1, b0, b1):
+    return '<tr><td>%s</td><td class=n>%s à %s</td><td class=n>%s à %s</td><td class="n e">%s m</td></tr>' % (lab, f2(a0), f2(a1), f2(b0), f2(b1), sg(((b0 + b1) - (a0 + a1)) / 2, 'f').replace('-', '−'))
+GRP_LAB = {'Communs FJT': 'Communs FJT', 'Pôle admin MLE': 'Pôle administratif MLE', 'Micro-crèche': 'Micro-crèche', 'Extérieurs': 'Locaux vélos et poubelles'}
+usage_aire = lambda f, u: sum(e['aire'] for e in f['esp'] if e['usage'] == u)
+cmp_rows = ''.join([
+    cmp_sec('Niveaux et logements'),
+    cmp_row('Hauteur des lames (R+n)', f_ret['nlev'] - 1, f_var['nlev'] - 1, '', 'i'),
+    cmp_row('Logements', f_ret['N'], f_var['N'], '', 'i', True), cmp_row('dont T1', f_ret['t1'], f_var['t1']), cmp_row('dont T1 bis', f_ret['t1b'], f_var['t1b']), cmp_row('dont T2', f_ret['t2'], f_var['t2']),
+    cmp_row('Logements au RDC', f_ret['rdc_logts'], f_var['rdc_logts']),
+    cmp_sec('Surfaces'),
+    cmp_row('Surface habitable (SHAB)', f_ret['shab'], f_var['shab'], 'm²'), cmp_row('Surface de plancher (SDP)', f_ret['sdp'], f_var['sdp'], 'm²'),
+    cmp_row('Emprise bâtie', f_ret['emprise'], f_var['emprise'], 'm²'),
+    cmp_row('Locaux annexes (SU)', f_ret['su'], f_var['su'], 'm²', 'i', True)] +
+    [cmp_row('— ' + GRP_LAB.get(g, g), f_ret['grp'].get(g, 0), f_var['grp'].get(g, 0), 'm²') for g in GRP_LAB if f_ret['grp'].get(g, 0) or f_var['grp'].get(g, 0)] + [
+    cmp_sec('Stationnement'),
+    cmp_row('Places', f_ret['places'], f_var['places']), cmp_row('Besoin estimé', f_ret['need'], f_var['need']), cmp_row('Places en excédent', f_ret['places'] - f_ret['need'], f_var['places'] - f_var['need']),
+    cmp_sec('Hauteurs (m NGR)'),
+    cmp_ngr('Faîtage des lames', f_ret['fa_min'], f_ret['fa_max'], f_var['fa_min'], f_var['fa_max']),
+    cmp_row('Hauteur du faîtage au-dessus du RDC', f_ret['ht'], f_var['ht'], 'm', 'f'),
+    cmp_sec('Espaces extérieurs (clôtures BVE)'),
+    cmp_row('Espaces extérieurs de l\'assiette', f_ret['esp_aire'], f_var['esp_aire'], 'm²', 'i', True),
+    cmp_row('— cour, jardin commun', usage_aire(f_ret, 'cour-residents'), usage_aire(f_var, 'cour-residents'), 'm²'),
+    cmp_row('— équipement (MLE, services)', usage_aire(f_ret, 'equipement'), usage_aire(f_var, 'equipement'), 'm²'),
+    cmp_row('— cour de la crèche', usage_aire(f_ret, 'cour-enfants'), usage_aire(f_var, 'cour-enfants'), 'm²'),
+    cmp_row('Nombre d\'espaces', len(f_ret['esp']), len(f_var['esp']))])
+cmp_html = '<table class=cmp><tr><th>Critère</th><th>Scénario retenu R+%d</th><th>Variante R+%d</th><th>Écart</th></tr>%s</table>' % (f_ret['nlev'] - 1, f_var['nlev'] - 1, cmp_rows)
+
+# A.10 : plan masse coloré de la variante
+P.append(plan_page('A.10', 'Variante R+%d — plan masse coloré 1/500' % (f_var['nlev'] - 1), os.path.join(OUT, 'plan_couleur_r2.svg'), pc2, 'planche', 'lames R+%d, parking du haut seul' % (f_var['nlev'] - 1)))
+
+# A.11 : tableau de surfaces de la variante, comparaison, commentaire
+V2, T2_, F2_ = S2.V, S2.T, S2.F
+v_t1, v_t1b, v_t2 = (T2_['logements'].get(k, 0) for k in ('T1', 'T1bis', 'T2'))
+rows2 = surf_rows(F2_, T2_['nLogts'], v_t1, v_t1b, v_t2, T2_['shab'], T2_['suAnnexes'], T2_['sdp'])
+mle_r, cre_r = f_ret['grp'].get('Pôle admin MLE', 0), f_ret['grp'].get('Micro-crèche', 0)
+bas = f_ret['places'] - f_var['places']
+lm = f_var['lens']; a_len, b_len = lm.get('Bât. A'), lm.get('Bât. B')
+txt_change = ('<h3>Ce qui change</h3><ul>'
+    '<li><b>Un niveau de moins</b> : R+%d au lieu de R+%d, faîtage à %s–%s m NGR contre %s–%s (%s m au-dessus du RDC contre %s).</li>'
+    '<li><b>Pôle MLE et micro-crèche retirés</b> : %s m² de locaux annexes en moins (MLE %s m², crèche %s m²) et la cour de la crèche (%s m²) ; les annexes ne sont plus que les communs FJT et les locaux techniques (%s m²).</li>'
+    '<li><b>Logements au RDC</b> : %d logements au rez-de-chaussée, à côté des communs FJT.</li>'
+    '<li><b>Parking du bas supprimé</b> : %d places en moins (%d contre %d), toutes en haut de parcelle (%s) ; une seule cour des résidents de %s m².</li>'
+    '<li>Résultat : <b>%d logements</b> (%d T1, %d T1 bis, %d T2) au lieu de %d, SHAB %s m² (%s m²), SDP %s m² (%s m²).</li></ul>') % (
+    f_var['nlev'] - 1, f_ret['nlev'] - 1, f2(f_var['fa_min']), f2(f_var['fa_max']), f2(f_ret['fa_min']), f2(f_ret['fa_max']), f1(f_var['ht']), f1(f_ret['ht']),
+    sep(f_ret['su'] - f_var['su']), sep(mle_r), sep(cre_r), sep(usage_aire(f_ret, 'cour-enfants')), sep(f_var['su']),
+    f_var['rdc_logts'], bas, f_var['places'], f_ret['places'], ' + '.join('%d %s' % (p['places'], {'reserve': 'sur la réserve', 'allee': "le long de l'allée"}.get(p.get('kind'), p.get('kind', ''))) for p in V2['parks']), sep(usage_aire(f_var, 'cour-residents')),
+    f_var['N'], f_var['t1'], f_var['t1b'], f_var['t2'], f_ret['N'], sep(f_var['shab']), sep(f_ret['shab']), sep(f_var['sdp']), sep(f_ret['sdp']))
+txt_plafond = ('<h3>Ce qui plafonne</h3><p>Le <b>stationnement n\'est pas limitant</b> : %d places pour un besoin de %d (%d en excédent). Ce sont <b>l\'enveloppe constructible</b> (%s m² pour une assiette de %s m², emprise bâtie %s m², soit %d %% de l\'enveloppe) et <b>la longueur des lames</b> (Bât. A %s m, Bât. B %s m, profondeur %s m) qui bornent le nombre de logements (reculs 3 / 4 / 4 m, hors B2u).</p>') % (
+    f_var['places'], f_var['need'], f_var['places'] - f_var['need'], sep(f_var['env']), sep(f_var['lot']), sep(f_var['emprise']), round(100 * f_var['emprise'] / f_var['env']),
+    f1(a_len), f1(b_len), f1(S2.BLOCKS[0]['depth']))
+P.append(page('A.11', 'Variante R+%d — tableau de surfaces et comparaison' % (f_var['nlev'] - 1), '''
+<div class="g2 w60"><div><h3>Variante R+%d : programme par bâtiment et par niveau</h3><table class=grid><tr><th>Bât.</th><th>Niveau</th><th>Destination</th><th>T1</th><th>T1 bis</th><th>T2</th><th>SHAB m²</th><th>Annexes SU m²</th><th>SDP m²</th></tr>%s</table>
+<p class=note>SHAB : surface habitable ; SU annexes : communs FJT et locaux techniques ; SDP : pré-dimensionnement ±10 %% (coursives hors SDP). Source : sonde BVE « opération collective », projet %s.</p></div>
+<div><h3>Scénario retenu et variante : comparaison</h3>%s</div></div>
+<div class="g2 mt cmpTxt"><div class=txt>%s</div><div class=txt>%s</div></div>''' % (
+    f_var['nlev'] - 1, rows2, S2.PJ.get('cartouche', {}).get('dossier', ''), cmp_html, txt_change, txt_plafond), 'surf'))
+
 CSS = open(os.path.join(HERE, 'build_report_v2.py'), encoding='utf-8').read().split("CSS = '''")[1].split("'''")[0] + '''
 .fig.white{background:#fff}.fig img{width:100%;display:block}.fig.tall{height:170mm}.fig.tall img.cover-img{width:100%;height:100%;object-fit:cover}
 .sections .sec{margin-bottom:2.5mm}.sections .sec svg.sx{width:100%;height:auto;max-height:78mm;display:block;border:1px solid #e6e6e6}
@@ -242,11 +334,15 @@ CSS = open(os.path.join(HERE, 'build_report_v2.py'), encoding='utf-8').read().sp
 .types3{display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:5mm;align-items:end}.types3 img{border:none;max-height:44mm;object-fit:contain}.todo{border:2px dashed #e08a2c;color:#8a4a00;padding:6mm;font-size:9pt;text-align:center}
 .vimg{position:relative;height:100%}.vues .persp{height:238mm}.vues .persp figure{display:flex;flex-direction:column}.vues .persp .vimg{flex:1;overflow:hidden;border:1px solid #ddd}.vues .persp img{width:100%;height:100%;object-fit:cover;border:none}
 .prov{position:absolute;left:3mm;top:3mm;background:rgba(224,138,44,.92);color:#fff;font-size:8pt;font-weight:700;padding:.8mm 2.5mm;letter-spacing:.06em}
+.cmp{width:100%;border-collapse:collapse;font-size:9.5pt}.cmp th{background:#3e6f2c;color:#fff;padding:1.2mm 1.6mm;text-align:right}.cmp th:first-child{text-align:left}.cmp td{padding:1mm 1.6mm;border-bottom:1px solid #ddd}.cmp td.n{text-align:right;white-space:nowrap}.cmp tr.sec td{background:#eef6e8;font-weight:700}.cmp td.e{font-weight:700}
 .surf .grid{font-size:9pt}.surf .grid td,.surf .grid th{padding:1.1mm 1.4mm}.surf .grid th{font-size:9pt}.grid tr.sub td{background:#eef6e8;font-weight:600}.surf .txt{font-size:10pt}
 '''
 html = '<!doctype html><html lang=fr><head><meta charset=utf-8><title>Faisabilité FJT BH 513 — ind 1</title><style>%s</style></head><body>%s</body></html>' % (CSS, ''.join(P))
 html_path = os.path.join(OUT, 'rapport.html'); open(html_path, 'w', encoding='utf-8').write(html)
 print('pages', len(P), '| logts', N, T['logements'], '| SHAB', shab, '| SDP', sdp, '| emprise', empr, '| places', V['parkTotal'], '| clôtures', len(fences), '| écarts studios', studio_ecarts)
 pdf = os.path.join(OUT, 'rapport-ind1.pdf')
+try: open(pdf, 'ab').close()
+except OSError:   # PDF ouvert dans un lecteur (Windows verrouille le fichier) : on écrit à côté plutôt que d'échouer
+    pdf = os.path.join(OUT, 'rapport-ind1-%s.pdf' % datetime.datetime.now().strftime('%H%M')); print('rapport-ind1.pdf verrouillé : écriture dans', pdf)
 subprocess.run([NODE, SHOT, html_path, pdf], check=True, timeout=280)
 print('PDF', pdf, os.path.getsize(pdf))
