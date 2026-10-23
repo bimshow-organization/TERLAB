@@ -53,6 +53,85 @@ def has_detail():
 
 def srgb(c): return np.clip(c, 0, 1) ** (1 / 2.2)
 
+# ── Rendu au trait en noir et blanc (élévation) : murs blancs, vitrages gris clair, toitures hachurées dans le sens de la pente,
+# arêtes vives seulement (angle dièdre > 25° ou changement de matériau ou bord libre), épaisseurs hiérarchisées, contour épais.
+ANG_COS = math.cos(math.radians(25))
+CLS = [(re.compile(r'baie|vitr', re.I), 'glass'), (re.compile(r'toit|couverture', re.I), 'roof'), (re.compile(r'garde', re.I), 'guard'),
+       (re.compile(r'jalousie', re.I), 'louvre'), (re.compile(r'menuiserie|porte|cadre|varangue', re.I), 'joinery'),
+       (re.compile(r'voiture|marquage|sol-parking|maillage', re.I), 'skip')]
+def _cls(role):
+    name = role.split('·')[-1].strip() if '·' in role else role.strip()
+    for rx, c in CLS:
+        if rx.search(name): return c
+    return 'wall'
+RB = 15   # pas angulaire des hachures de toiture (degrés)
+def roof_patterns():
+    p = []
+    for a in range(0, 180, RB):   # ligne de pente d'angle a (écran, y vers le bas) : motif de traits verticaux tournés de a-90
+        p.append('<pattern id="fj-r%d" width="1.7" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(%d)"><rect width="1.7" height="8" fill="#fff"/>'
+                 '<line x1="0.85" y1="0" x2="0.85" y2="8" stroke="#000" stroke-width="0.14"/></pattern>' % (a, a - 90))
+    return ''.join(p)
+STYLE = ('<style>.fjw{fill:#fff;stroke:#fff;stroke-width:.3}.fjg{fill:#d4d4d4;stroke:#d4d4d4;stroke-width:.3}.fjj{fill:#fff;stroke:#fff;stroke-width:.2}'
+         '.fe{fill:none;stroke:#000;stroke-linecap:round}.f1{stroke-width:.55}.f2{stroke-width:.35}.f3{stroke-width:.28}.f4{stroke-width:.07}'
+         + ''.join('.fjr%d{fill:url(#fj-r%d);stroke:#fff;stroke-width:.2}' % (a, a) for a in range(0, 180, RB)) + '</style>')
+
+def render_bw(d):
+    """(éléments SVG, contour épais) d'un plan de façade `d` : peintre trié en profondeur, chaque triangle suivi de ses seules arêtes vives"""
+    r = projet_triangles()
+    if not r: return [], ''
+    tri, col, roles, _ = r
+    cl = np.array([_cls(x) for x in roles]); k = cl != 'skip'; tri, cl = tri[k], cl[k]; n = len(tri)
+    v = np.array([d.v[0], 0, d.v[1]])
+    nrm = np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0]); ln = np.linalg.norm(nrm, axis=1); ln[ln == 0] = 1; nrm = nrm / ln[:, None]
+    cen = tri.mean(1)
+    if np.mean(np.einsum('ij,ij->i', nrm, cen - cen.mean(0))) < 0: nrm = -nrm
+    # arêtes : sommets soudés au millimètre, puis tri des arêtes par paire
+    vid = np.unique(np.round(tri.reshape(-1, 3), 3), axis=0, return_inverse=True)[1].reshape(-1)
+    nv = vid.max() + 1; vpos = np.zeros((nv, 3)); vpos[vid] = tri.reshape(-1, 3); vid = vid.reshape(n, 3)
+    E = np.stack([vid[:, [0, 1]], vid[:, [1, 2]], vid[:, [2, 0]]], 1).reshape(-1, 2); E.sort(1); T = np.repeat(np.arange(n), 3)
+    key = E[:, 0].astype(np.int64) * nv + E[:, 1]; order = np.argsort(key, kind='stable'); key, E, T = key[order], E[order], T[order]
+    brk = np.flatnonzero(np.diff(key)) + 1; starts = np.r_[0, brk]; ends = np.r_[brk, len(key)]
+    feats = []
+    for s0, e0 in zip(starts, ends):
+        ts = T[s0:e0]
+        if e0 - s0 == 2 and ts[0] != ts[1] and cl[ts[0]] == cl[ts[1]] and nrm[ts[0]] @ nrm[ts[1]] > ANG_COS: continue   # arête de triangulation
+        feats.append((E[s0][0], E[s0][1], ts))
+    vis = (nrm @ v) < -0.02
+    depth = (cen[:, 0] - d.O[0]) * d.v[0] + (cen[:, 2] - d.O[1]) * d.v[1]
+    idx = np.flatnonzero(vis & (depth > -1)); idx = idx[np.argsort(-depth[idx], kind='stable')]
+    rank = np.full(n, -1); rank[idx] = np.arange(len(idx))
+    sx = lambda P: ((P[..., 0] - d.O[0]) * d.right[0] + (P[..., 2] - d.O[1]) * d.right[1] - d.span[0]) * d.K
+    px = sx(tri); py = (d.yhi - tri[:, :, 1]) * d.K
+    own = {}
+    for a, b, ts in feats:
+        rk = [(rank[t], t) for t in ts if rank[t] >= 0]
+        if rk: own.setdefault(max(rk)[1], []).append((a, b, ts))   # l'arête est tracée avec le dernier triangle dessiné qui la touche
+    out, polys = [], []
+    for t in idx:
+        c = cl[t]
+        pts = [(px[t, q], py[t, q]) for q in range(3)]
+        if c not in ('guard', 'louvre') and len({(round(x, 1), round(y, 1)) for x, y in pts}) == 3:
+            if c == 'roof':
+                g = nrm[t]; sxd = (g[0] * g[1]) * d.right[0] + (g[2] * g[1]) * d.right[1]; syd = 1 - g[1] ** 2     # descente de plus grande pente projetée (écran, y vers le bas)
+                a = math.degrees(math.atan2(syd, sxd)) % 180; cls = 'fjr%d' % (int(round(a / RB)) * RB % 180)
+            else: cls = {'wall': 'fjw', 'glass': 'fjg', 'joinery': 'fjj'}[c]
+            out.append('<polygon class="%s" points="%s"/>' % (cls, ' '.join('%.1f,%.1f' % p for p in pts))); polys.append(pts)
+        for a, b, ts in own.get(t, ()):
+            cs = {cl[x] for x in ts}; A, B = vpos[a], vpos[b]
+            xa, xb = sx(A), sx(B); ya, yb = (d.yhi - A[1]) * d.K, (d.yhi - B[1]) * d.K
+            if abs(xa - xb) + abs(ya - yb) < 0.05: continue
+            w = 'f1' if cs & {'wall', 'roof'} else 'f2' if cs & {'glass', 'joinery'} else ('f3' if np.linalg.norm(A - B) > 0.8 else 'f4')
+            out.append('<path class="fe %s" d="M%.1f,%.1fL%.1f,%.1f"/>' % (w, xa, ya, xb, yb))
+    outline = ''
+    try:
+        from shapely.geometry import Polygon as SP
+        from shapely.ops import unary_union
+        u = unary_union([SP(p).buffer(0.2) for p in polys if SP(p).area > 1e-4]).buffer(-0.15)
+        dd = ''.join('M' + 'L'.join('%.1f,%.1f' % q for q in g.exterior.simplify(0.1).coords) + 'Z' for g in (u.geoms if hasattr(u, 'geoms') else [u]))
+        outline = '<path d="%s" fill="none" stroke="#000" stroke-width="1.25" stroke-linejoin="round"/>' % dd
+    except Exception as e: print('contour:', e)
+    return out, outline
+
 def render(d, flat_role_colors=True, light=(-0.45, 0.8, -0.4)):
     """retourne les éléments SVG (liste) d'un plan de façade `d` (objet Dr de sections_ind1) ; d.P convertit (s, y) en pixels"""
     r = projet_triangles()

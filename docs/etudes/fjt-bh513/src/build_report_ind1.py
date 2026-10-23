@@ -43,7 +43,7 @@ for f in ['semac.jpg', 'terlab_coupeA.png', 'terlab_coupeB.png', 'terlab_topo.pn
 for f in ['situation-quartier.jpg', 'situation-commune.jpg', 'situation.jpg']: shutil.copy(os.path.join(PL, 'situation', f), os.path.join(OUT, f))
 shutil.copy(os.path.join(PL, 'img', '07-heliodon.png'), os.path.join(OUT, 'heliodon.png'))
 import clean_views
-for f in ['aerienne-nano-2', 'rue-nano-1', 'cour-nano-2', 'parking-nano-1']: shutil.copy(os.path.join(PL, 'pers', f + '.png'), os.path.join(OUT, f + '.png'))   # perspectives Nano Banana retenues par Mathias (22/10), depuis les vues de base validées
+for f in ['aerienne-nano-2', 'rue-nano-1', 'cour-nano-1', 'parking-nano-1']: shutil.copy(os.path.join(PL, 'pers', f + '.png'), os.path.join(OUT, f + '.png'))   # perspectives Nano Banana retenues par Mathias (22/10), depuis les vues de base validées
 for f in ['08-v1-iso', '09-best-ensemble', '10-best-rue']: clean_views.clean(os.path.join(PL, 'img', f + '.png'), os.path.join(OUT, f + '.png'))   # retire les pastilles « arbre abattu » de l'éditeur
 for p in ['plan-masse', 'plan-masse-v1', 'appartement-T1s', 'appartement-T2', 'appartement-T1bis']:
     if os.path.exists(os.path.join(D.PIECES, p + '.svg')): shutil.copy(os.path.join(D.PIECES, p + '.svg'), os.path.join(OUT, 'pieces', p + '.svg'))
@@ -61,7 +61,7 @@ def cropped(src, name, margin=55):
     c = CR[src]; x0, y0, x1, y1 = c['x0'] - margin, c['y0'] - margin, c['x1'] + margin, c['y1'] + margin; s = open(src, encoding='utf-8').read()
     s = re.sub(r'viewBox="[^"]*" width="[^"]*" height="[^"]*"', 'viewBox="%.1f %.1f %.1f %.1f"' % (x0, y0, x1 - x0, y1 - y0), s, 1)
     open(os.path.join(OUT, 'pieces', name), 'w', encoding='utf-8').write(s); return (x1 - x0) / (y1 - y0)
-ar_rdc = cropped(srcs[0], 'plan-RDC.svg', 100); ar_r1 = cropped(srcs[1], 'plan-R1.svg')
+ar_rdc = cropped(srcs[0], 'plan-RDC.svg', 125); ar_r1 = cropped(srcs[1], 'plan-R1.svg')
 
 # ── HTML ──
 def page(num, title, body, cls=''):
@@ -129,7 +129,7 @@ P.append(page('A.3', 'Scénario retenu — deux lames et parking en haut de parc
 <li>Entrées séparées : résidence à l'est près de l'accès véhicules, crèche à l'est, public MLE au sud-ouest ; partie clôturée MLE + services FJT au RDC.</li>
 <li>RDC calé au-dessus du terrain naturel (B3), sans sous-sol ; toitures 4 pans à 22°, débords 0,80 m.</li></ul>
 <h3>Chiffres clés</h3>%s
-<div class="g2 mt"><figure><img src="parking-nano-1.png"><figcaption>Depuis l'accès véhicules — stationnement sous A' et B' (IA, non contractuelle)</figcaption></figure><figure><img src="cour-nano-2.png"><figcaption>La cour entre les lames (IA, non contractuelle)</figcaption></figure></div></div></div>''' % (BA['nlev'] - 1, sep(creche_ext), KV)))
+<div class="g2 mt"><figure><img src="parking-nano-1.png"><figcaption>Depuis l'accès véhicules — stationnement sous A' et B' (IA, non contractuelle)</figcaption></figure><figure><img src="cour-nano-1.png"><figcaption>La cour entre les lames (IA, non contractuelle)</figcaption></figure></div></div></div>''' % (BA['nlev'] - 1, sep(creche_ext), KV)))
 
 # ── A.4 plan masse coloré (même gabarit pour la variante R+2, A.10)
 def plan_page(num, title, svg_path, pc, fsrc, note_scen):
@@ -156,7 +156,7 @@ P.append(page('A.6', 'Coupes et façades urbaines', '''
 <div class="sec"><div class="cap">Façade urbaine est — depuis le chemin Mille Roches (regard vers l'ouest-nord-ouest) · lames A et B en premier plan, A' et B' sur poteaux au fond</div>%s</div>
 <div class="sec"><div class="cap">Façade urbaine sud — depuis le chemin Mille Roches (regard vers le nord)</div>%s</div>
 <p class=note>Terrain naturel : maillage de la maquette (IGN RGE ALTI / LiDAR HD), trait fort · bâti existant : IGN BD TOPO (hauteurs mesurées), voisins SIDR d'après le PC, trait gris selon la profondeur · arbres : LiDAR HD, %d abattus ôtés · projet : RDC %s à %s m NGR, niveaux de %s m, toitures 4 pans 22°, débord 0,80 m · cotes en m NGR · %s.</p>''' % (
-    inline(os.path.join(OUT, 'coupe_AA.svg')), inline(os.path.join(OUT, 'facade_est.svg')), inline(os.path.join(OUT, 'facade_sud.svg')), felled, f2(rdc_min), f2(max(b['rdc'] for b in D.BLOCKS)), f2(BA['hEtage']), ('façades projetées depuis le GLB détaillé de la maquette (une teinte par matériau)' if SC.GL.has_detail() else 'baies indicatives (travée 3,60 m)')), 'sections'))
+    inline(os.path.join(OUT, 'coupe_AA.svg')), inline(os.path.join(OUT, 'facade_est.svg')), inline(os.path.join(OUT, 'facade_sud.svg')), felled, f2(rdc_min), f2(max(b['rdc'] for b in D.BLOCKS)), f2(BA['hEtage']), ('façades en élévation au trait noir et blanc, projetées depuis le GLB détaillé de la maquette (arêtes vives seulement ; vitrages en gris, toitures hachurées dans le sens de la pente)' if SC.GL.has_detail() else 'baies indicatives (travée 3,60 m)')), 'sections'))
 
 # ── A.7 coupe paysagère
 P.append(page('A.7', 'Coupe paysagère', """
@@ -173,7 +173,7 @@ P.append(page('A.8', 'Vues', '''
 <p class=note>Vues de la maquette 3D BVE (IGN BD TOPO, RGE ALTI, LiDAR HD, orthophoto IGN), volumétries indicatives. Perspectives d'ambiance générées par IA (Leonardo, Nano Banana) à partir des vues de base de la maquette détaillée, contrôlées avant génération (baies, varangues, coursives, toitures 4 pans, RDC réel, clôtures) : images <b>non contractuelles</b>, matériaux et ambiance indicatifs.</p>''' % (
     vue('aerienne-nano-2.png', 'Vue aérienne depuis le sud-ouest — les deux lames, le stationnement en haut de parcelle, la cour plantée', 'big'),
     vue('rue-nano-1.png', 'Depuis le chemin Mille Roches — clôture sur voie, entrée piétonne'),
-    vue('cour-nano-2.png', 'La cour entre les lames — coursives, passerelles, clôture ajourée de la cour')), 'vues'))
+    vue('cour-nano-1.png', 'La cour entre les lames — coursives, passerelles, clôture ajourée de la cour')), 'vues'))
 
 # ── A.9 surfaces et vigilance
 def niveau_dest(n):
@@ -229,6 +229,11 @@ vig = ['<li><b>PLU 2025 — zone Ue</b> : l\'hébergement (FJT) y est <b>interdi
        '<li><b>Topographie</b> : relevé géomètre à commander ; l\'étude repose sur le LiDAR HD IGN (≈ 10 cm).</li>']
 if alertes: vig.append('<li><b>Alertes de la sonde BVE</b> : %s.</li>' % ' ; '.join(alertes))
 if studio_ecarts: vig.append('<li><b>Plans de cellules</b> (TODO) : %s.</li>' % ' ; '.join(studio_ecarts))
+if (R.get('circulationsOperation') or {}).get('rampes'): vig.append('<li><b>Rampes à 5 %%</b> (entrée est : %s m, 1 palier ; crèche : %s m) : à confirmer avec le terrassement.</li>' % tuple(f1(r['longueur']) for r in ([next(x for x in R['circulationsOperation']['rampes'] if 'logements' in x['allee']), next((x for x in R['circulationsOperation']['rampes'] if 'cr' in x['allee'] and 'pieton-cr' in x['allee']), R['circulationsOperation']['rampes'][-1])])))
+_lg = next((v for v in ((R.get('circulationsOperation') or {}).get('verdicts') or []) if v['code'] == 'CIRC_OP_LARGEUR'), None)
+if _lg:
+    _n = re.search(r'(\d+) passage', _lg['msg']); _v = [float(x) for x in re.findall(r'([\d.]+) m < [\d.]+ m', _lg['msg'])]; _s = re.search(r'< ([\d.]+) m', _lg['msg'])
+    vig.append('<li><b>Circulations</b> : %s passage(s) de raccord coursive / palier sous la largeur libre de %s m (minimum %s m) : à élargir ou à valider avec le bureau de contrôle.</li>' % (_n.group(1) if _n else '?', f2(float(_s.group(1))) if _s else '1,20', f2(min(_v)) if _v else '?'))
 if FSRC == 'sonde-clotures': vig.append('<li><b>Clôtures</b> : %s ml au total (grillage-haie sur les limites et dans la cour, grille sur bahut sur la voie). Zone B3 : transparence hydraulique à vérifier sur la grille à bahut ; tracé issu de la sonde des clôtures, à relire dans result.json (TODO).</li>' % sep(sum(D.poly_len(f['pts']) for f in fences)))
 elif not fences: vig.append('<li><b>Clôtures et espaces extérieurs</b> (TODO) : tracé et métré à reprendre depuis le projet BVE.</li>')
 P.append(page('A.9', 'Tableau de surfaces et points de vigilance', '''
@@ -326,6 +331,94 @@ P.append(page('A.11', 'Variante R+%d — tableau de surfaces et comparaison' % (
 <div class="g2 mt cmpTxt"><div class=txt>%s</div><div class=txt>%s</div></div>''' % (
     f_var['nlev'] - 1, rows2, S2.PJ.get('cartouche', {}).get('dossier', ''), cmp_html, txt_change, txt_plafond), 'surf'))
 
+# ── A.12 Circulations : cartes de chaleur (plan de masse, R+1) lues dans la planche (pieces/circulations-{chaleur,pmr}-*.svg, result.json → circulationsOperation) ──
+# 3 colonnes : scénario retenu (chemin le plus court), scénario retenu (parcours PMR, ascenseur seul), variante R+2 (chemin le plus court ; sans ascenseur, pas de carte PMR)
+import circ_crop as CC
+def circ_files(S, tag, kind='chaleur'):
+    out = {}
+    for n in ('masse', 'R1'):
+        src = os.path.join(S.PIECES, 'circulations-%s-%s.svg' % (kind, n))
+        if os.path.exists(src): CC.crop(src, os.path.join(OUT, 'pieces', 'circ-%s-%s-%s.svg' % (tag, kind, n))); out[n] = 'pieces/circ-%s-%s-%s.svg' % (tag, kind, n)
+    return out
+def mmss(t): return '%d min %02d' % (t // 60, t % 60) if t >= 60 else '%d s' % t
+def circ_ver(C): return {v['code']: v for v in C['verdicts']}
+def circ_largeur(C):
+    lg = circ_ver(C).get('CIRC_OP_LARGEUR')
+    if not lg: return ''
+    mm = re.search(r'(\d+) passage', lg['msg']); vals = [float(x) for x in re.findall(r'([\d.]+) m < [\d.]+ m', lg['msg'])]; seuil = re.search(r'< ([\d.]+) m', lg['msg'])
+    return '<tr><td>Largeur de raccord coursive / palier</td><td colspan=3><b>avertissement</b> : %s passage(s) sous %s m (minimum %s m)</td></tr>' % (mm.group(1) if mm else '?', f2(float(seuil.group(1))) if seuil else '1,20', f2(min(vals)) if vals else '?')
+def asc_txt(C):
+    A = C['ascenseur']; ou = ', '.join(b['bloc'] for b in A['blocs'] if b['ascenseurs'])
+    return ('ascenseur <b>requis</b> au-delà de R+%d, %d présent%s' % (A['seuil'], A['present'], (' en ' + ou) if ou else '')) if A['requis'] else ('ascenseur <b>facultatif</b> jusqu\'à R+%d inclus, %d présent' % (A['seuil'], A['present']))
+def circ_table(S, titre):
+    """Chemin le plus court : répartition par entrée, distance maximale, tronçon le plus chargé, ascenseur, continuité, largeur."""
+    C = S.R.get('circulationsOperation')
+    if not C: return '<div class="todo">TODO — circulationsOperation absent du result.json</div>'
+    ch = C['chaleur']; ver = circ_ver(C); us = {'logements': 'résidents'}
+    rows = ''.join('<tr><td>%s</td><td>%d logements</td><td>%s m</td><td>%s</td></tr>' % ('portillon ' + ', '.join(us.get(u, u) for u in e['usages']), e['logements'], f1(e['distMax']), mmss(e['tMax'])) for e in ch['parEntree'])
+    pl = ch['plusLoin']; pc = ch['plusChargee']; pb = ch.get('plusChargeeBatiment') or pc
+    return ('<table class=cmp><tr><th colspan=4 style="text-align:left">%s</th></tr><tr class=sec><td colspan=4>Répartition par entrée (distance et temps maximaux portillon → porte)</td></tr>%s'
+            '<tr><td>Distance maximale</td><td colspan=3>%s m, %s (%s)</td></tr><tr><td>Tronçon le plus chargé</td><td colspan=3>%s : %d logements%s</td></tr>'
+            '<tr><td>Ascenseur</td><td colspan=3>%s</td></tr><tr><td>Continuité</td><td colspan=3>%s</td></tr>%s</table>') % (
+        titre, rows, f1(ch['distMax']), pl['logement'].replace('’', "'"), mmss(pl['t']), pc['libelle'], pc['n'],
+        ('' if pb['libelle'] == pc['libelle'] else ' ; dans les bâtiments : %s, %d' % (pb['libelle'], pb['n'])), asc_txt(C),
+        ('<b>conforme</b> : %s' % ver['CIRC_OP_LOGEMENTS_ATTEINTS']['msg']) if C['conforme'] and 'CIRC_OP_LOGEMENTS_ATTEINTS' in ver else ('<b>non conforme</b>' if not C['conforme'] else 'conforme'), circ_largeur(C))
+def rampes_groupes(C):
+    """Une ligne par allée de rampe (les allées de même usage et de même géométrie sont regroupées)."""
+    g = {}
+    for r in C.get('rampes') or []:
+        u = re.match(r'pieton-([^>]+)>', r['allee']); u = u.group(1) if u else '?'
+        k = (u, round(r['longueur'], 1), r['paliers'], r['pente_pct'])
+        g.setdefault(k, r)
+    return list(g.items())
+def pmr_table(S, titre):
+    """Parcours PMR : entrée, distance maximale, flux de l'ascenseur, rampes, compromis du portillon."""
+    C = S.R.get('circulationsOperation'); P_ = (C or {}).get('pmr')
+    if not P_: return ''
+    ver = circ_ver(C); pe = P_['parEntree'][0]; pl = P_['plusLoin']; fx = P_['fluxAscenseur']['parNiveau']
+    ru = {'logements': 'entrée est (résidents)', 'crèche': 'crèche'}
+    rr = ''.join('<tr><td>Rampe, %s</td><td colspan=3>%s m, pente %d %%, dénivelé +%s m, %d palier(s) de repos de %s m, largeur %s m (pente du terrain %s %%)</td></tr>' % (
+        ru.get(u, u), f1(r['longueur']), r['pente_pct'], f2(r['denivele']), r['paliers'], f1(r['palierL']), f1(r['largeur']), f1(r['pentesTerrain'])) for (u, _, _, _), r in rampes_groupes(C))
+    cp = C.get('compromisPortillon') or {}; ac, me = cp.get('actuel'), cp.get('meilleure')
+    cps = ('<tr><td>Compromis portillon</td><td colspan=3>portillon est inchangé : dénivelé net %s m, rampe de %s m, %d palier(s)%s</td></tr>' % (
+        f2(ac['denivele_m']), f1(ac['longueurRampe']), ac['paliers'], (' ; la meilleure position, déplacée de %s m, ramènerait le dénivelé à %s m (rampe de %s m)' % (f1(me['deplacement_m']), f2(me['denivele_m']), f1(me['longueurRampe']))) if me and me.get('deplacement_m') else '')) if ac else ''
+    pp = ver.get('PMR_PENTES')
+    return ('<table class=cmp><tr><th colspan=4 style="text-align:left">%s</th></tr><tr class=sec><td colspan=4>Parcours PMR : ascenseur seul pour les étages</td></tr>'
+            '<tr><td>Entrée de référence</td><td colspan=3>portillon %s : %d logements, %s m au plus loin, %s</td></tr>'
+            '<tr><td>Distance maximale</td><td colspan=3>%s m, %s (%s)</td></tr><tr><td>Flux de l\'ascenseur</td><td colspan=3>%d logements au départ du RDC, puis %s (R+1, R+2, R+3)</td></tr>%s%s'
+            '<tr><td>Rampes (PMR_PENTES)</td><td colspan=3>%s</td></tr></table>') % (
+        titre, 'FJT (sud)' if 'FJT' in pe['usages'] else pe['portillon'], pe['logements'], f1(pe['distMax']), mmss(pe['tMax']),
+        f1(P_['distMax']), pl['logement'].replace('’', "'"), mmss(pl['t']), fx[0], ', '.join(str(x) for x in fx[1:]), rr, cps,
+        ('<b>%s</b> : %s' % ('conforme' if pp['level'] == 'ok' else 'avertissement', pp['msg'])) if pp else '—')
+cf_ret, cf_pmr, cf_var = circ_files(D, 'ret'), circ_files(D, 'ret', 'pmr'), circ_files(S2, 'r2')
+def circ_fig(f, cap): return '<figure class="cf">%s<figcaption>%s</figcaption></figure>' % (('<img src="%s">' % f) if f else '<div class="todo">carte absente</div>', cap)
+Cr, Cv = D.R.get('circulationsOperation') or {}, S2.R.get('circulationsOperation') or {}
+def entree(Cx, i):
+    e = (Cx.get('chaleur') or {}).get('parEntree') or []
+    return e[i] if len(e) > i else None
+e1, e2, ev1, ev2 = entree(Cr, 0), entree(Cr, 1), entree(Cv, 0), entree(Cv, 1)
+asc_r, asc_v = Cr.get('ascenseur') or {}, Cv.get('ascenseur') or {}
+# distance du portillon FJT au noyau d'ascenseur : longueur de l'allée FJT → escalier/noyau du Bât. A (pcmi.json)
+al_asc = next((a for a in (D.Q.get('allees') or []) if a['usage'] == 'FJT' and a['id'].startswith('pieton-FJT>Bât. A/escalier')), None)
+rp = [r for _, r in rampes_groupes(Cr)]; rp_est = next((r for (u, _, _, _), r in rampes_groupes(Cr) if u == 'logements'), None)
+txt12 = ('<p><b>Lecture.</b> L\'entrée PMR de référence est l\'entrée FJT, au sud%s ; elle dessert les %d logements par l\'ascenseur seul (distance maximale %s m, contre %s m au plus court). %s'
+         'Deux entrées desservent les logements au plus court, le portillon FJT, au sud, et le portillon résidents, à l\'est ; le scénario retenu les répartit en %d et %d logements, la variante R+2 en %d et %d. '
+         'L\'entrée est est rendue accessible par une rampe%s. Le chemin de la crèche%s et celui du public MLE restent à part des chemins des résidents. '
+         'Ascenseur : %s en R+%d (%d présent), %s en R+%d (%d présent). Les raccords palier / coursive sous 1,20 m de large sont signalés dans les tableaux.</p>') % (
+    (', à %s m du portillon pour l\'ascenseur' % f1(al_asc['longueur'])) if al_asc else '', (Cr.get('pmr') or {}).get('logements', 0), f1((Cr.get('pmr') or {}).get('distMax', 0)), f1((Cr.get('chaleur') or {}).get('distMax', 0)),
+    ('L\'ascenseur est dans le noyau du Bât. A, en saillie sur la cour. ' if asc_r.get('present') else ''),
+    e1['logements'], e2['logements'], ev1['logements'], ev2['logements'],
+    (' à %d %% de %s m, avec %d palier de repos' % (rp_est['pente_pct'], f1(rp_est['longueur']), rp_est['paliers'])) if rp_est else '',
+    (' (rampe de %s m)' % f1(next(r for (u, _, _, _), r in rampes_groupes(Cr) if u == 'crèche')['longueur'])) if any(u == 'crèche' for (u, _, _, _), _ in rampes_groupes(Cr)) else '',
+    'requis' if asc_r.get('requis') else 'facultatif', max(b['niveauHaut'] for b in asc_r['blocs']), asc_r.get('present', 0),
+    'requis' if asc_v.get('requis') else 'facultatif', max(b['niveauHaut'] for b in asc_v['blocs']), asc_v.get('present', 0))
+P.append(page('A.12', 'Circulations — cartes de chaleur', '''
+<div class="circ"><div class="cgrid3">%s%s%s%s%s%s</div>
+<div class="g3t mt">%s%s%s</div><div class="txt mt">%s</div></div>''' % (
+    circ_fig(cf_ret.get('masse'), 'Plan de masse — scénario retenu R+3, chemin le plus court'), circ_fig(cf_pmr.get('masse'), 'Plan de masse — scénario retenu R+3, parcours PMR (ascenseur seul)'), circ_fig(cf_var.get('masse'), 'Plan de masse — variante R+2, chemin le plus court'),
+    circ_fig(cf_ret.get('R1'), 'Étage R+1 — retenu, chemin le plus court'), circ_fig(cf_pmr.get('R1'), 'Étage R+1 — retenu, parcours PMR'), circ_fig(cf_var.get('R1'), 'Étage R+1 — variante R+2'),
+    circ_table(D, 'Retenu R+3 — %d logements, chemin le plus court' % D.T['nLogts']), pmr_table(D, 'Retenu R+3 — parcours PMR') or '<div></div>', circ_table(S2, 'Variante R+2 — %d logements (sans ascenseur : pas de parcours PMR)' % S2.T['nLogts']), txt12), 'circp'))
+
 CSS = open(os.path.join(HERE, 'build_report_v2.py'), encoding='utf-8').read().split("CSS = '''")[1].split("'''")[0] + '''
 .fig.white{background:#fff}.fig img{width:100%;display:block}.fig.tall{height:170mm}.fig.tall img.cover-img{width:100%;height:100%;object-fit:cover}
 .sections .sec{margin-bottom:2.5mm}.sections .sec svg.sx{width:100%;height:auto;max-height:78mm;display:block;border:1px solid #e6e6e6}
@@ -335,6 +428,7 @@ CSS = open(os.path.join(HERE, 'build_report_v2.py'), encoding='utf-8').read().sp
 .vimg{position:relative;height:100%}.vues .persp{height:238mm}.vues .persp figure{display:flex;flex-direction:column}.vues .persp .vimg{flex:1;overflow:hidden;border:1px solid #ddd}.vues .persp img{width:100%;height:100%;object-fit:cover;border:none}
 .prov{position:absolute;left:3mm;top:3mm;background:rgba(224,138,44,.92);color:#fff;font-size:8pt;font-weight:700;padding:.8mm 2.5mm;letter-spacing:.06em}
 .cmp{width:100%;border-collapse:collapse;font-size:9.5pt}.cmp th{background:#3e6f2c;color:#fff;padding:1.2mm 1.6mm;text-align:right}.cmp th:first-child{text-align:left}.cmp td{padding:1mm 1.6mm;border-bottom:1px solid #ddd}.cmp td.n{text-align:right;white-space:nowrap}.cmp tr.sec td{background:#eef6e8;font-weight:700}.cmp td.e{font-weight:700}
+.circp .body{left:8mm;right:8mm}.cgrid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3mm 4mm}.g3t{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4mm;align-items:start}.cf{margin:0;text-align:center}.cf img{height:75mm;width:100%;object-fit:contain;display:block}.cf figcaption{font-size:9pt;margin-top:.5mm}.circp .cmp{font-size:8.6pt}.circp .cmp td,.circp .cmp th{padding:.5mm 1.3mm;text-align:left}.circp .cmp tr.sec td{font-weight:700}.circp .txt p{font-size:10pt;margin:0}
 .surf .grid{font-size:9pt}.surf .grid td,.surf .grid th{padding:1.1mm 1.4mm}.surf .grid th{font-size:9pt}.grid tr.sub td{background:#eef6e8;font-weight:600}.surf .txt{font-size:10pt}
 '''
 html = '<!doctype html><html lang=fr><head><meta charset=utf-8><title>Faisabilité FJT BH 513 — ind 1</title><style>%s</style></head><body>%s</body></html>' % (CSS, ''.join(P))

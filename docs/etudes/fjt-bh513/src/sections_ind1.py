@@ -22,6 +22,9 @@ class Dr:
     @staticmethod
     def at(a): return ' '.join('%s="%s"' % (k.replace('_', '-'), v) for k, v in a.items())
 
+CUTPAT = ('<pattern id="fj-cut" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="3" fill="#fff"/><line x1="0" y1="0" x2="0" y2="3" stroke="#000" stroke-width="1.4"/></pattern>'
+          '<pattern id="fj-cutroof" width="3" height="3" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="3" height="3" fill="#fff"/><line x1="0" y1="0" x2="0" y2="3" stroke="#000" stroke-width="0.8"/></pattern>')
+
 def fade(t, depth):
     k = max(0.0, min(1.0, t / depth)); g = int(0x33 + k * (0xb8 - 0x33)); return '#%02x%02x%02x' % (g, g, g)
 
@@ -63,13 +66,13 @@ def draw_block_cut(d, b, t):
     pts = [d.S(*q) for q in seg.coords]; a, c = min(pts), max(pts)
     g0 = min(th(d.O[0] + d.right[0] * q, d.O[1] + d.right[1] * q) for q in (a, (a + c) / 2, c))
     y0 = b['egout'] - ALT0 - b['nlev'] * b['hEtage']; ye = b['egout'] - ALT0; yf = b['faitage'] - ALT0; mid = (a + c) / 2
-    d.poly([(a, g0 - 0.6), (c, g0 - 0.6), (c, y0), (a, y0)], fill='#d9c7a8', stroke='#222', stroke_width=1)
+    d.poly([(a, g0 - 0.6), (c, g0 - 0.6), (c, y0), (a, y0)], fill='url(#fj-cut)', stroke='#000', stroke_width=1.3)
     for k in range(b['nlev']):
         yk = y0 + k * b['hEtage']
-        d.poly([(a, yk), (c, yk), (c, yk + b['hEtage']), (a, yk + b['hEtage'])], fill='#f6e9d3', stroke='#222', stroke_width=0.9)
-        d.poly([(a - 1.0, yk + b['hEtage'] - 0.22), (c + 0.4, yk + b['hEtage'] - 0.22), (c + 0.4, yk + b['hEtage']), (a - 1.0, yk + b['hEtage'])], fill='#b5452a', stroke='none')
-        d.line([(a - 1.0, yk + b['hEtage']), (a - 1.0, yk + b['hEtage'] + 1.0)], stroke='#222', stroke_width=0.8)
-    d.poly([(a - OV - 1.0, ye + 0.0), (mid, yf), (c + OV + 0.4, ye)], fill='#8e9ea8', stroke='#222', stroke_width=1.2)
+        d.poly([(a, yk), (c, yk), (c, yk + b['hEtage']), (a, yk + b['hEtage'])], fill='#ffffff', stroke='#000', stroke_width=0.5)
+        d.poly([(a - 1.0, yk + b['hEtage'] - 0.22), (c + 0.4, yk + b['hEtage'] - 0.22), (c + 0.4, yk + b['hEtage']), (a - 1.0, yk + b['hEtage'])], fill='#000', stroke='none')
+        d.line([(a - 1.0, yk + b['hEtage']), (a - 1.0, yk + b['hEtage'] + 1.0)], stroke='#000', stroke_width=0.6)
+    d.poly([(a - OV - 1.0, ye + 0.0), (mid, yf), (c + OV + 0.4, ye)], fill='url(#fj-cutroof)', stroke='#000', stroke_width=1.3)
     return True
 
 def cotes(d, b, edge, side=1, col=3.0):
@@ -125,11 +128,12 @@ def draw(O, v, span, depth, fname, cut=False, scale_m=20, labels=()):
                 pts = [(a['s0'], y0 - 0.5), (a['s1'], y0 - 0.5), (a['s1'], y1)] + ([((a['s0'] + a['s1']) / 2, y1 + a['rh'])] if a['rh'] > 0.3 else []) + [(a['s0'], y1)]
                 d.poly(pts, fill='#ffffff', stroke=col, stroke_width=sw)
         elif k == 'tree':
-            tc = '#5f6f55' if t < depth * 0.5 else '#9aa592'; s0, y, h, r = a['s'], a['y'], a['h'], a['r']
+            tc = '#555555' if t < depth * 0.5 else '#9a9a9a'; s0, y, h, r = a['s'], a['y'], a['h'], a['r']
             d.line([(s0, y), (s0, y + h * 0.45)], stroke=tc, stroke_width=0.8); cy = y + h - r * 0.9
             d.el.append('<ellipse cx="%.1f" cy="%.1f" rx="%.1f" ry="%.1f" fill="%s" fill-opacity="0.85" stroke="%s" stroke-width="0.7"/>' % (*d.P(s0, cy), r * d.K, r * 0.85 * d.K, 'none' if fg else '#ffffff', tc))
         elif k == 'cut': draw_block_cut(d, a['b'], t)
-        elif k == 'glb': d.el.extend(GL.render(d))
+        elif k == 'glb':
+            els, ctr = GL.render_bw(d); d.el.extend(els); d.el.append(ctr)   # élévation au trait N&B : faces blanches/grises + arêtes vives + contour épais
         else: draw_block_elev(d, a['b'], t)
     if not cut:   # élévation : sol naturel visible = enveloppe du terrain entre l'observateur et le projet
         tmax = min(depth, max(tP, 5)); ground = [(q, max(th(O[0] + d.right[0] * q + v[0] * t, O[1] + d.right[1] * q + v[1] * t) for t in range(0, int(tmax) + 1, 3))) for q in ss]; ground = list(zip(ss, median_filter([g for _, g in ground], size=7, mode='nearest')))
@@ -159,9 +163,13 @@ def draw(O, v, span, depth, fname, cut=False, scale_m=20, labels=()):
     Wpx = (span[1] - span[0]) * d.K; Hpx = (d.yhi - d.ylo) * d.K
     x0 = Wpx - 20 - scale_m * d.K; y0s = Hpx - 12
     sb = ('<g font-size="9" fill="#333"><rect x="%.1f" y="%.1f" width="%.1f" height="3" fill="#333"/><rect x="%.1f" y="%.1f" width="%.1f" height="3" fill="#fff" stroke="#333" stroke-width=".5"/><text x="%.1f" y="%.1f">0</text><text x="%.1f" y="%.1f" text-anchor="end">%d m</text></g>' % (x0, y0s, scale_m / 2 * d.K, x0 + scale_m / 2 * d.K, y0s, scale_m / 2 * d.K, x0, y0s - 3, x0 + scale_m * d.K, y0s - 3, scale_m))
+    if not cut:   # le projet est tronqué au sol naturel (poteaux et fondations ne s'enfoncent pas dans le terrain hachuré)
+        d.el = []; cid = 'fjclip-' + os.path.splitext(os.path.basename(fname))[0]
+        pp = ' '.join('%.1f,%.1f' % d.P(*q) for q in ground + [(span[1], d.yhi + 5), (span[0], d.yhi + 5)])
+        PRJ = ['<clipPath id="%s"><polygon points="%s"/></clipPath><g clip-path="url(#%s)">' % (cid, pp, cid)] + PRJ + ['</g>']
     body = ''.join(GRID + CTX + FG + SOL + PRJ + TN + LAB)
     svg = ('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %.0f %.0f" font-family="Helvetica, Arial, sans-serif" class="sx">'
-           '<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#b9b2a4" stroke-width="0.6"/></pattern></defs>'
+           '<defs>' + GL.STYLE + GL.roof_patterns() + CUTPAT + '<pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#b0b0b0" stroke-width="0.6"/></pattern></defs>'
            '<rect width="100%%" height="100%%" fill="#fff"/>%s%s</svg>') % (Wpx, Hpx, body, sb)
     open(fname, 'w', encoding='utf-8').write(svg); return fname
 
